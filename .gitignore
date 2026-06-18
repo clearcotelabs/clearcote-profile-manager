@@ -3,9 +3,11 @@ node_modules/
 .next/
 out/
 dist/
+dist-electron/
 build/
 release/
 *.tsbuildinfo
+next-env.d.ts
 
 # logs
 *.log

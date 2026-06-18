@@ -1,0 +1,48 @@
+@import url("https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap");
+
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+:root {
+  --clear-cyan: #38e0d6;
+  --sky: #6ee7ff;
+  --iris: #a78bfa;
+  --ink: #07080a;
+  --surface: #0d0f13;
+  --fog: #e6e9ee;
+}
+
+html,
+body {
+  height: 100%;
+}
+
+body {
+  background: var(--ink);
+  color: var(--fog);
+}
+
+/* thin, glossy scrollbars to match the dark base */
+::-webkit-scrollbar {
+  width: 10px;
+  height: 10px;
+}
+::-webkit-scrollbar-thumb {
+  background: #1b2030;
+  border-radius: 8px;
+}
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+/* subtle iridescent top sheen, echoing the clear-coat idea */
+.app-sheen::before {
+  content: "";
+  position: fixed;
+  inset: 0 0 auto 0;
+  height: 240px;
+  background: radial-gradient(60% 100% at 50% 0%, rgba(56, 224, 214, 0.10), rgba(167, 139, 250, 0.06) 45%, transparent 75%);
+  pointer-events: none;
+  z-index: 0;
+}

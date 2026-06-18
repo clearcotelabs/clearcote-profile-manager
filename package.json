@@ -9,30 +9,42 @@
     "type": "git",
     "url": "https://github.com/clearcotelabs/clearcote-profile-manager.git"
   },
-  "main": "electron/main.js",
+  "main": "dist-electron/main.js",
   "scripts": {
-    "dev": "echo \"Phase 1: wire Electron + Next dev — see PLAN.md\" && exit 1",
-    "build": "next build",
-    "dist": "electron-builder",
-    "lint": "next lint"
+    "next:dev": "next dev",
+    "electron:build": "tsc -p electron",
+    "electron:dev": "wait-on tcp:127.0.0.1:3000 && npm run electron:build && cross-env ELECTRON_DEV=1 electron .",
+    "dev": "concurrently -k -n NEXT,ELECTRON -c cyan,magenta \"npm:next:dev\" \"npm:electron:dev\"",
+    "build": "next build && npm run electron:build",
+    "start": "cross-env ELECTRON_DEV=0 electron .",
+    "dist": "npm run build && electron-builder",
+    "lint": "next lint",
+    "typecheck": "tsc --noEmit && tsc -p electron --noEmit"
   },
   "dependencies": {
-    "clearcote": "^0.4.0",
     "next": "^15.1.0",
     "react": "^19.0.0",
-    "react-dom": "^19.0.0",
-    "zustand": "^5.0.0"
+    "react-dom": "^19.0.0"
   },
   "devDependencies": {
     "@types/node": "^22.10.0",
     "@types/react": "^19.0.0",
     "@types/react-dom": "^19.0.0",
     "autoprefixer": "^10.4.20",
+    "concurrently": "^9.1.0",
+    "cross-env": "^7.0.3",
     "electron": "^33.2.0",
     "electron-builder": "^25.1.8",
     "postcss": "^8.4.49",
     "tailwindcss": "^3.4.17",
-    "typescript": "^5.7.2"
+    "typescript": "^5.7.2",
+    "wait-on": "^8.0.1"
   },
-  "comment": "Dependency versions are an intended starting set; Phase 1 finalizes them via the real scaffolding (create-next-app + electron) and a committed lockfile. See PLAN.md."
+  "build": {
+    "appId": "com.clearcotelabs.profilemanager",
+    "productName": "Clearcote Profile Manager",
+    "files": ["dist-electron/**/*", "out/**/*", "package.json"],
+    "directories": { "output": "release" },
+    "win": { "target": "nsis", "icon": "build/icon.ico" }
+  }
 }
