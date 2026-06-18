@@ -36,6 +36,17 @@ npm run dist       # build a Windows installer
 | `src/types/` | shared data model (`Profile`) |
 | `profiles/` | runtime profile store — JSON per profile + per-profile `userdata/`; git-ignored except the example |
 
+## Packaging (Windows)
+
+```bash
+npm run make-icon     # build/icon.ico from the brand mark (once)
+npm run dist          # next export + electron compile + electron-builder NSIS installer → release/
+```
+
+This produces a signed-able NSIS installer in `release/`. A **portable build** (no installer) is also produced as `release/win-unpacked/` — zip it and run `Clearcote Profile Manager.exe` directly.
+
+> **Note — NSIS installer on Windows:** electron-builder fetches `winCodeSign`, whose archive contains macOS symlinks. Extracting them needs symlink privilege, so on Windows **enable Developer Mode** (Settings → For developers) *or* run the build from an elevated shell once; otherwise `electron-builder` errors with *"Cannot create symbolic link"*. The portable `win-unpacked` build does not require this.
+
 ## License
 
 BSD-3-Clause — matching the Clearcote project.
