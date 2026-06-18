@@ -14,6 +14,27 @@ export interface LaunchResult {
   pid?: number;
   error?: string;
 }
+export interface GeoResult {
+  ok: boolean;
+  ip?: string;
+  country?: string;
+  countryCode?: string;
+  timezone?: string;
+  lat?: number;
+  lon?: number;
+  acceptLanguage?: string;
+  error?: string;
+}
+export interface ExportResult {
+  ok: boolean;
+  path?: string;
+  count?: number;
+}
+export interface ImportResult {
+  ok: boolean;
+  count?: number;
+  error?: string;
+}
 
 export interface ClearcoteApi {
   profiles: {
@@ -31,6 +52,9 @@ export interface ClearcoteApi {
   };
   resolveBinary: () => Promise<string | null>;
   pickBinary: () => Promise<string | null>;
+  geoCheck: (p: Profile) => Promise<GeoResult>;
+  exportProfiles: (opts?: { redact?: boolean }) => Promise<ExportResult>;
+  importProfiles: () => Promise<ImportResult>;
 }
 
 declare global {
@@ -86,6 +110,21 @@ function buildMock(): ClearcoteApi {
     },
     resolveBinary: async () => null,
     pickBinary: async () => null,
+    geoCheck: async () => ({ ok: false, error: "IP / geo check runs in the desktop app." }),
+    exportProfiles: async () => {
+      const list = read().map((p) =>
+        p.proxy ? { ...p, proxy: { ...p.proxy, password: p.proxy.password ? "" : undefined } } : p,
+      );
+      const blob = new Blob([JSON.stringify(list, null, 2)], { type: "application/json" });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement("a");
+      a.href = url;
+      a.download = "clearcote-profiles.json";
+      a.click();
+      URL.revokeObjectURL(url);
+      return { ok: true, count: list.length };
+    },
+    importProfiles: async () => ({ ok: false, error: "Import runs in the desktop app." }),
   };
 }
 

@@ -3,7 +3,7 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
 import type { Brand, Platform, Profile } from "@/types/profile";
 import { profileToArgs } from "@/types/profile";
-import { api, isElectron, type Settings } from "@/lib/ipc";
+import { api, isElectron, type Settings, type GeoResult } from "@/lib/ipc";
 import { LogoMark } from "@/components/LogoMark";
 
 const PLATFORMS: Platform[] = ["windows", "macos", "linux"];
@@ -94,6 +94,19 @@ export default function Page() {
       notify("Browser binary set.");
     }
   }
+  async function doExport() {
+    const r = await api.exportProfiles();
+    notify(r.ok ? `Exported ${r.count} profile${r.count === 1 ? "" : "s"} (proxy passwords redacted).` : "Export canceled.");
+  }
+  async function doImport() {
+    const r = await api.importProfiles();
+    if (r.ok) {
+      await refresh();
+      notify(`Imported ${r.count} profile${r.count === 1 ? "" : "s"}.`);
+    } else {
+      notify(r.error || "Import canceled.");
+    }
+  }
 
   const filtered = useMemo(() => {
     const q = query.toLowerCase().trim();
@@ -160,6 +173,14 @@ export default function Page() {
           />
           <div className="text-xs text-fog/35">
             {profiles.length} profile{profiles.length === 1 ? "" : "s"}
+          </div>
+          <div className="ml-auto flex gap-2">
+            <button className={btnGhost} onClick={doImport}>
+              Import
+            </button>
+            <button className={btnGhost} onClick={doExport} disabled={profiles.length === 0}>
+              Export
+            </button>
           </div>
         </div>
 
@@ -298,6 +319,23 @@ function Editor({
   const set = <K extends keyof Profile>(k: K, v: Profile[K]) => onChange({ ...profile, [k]: v });
   const setProxy = (k: "server" | "username" | "password", v: string) =>
     onChange({ ...profile, proxy: { server: "", ...(profile.proxy || {}), [k]: v } });
+  const [geo, setGeo] = useState<GeoResult | null>(null);
+  const [resolving, setResolving] = useState(false);
+  async function resolveGeo() {
+    setResolving(true);
+    const r = await api.geoCheck(profile);
+    setResolving(false);
+    setGeo(r);
+    if (r.ok) {
+      onChange({
+        ...profile,
+        timezone: r.timezone || profile.timezone,
+        acceptLanguage: r.acceptLanguage || profile.acceptLanguage,
+        location: r.lat != null && r.lon != null ? `${r.lat},${r.lon}` : profile.location,
+        webrtcIp: r.ip || profile.webrtcIp,
+      });
+    }
+  }
   const args = profileToArgs({ ...profile, userDataDir: `profiles/${profile.id || "<id>"}/userdata` });
 
   return (
@@ -362,11 +400,25 @@ function Editor({
             <input className={input} type="number" value={profile.hardwareConcurrency ?? ""} onChange={(e) => set("hardwareConcurrency", e.target.value ? Number(e.target.value) : undefined)} placeholder="(persona default)" />
           </div>
 
-          <div className="sm:col-span-2 flex items-center gap-2 rounded-lg border border-white/10 bg-ink/40 px-3 py-2">
-            <input id="geoip" type="checkbox" checked={!!profile.geoip} onChange={(e) => set("geoip", e.target.checked)} className="accent-[#38e0d6]" />
-            <label htmlFor="geoip" className="text-sm text-fog/80">
-              <span className="font-medium">geoip</span> — auto-match timezone / language / WebRTC IP to the proxy&apos;s exit region
-            </label>
+          <div className="sm:col-span-2 rounded-lg border border-white/10 bg-ink/40 px-3 py-2">
+            <div className="flex items-center gap-2">
+              <input id="geoip" type="checkbox" checked={!!profile.geoip} onChange={(e) => set("geoip", e.target.checked)} className="accent-[#38e0d6]" />
+              <label htmlFor="geoip" className="flex-1 text-sm text-fog/80">
+                <span className="font-medium">geoip</span> — auto-match timezone / language / WebRTC IP to the proxy&apos;s exit region
+              </label>
+              {profile.proxy?.server && (
+                <button className={btnGhost} onClick={resolveGeo} disabled={resolving}>
+                  {resolving ? "Resolving…" : "Resolve from proxy →"}
+                </button>
+              )}
+            </div>
+            {geo && (
+              <div className={`mt-2 font-mono text-[11px] ${geo.ok ? "text-accent" : "text-amber-300"}`}>
+                {geo.ok
+                  ? `egress ${geo.ip} · ${geo.country ?? "?"} · ${geo.timezone ?? "?"} · ${geo.acceptLanguage ?? "?"}`
+                  : geo.error}
+              </div>
+            )}
           </div>
 
           <div className="sm:col-span-2 rounded-lg border border-white/10 p-3">

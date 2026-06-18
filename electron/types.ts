@@ -43,3 +43,27 @@ export interface LaunchResult {
   pid?: number;
   error?: string;
 }
+
+export interface GeoResult {
+  ok: boolean;
+  ip?: string;
+  country?: string;
+  countryCode?: string;
+  timezone?: string;
+  lat?: number;
+  lon?: number;
+  acceptLanguage?: string;
+  error?: string;
+}
+
+export interface ExportResult {
+  ok: boolean;
+  path?: string;
+  count?: number;
+}
+
+export interface ImportResult {
+  ok: boolean;
+  count?: number;
+  error?: string;
+}
