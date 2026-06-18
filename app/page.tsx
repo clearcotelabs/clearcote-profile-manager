@@ -34,6 +34,9 @@ export default function Page() {
   const [binary, setBinary] = useState<string | null>(null);
   const [showSettings, setShowSettings] = useState(false);
   const [toast, setToast] = useState<string | null>(null);
+  // Resolved after mount so the first client render matches the server prerender
+  // (window.clearcote only exists in the Electron renderer → avoids a hydration mismatch).
+  const [isEl, setIsEl] = useState(false);
 
   const refresh = useCallback(async () => {
     setProfiles(await api.profiles.list());
@@ -41,6 +44,7 @@ export default function Page() {
   }, []);
 
   useEffect(() => {
+    setIsEl(isElectron);
     refresh();
     api.settings.get().then(setSettings);
     api.resolveBinary().then(setBinary);
@@ -157,7 +161,7 @@ export default function Page() {
           </div>
         </header>
 
-        {!isElectron && (
+        {!isEl && (
           <div className="mt-4 rounded-lg border border-iris/25 bg-iris/5 px-3 py-2 text-xs text-iris">
             Browser preview — profiles are stored locally in this browser and launching is disabled. Run the desktop app for the full experience.
           </div>
