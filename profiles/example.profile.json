@@ -1,0 +1,25 @@
+{
+  "id": "example-acme-us",
+  "name": "Acme — US East",
+  "notes": "Example profile showing the shape. Real profiles live next to this file and are git-ignored.",
+  "tags": ["example", "us"],
+  "group": "Demo",
+  "fingerprint": "acme-us-7423",
+  "platform": "windows",
+  "brand": "Chrome",
+  "timezone": "America/New_York",
+  "acceptLanguage": "en-US,en",
+  "webrtcIp": null,
+  "geoip": true,
+  "hardwareConcurrency": null,
+  "location": null,
+  "proxy": {
+    "server": "http://proxy.example.com:8080",
+    "username": "user",
+    "password": "REDACTED"
+  },
+  "extraArgs": [],
+  "userDataDir": "profiles/example-acme-us/userdata",
+  "createdAt": "2026-06-18T00:00:00.000Z",
+  "updatedAt": "2026-06-18T00:00:00.000Z"
+}

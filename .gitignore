@@ -1,0 +1,36 @@
+# dependencies / build output
+node_modules/
+.next/
+out/
+dist/
+build/
+release/
+*.tsbuildinfo
+
+# logs
+*.log
+npm-debug.log*
+
+# electron packaging artifacts
+*.exe
+*.msi
+*.dmg
+*.AppImage
+*.zip
+
+# env / secrets
+.env
+.env.local
+.env.*.local
+
+# OS cruft
+.DS_Store
+Thumbs.db
+
+# ---- runtime profile data ----
+# NEVER commit user identities, proxy credentials, or per-profile browser storage.
+# Keep only the docs + example shape.
+profiles/*
+!profiles/.gitkeep
+!profiles/README.md
+!profiles/example.profile.json
