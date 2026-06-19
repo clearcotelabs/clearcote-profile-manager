@@ -11,7 +11,9 @@ const themeScript = `try{if(localStorage.getItem('clearcote.theme')==='light')do
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {
   return (
-    <html lang="en">
+    // suppressHydrationWarning: the no-flash themeScript below sets html.class before React
+    // hydrates, so the server (no class) vs client (class) attribute mismatch is intentional.
+    <html lang="en" suppressHydrationWarning>
       <head>
         <script dangerouslySetInnerHTML={{ __html: themeScript }} />
       </head>
