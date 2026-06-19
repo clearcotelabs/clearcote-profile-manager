@@ -1,6 +1,6 @@
 {
   "name": "clearcote-profile-manager",
-  "version": "0.1.0",
+  "version": "0.2.0",
   "private": true,
   "description": "Desktop manager for Clearcote browser profiles — create, save, organize, and launch coherent, persistent browser identities.",
   "license": "BSD-3-Clause",
@@ -44,10 +44,23 @@
   "build": {
     "appId": "com.clearcotelabs.profilemanager",
     "productName": "Clearcote Profile Manager",
-    "files": ["dist-electron/**/*", "out/**/*", "package.json"],
-    "directories": { "output": "release", "buildResources": "build" },
+    "files": [
+      "dist-electron/**/*",
+      "out/**/*",
+      "package.json"
+    ],
+    "directories": {
+      "output": "release",
+      "buildResources": "build"
+    },
     "artifactName": "Clearcote-Profile-Manager-${version}-${arch}.${ext}",
-    "win": { "target": ["nsis", "zip"], "icon": "build/icon.ico" },
+    "win": {
+      "target": [
+        "nsis",
+        "zip"
+      ],
+      "icon": "build/icon.ico"
+    },
     "nsis": {
       "oneClick": false,
       "perMachine": false,
