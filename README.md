@@ -23,6 +23,29 @@ A desktop app to **create, save, organize, and launch [Clearcote](https://github
 
 </details>
 
+## Download
+
+Prebuilt Windows builds are on the **[Releases page](https://github.com/clearcotelabs/clearcote-profile-manager/releases)** — no need to build from source:
+
+- **Installer** — `Clearcote-Profile-Manager-<version>-setup.exe` · double-click to install.
+- **Portable** — `Clearcote-Profile-Manager-<version>-x64.zip` · unzip and run `Clearcote Profile Manager.exe` (no install).
+
+### Verify it's genuine (recommended)
+
+Every release is **built entirely by [GitHub Actions](.github/workflows/release.yml)** on a `windows-latest` runner from the tagged commit — not on anyone's machine — so the build is public and auditable. Two independent ways to confirm your download wasn't tampered with:
+
+```bash
+# 1. Provenance — cryptographically proves it came from THIS repo's CI at the release commit
+gh attestation verify Clearcote-Profile-Manager-<version>-setup.exe -R clearcotelabs/clearcote-profile-manager
+
+# 2. Checksum — SHA256SUMS.txt ships with every release
+sha256sum -c SHA256SUMS.txt          # macOS / Linux
+# Windows (PowerShell):
+# (Get-FileHash .\Clearcote-Profile-Manager-<version>-setup.exe -Algorithm SHA256).Hash
+```
+
+> The app is **unsigned**, so Windows SmartScreen may warn on first run (**More info → Run anyway**). Proper Authenticode signing needs a paid certificate; until then, the public-CI build + provenance attestation + checksums are the trust anchor.
+
 ## Why
 
 Clearcote is driven by command-line identity flags (`--fingerprint`, `--fingerprint-platform`, `--timezone`, `--accept-lang`, `--webrtc-ip`, `--proxy-server`, `--user-data-dir`). Juggling many identities by hand is tedious and error-prone. This app gives you a GUI to:
@@ -56,6 +79,8 @@ npm run dist       # build a Windows installer
 | `profiles/` | runtime profile store — JSON per profile + per-profile `userdata/`; git-ignored except the example |
 
 ## Packaging (Windows)
+
+Releases are cut automatically by [GitHub Actions](.github/workflows/release.yml) when a `v*` tag is pushed (build on a clean `windows-latest` runner → checksums → provenance attestation → GitHub Release). To build locally instead:
 
 ```bash
 npm run make-icon     # build/icon.ico from the brand mark (once)

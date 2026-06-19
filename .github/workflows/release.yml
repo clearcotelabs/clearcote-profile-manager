@@ -1,0 +1,94 @@
+name: Release
+
+# Build the Windows app entirely on GitHub's runners (no local machine), publish a
+# GitHub Release, and attach a build-provenance attestation + SHA-256 checksums so
+# anyone can prove the downloaded artifact came from this repo's CI at this commit.
+
+on:
+  push:
+    tags: ["v*"]
+  workflow_dispatch: {}
+
+permissions:
+  contents: write # create the release + upload assets
+  id-token: write # OIDC for the provenance attestation (Sigstore)
+  attestations: write # store the attestation
+
+jobs:
+  build:
+    runs-on: windows-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Build installer + portable (electron-builder)
+        run: npm run dist
+        env:
+          # Unsigned build — the provenance attestation + checksums are the integrity proof.
+          CSC_IDENTITY_AUTO_DISCOVERY: "false"
+
+      - name: Generate SHA256SUMS
+        shell: pwsh
+        run: |
+          Set-Location release
+          $items = Get-ChildItem -File | Where-Object { $_.Extension -in '.exe', '.zip' }
+          if (-not $items) { throw 'No .exe/.zip artifacts found in release/' }
+          $items | ForEach-Object {
+            "$((Get-FileHash $_.FullName -Algorithm SHA256).Hash.ToLower())  $($_.Name)"
+          } | Set-Content -Encoding ascii SHA256SUMS.txt
+          Get-Content SHA256SUMS.txt
+
+      - name: Attest build provenance
+        uses: actions/attest-build-provenance@v2
+        with:
+          subject-path: |
+            release/*.exe
+            release/*.zip
+
+      - name: Publish GitHub Release
+        uses: softprops/action-gh-release@v2
+        with:
+          name: Clearcote Profile Manager ${{ github.ref_name }}
+          fail_on_unmatched_files: true
+          files: |
+            release/*.exe
+            release/*.zip
+            release/SHA256SUMS.txt
+          body: |
+            **Clearcote Profile Manager** — a desktop app to create, save, organize, and launch
+            [Clearcote](https://github.com/clearcotelabs/clearcote-browser) browser identities.
+
+            ## Download
+            - **Installer** — `Clearcote-Profile-Manager-*-setup.exe` · double-click to install.
+            - **Portable** — `Clearcote-Profile-Manager-*-x64.zip` · unzip and run `Clearcote Profile Manager.exe` (no install).
+
+            ## Built in the open — verify it yourself
+            This build was produced **entirely by GitHub Actions** on a `windows-latest` runner
+            from this tagged commit — no local machines. The workflow and full logs are public.
+            Two independent ways to confirm nothing was tampered with:
+
+            **1 · Provenance attestation** (proves it came from *this* repo's CI at *this* commit):
+            ```
+            gh attestation verify Clearcote-Profile-Manager-${{ github.ref_name }}-setup.exe -R ${{ github.repository }}
+            ```
+
+            **2 · SHA-256 checksums** (`SHA256SUMS.txt`):
+            ```
+            # Windows (PowerShell)
+            (Get-FileHash .\Clearcote-Profile-Manager-${{ github.ref_name }}-setup.exe -Algorithm SHA256).Hash
+            # macOS / Linux
+            sha256sum -c SHA256SUMS.txt
+            ```
+
+            > **Unsigned build.** Windows SmartScreen may warn on first run — choose **More info → Run anyway**.
+            > The app is not Authenticode code-signed (that requires a paid certificate); the provenance
+            > attestation + checksums above are the integrity guarantee instead.
