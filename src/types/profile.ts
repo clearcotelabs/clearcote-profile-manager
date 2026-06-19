@@ -2,14 +2,6 @@
 // One profile is persisted as profiles/<id>.json; its browser storage lives in
 // profiles/<id>/userdata/. See PLAN.md and profiles/example.profile.json.
 
-/** A proxy the browser routes through for this profile. */
-export interface Proxy {
-  /** e.g. "http://host:8080" or "socks5://host:1080". */
-  server: string;
-  username?: string;
-  password?: string;
-}
-
 export type Platform = "windows" | "linux" | "macos";
 export type Brand = "Chrome" | "Edge" | "Opera" | "Vivaldi";
 
@@ -58,7 +50,9 @@ export interface Profile {
   fingerprintProfileMeta?: FingerprintMeta;
 
   // ---- network ----
-  proxy?: Proxy;
+  /** Proxy as a single string: "scheme://user:pass@host:port" (auth optional), e.g.
+   *  "http://user:pass@host:8080" or "socks5://host:1080". */
+  proxy?: string;
 
   // ---- launch ----
   /** Extra raw chrome flags appended verbatim. */
@@ -82,6 +76,36 @@ export interface FingerprintMeta {
   source?: "file" | "library";
 }
 
+/** Normalize a profile's proxy to a single string (accepts the legacy {server,username,password}
+ *  object so old saved profiles still display/edit). Pure — usable in the renderer. */
+export function proxyString(p: unknown): string {
+  if (!p) return "";
+  if (typeof p === "string") return p;
+  const o = p as { server?: string; username?: string; password?: string };
+  if (!o.server) return "";
+  try {
+    const u = new URL(/:\/\//.test(o.server) ? o.server : `http://${o.server}`);
+    if (o.username) u.username = o.username;
+    if (o.password) u.password = o.password;
+    return u.toString();
+  } catch {
+    return o.server || "";
+  }
+}
+
+/** A proxy string with the password removed (for export / display). Pure. */
+export function redactProxyString(p: unknown): string {
+  const s = proxyString(p);
+  if (!s) return "";
+  try {
+    const u = new URL(/:\/\//.test(s) ? s : `http://${s}`);
+    u.password = "";
+    return u.toString();
+  } catch {
+    return s;
+  }
+}
+
 /** Build the chrome.exe argument list for a profile. (Reference for the launcher; the
  *  main process resolves geoip + the user-data-dir before calling this. The captured
  *  fingerprint profile is shown as a placeholder here — the launcher gzip+base64-encodes
@@ -100,7 +124,16 @@ export function profileToArgs(p: Profile): string[] {
   if (p.webrtcIp) args.push(`--webrtc-ip=${p.webrtcIp}`);
   if (p.fingerprintProfile)
     args.push(`--fingerprint-profile=<gzip+base64 of ${p.fingerprintProfileMeta?.label || p.fingerprintProfile}>`);
-  if (p.proxy?.server) args.push(`--proxy-server=${p.proxy.server}`);
+  const proxy = proxyString(p.proxy);
+  if (proxy) {
+    try {
+      const u = new URL(/:\/\//.test(proxy) ? proxy : `http://${proxy}`);
+      // creds stripped in the preview; the launcher injects them via a local relay if present
+      args.push(`--proxy-server=${u.protocol}//${u.hostname}${u.port ? `:${u.port}` : ""}`);
+    } catch {
+      /* ignore */
+    }
+  }
   if (p.userDataDir) args.push(`--user-data-dir=${p.userDataDir}`);
   if (p.extraArgs?.length) args.push(...p.extraArgs);
   return args;

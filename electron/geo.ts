@@ -1,4 +1,5 @@
 import { net, session } from "electron";
+import { parseProxy } from "./proxy";
 import type { Profile } from "./types";
 
 export interface GeoResult {
@@ -37,8 +38,9 @@ export function geoCheck(profile: Profile): Promise<GeoResult> {
     const ses = session.fromPartition(`geo:${profile.id || "tmp"}:${Date.now()}`);
     const finish = (r: GeoResult) => resolve(r);
 
-    const apply = profile.proxy?.server
-      ? ses.setProxy({ proxyRules: profile.proxy.server })
+    const px = parseProxy(profile.proxy);
+    const apply = px
+      ? ses.setProxy({ proxyRules: `${px.scheme}://${px.host}:${px.port}` })
       : ses.setProxy({ mode: "direct" });
 
     apply
@@ -51,7 +53,7 @@ export function geoCheck(profile: Profile): Promise<GeoResult> {
         });
         // proxy / server auth
         req.on("login", (_authInfo, cb) => {
-          if (profile.proxy?.username) cb(profile.proxy.username, profile.proxy.password || "");
+          if (px?.username) cb(px.username, px.password || "");
           else cb();
         });
         let body = "";

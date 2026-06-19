@@ -5,6 +5,7 @@ import * as profiles from "./profiles";
 import * as launcher from "./launcher";
 import * as geo from "./geo";
 import { readSettings, writeSettings, ensureDirs, FINGERPRINTS_DIR } from "./store";
+import { redactProxyString } from "./proxy";
 import type { Profile, Settings, FingerprintMeta } from "./types";
 
 const slug = (s: string) => s.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-+|-+$/g, "").slice(0, 40);
@@ -107,7 +108,7 @@ function registerIpc(): void {
     if (r.canceled || !r.filePath) return { ok: false };
     const redact = opts?.redact !== false; // redact proxy passwords by default
     const list = profiles.listProfiles().map((p) =>
-      redact && p.proxy ? { ...p, proxy: { ...p.proxy, password: p.proxy.password ? "" : undefined } } : p,
+      redact && p.proxy ? { ...p, proxy: redactProxyString(p.proxy) } : p,
     );
     fs.writeFileSync(r.filePath, JSON.stringify(list, null, 2), "utf8");
     return { ok: true, path: r.filePath, count: list.length };

@@ -3,7 +3,7 @@
 // In a plain browser (next dev / preview), fall back to a localStorage-backed mock
 // so the UI is fully usable for design + testing without Electron.
 
-import type { Profile } from "@/types/profile";
+import { redactProxyString, type Profile } from "@/types/profile";
 
 export interface Settings {
   binaryPath?: string;
@@ -142,7 +142,7 @@ function buildMock(): ClearcoteApi {
     geoCheck: async () => ({ ok: false, error: "IP / geo check runs in the desktop app." }),
     exportProfiles: async () => {
       const list = read().map((p) =>
-        p.proxy ? { ...p, proxy: { ...p.proxy, password: p.proxy.password ? "" : undefined } } : p,
+        p.proxy ? { ...p, proxy: redactProxyString(p.proxy) } : p,
       );
       const blob = new Blob([JSON.stringify(list, null, 2)], { type: "application/json" });
       const url = URL.createObjectURL(blob);

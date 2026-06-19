@@ -2,7 +2,7 @@
 
 import { useCallback, useEffect, useMemo, useState } from "react";
 import type { Brand, Platform, Profile } from "@/types/profile";
-import { profileToArgs } from "@/types/profile";
+import { profileToArgs, proxyString } from "@/types/profile";
 import { api, isElectron, type Settings, type GeoResult, type LibraryProfile, type FingerprintMeta } from "@/lib/ipc";
 import { LogoMark } from "@/components/LogoMark";
 import { Mascot } from "@/components/Mascot";
@@ -269,7 +269,7 @@ export default function Page() {
                     {p.platform && <Chip>{p.platform}</Chip>}
                     {p.timezone && <Chip>{p.timezone}</Chip>}
                     {p.geoip && <Chip accent>geoip</Chip>}
-                    {p.proxy?.server && <Chip>proxy</Chip>}
+                    {p.proxy && <Chip>proxy</Chip>}
                     {(p.tags || []).map((t) => (
                       <Chip key={t}>#{t}</Chip>
                     ))}
@@ -354,8 +354,6 @@ function Editor({
   onCancel: () => void;
 }) {
   const set = <K extends keyof Profile>(k: K, v: Profile[K]) => onChange({ ...profile, [k]: v });
-  const setProxy = (k: "server" | "username" | "password", v: string) =>
-    onChange({ ...profile, proxy: { server: "", ...(profile.proxy || {}), [k]: v } });
   const [geo, setGeo] = useState<GeoResult | null>(null);
   const [resolving, setResolving] = useState(false);
   const [libOpen, setLibOpen] = useState(false);
@@ -505,7 +503,7 @@ function Editor({
               <label htmlFor="geoip" className="flex-1 text-sm text-fog/80">
                 <span className="font-medium">geoip</span> — auto-match timezone / language / WebRTC IP to the proxy&apos;s exit region
               </label>
-              {profile.proxy?.server && (
+              {profile.proxy && (
                 <button className={btnGhost} onClick={resolveGeo} disabled={resolving}>
                   {resolving ? "Resolving…" : "Resolve from proxy →"}
                 </button>
@@ -522,11 +520,15 @@ function Editor({
 
           <div className="sm:col-span-2 rounded-lg border border-line p-3">
             <div className={label}>Proxy</div>
-            <input className={input + " mb-2"} value={profile.proxy?.server || ""} onChange={(e) => setProxy("server", e.target.value)} placeholder="http://host:8080 or socks5://host:1080" />
-            <div className="grid grid-cols-2 gap-2">
-              <input className={input} value={profile.proxy?.username || ""} onChange={(e) => setProxy("username", e.target.value)} placeholder="username" />
-              <input className={input} type="password" value={profile.proxy?.password || ""} onChange={(e) => setProxy("password", e.target.value)} placeholder="password" />
-            </div>
+            <input
+              className={input + " font-mono"}
+              value={proxyString(profile.proxy)}
+              onChange={(e) => set("proxy", e.target.value || undefined)}
+              placeholder="http://user:pass@host:8080  ·  socks5://host:1080"
+            />
+            <p className="mt-1.5 text-[11px] text-fog/40">
+              One string, credentials inline. An authenticated http/https proxy is served to the browser through a local auth-injecting relay — no manual proxy prompt.
+            </p>
           </div>
 
           <div>

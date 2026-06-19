@@ -2,12 +2,6 @@
 // src/types/profile.ts) so the electron build has no cross-rootDir imports.
 // The two shapes are intentionally identical — see PLAN.md.
 
-export interface Proxy {
-  server: string;
-  username?: string;
-  password?: string;
-}
-
 export interface Profile {
   id: string;
   name: string;
@@ -30,7 +24,10 @@ export interface Profile {
   fingerprintProfile?: string;
   /** Cached summary of the captured profile, for display. */
   fingerprintProfileMeta?: FingerprintMeta;
-  proxy?: Proxy;
+  /** Proxy as a single string: "scheme://user:pass@host:port" (auth optional), e.g.
+   *  "http://user:pass@host:8080" or "socks5://host:1080". Authenticated http/https proxies are
+   *  served to the browser via a local auth-injecting relay (see electron/proxy.ts). */
+  proxy?: string;
   extraArgs?: string[];
   createdAt: string;
   updatedAt: string;

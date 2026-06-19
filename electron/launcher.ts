@@ -3,9 +3,11 @@ import fs from "node:fs";
 import path from "node:path";
 import zlib from "node:zlib";
 import { PROFILES_DIR, FINGERPRINTS_DIR, readSettings } from "./store";
+import { parseProxy, startRelay, needsRelay, proxyServerArg, type Relay } from "./proxy";
 import type { Profile, LaunchResult } from "./types";
 
 const running = new Map<string, ChildProcess>();
+const relays = new Map<string, Relay>();
 
 /**
  * Resolve the Clearcote chrome.exe path (Phase 1: explicit/env/sibling-dev-build).
@@ -55,13 +57,13 @@ function buildArgs(p: Profile, userDataDir: string): string[] {
       /* missing profile file — launch with just the seed */
     }
   }
-  if (p.proxy?.server) a.push(`--proxy-server=${p.proxy.server}`);
+  // proxy is handled in launch() (it may need a local auth-injecting relay)
   a.push(`--user-data-dir=${userDataDir}`);
   if (p.extraArgs?.length) a.push(...p.extraArgs);
   return a;
 }
 
-export function launch(p: Profile): LaunchResult {
+export async function launch(p: Profile): Promise<LaunchResult> {
   const bin = resolveBinary();
   if (!bin) {
     return {
@@ -73,14 +75,34 @@ export function launch(p: Profile): LaunchResult {
     return { ok: false, error: "This profile is already running." };
   }
   const userDataDir = p.userDataDir || path.join(PROFILES_DIR, p.id, "userdata");
+  let relay: Relay | null = null;
   try {
     fs.mkdirSync(userDataDir, { recursive: true });
-    const child = spawn(bin, buildArgs(p, userDataDir), { detached: false });
+    const args = buildArgs(p, userDataDir);
+    // Proxy: an authenticated http/https proxy is reached via a local relay that injects the
+    // credentials (Chromium ignores inline user:pass@), so the browser only ever sees 127.0.0.1.
+    // SOCKS and credential-less proxies are passed straight through.
+    const proxy = parseProxy(p.proxy);
+    if (proxy && needsRelay(proxy)) {
+      relay = await startRelay(proxy);
+      relays.set(p.id, relay);
+      args.push(`--proxy-server=${relay.url}`);
+    } else if (proxy) {
+      args.push(`--proxy-server=${proxyServerArg(proxy)}`);
+    }
+    const child = spawn(bin, args, { detached: false });
     running.set(p.id, child);
-    child.on("exit", () => running.delete(p.id));
-    child.on("error", () => running.delete(p.id));
+    const cleanup = () => {
+      running.delete(p.id);
+      relays.get(p.id)?.stop();
+      relays.delete(p.id);
+    };
+    child.on("exit", cleanup);
+    child.on("error", cleanup);
     return { ok: true, pid: child.pid };
   } catch (e) {
+    relay?.stop();
+    relays.delete(p.id);
     return { ok: false, error: String(e) };
   }
 }
@@ -95,6 +117,8 @@ export function stop(id: string): void {
     }
   }
   running.delete(id);
+  relays.get(id)?.stop();
+  relays.delete(id);
 }
 
 export function listRunning(): string[] {

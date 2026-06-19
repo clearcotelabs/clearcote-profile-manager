@@ -13,11 +13,7 @@
   "geoip": true,
   "hardwareConcurrency": null,
   "location": null,
-  "proxy": {
-    "server": "http://proxy.example.com:8080",
-    "username": "user",
-    "password": "REDACTED"
-  },
+  "proxy": "http://user:REDACTED@proxy.example.com:8080",
   "extraArgs": [],
   "userDataDir": "profiles/example-acme-us/userdata",
   "createdAt": "2026-06-18T00:00:00.000Z",
