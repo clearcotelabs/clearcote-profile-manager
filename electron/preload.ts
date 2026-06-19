@@ -1,5 +1,8 @@
 import { contextBridge, ipcRenderer } from "electron";
-import type { Profile, Settings, LaunchResult, GeoResult, ExportResult, ImportResult } from "./types";
+import type {
+  Profile, Settings, LaunchResult, GeoResult, ExportResult, ImportResult,
+  FpImportResult, FpListResult, LibraryProfile,
+} from "./types";
 
 // The narrow, typed surface the renderer is allowed to call. No fs / child_process
 // in the renderer — everything goes through these IPC channels.
@@ -23,6 +26,11 @@ const api = {
   exportProfiles: (opts?: { redact?: boolean }): Promise<ExportResult> =>
     ipcRenderer.invoke("profiles:export", opts),
   importProfiles: (): Promise<ImportResult> => ipcRenderer.invoke("profiles:import"),
+  fp: {
+    import: (): Promise<FpImportResult> => ipcRenderer.invoke("fp:import"),
+    library: (): Promise<FpListResult> => ipcRenderer.invoke("fp:library"),
+    use: (lib: LibraryProfile): Promise<FpImportResult> => ipcRenderer.invoke("fp:use", lib),
+  },
 };
 
 contextBridge.exposeInMainWorld("clearcote", api);

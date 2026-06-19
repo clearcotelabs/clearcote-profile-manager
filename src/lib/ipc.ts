@@ -36,6 +36,30 @@ export interface ImportResult {
   error?: string;
 }
 
+export interface FingerprintMeta {
+  label?: string;
+  renderer?: string;
+  cores?: number;
+  memory?: number;
+  screen?: string;
+  source?: "file" | "library";
+}
+export interface FpImportResult {
+  ok: boolean;
+  file?: string;
+  meta?: FingerprintMeta;
+  error?: string;
+}
+export interface LibraryProfile {
+  name: string;
+  downloadUrl: string;
+}
+export interface FpListResult {
+  ok: boolean;
+  profiles?: LibraryProfile[];
+  error?: string;
+}
+
 export interface ClearcoteApi {
   profiles: {
     list: () => Promise<Profile[]>;
@@ -55,6 +79,11 @@ export interface ClearcoteApi {
   geoCheck: (p: Profile) => Promise<GeoResult>;
   exportProfiles: (opts?: { redact?: boolean }) => Promise<ExportResult>;
   importProfiles: () => Promise<ImportResult>;
+  fp: {
+    import: () => Promise<FpImportResult>;
+    library: () => Promise<FpListResult>;
+    use: (lib: LibraryProfile) => Promise<FpImportResult>;
+  };
 }
 
 declare global {
@@ -125,6 +154,27 @@ function buildMock(): ClearcoteApi {
       return { ok: true, count: list.length };
     },
     importProfiles: async () => ({ ok: false, error: "Import runs in the desktop app." }),
+    fp: {
+      import: async () => ({ ok: false, error: "Importing a fingerprint runs in the desktop app." }),
+      library: async () => {
+        try {
+          const res = await fetch(
+            "https://api.github.com/repos/clearcotelabs/clearcote-profiles/contents/samples",
+          );
+          if (!res.ok) return { ok: false, error: `GitHub API ${res.status}` };
+          const items = (await res.json()) as Array<{ name: string; download_url: string }>;
+          return {
+            ok: true,
+            profiles: items
+              .filter((i) => i.name?.endsWith(".json"))
+              .map((i) => ({ name: i.name, downloadUrl: i.download_url })),
+          };
+        } catch (e) {
+          return { ok: false, error: String(e) };
+        }
+      },
+      use: async () => ({ ok: false, error: "Applying a fingerprint runs in the desktop app." }),
+    },
   };
 }
 

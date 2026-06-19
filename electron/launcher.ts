@@ -1,7 +1,8 @@
 import { spawn, type ChildProcess } from "node:child_process";
 import fs from "node:fs";
 import path from "node:path";
-import { PROFILES_DIR, readSettings } from "./store";
+import zlib from "node:zlib";
+import { PROFILES_DIR, FINGERPRINTS_DIR, readSettings } from "./store";
 import type { Profile, LaunchResult } from "./types";
 
 const running = new Map<string, ChildProcess>();
@@ -41,6 +42,19 @@ function buildArgs(p: Profile, userDataDir: string): string[] {
   if (p.acceptLanguage) a.push(`--accept-lang=${p.acceptLanguage}`);
   if (p.location) a.push(`--fingerprint-location=${p.location}`);
   if (p.webrtcIp) a.push(`--webrtc-ip=${p.webrtcIp}`);
+  // Captured fingerprint profile (clearcote-profiles): gzip+base64-encode the JSON exactly as the
+  // SDK does, so its fields override the seed-derived persona. Missing/unreadable -> fall back to seed.
+  if (p.fingerprintProfile) {
+    const fpPath = path.isAbsolute(p.fingerprintProfile)
+      ? p.fingerprintProfile
+      : path.join(FINGERPRINTS_DIR, p.fingerprintProfile);
+    try {
+      const raw = fs.readFileSync(fpPath);
+      a.push(`--fingerprint-profile=${zlib.gzipSync(raw, { level: 9 }).toString("base64")}`);
+    } catch {
+      /* missing profile file — launch with just the seed */
+    }
+  }
   if (p.proxy?.server) a.push(`--proxy-server=${p.proxy.server}`);
   a.push(`--user-data-dir=${userDataDir}`);
   if (p.extraArgs?.length) a.push(...p.extraArgs);

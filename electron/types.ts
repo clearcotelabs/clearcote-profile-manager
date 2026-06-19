@@ -25,12 +25,44 @@ export interface Profile {
   location?: string;
   webrtcIp?: string;
   geoip?: boolean;
+  /** Filename (in the fingerprints dir) or absolute path of a captured clearcote-profile to load
+   *  via --fingerprint-profile. When set, its fields override the seed-derived persona. */
+  fingerprintProfile?: string;
+  /** Cached summary of the captured profile, for display. */
+  fingerprintProfileMeta?: FingerprintMeta;
   proxy?: Proxy;
   extraArgs?: string[];
   createdAt: string;
   updatedAt: string;
   lastLaunchedAt?: string;
   userDataDir?: string;
+}
+
+export interface FingerprintMeta {
+  label?: string;
+  renderer?: string;
+  cores?: number;
+  memory?: number;
+  screen?: string;
+  source?: "file" | "library";
+}
+
+export interface FpImportResult {
+  ok: boolean;
+  file?: string;
+  meta?: FingerprintMeta;
+  error?: string;
+}
+
+export interface LibraryProfile {
+  name: string;
+  downloadUrl: string;
+}
+
+export interface FpListResult {
+  ok: boolean;
+  profiles?: LibraryProfile[];
+  error?: string;
 }
 
 export interface Settings {

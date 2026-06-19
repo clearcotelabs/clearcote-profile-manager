@@ -49,6 +49,14 @@ export interface Profile {
    *  timezone / acceptLanguage / location / webrtcIp via the SDK's resolveGeo(). */
   geoip?: boolean;
 
+  // ---- captured fingerprint (clearcote-profiles) ----
+  /** Filename (in the app's fingerprints dir) or absolute path of a captured real-machine
+   *  profile to load via --fingerprint-profile. Its fields override the seed-derived persona;
+   *  absent fields fall back to the --fingerprint seed. Import one or pick from the library. */
+  fingerprintProfile?: string;
+  /** Cached summary of the captured profile, for display in the UI. */
+  fingerprintProfileMeta?: FingerprintMeta;
+
   // ---- network ----
   proxy?: Proxy;
 
@@ -64,8 +72,20 @@ export interface Profile {
   userDataDir?: string;
 }
 
+/** Summary of a captured fingerprint profile, cached on the Profile for display. */
+export interface FingerprintMeta {
+  label?: string;
+  renderer?: string;
+  cores?: number;
+  memory?: number;
+  screen?: string;
+  source?: "file" | "library";
+}
+
 /** Build the chrome.exe argument list for a profile. (Reference for the launcher; the
- *  main process resolves geoip + the user-data-dir before calling this.) */
+ *  main process resolves geoip + the user-data-dir before calling this. The captured
+ *  fingerprint profile is shown as a placeholder here — the launcher gzip+base64-encodes
+ *  the actual file contents.) */
 export function profileToArgs(p: Profile): string[] {
   const args: string[] = [`--fingerprint=${p.fingerprint}`];
   if (p.platform) args.push(`--fingerprint-platform=${p.platform}`);
@@ -78,6 +98,8 @@ export function profileToArgs(p: Profile): string[] {
   if (p.acceptLanguage) args.push(`--accept-lang=${p.acceptLanguage}`);
   if (p.location) args.push(`--fingerprint-location=${p.location}`);
   if (p.webrtcIp) args.push(`--webrtc-ip=${p.webrtcIp}`);
+  if (p.fingerprintProfile)
+    args.push(`--fingerprint-profile=<gzip+base64 of ${p.fingerprintProfileMeta?.label || p.fingerprintProfile}>`);
   if (p.proxy?.server) args.push(`--proxy-server=${p.proxy.server}`);
   if (p.userDataDir) args.push(`--user-data-dir=${p.userDataDir}`);
   if (p.extraArgs?.length) args.push(...p.extraArgs);

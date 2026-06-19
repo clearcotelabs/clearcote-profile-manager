@@ -3,7 +3,7 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
 import type { Brand, Platform, Profile } from "@/types/profile";
 import { profileToArgs } from "@/types/profile";
-import { api, isElectron, type Settings, type GeoResult } from "@/lib/ipc";
+import { api, isElectron, type Settings, type GeoResult, type LibraryProfile, type FingerprintMeta } from "@/lib/ipc";
 import { LogoMark } from "@/components/LogoMark";
 import { Mascot } from "@/components/Mascot";
 
@@ -358,6 +358,19 @@ function Editor({
     onChange({ ...profile, proxy: { server: "", ...(profile.proxy || {}), [k]: v } });
   const [geo, setGeo] = useState<GeoResult | null>(null);
   const [resolving, setResolving] = useState(false);
+  const [libOpen, setLibOpen] = useState(false);
+  const [fpMsg, setFpMsg] = useState<string | null>(null);
+  async function importFp() {
+    setFpMsg(null);
+    const r = await api.fp.import();
+    if (r.ok && r.file) onChange({ ...profile, fingerprintProfile: r.file, fingerprintProfileMeta: r.meta });
+    else if (r.error) setFpMsg(r.error);
+  }
+  function applyLibrary(file: string, meta?: FingerprintMeta) {
+    onChange({ ...profile, fingerprintProfile: file, fingerprintProfileMeta: meta });
+    setLibOpen(false);
+    setFpMsg(null);
+  }
   async function resolveGeo() {
     setResolving(true);
     const r = await api.geoCheck(profile);
@@ -376,6 +389,7 @@ function Editor({
   const args = profileToArgs({ ...profile, userDataDir: `profiles/${profile.id || "<id>"}/userdata` });
 
   return (
+    <>
     <div className="fixed inset-0 z-40 flex items-start justify-center overflow-y-auto bg-black/60 p-6 backdrop-blur-sm">
       <div className="w-full max-w-2xl rounded-2xl border border-line bg-surface p-6 shadow-2xl">
         <div className="flex items-center justify-between">
@@ -399,6 +413,54 @@ function Editor({
                 ↻
               </button>
             </div>
+          </div>
+
+          <div className="sm:col-span-2 rounded-lg border border-line p-3">
+            <div className="flex items-center justify-between">
+              <div className={label + " mb-0"}>
+                Captured fingerprint <span className="normal-case text-fog/30">(optional — adopt a real machine)</span>
+              </div>
+              {profile.fingerprintProfile && (
+                <button
+                  className="text-[11px] text-fog/40 hover:text-red-400"
+                  onClick={() => onChange({ ...profile, fingerprintProfile: undefined, fingerprintProfileMeta: undefined })}
+                >
+                  Clear
+                </button>
+              )}
+            </div>
+            {profile.fingerprintProfile ? (
+              <div className="mt-1.5 rounded-lg bg-ink/50 px-3 py-2">
+                <div className="flex items-center gap-2">
+                  <span className="inline-flex h-1.5 w-1.5 rounded-full bg-accent" />
+                  <span className="truncate text-xs font-medium text-accent">
+                    {profile.fingerprintProfileMeta?.label || profile.fingerprintProfile}
+                    {profile.fingerprintProfileMeta?.source === "library" && " · library"}
+                  </span>
+                </div>
+                <div className="mt-1 truncate font-mono text-[11px] text-fog/45">
+                  {profile.fingerprintProfileMeta?.renderer || "captured profile"}
+                </div>
+                <div className="mt-0.5 text-[11px] text-fog/40">
+                  {[
+                    profile.fingerprintProfileMeta?.cores && `${profile.fingerprintProfileMeta.cores} cores`,
+                    profile.fingerprintProfileMeta?.memory && `${profile.fingerprintProfileMeta.memory} GB`,
+                    profile.fingerprintProfileMeta?.screen,
+                  ]
+                    .filter(Boolean)
+                    .join("  ·  ")}
+                </div>
+              </div>
+            ) : (
+              <p className="mt-1 text-xs text-fog/45">
+                Load a real machine&apos;s GPU, screen, fonts, voices &amp; WebGL. Fields it doesn&apos;t set fall back to the seed above.
+              </p>
+            )}
+            <div className="mt-2 flex flex-wrap gap-2">
+              <button className={btnGhost} onClick={importFp}>Import from file…</button>
+              <button className={btnGhost} onClick={() => setLibOpen(true)}>Browse library…</button>
+            </div>
+            {fpMsg && <div className="mt-1.5 text-[11px] text-amber-500">{fpMsg}</div>}
           </div>
 
           <div>
@@ -501,6 +563,66 @@ function Editor({
             Save profile
           </button>
         </div>
+      </div>
+    </div>
+    {libOpen && <LibraryModal onApply={applyLibrary} onClose={() => setLibOpen(false)} />}
+    </>
+  );
+}
+
+function LibraryModal({
+  onApply,
+  onClose,
+}: {
+  onApply: (file: string, meta?: FingerprintMeta) => void;
+  onClose: () => void;
+}) {
+  const [list, setList] = useState<LibraryProfile[] | null>(null);
+  const [err, setErr] = useState<string | null>(null);
+  const [busy, setBusy] = useState<string | null>(null);
+  useEffect(() => {
+    api.fp.library().then((r) => (r.ok ? setList(r.profiles || []) : setErr(r.error || "Failed to load library.")));
+  }, []);
+  async function pick(p: LibraryProfile) {
+    setBusy(p.name);
+    const r = await api.fp.use(p);
+    setBusy(null);
+    if (r.ok && r.file) onApply(r.file, r.meta);
+    else setErr(r.error || "Failed to apply this profile.");
+  }
+  return (
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 p-6 backdrop-blur-sm">
+      <div className="flex max-h-[80vh] w-full max-w-lg flex-col rounded-2xl border border-line bg-surface p-6 shadow-2xl">
+        <div className="flex items-center justify-between">
+          <h2 className="text-base font-semibold">clearcote-profiles library</h2>
+          <button className="text-fog/40 hover:text-fog" onClick={onClose}>
+            ✕
+          </button>
+        </div>
+        <p className="mt-1 text-xs text-fog/45">
+          Curated real-GPU desktop fingerprints. Pick one to download &amp; apply to this identity.
+        </p>
+        {err && <div className="mt-3 rounded-lg border border-amber-500/30 bg-amber-500/5 px-3 py-2 text-xs text-amber-500">{err}</div>}
+        <div className="mt-3 flex-1 overflow-y-auto rounded-lg border border-line">
+          {!list && !err && <div className="p-4 text-sm text-fog/40">Loading…</div>}
+          {list?.map((p) => (
+            <button
+              key={p.name}
+              onClick={() => pick(p)}
+              disabled={!!busy}
+              className="flex w-full items-center justify-between border-b border-line/50 px-3 py-2 text-left last:border-0 hover:bg-elevate disabled:opacity-50"
+            >
+              <span className="truncate font-mono text-[12px] text-fog/70">{p.name.replace(/\.json$/, "")}</span>
+              <span className="ml-2 shrink-0 text-[11px] text-accent">{busy === p.name ? "applying…" : "Use →"}</span>
+            </button>
+          ))}
+          {list?.length === 0 && <div className="p-4 text-sm text-fog/40">No profiles found.</div>}
+        </div>
+        <p className="mt-3 text-[11px] text-fog/35">
+          From{" "}
+          <span className="font-mono">github.com/clearcotelabs/clearcote-profiles</span> · or use{" "}
+          <span className="font-mono">Import from file…</span> for your own capture.
+        </p>
       </div>
     </div>
   );

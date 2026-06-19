@@ -9,10 +9,14 @@ const isDev = process.env.ELECTRON_DEV === "1";
 // in the packaged app, use the OS userData dir.
 export const ROOT = isDev ? process.cwd() : app.getPath("userData");
 export const PROFILES_DIR = path.join(ROOT, "profiles");
+// Imported captured-fingerprint profiles (clearcote-profiles format) live here, shared across
+// identities — a profile references one by filename and the launcher loads it via --fingerprint-profile.
+export const FINGERPRINTS_DIR = path.join(ROOT, "fingerprints");
 export const SETTINGS_PATH = path.join(app.getPath("userData"), "settings.json");
 
 export function ensureDirs(): void {
   fs.mkdirSync(PROFILES_DIR, { recursive: true });
+  fs.mkdirSync(FINGERPRINTS_DIR, { recursive: true });
 }
 
 export function readSettings(): Settings {
