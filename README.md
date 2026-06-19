@@ -2,7 +2,16 @@
 
 A desktop app to **create, save, organize, and launch [Clearcote](https://github.com/clearcotelabs/clearcote-browser) browser profiles** — one coherent, persistent identity per profile (fingerprint seed + proxy + persistent storage), opened as a normal interactive browser window you drive yourself.
 
-> **Status:** scaffold / planning. The full design and phased roadmap live in **[PLAN.md](PLAN.md)**.
+![Clearcote Profile Manager](docs/screenshots/profile-manager.png)
+
+> **Status:** built — profile create/edit/launch, proxy geo-resolve, import/export, and a portable Windows build. Full design + phases in **[PLAN.md](PLAN.md)**.
+
+<details>
+<summary>Profile editor</summary>
+
+![Profile editor](docs/screenshots/editor.png)
+
+</details>
 
 ## Why
 
