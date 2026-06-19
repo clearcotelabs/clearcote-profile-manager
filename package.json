@@ -18,7 +18,7 @@
     "make-icon": "node scripts/make-icon.mjs",
     "build": "next build && npm run electron:build",
     "start": "cross-env ELECTRON_DEV=0 electron .",
-    "dist": "npm run build && electron-builder",
+    "dist": "npm run build && electron-builder --publish never",
     "lint": "next lint",
     "typecheck": "tsc --noEmit && tsc -p electron --noEmit"
   },
