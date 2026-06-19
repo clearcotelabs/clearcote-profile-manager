@@ -35,3 +35,7 @@ profiles/*
 !profiles/.gitkeep
 !profiles/README.md
 !profiles/example.profile.json
+
+# imported captured-fingerprint profiles (clearcote-profiles) — runtime data
+fingerprints/*
+!fingerprints/.gitkeep
