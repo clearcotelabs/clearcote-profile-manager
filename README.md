@@ -4,10 +4,20 @@ A desktop app to **create, save, organize, and launch [Clearcote](https://github
 
 ![Clearcote Profile Manager](docs/screenshots/profile-manager.png)
 
-> **Status:** built — profile create/edit/launch, proxy geo-resolve, import/export, and a portable Windows build. Full design + phases in **[PLAN.md](PLAN.md)**.
+> **Status:** built — profile create/edit/launch, proxy geo-resolve, import/export, a light/dark theme (dark by default), and a portable Windows build. Full design + phases in **[PLAN.md](PLAN.md)**.
 
 <details>
-<summary>Profile editor</summary>
+<summary>More screenshots — meet Clyde, light theme, editor</summary>
+
+**Empty state — meet Clyde, the Clearcote chameleon** (he bobs, blinks, and shifts hue)
+
+![Empty state with Clyde the chameleon](docs/screenshots/empty-state.png)
+
+**Light theme** (toggle in the header; dark is the default)
+
+![Light theme](docs/screenshots/light-theme.png)
+
+**Profile editor**
 
 ![Profile editor](docs/screenshots/editor.png)
 

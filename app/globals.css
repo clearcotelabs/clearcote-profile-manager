@@ -4,13 +4,39 @@
 @tailwind components;
 @tailwind utilities;
 
+/* ── Theme tokens (https://www.clearcotelabs.com/brand) ──
+   Channel vars (--c-*) hold "R G B" so Tailwind's /alpha modifiers work.
+   --line / --elevate are full rgba (theme-aware hairlines + subtle fills). */
 :root {
-  --clear-cyan: #38e0d6;
-  --sky: #6ee7ff;
-  --iris: #a78bfa;
-  --ink: #07080a;
-  --surface: #0d0f13;
-  --fog: #e6e9ee;
+  /* Dark — the default. Deep, glossy Ink base with the brand palette. */
+  --c-ink: 7 8 10; /* #07080a */
+  --c-surface: 13 15 19; /* #0d0f13 */
+  --c-fg: 230 233 238; /* #e6e9ee */
+  --c-accent: 56 224 214; /* #38e0d6 Clear Cyan */
+  --c-sky: 110 231 255; /* #6ee7ff */
+  --c-iris: 167 139 250; /* #a78bfa */
+  --line: rgba(255, 255, 255, 0.1);
+  --line-strong: rgba(255, 255, 255, 0.16);
+  --elevate: rgba(255, 255, 255, 0.05);
+  --scrollthumb: #1b2030;
+  --sheen-a: rgba(56, 224, 214, 0.1);
+  --sheen-b: rgba(167, 139, 250, 0.06);
+}
+
+html.light {
+  /* Light — warm paper base, deepened teal accent for contrast (brand light variant). */
+  --c-ink: 250 249 244; /* #faf9f4 warm paper page bg */
+  --c-surface: 255 255 255; /* white cards */
+  --c-fg: 28 32 40; /* #1c2028 near-ink text */
+  --c-accent: 13 148 138; /* #0d948a deepened teal (legible on light) */
+  --c-sky: 41 151 230; /* #2997e6 */
+  --c-iris: 124 92 246; /* #7c5cf6 */
+  --line: rgba(13, 15, 20, 0.12);
+  --line-strong: rgba(13, 15, 20, 0.2);
+  --elevate: rgba(13, 15, 20, 0.04);
+  --scrollthumb: #d8dbe2;
+  --sheen-a: rgba(56, 224, 214, 0.16);
+  --sheen-b: rgba(167, 139, 250, 0.12);
 }
 
 html,
@@ -19,17 +45,18 @@ body {
 }
 
 body {
-  background: var(--ink);
-  color: var(--fog);
+  background: rgb(var(--c-ink));
+  color: rgb(var(--c-fg));
+  transition: background-color 0.25s ease, color 0.25s ease;
 }
 
-/* thin, glossy scrollbars to match the dark base */
+/* thin, glossy scrollbars (theme-aware) */
 ::-webkit-scrollbar {
   width: 10px;
   height: 10px;
 }
 ::-webkit-scrollbar-thumb {
-  background: #1b2030;
+  background: var(--scrollthumb);
   border-radius: 8px;
 }
 ::-webkit-scrollbar-track {
@@ -41,8 +68,19 @@ body {
   content: "";
   position: fixed;
   inset: 0 0 auto 0;
-  height: 240px;
-  background: radial-gradient(60% 100% at 50% 0%, rgba(56, 224, 214, 0.10), rgba(167, 139, 250, 0.06) 45%, transparent 75%);
+  height: 260px;
+  background: radial-gradient(60% 100% at 50% 0%, var(--sheen-a), var(--sheen-b) 45%, transparent 75%);
   pointer-events: none;
   z-index: 0;
+}
+
+/* respect users who prefer less motion */
+@media (prefers-reduced-motion: reduce) {
+  *,
+  ::before,
+  ::after {
+    animation-duration: 0.001ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.001ms !important;
+  }
 }

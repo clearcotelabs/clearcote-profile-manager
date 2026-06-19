@@ -5,6 +5,7 @@ import type { Brand, Platform, Profile } from "@/types/profile";
 import { profileToArgs } from "@/types/profile";
 import { api, isElectron, type Settings, type GeoResult } from "@/lib/ipc";
 import { LogoMark } from "@/components/LogoMark";
+import { Mascot } from "@/components/Mascot";
 
 const PLATFORMS: Platform[] = ["windows", "macos", "linux"];
 const BRANDS: Brand[] = ["Chrome", "Edge", "Opera", "Vivaldi"];
@@ -20,10 +21,10 @@ function newProfile(): Profile {
 }
 
 const input =
-  "w-full rounded-lg bg-ink/70 border border-white/10 px-3 py-2 text-sm text-fog placeholder-fog/30 outline-none focus:border-accent/60 focus:ring-1 focus:ring-accent/40";
+  "w-full rounded-lg bg-ink/70 border border-line px-3 py-2 text-sm text-fog placeholder-fog/30 outline-none focus:border-accent/60 focus:ring-1 focus:ring-accent/40";
 const label = "block text-[11px] font-medium uppercase tracking-wide text-fog/45 mb-1";
 const btnGhost =
-  "rounded-lg border border-white/10 px-3 py-1.5 text-xs font-medium text-fog/80 hover:bg-white/5 transition";
+  "rounded-lg border border-line px-3 py-1.5 text-xs font-medium text-fog/80 hover:bg-elevate transition";
 
 export default function Page() {
   const [profiles, setProfiles] = useState<Profile[]>([]);
@@ -37,6 +38,8 @@ export default function Page() {
   // Resolved after mount so the first client render matches the server prerender
   // (window.clearcote only exists in the Electron renderer → avoids a hydration mismatch).
   const [isEl, setIsEl] = useState(false);
+  const [theme, setTheme] = useState<"dark" | "light">("dark");
+  const [mounted, setMounted] = useState(false);
 
   const refresh = useCallback(async () => {
     setProfiles(await api.profiles.list());
@@ -44,11 +47,25 @@ export default function Page() {
   }, []);
 
   useEffect(() => {
+    setMounted(true);
     setIsEl(isElectron);
+    // sync from the theme the no-flash inline script already applied
+    setTheme(document.documentElement.classList.contains("light") ? "light" : "dark");
     refresh();
     api.settings.get().then(setSettings);
     api.resolveBinary().then(setBinary);
   }, [refresh]);
+
+  useEffect(() => {
+    if (!mounted) return;
+    document.documentElement.classList.toggle("light", theme === "light");
+    try {
+      localStorage.setItem("clearcote.theme", theme);
+    } catch {
+      /* ignore */
+    }
+  }, [theme, mounted]);
+  const toggleTheme = () => setTheme((t) => (t === "dark" ? "light" : "dark"));
 
   useEffect(() => {
     const t = setInterval(async () => setRunning(await api.running()), 2500);
@@ -126,7 +143,7 @@ export default function Page() {
 
   return (
     <main className="app-sheen relative min-h-screen">
-      <div className="relative z-10 mx-auto max-w-6xl px-6 py-6">
+      <div className="relative z-10 mx-auto max-w-6xl px-6 py-6 animate-fade-up">
         {/* Header */}
         <header className="flex items-center justify-between gap-4">
           <div className="flex items-center gap-3">
@@ -142,18 +159,26 @@ export default function Page() {
           <div className="flex items-center gap-2">
             <span
               className={`hidden sm:inline-flex items-center gap-1.5 rounded-full border px-2.5 py-1 text-[11px] ${
-                binary ? "border-accent/30 text-accent" : "border-amber-400/30 text-amber-300"
+                binary ? "border-accent/30 text-accent" : "border-amber-500/40 text-amber-500"
               }`}
               title={binary || "No binary resolved — set it in Settings"}
             >
               <span className={`h-1.5 w-1.5 rounded-full ${binary ? "bg-accent" : "bg-amber-400"}`} />
               {binary ? "Browser ready" : "Browser not set"}
             </span>
+            <button
+              className={btnGhost + " w-8 px-0 text-sm"}
+              onClick={toggleTheme}
+              title="Toggle light / dark theme"
+              aria-label="Toggle light or dark theme"
+            >
+              {theme === "dark" ? "☀" : "☾"}
+            </button>
             <button className={btnGhost} onClick={() => setShowSettings(true)}>
               Settings
             </button>
             <button
-              className="rounded-lg bg-sheen px-3.5 py-1.5 text-xs font-semibold text-ink shadow-[0_0_20px_-6px_rgba(56,224,214,0.6)] hover:opacity-95 transition"
+              className="rounded-lg bg-sheen px-3.5 py-1.5 text-xs font-semibold text-[#07080a] shadow-[0_0_20px_-6px_rgba(56,224,214,0.6)] hover:opacity-95 transition"
               onClick={() => setEditing(newProfile())}
             >
               + New profile
@@ -190,22 +215,30 @@ export default function Page() {
 
         {/* List */}
         {filtered.length === 0 ? (
-          <div className="mt-16 flex flex-col items-center text-center">
-            <LogoMark className="h-12 w-12 opacity-80" />
-            <h2 className="mt-4 text-lg font-semibold">
-              {profiles.length === 0 ? "No profiles yet" : "No matches"}
+          <div className="mt-8 flex flex-col items-center text-center animate-fade-up">
+            <div className="relative">
+              <span aria-hidden className="pointer-events-none absolute -left-5 top-5 h-1.5 w-1.5 rounded-full bg-accent animate-twinkle" />
+              <span aria-hidden className="pointer-events-none absolute right-1 -top-1 h-1 w-1 rounded-full bg-iris animate-twinkle [animation-delay:1s]" />
+              <span aria-hidden className="pointer-events-none absolute -right-6 bottom-14 h-1.5 w-1.5 rounded-full bg-sky animate-twinkle [animation-delay:2.1s]" />
+              <Mascot
+                animate={profiles.length === 0}
+                className={profiles.length === 0 ? "w-56 max-w-[58vw]" : "w-28 opacity-70"}
+              />
+            </div>
+            <h2 className="mt-3 text-xl font-semibold">
+              {profiles.length === 0 ? "Meet Clyde — your first identity awaits" : "No matches"}
             </h2>
-            <p className="mt-1 max-w-sm text-sm text-fog/45">
+            <p className="mt-1.5 max-w-sm text-sm text-fog/50">
               {profiles.length === 0
-                ? "Create your first identity — a saved fingerprint seed, proxy, and persistent session you can launch any time."
+                ? "Chameleons blend in to stay unseen. Spin up a profile — a saved fingerprint seed, proxy, and persistent session — and launch it any time."
                 : "Try a different search."}
             </p>
             {profiles.length === 0 && (
               <button
-                className="mt-5 rounded-lg bg-sheen px-4 py-2 text-sm font-semibold text-ink"
+                className="mt-6 rounded-lg bg-sheen px-5 py-2.5 text-sm font-semibold text-[#07080a] shadow-[0_0_26px_-6px_rgba(56,224,214,0.55)] transition hover:opacity-95 active:scale-[0.98]"
                 onClick={() => setEditing(newProfile())}
               >
-                + Create a profile
+                + Create your first profile
               </button>
             )}
           </div>
@@ -216,7 +249,7 @@ export default function Page() {
               return (
                 <div
                   key={p.id}
-                  className="group rounded-xl border border-white/10 bg-surface/80 p-4 transition hover:border-accent/30"
+                  className="group rounded-xl border border-line bg-surface/80 p-4 transition duration-200 hover:-translate-y-0.5 hover:border-accent/40 hover:shadow-[0_10px_30px_-14px_rgba(56,224,214,0.35)]"
                 >
                   <div className="flex items-start justify-between gap-2">
                     <div className="min-w-0">
@@ -245,14 +278,14 @@ export default function Page() {
                   <div className="mt-4 flex items-center gap-1.5">
                     {isRunning ? (
                       <button
-                        className="flex-1 rounded-lg border border-white/15 px-3 py-1.5 text-xs font-semibold text-fog hover:bg-white/5"
+                        className="flex-1 rounded-lg border border-line-strong px-3 py-1.5 text-xs font-semibold text-fog hover:bg-elevate"
                         onClick={() => stop(p)}
                       >
                         Stop
                       </button>
                     ) : (
                       <button
-                        className="flex-1 rounded-lg bg-sheen px-3 py-1.5 text-xs font-semibold text-ink hover:opacity-95"
+                        className="flex-1 rounded-lg bg-sheen px-3 py-1.5 text-xs font-semibold text-[#07080a] hover:opacity-95"
                         onClick={() => launch(p)}
                       >
                         Launch
@@ -265,7 +298,7 @@ export default function Page() {
                       Dup
                     </button>
                     <button
-                      className="rounded-lg border border-white/10 px-2.5 py-1.5 text-xs text-fog/50 hover:bg-red-500/10 hover:text-red-300"
+                      className="rounded-lg border border-line px-2.5 py-1.5 text-xs text-fog/50 hover:bg-red-500/10 hover:text-red-400"
                       onClick={() => remove(p)}
                       title="Delete"
                     >
@@ -289,7 +322,7 @@ export default function Page() {
         />
       )}
       {toast && (
-        <div className="fixed bottom-5 left-1/2 z-50 -translate-x-1/2 rounded-lg border border-white/10 bg-surface px-4 py-2 text-sm shadow-lg">
+        <div className="fixed bottom-5 left-1/2 z-50 -translate-x-1/2 rounded-lg border border-line bg-surface px-4 py-2 text-sm shadow-lg">
           {toast}
         </div>
       )}
@@ -301,7 +334,7 @@ function Chip({ children, accent }: { children: React.ReactNode; accent?: boolea
   return (
     <span
       className={`rounded-md px-1.5 py-0.5 text-[10px] ${
-        accent ? "bg-accent/10 text-accent" : "bg-white/5 text-fog/55"
+        accent ? "bg-accent/10 text-accent" : "bg-elevate text-fog/55"
       }`}
     >
       {children}
@@ -344,7 +377,7 @@ function Editor({
 
   return (
     <div className="fixed inset-0 z-40 flex items-start justify-center overflow-y-auto bg-black/60 p-6 backdrop-blur-sm">
-      <div className="w-full max-w-2xl rounded-2xl border border-white/10 bg-surface p-6 shadow-2xl">
+      <div className="w-full max-w-2xl rounded-2xl border border-line bg-surface p-6 shadow-2xl">
         <div className="flex items-center justify-between">
           <h2 className="text-base font-semibold">{profile.id ? "Edit profile" : "New profile"}</h2>
           <button className="text-fog/40 hover:text-fog" onClick={onCancel}>
@@ -404,7 +437,7 @@ function Editor({
             <input className={input} type="number" value={profile.hardwareConcurrency ?? ""} onChange={(e) => set("hardwareConcurrency", e.target.value ? Number(e.target.value) : undefined)} placeholder="(persona default)" />
           </div>
 
-          <div className="sm:col-span-2 rounded-lg border border-white/10 bg-ink/40 px-3 py-2">
+          <div className="sm:col-span-2 rounded-lg border border-line bg-ink/40 px-3 py-2">
             <div className="flex items-center gap-2">
               <input id="geoip" type="checkbox" checked={!!profile.geoip} onChange={(e) => set("geoip", e.target.checked)} className="accent-[#38e0d6]" />
               <label htmlFor="geoip" className="flex-1 text-sm text-fog/80">
@@ -417,7 +450,7 @@ function Editor({
               )}
             </div>
             {geo && (
-              <div className={`mt-2 font-mono text-[11px] ${geo.ok ? "text-accent" : "text-amber-300"}`}>
+              <div className={`mt-2 font-mono text-[11px] ${geo.ok ? "text-accent" : "text-amber-500"}`}>
                 {geo.ok
                   ? `egress ${geo.ip} · ${geo.country ?? "?"} · ${geo.timezone ?? "?"} · ${geo.acceptLanguage ?? "?"}`
                   : geo.error}
@@ -425,7 +458,7 @@ function Editor({
             )}
           </div>
 
-          <div className="sm:col-span-2 rounded-lg border border-white/10 p-3">
+          <div className="sm:col-span-2 rounded-lg border border-line p-3">
             <div className={label}>Proxy</div>
             <input className={input + " mb-2"} value={profile.proxy?.server || ""} onChange={(e) => setProxy("server", e.target.value)} placeholder="http://host:8080 or socks5://host:1080" />
             <div className="grid grid-cols-2 gap-2">
@@ -461,7 +494,7 @@ function Editor({
             Cancel
           </button>
           <button
-            className="rounded-lg bg-sheen px-4 py-1.5 text-sm font-semibold text-ink disabled:opacity-40"
+            className="rounded-lg bg-sheen px-4 py-1.5 text-sm font-semibold text-[#07080a] disabled:opacity-40"
             disabled={!profile.fingerprint}
             onClick={() => onSave(profile)}
           >
@@ -486,7 +519,7 @@ function SettingsModal({
 }) {
   return (
     <div className="fixed inset-0 z-40 flex items-center justify-center bg-black/60 p-6 backdrop-blur-sm">
-      <div className="w-full max-w-lg rounded-2xl border border-white/10 bg-surface p-6 shadow-2xl">
+      <div className="w-full max-w-lg rounded-2xl border border-line bg-surface p-6 shadow-2xl">
         <div className="flex items-center justify-between">
           <h2 className="text-base font-semibold">Settings</h2>
           <button className="text-fog/40 hover:text-fog" onClick={onClose}>
@@ -501,12 +534,12 @@ function SettingsModal({
           <div className="rounded-lg bg-ink/70 px-3 py-2 font-mono text-[11px] text-fog/60 break-all">
             {settings.binaryPath || binary || "(not set)"}
           </div>
-          <button className="mt-3 rounded-lg border border-white/15 px-3 py-1.5 text-xs hover:bg-white/5" onClick={onPick}>
+          <button className="mt-3 rounded-lg border border-line-strong px-3 py-1.5 text-xs hover:bg-elevate" onClick={onPick}>
             Choose binary…
           </button>
         </div>
         <div className="mt-6 flex justify-end">
-          <button className="rounded-lg bg-sheen px-4 py-1.5 text-sm font-semibold text-ink" onClick={onClose}>
+          <button className="rounded-lg bg-sheen px-4 py-1.5 text-sm font-semibold text-[#07080a]" onClick={onClose}>
             Done
           </button>
         </div>
