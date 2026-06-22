@@ -9,7 +9,11 @@ Two layers:
   Clearcote binary with every setting set and probes the in-page surface to confirm each is actually
   applied. Run: `pip install playwright && CLEARCOTE_BINARY=<chrome.exe> python tests/confirm-applied.py`.
 
-## What actually applies (confirmed against the Chromium 149 build, 2026-06-19)
+## What actually applies (confirmed against the Chromium 149 build)
+
+`gpuVendor` / `gpuRenderer` and `location` apply as of **clearcote-browser v0.1.0-pre.10**
+(commit `d7bbe67` wired `--fingerprint-gpu-vendor/-renderer` + `--fingerprint-location`, which were
+previously declared-but-unread). Run `confirm-applied.py` against a **pre.10+** binary.
 
 | Setting | Switch | Applies? | Probe |
 |---|---|:--:|---|
@@ -19,6 +23,8 @@ Two layers:
 | `hardwareConcurrency` | `--fingerprint-hardware-concurrency` | ✅ | `navigator.hardwareConcurrency` |
 | `timezone` | `--timezone` | ✅ | `Intl…timeZone` + `Date` offset |
 | `acceptLanguage` | `--accept-lang` | ✅ | `navigator.language` (primary) |
+| `gpuVendor` / `gpuRenderer` | `--fingerprint-gpu-vendor/-renderer` | ✅ (pre.10+) | WebGL `UNMASKED_VENDOR/RENDERER` (switch > profile > seed) |
+| `location` | `--fingerprint-location` | ✅ (pre.10+) | `navigator.geolocation.getCurrentPosition` (permission still required) |
 | `webrtcIp` | `--webrtc-ip` | ✅ | WebRTC `srflx` candidate IP |
 | `proxy` (incl. auth) | local relay → `--proxy-server` | ✅ | egress IP via the proxy |
 | `fingerprintProfile` | `--fingerprint-profile` | ✅ | GPU/screen/voices/fonts/etc. |
@@ -27,10 +33,8 @@ Two layers:
 
 | Setting | Status |
 |---|---|
-| `gpuVendor` / `gpuRenderer` | **No-op.** `--fingerprint-gpu-vendor/-renderer` are declared in the engine but nothing reads them — the WebGL renderer is derived from the **seed** (or an **imported fingerprint-profile**, which *does* set it). Set the GPU via the seed or a profile, not these fields. |
-| `location` | **No-op.** `--fingerprint-location` is declared but unwired (no geolocation consumer). |
-| `acceptLanguage` → `navigator.languages` | Partial — only the **primary** tag appears in `navigator.languages` (the header + `navigator.language` are correct). |
+| `acceptLanguage` → `navigator.languages` | Partial — only the **primary** tag appears in `navigator.languages` (the header + `navigator.language` are correct). The full-array surface is not implemented yet. |
 
-These are clearcote-browser engine issues, tracked separately from the profile-manager. Until they
-land, the editor still exposes the fields (so profiles are forward-compatible), but they won't
-change the browser.
+This is a clearcote-browser engine issue, tracked separately from the profile-manager. Until it
+lands, the editor still exposes the full Accept-Language (so profiles are forward-compatible), but
+`navigator.languages` shows only the primary tag.

@@ -8,11 +8,12 @@ the right switches). It needs the real Windows binary, so it does NOT run in CI:
     pip install playwright
     CLEARCOTE_BINARY=/path/to/clearcote/chrome.exe  python tests/confirm-applied.py
 
-Findings as of 2026-06-19 (Chromium 149 build): platform, brand, hardwareConcurrency, timezone,
-language, webrtcIp and (separately) imported fingerprint-profiles all apply. KNOWN ENGINE GAPS —
-the manager emits the switch but the engine currently ignores it: gpuVendor / gpuRenderer (the GPU
-is seed- or profile-derived) and location (--fingerprint-location is declared but unwired).
-navigator.languages keeps only the primary tag. See tests/README.md.
+Findings (Chromium 149 build): platform, brand, hardwareConcurrency, timezone, language, webrtcIp,
+gpuVendor / gpuRenderer, location and (separately) imported fingerprint-profiles all apply.
+gpuVendor / gpuRenderer + location were KNOWN ENGINE GAPS until clearcote-browser commit d7bbe67
+wired --fingerprint-gpu-vendor/-renderer + --fingerprint-location (ships v0.1.0-pre.10+) — so run
+this against a pre.10+ binary. One REMAINING gap: navigator.languages keeps only the primary tag
+(the full-array surface is not implemented yet). See tests/README.md.
 """
 import os
 import sys
@@ -89,10 +90,12 @@ rows = [
     ("timezone → Date offset (JST -540)", r["tzOffset"] == -540, False),
     ("acceptLanguage → navigator.language", r["language"] == "fr-FR", False),
     ("webrtcIp → srflx candidate", r.get("webrtc") == "203.0.113.7", False),
+    # navigator.languages full array is the one remaining engine gap (only the primary tag applies).
     ("acceptLanguage → navigator.languages (full list)", r["languages"] == ["fr-FR", "fr"], True),
-    ("gpuVendor → WebGL UNMASKED_VENDOR", r.get("glVendor") == P["gpuVendor"], True),
-    ("gpuRenderer → WebGL UNMASKED_RENDERER", "RTX 4090" in (r.get("glRenderer") or ""), True),
-    ("location → geolocation", abs((geo.get("lat") or 0) - 35.6762) < 0.01, True),
+    # Fixed in clearcote-browser d7bbe67 (pre.10+): these now apply, no longer KNOWN ENGINE GAPS.
+    ("gpuVendor → WebGL UNMASKED_VENDOR", r.get("glVendor") == P["gpuVendor"], False),
+    ("gpuRenderer → WebGL UNMASKED_RENDERER", "RTX 4090" in (r.get("glRenderer") or ""), False),
+    ("location → geolocation", abs((geo.get("lat") or 0) - 35.6762) < 0.01, False),
 ]
 print("Runtime confirmation — settings applied in the launched browser:\n")
 unexpected = 0
