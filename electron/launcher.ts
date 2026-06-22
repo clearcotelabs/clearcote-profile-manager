@@ -35,7 +35,9 @@ export function resolveBinary(): string | null {
 function buildArgs(p: Profile, userDataDir: string): string[] {
   const a: string[] = [`--fingerprint=${p.fingerprint}`];
   if (p.platform) a.push(`--fingerprint-platform=${p.platform}`);
+  if (p.platformVersion) a.push(`--fingerprint-platform-version=${p.platformVersion}`);
   if (p.brand) a.push(`--fingerprint-brand=${p.brand}`);
+  if (p.brandVersion) a.push(`--fingerprint-brand-version=${p.brandVersion}`);
   if (p.gpuVendor) a.push(`--fingerprint-gpu-vendor=${p.gpuVendor}`);
   if (p.gpuRenderer) a.push(`--fingerprint-gpu-renderer=${p.gpuRenderer}`);
   if (p.hardwareConcurrency != null)
@@ -44,6 +46,15 @@ function buildArgs(p: Profile, userDataDir: string): string[] {
   if (p.acceptLanguage) a.push(`--accept-lang=${p.acceptLanguage}`);
   if (p.location) a.push(`--fingerprint-location=${p.location}`);
   if (p.webrtcIp) a.push(`--webrtc-ip=${p.webrtcIp}`);
+  if (p.storageQuota != null) a.push(`--fingerprint-storage-quota=${p.storageQuota}`);
+  // "Use real GPU": report the host's actual backend (most coherent when the profile/persona GPU
+  // can't match the host's real render). Overrides any gpuVendor/gpuRenderer spoof.
+  if (p.disableGpuFingerprint) a.push("--disable-gpu-fingerprint");
+  // Farbling noise is on by default; turn it off for surfaces that read as untampered to strict ML.
+  if (p.fingerprintNoise === false) a.push("--disable-fingerprint-noise");
+  // Canvas bridge: forward canvas/WebGL to a remote real-GPU host for coherent pixel readback.
+  if (p.canvasBridgeUrl) a.push(`--canvas-bridge-url=${p.canvasBridgeUrl}`);
+  if (p.canvasBridgeAuth) a.push(`--canvas-bridge-auth=${p.canvasBridgeAuth}`);
   // Captured fingerprint profile (clearcote-profiles): gzip+base64-encode the JSON exactly as the
   // SDK does, so its fields override the seed-derived persona. Missing/unreadable -> fall back to seed.
   if (p.fingerprintProfile) {

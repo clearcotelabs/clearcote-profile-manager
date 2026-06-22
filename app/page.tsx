@@ -270,6 +270,10 @@ export default function Page() {
                     {p.timezone && <Chip>{p.timezone}</Chip>}
                     {p.geoip && <Chip accent>geoip</Chip>}
                     {p.proxy && <Chip>proxy</Chip>}
+                    {p.fingerprintProfile && <Chip accent>fp</Chip>}
+                    {p.fingerprintNoise === false && <Chip>noise off</Chip>}
+                    {p.disableGpuFingerprint && <Chip>real gpu</Chip>}
+                    {p.canvasBridgeUrl && <Chip accent>bridge</Chip>}
                     {(p.tags || []).map((t) => (
                       <Chip key={t}>#{t}</Chip>
                     ))}
@@ -531,6 +535,109 @@ function Editor({
             </p>
           </div>
 
+          <details className="sm:col-span-2 group rounded-lg border border-line p-3">
+            <summary className="flex cursor-pointer list-none items-center justify-between text-[11px] font-medium uppercase tracking-wide text-fog/45">
+              <span>Advanced stealth</span>
+              <span className="text-fog/30 transition group-open:rotate-90">▸</span>
+            </summary>
+            <div className="mt-3 grid grid-cols-1 gap-4 sm:grid-cols-2">
+              <label className="flex items-start gap-2 text-sm text-fog/80 sm:col-span-2">
+                <input
+                  type="checkbox"
+                  className="mt-0.5 accent-[#38e0d6]"
+                  checked={profile.fingerprintNoise !== false}
+                  onChange={(e) => set("fingerprintNoise", e.target.checked)}
+                />
+                <span>
+                  <span className="font-medium">Farbling noise</span> — on by default. Turn off so canvas / WebGL / audio
+                  return natural, unperturbed values that read as untampered to strict detectors (best paired with a
+                  captured profile). Identity spoofs stay on.
+                </span>
+              </label>
+              <label className="flex items-start gap-2 text-sm text-fog/80 sm:col-span-2">
+                <input
+                  type="checkbox"
+                  className="mt-0.5 accent-[#38e0d6]"
+                  checked={!!profile.disableGpuFingerprint}
+                  onChange={(e) => set("disableGpuFingerprint", e.target.checked || undefined)}
+                />
+                <span>
+                  <span className="font-medium">Use real GPU</span> — report the host&apos;s actual GPU / WebGL instead of
+                  a spoofed one. Most coherent when the persona/profile GPU can&apos;t match the host&apos;s real render;
+                  overrides the GPU spoof below.
+                </span>
+              </label>
+
+              <div>
+                <label className={label}>Storage quota (MB)</label>
+                <input
+                  className={input}
+                  type="number"
+                  value={profile.storageQuota ?? ""}
+                  onChange={(e) => set("storageQuota", e.target.value ? Number(e.target.value) : undefined)}
+                  placeholder="250000 (≈ 244 GB)"
+                />
+              </div>
+              <div className="grid grid-cols-2 gap-3">
+                <div>
+                  <label className={label}>Platform ver.</label>
+                  <input className={input} value={profile.platformVersion || ""} onChange={(e) => set("platformVersion", e.target.value || undefined)} placeholder="(default)" />
+                </div>
+                <div>
+                  <label className={label}>Brand ver.</label>
+                  <input className={input} value={profile.brandVersion || ""} onChange={(e) => set("brandVersion", e.target.value || undefined)} placeholder="(default)" />
+                </div>
+              </div>
+
+              <div>
+                <label className={label}>GPU vendor</label>
+                <input
+                  className={input + " disabled:opacity-40"}
+                  value={profile.gpuVendor || ""}
+                  onChange={(e) => set("gpuVendor", e.target.value || undefined)}
+                  placeholder="Google Inc. (Intel)"
+                  disabled={!!profile.disableGpuFingerprint}
+                />
+              </div>
+              <div>
+                <label className={label}>GPU renderer</label>
+                <input
+                  className={input + " disabled:opacity-40"}
+                  value={profile.gpuRenderer || ""}
+                  onChange={(e) => set("gpuRenderer", e.target.value || undefined)}
+                  placeholder="ANGLE (Intel, …)"
+                  disabled={!!profile.disableGpuFingerprint}
+                />
+              </div>
+
+              <div className="sm:col-span-2 rounded-lg border border-line/70 bg-ink/30 p-3">
+                <div className={label + " mb-1"}>
+                  Canvas bridge <span className="normal-case text-fog/30">(experimental — needs a real-GPU bridge host)</span>
+                </div>
+                <input
+                  className={input + " font-mono"}
+                  value={profile.canvasBridgeUrl || ""}
+                  onChange={(e) => set("canvasBridgeUrl", e.target.value || undefined)}
+                  placeholder="ws://bridge-host:8443/render"
+                />
+                <input
+                  className={input + " mt-2 font-mono"}
+                  value={profile.canvasBridgeAuth || ""}
+                  onChange={(e) => set("canvasBridgeAuth", e.target.value || undefined)}
+                  placeholder="user:secret"
+                />
+                <p className="mt-1.5 text-[11px] text-fog/40">
+                  Renders canvas / WebGL on a remote real-GPU host so the pixel readback matches the claimed GPU — for
+                  sites that pixel-hash the canvas. Leave blank to render locally.
+                </p>
+              </div>
+
+              <p className="sm:col-span-2 text-[11px] text-fog/40">
+                Tip: for the strongest coherence, adopt a captured profile whose <span className="text-fog/60">GPU vendor matches your host</span> and turn Farbling noise off.
+              </p>
+            </div>
+          </details>
+
           <div>
             <label className={label}>Tags (comma-separated)</label>
             <input className={input} value={(profile.tags || []).join(", ")} onChange={(e) => set("tags", e.target.value.split(",").map((s) => s.trim()).filter(Boolean))} placeholder="us, social" />
@@ -582,6 +689,7 @@ function LibraryModal({
   const [list, setList] = useState<LibraryProfile[] | null>(null);
   const [err, setErr] = useState<string | null>(null);
   const [busy, setBusy] = useState<string | null>(null);
+  const [vendor, setVendor] = useState<string>("all");
   useEffect(() => {
     api.fp.library().then((r) => (r.ok ? setList(r.profiles || []) : setErr(r.error || "Failed to load library.")));
   }, []);
@@ -592,6 +700,11 @@ function LibraryModal({
     if (r.ok && r.file) onApply(r.file, r.meta);
     else setErr(r.error || "Failed to apply this profile.");
   }
+  const vendors = useMemo(
+    () => Array.from(new Set((list || []).map((p) => p.gpuVendor).filter(Boolean) as string[])).sort(),
+    [list],
+  );
+  const shown = (list || []).filter((p) => vendor === "all" || p.gpuVendor === vendor);
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 p-6 backdrop-blur-sm">
       <div className="flex max-h-[80vh] w-full max-w-lg flex-col rounded-2xl border border-line bg-surface p-6 shadow-2xl">
@@ -602,23 +715,44 @@ function LibraryModal({
           </button>
         </div>
         <p className="mt-1 text-xs text-fog/45">
-          Curated real-GPU desktop fingerprints. Pick one to download &amp; apply to this identity.
+          Curated real-GPU desktop fingerprints. <span className="text-fog/65">Pick one whose GPU vendor matches your host</span> so the imported GPU stays coherent with the real render.
         </p>
         {err && <div className="mt-3 rounded-lg border border-amber-500/30 bg-amber-500/5 px-3 py-2 text-xs text-amber-500">{err}</div>}
+        {vendors.length > 0 && (
+          <div className="mt-3 flex flex-wrap gap-1.5">
+            {["all", ...vendors].map((v) => (
+              <button
+                key={v}
+                onClick={() => setVendor(v)}
+                className={`rounded-md px-2 py-1 text-[11px] ${vendor === v ? "bg-accent/15 text-accent" : "bg-elevate text-fog/55 hover:text-fog/80"}`}
+              >
+                {v}
+                {v !== "all" && <span className="ml-1 text-fog/30">{(list || []).filter((p) => p.gpuVendor === v).length}</span>}
+              </button>
+            ))}
+          </div>
+        )}
         <div className="mt-3 flex-1 overflow-y-auto rounded-lg border border-line">
           {!list && !err && <div className="p-4 text-sm text-fog/40">Loading…</div>}
-          {list?.map((p) => (
+          {shown.map((p) => (
             <button
               key={p.name}
               onClick={() => pick(p)}
               disabled={!!busy}
-              className="flex w-full items-center justify-between border-b border-line/50 px-3 py-2 text-left last:border-0 hover:bg-elevate disabled:opacity-50"
+              className="flex w-full items-center justify-between gap-2 border-b border-line/50 px-3 py-2 text-left last:border-0 hover:bg-elevate disabled:opacity-50"
             >
-              <span className="truncate font-mono text-[12px] text-fog/70">{p.name.replace(/\.json$/, "")}</span>
+              <span className="min-w-0">
+                <span className="block truncate text-[12px] text-fog/75">
+                  {p.renderer ? p.renderer.replace(/^ANGLE \(/, "").replace(/\)$/, "") : p.name.replace(/\.json$/, "")}
+                </span>
+                <span className="mt-0.5 block truncate font-mono text-[10px] text-fog/40">
+                  {[p.gpuVendor, p.screen, p.name.replace(/\.json$/, "")].filter(Boolean).join("  ·  ")}
+                </span>
+              </span>
               <span className="ml-2 shrink-0 text-[11px] text-accent">{busy === p.name ? "applying…" : "Use →"}</span>
             </button>
           ))}
-          {list?.length === 0 && <div className="p-4 text-sm text-fog/40">No profiles found.</div>}
+          {list && shown.length === 0 && <div className="p-4 text-sm text-fog/40">No profiles for this vendor.</div>}
         </div>
         <p className="mt-3 text-[11px] text-fog/35">
           From{" "}

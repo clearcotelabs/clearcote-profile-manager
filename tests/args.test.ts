@@ -30,6 +30,29 @@ describe("profileToArgs — every setting maps to its switch", () => {
   it("fingerprintProfile → a --fingerprint-profile switch", () =>
     expect(startsWith({ fingerprintProfile: "x.json" }, "--fingerprint-profile=")).toBe(true));
 
+  // ---- advanced stealth (this session's new switches) ----
+  it("platformVersion", () =>
+    expect(has({ platformVersion: "15.0.0" }, "--fingerprint-platform-version=15.0.0")).toBe(true));
+  it("brandVersion", () =>
+    expect(has({ brandVersion: "149.0.0.0" }, "--fingerprint-brand-version=149.0.0.0")).toBe(true));
+  it("storageQuota", () =>
+    expect(has({ storageQuota: 250000 }, "--fingerprint-storage-quota=250000")).toBe(true));
+  it("disableGpuFingerprint → --disable-gpu-fingerprint", () =>
+    expect(has({ disableGpuFingerprint: true }, "--disable-gpu-fingerprint")).toBe(true));
+  it("fingerprintNoise=false → --disable-fingerprint-noise", () =>
+    expect(has({ fingerprintNoise: false }, "--disable-fingerprint-noise")).toBe(true));
+  it("fingerprintNoise default/true emits no noise switch", () => {
+    expect(startsWith({}, "--disable-fingerprint-noise")).toBe(false);
+    expect(startsWith({ fingerprintNoise: true }, "--disable-fingerprint-noise")).toBe(false);
+  });
+  it("canvasBridgeUrl → --canvas-bridge-url", () =>
+    expect(has({ canvasBridgeUrl: "ws://h:8443/render" }, "--canvas-bridge-url=ws://h:8443/render")).toBe(true));
+  it("canvasBridgeAuth → switch present, secret redacted in the preview", () => {
+    const a = profileToArgs({ ...base, canvasBridgeAuth: "user:supersecret" });
+    expect(a.some((s) => s.startsWith("--canvas-bridge-auth="))).toBe(true);
+    expect(a.join(" ")).not.toContain("supersecret");
+  });
+
   it("proxy → --proxy-server host:port with credentials stripped (preview)", () => {
     const a = profileToArgs({ ...base, proxy: "http://user:pass@host:8080" });
     expect(a).toContain("--proxy-server=http://host:8080");

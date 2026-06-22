@@ -21,8 +21,12 @@ export interface Profile {
   fingerprint: string;
   /** --fingerprint-platform */
   platform?: Platform;
+  /** --fingerprint-platform-version (UA-CH high-entropy OS version). */
+  platformVersion?: string;
   /** --fingerprint-brand */
   brand?: Brand;
+  /** --fingerprint-brand-version */
+  brandVersion?: string;
   /** --fingerprint-gpu-vendor (advanced; the persona already picks a coherent GPU). */
   gpuVendor?: string;
   /** --fingerprint-gpu-renderer */
@@ -40,6 +44,25 @@ export interface Profile {
   /** When true (and a proxy is set), resolve the proxy exit IP and auto-fill any unset
    *  timezone / acceptLanguage / location / webrtcIp via the SDK's resolveGeo(). */
   geoip?: boolean;
+
+  // ---- advanced stealth ----
+  /** --disable-gpu-fingerprint: report the host's REAL GPU/WebGL instead of a spoofed one. The
+   *  most coherent option when the persona/profile GPU can't match the host's actual render. */
+  disableGpuFingerprint?: boolean;
+  /** Per-eTLD+1 farbling noise (canvas/WebGL/audio/client-rects). Default ON. Set false to emit
+   *  --disable-fingerprint-noise — natural, unperturbed surfaces that read as untampered to strict
+   *  ML detectors (pair with a captured profile). Identity spoofs (UA/screen/GPU/persona) stay on. */
+  fingerprintNoise?: boolean;
+  /** --fingerprint-storage-quota in MEGABYTES (navigator.storage.estimate().quota). A tiny value
+   *  reads as incognito / a test machine; set a realistic on-disk value (e.g. 250000 ≈ 244 GB). */
+  storageQuota?: number;
+
+  // ---- canvas bridge (advanced; needs a real-GPU bridge host) ----
+  /** --canvas-bridge-url: forward canvas/WebGL rendering to a remote real-GPU host
+   *  ("ws://host:port/path") so the pixel readback matches the claimed GPU. Unset = render locally. */
+  canvasBridgeUrl?: string;
+  /** --canvas-bridge-auth: bridge HTTP Basic credentials, "user:secret". */
+  canvasBridgeAuth?: string;
 
   // ---- captured fingerprint (clearcote-profiles) ----
   /** Filename (in the app's fingerprints dir) or absolute path of a captured real-machine
@@ -113,7 +136,9 @@ export function redactProxyString(p: unknown): string {
 export function profileToArgs(p: Profile): string[] {
   const args: string[] = [`--fingerprint=${p.fingerprint}`];
   if (p.platform) args.push(`--fingerprint-platform=${p.platform}`);
+  if (p.platformVersion) args.push(`--fingerprint-platform-version=${p.platformVersion}`);
   if (p.brand) args.push(`--fingerprint-brand=${p.brand}`);
+  if (p.brandVersion) args.push(`--fingerprint-brand-version=${p.brandVersion}`);
   if (p.gpuVendor) args.push(`--fingerprint-gpu-vendor=${p.gpuVendor}`);
   if (p.gpuRenderer) args.push(`--fingerprint-gpu-renderer=${p.gpuRenderer}`);
   if (p.hardwareConcurrency != null)
@@ -122,6 +147,11 @@ export function profileToArgs(p: Profile): string[] {
   if (p.acceptLanguage) args.push(`--accept-lang=${p.acceptLanguage}`);
   if (p.location) args.push(`--fingerprint-location=${p.location}`);
   if (p.webrtcIp) args.push(`--webrtc-ip=${p.webrtcIp}`);
+  if (p.storageQuota != null) args.push(`--fingerprint-storage-quota=${p.storageQuota}`);
+  if (p.disableGpuFingerprint) args.push("--disable-gpu-fingerprint");
+  if (p.fingerprintNoise === false) args.push("--disable-fingerprint-noise");
+  if (p.canvasBridgeUrl) args.push(`--canvas-bridge-url=${p.canvasBridgeUrl}`);
+  if (p.canvasBridgeAuth) args.push("--canvas-bridge-auth=********"); // secret redacted in preview
   if (p.fingerprintProfile)
     args.push(`--fingerprint-profile=<gzip+base64 of ${p.fingerprintProfileMeta?.label || p.fingerprintProfile}>`);
   const proxy = proxyString(p.proxy);

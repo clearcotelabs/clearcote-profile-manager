@@ -10,7 +10,9 @@ export interface Profile {
   group?: string;
   fingerprint: string;
   platform?: string;
+  platformVersion?: string;
   brand?: string;
+  brandVersion?: string;
   gpuVendor?: string;
   gpuRenderer?: string;
   hardwareConcurrency?: number;
@@ -19,6 +21,16 @@ export interface Profile {
   location?: string;
   webrtcIp?: string;
   geoip?: boolean;
+  /** --disable-gpu-fingerprint: report the host's real GPU instead of a spoofed one. */
+  disableGpuFingerprint?: boolean;
+  /** Per-eTLD+1 farbling noise; default on. false → --disable-fingerprint-noise. */
+  fingerprintNoise?: boolean;
+  /** --fingerprint-storage-quota in MB (navigator.storage.estimate().quota). */
+  storageQuota?: number;
+  /** --canvas-bridge-url: forward canvas/WebGL to a remote real-GPU host (ws://host:port/path). */
+  canvasBridgeUrl?: string;
+  /** --canvas-bridge-auth: bridge HTTP Basic credentials, "user:secret". */
+  canvasBridgeAuth?: string;
   /** Filename (in the fingerprints dir) or absolute path of a captured clearcote-profile to load
    *  via --fingerprint-profile. When set, its fields override the seed-derived persona. */
   fingerprintProfile?: string;
@@ -54,6 +66,12 @@ export interface FpImportResult {
 export interface LibraryProfile {
   name: string;
   downloadUrl: string;
+  /** From the curated clearcote-profiles index.json (when available) — pick one whose GPU vendor
+   *  matches your host so the imported GPU stays coherent with the host's real render. */
+  gpuVendor?: string;
+  gpuFamily?: string;
+  renderer?: string;
+  screen?: string;
 }
 
 export interface FpListResult {

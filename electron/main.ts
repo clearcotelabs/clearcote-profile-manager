@@ -160,6 +160,31 @@ function registerIpc(): void {
   });
 
   ipcMain.handle("fp:library", async () => {
+    const RAW = `https://raw.githubusercontent.com/${CLEARCOTE_PROFILES_REPO}/main/samples`;
+    // Prefer the curated index.json: it tags each profile with GPU vendor/family/renderer/screen so
+    // the user can pick one matching their host GPU (keeps the imported GPU coherent with the render).
+    try {
+      const ir = await fetch(`${RAW}/index.json`, {
+        headers: { "User-Agent": "clearcote-profile-manager" },
+      });
+      if (ir.ok) {
+        const idx = (await ir.json()) as { profiles?: Array<Record<string, unknown>> };
+        if (Array.isArray(idx.profiles) && idx.profiles.length) {
+          const list = idx.profiles.map((e) => ({
+            name: `${e.id}.json`,
+            downloadUrl: `${RAW}/${e.id}.json`,
+            gpuVendor: e.gpu_vendor as string | undefined,
+            gpuFamily: e.gpu_family as string | undefined,
+            renderer: e.renderer as string | undefined,
+            screen: e.screen as string | undefined,
+          }));
+          return { ok: true, profiles: list };
+        }
+      }
+    } catch {
+      /* fall through to the directory listing */
+    }
+    // Fallback: list the samples/ directory (older repo state without index.json).
     try {
       const res = await fetch(
         `https://api.github.com/repos/${CLEARCOTE_PROFILES_REPO}/contents/samples`,
@@ -168,7 +193,7 @@ function registerIpc(): void {
       if (!res.ok) return { ok: false, error: `GitHub API ${res.status}` };
       const items = (await res.json()) as Array<{ name: string; download_url: string }>;
       const list = (Array.isArray(items) ? items : [])
-        .filter((it) => typeof it.name === "string" && it.name.endsWith(".json"))
+        .filter((it) => typeof it.name === "string" && it.name.endsWith(".json") && it.name !== "index.json")
         .map((it) => ({ name: it.name, downloadUrl: it.download_url }));
       return { ok: true, profiles: list };
     } catch (e) {

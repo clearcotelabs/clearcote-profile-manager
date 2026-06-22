@@ -53,6 +53,11 @@ export interface FpImportResult {
 export interface LibraryProfile {
   name: string;
   downloadUrl: string;
+  /** From the curated clearcote-profiles index.json — match your host GPU vendor for coherence. */
+  gpuVendor?: string;
+  gpuFamily?: string;
+  renderer?: string;
+  screen?: string;
 }
 export interface FpListResult {
   ok: boolean;
@@ -157,6 +162,28 @@ function buildMock(): ClearcoteApi {
     fp: {
       import: async () => ({ ok: false, error: "Importing a fingerprint runs in the desktop app." }),
       library: async () => {
+        const RAW = "https://raw.githubusercontent.com/clearcotelabs/clearcote-profiles/main/samples";
+        try {
+          const ir = await fetch(`${RAW}/index.json`);
+          if (ir.ok) {
+            const idx = (await ir.json()) as { profiles?: Array<Record<string, unknown>> };
+            if (Array.isArray(idx.profiles) && idx.profiles.length) {
+              return {
+                ok: true,
+                profiles: idx.profiles.map((e) => ({
+                  name: `${e.id}.json`,
+                  downloadUrl: `${RAW}/${e.id}.json`,
+                  gpuVendor: e.gpu_vendor as string | undefined,
+                  gpuFamily: e.gpu_family as string | undefined,
+                  renderer: e.renderer as string | undefined,
+                  screen: e.screen as string | undefined,
+                })),
+              };
+            }
+          }
+        } catch {
+          /* fall through to the directory listing */
+        }
         try {
           const res = await fetch(
             "https://api.github.com/repos/clearcotelabs/clearcote-profiles/contents/samples",
@@ -166,7 +193,7 @@ function buildMock(): ClearcoteApi {
           return {
             ok: true,
             profiles: items
-              .filter((i) => i.name?.endsWith(".json"))
+              .filter((i) => i.name?.endsWith(".json") && i.name !== "index.json")
               .map((i) => ({ name: i.name, downloadUrl: i.download_url })),
           };
         } catch (e) {
