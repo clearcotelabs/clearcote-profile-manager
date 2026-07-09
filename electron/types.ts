@@ -13,6 +13,10 @@ export interface Profile {
   platformVersion?: string;
   brand?: string;
   brandVersion?: string;
+  /** --fingerprint-tls-profile: "match-persona" (default, follows brandVersion) | "native" |
+   *  "chrome-<major>". Resolved to a concrete chrome-<major> in the launcher (the engine ignores
+   *  the "match-persona" abstraction). */
+  tlsProfile?: string;
   gpuVendor?: string;
   gpuRenderer?: string;
   hardwareConcurrency?: number;

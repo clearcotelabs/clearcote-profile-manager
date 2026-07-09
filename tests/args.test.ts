@@ -1,5 +1,5 @@
 import { describe, it, expect } from "vitest";
-import { profileToArgs, proxyString, redactProxyString, type Profile } from "../src/types/profile";
+import { profileToArgs, proxyString, redactProxyString, resolveTlsProfile, type Profile } from "../src/types/profile";
 
 const base: Profile = { id: "t", name: "t", fingerprint: "seed-1", createdAt: "", updatedAt: "" };
 const has = (p: Partial<Profile>, sw: string) => profileToArgs({ ...base, ...p }).includes(sw);
@@ -35,8 +35,30 @@ describe("profileToArgs — every setting maps to its switch", () => {
     expect(has({ platformVersion: "15.0.0" }, "--fingerprint-platform-version=15.0.0")).toBe(true));
   it("brandVersion", () =>
     expect(has({ brandVersion: "149.0.0.0" }, "--fingerprint-brand-version=149.0.0.0")).toBe(true));
-  it("tlsProfile → --fingerprint-tls-profile", () =>
-    expect(has({ tlsProfile: "match-persona" }, "--fingerprint-tls-profile=match-persona")).toBe(true));
+  // TLS: "match-persona" is an SDK abstraction the ENGINE ignores (verified empirically vs pre.19);
+  // the manager must resolve it to a concrete chrome-<brandVersion major> or emit nothing.
+  it("tlsProfile match-persona → resolves to chrome-<brandVersion major> (never emits raw match-persona)", () => {
+    expect(has({ tlsProfile: "match-persona", brandVersion: "120.0.6099.109" }, "--fingerprint-tls-profile=chrome-120")).toBe(true);
+    expect(startsWith({ tlsProfile: "match-persona", brandVersion: "120.0.6099.109" }, "--fingerprint-tls-profile=match-persona")).toBe(false);
+  });
+  it("tlsProfile default (unset) follows brandVersion, like the SDK", () =>
+    expect(has({ brandVersion: "131.0.1" }, "--fingerprint-tls-profile=chrome-131")).toBe(true));
+  it("tlsProfile match-persona with NO brandVersion → no switch (native)", () =>
+    expect(startsWith({ tlsProfile: "match-persona" }, "--fingerprint-tls-profile")).toBe(false));
+  it("tlsProfile native/off → no switch (build's native TLS)", () => {
+    expect(startsWith({ tlsProfile: "native", brandVersion: "120" }, "--fingerprint-tls-profile")).toBe(false);
+    expect(startsWith({ tlsProfile: "off", brandVersion: "120" }, "--fingerprint-tls-profile")).toBe(false);
+  });
+  it("tlsProfile chrome-<major> pins it", () =>
+    expect(has({ tlsProfile: "chrome-124" }, "--fingerprint-tls-profile=chrome-124")).toBe(true));
+  it("resolveTlsProfile unit — every shape", () => {
+    expect(resolveTlsProfile({ ...base, tlsProfile: "match-persona", brandVersion: "120.0.1" })).toBe("chrome-120");
+    expect(resolveTlsProfile({ ...base, brandVersion: "149" })).toBe("chrome-149"); // unset default
+    expect(resolveTlsProfile({ ...base, tlsProfile: "match-persona" })).toBe(null);  // no brandVersion
+    expect(resolveTlsProfile({ ...base, tlsProfile: "native", brandVersion: "120" })).toBe(null);
+    expect(resolveTlsProfile({ ...base, tlsProfile: "chrome-124" })).toBe("chrome-124");
+    expect(resolveTlsProfile({ ...base, tlsProfile: "131" })).toBe("chrome-131");
+  });
   it("platform=android → mobile persona + a phone window-size", () => {
     expect(has({ platform: "android" }, "--fingerprint-platform=android")).toBe(true);
     expect(has({ platform: "android" }, "--window-size=412,915")).toBe(true);

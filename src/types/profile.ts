@@ -139,6 +139,24 @@ export function redactProxyString(p: unknown): string {
   }
 }
 
+/** Resolve `tlsProfile` to the concrete `--fingerprint-tls-profile` value the ENGINE accepts,
+ *  or null (emit no switch → native TLS). Mirrors the SDK's resolve_tls_profile: the engine only
+ *  understands `chrome-<major>` (and treats "match-persona"/"auto"/"native"/"off" as NO override),
+ *  so "match-persona" (the default) must be turned into `chrome-<brandVersion-major>` here — else
+ *  the switch is a silent no-op. Pure.
+ *   - "native" / "off"            → null (build's native TLS)
+ *   - "chrome-<major>" / a number → pinned to that major
+ *   - "match-persona"/"auto"/unset→ follow brandVersion's major, or null if no brandVersion */
+export function resolveTlsProfile(p: Profile): string | null {
+  const v = (p.tlsProfile ?? "").trim().toLowerCase();
+  if (v === "native" || v === "off") return null;
+  if (v.startsWith("chrome-") && /^\d+$/.test(v.slice(7))) return v;
+  if (/^\d+$/.test(v)) return `chrome-${v}`;
+  // "" | "match-persona" | "auto" → follow the persona's claimed Chrome major (from brandVersion)
+  const head = (p.brandVersion ?? "").trim().split(".")[0];
+  return /^\d+$/.test(head) ? `chrome-${head}` : null;
+}
+
 /** Build the chrome.exe argument list for a profile. (Reference for the launcher; the
  *  main process resolves geoip + the user-data-dir before calling this. The captured
  *  fingerprint profile is shown as a placeholder here — the launcher gzip+base64-encodes
@@ -149,7 +167,8 @@ export function profileToArgs(p: Profile): string[] {
   if (p.platformVersion) args.push(`--fingerprint-platform-version=${p.platformVersion}`);
   if (p.brand) args.push(`--fingerprint-brand=${p.brand}`);
   if (p.brandVersion) args.push(`--fingerprint-brand-version=${p.brandVersion}`);
-  if (p.tlsProfile) args.push(`--fingerprint-tls-profile=${p.tlsProfile}`);
+  const tls = resolveTlsProfile(p); // "match-persona" -> chrome-<brandVersion major> (engine needs a concrete value)
+  if (tls) args.push(`--fingerprint-tls-profile=${tls}`);
   if (p.platform === "android") args.push("--window-size=412,915"); // mobile viewport (a later extraArgs --window-size overrides)
   if (p.gpuVendor) args.push(`--fingerprint-gpu-vendor=${p.gpuVendor}`);
   if (p.gpuRenderer) args.push(`--fingerprint-gpu-renderer=${p.gpuRenderer}`);

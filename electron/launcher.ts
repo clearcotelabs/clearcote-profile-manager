@@ -32,14 +32,28 @@ export function resolveBinary(): string | null {
   return null;
 }
 
+/** Resolve tlsProfile to the concrete --fingerprint-tls-profile value the engine honors, or null.
+ *  Mirrors src/types/profile.ts resolveTlsProfile — the engine ignores "match-persona"/"auto", so
+ *  the default follows brandVersion's major; "native"/"off" → no switch; "chrome-<major>" pins it. */
+function resolveTls(tlsProfile?: string, brandVersion?: string): string | null {
+  const v = (tlsProfile ?? "").trim().toLowerCase();
+  if (v === "native" || v === "off") return null;
+  if (v.startsWith("chrome-") && /^\d+$/.test(v.slice(7))) return v;
+  if (/^\d+$/.test(v)) return `chrome-${v}`;
+  const head = (brandVersion ?? "").trim().split(".")[0];
+  return /^\d+$/.test(head) ? `chrome-${head}` : null;
+}
+
 function buildArgs(p: Profile, userDataDir: string): string[] {
   const a: string[] = [`--fingerprint=${p.fingerprint}`];
   if (p.platform) a.push(`--fingerprint-platform=${p.platform}`);
   if (p.platformVersion) a.push(`--fingerprint-platform-version=${p.platformVersion}`);
   if (p.brand) a.push(`--fingerprint-brand=${p.brand}`);
   if (p.brandVersion) a.push(`--fingerprint-brand-version=${p.brandVersion}`);
-  // TLS network persona: keep the ClientHello coherent with the claimed Chrome version.
-  if (p.tlsProfile) a.push(`--fingerprint-tls-profile=${p.tlsProfile}`);
+  // TLS network persona: resolve "match-persona" to a concrete chrome-<major> (the engine ignores
+  // the "match-persona"/"auto" abstraction — it must be turned into chrome-<brandVersion major>).
+  const tls = resolveTls(p.tlsProfile, p.brandVersion);
+  if (tls) a.push(`--fingerprint-tls-profile=${tls}`);
   // Android = mobile persona: give it a phone viewport (a later extraArgs --window-size wins).
   if (p.platform === "android" && !p.extraArgs?.some((x) => x.startsWith("--window-size")))
     a.push("--window-size=412,915");
