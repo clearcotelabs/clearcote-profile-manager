@@ -35,6 +35,14 @@ describe("profileToArgs — every setting maps to its switch", () => {
     expect(has({ platformVersion: "15.0.0" }, "--fingerprint-platform-version=15.0.0")).toBe(true));
   it("brandVersion", () =>
     expect(has({ brandVersion: "149.0.0.0" }, "--fingerprint-brand-version=149.0.0.0")).toBe(true));
+  it("tlsProfile → --fingerprint-tls-profile", () =>
+    expect(has({ tlsProfile: "match-persona" }, "--fingerprint-tls-profile=match-persona")).toBe(true));
+  it("platform=android → mobile persona + a phone window-size", () => {
+    expect(has({ platform: "android" }, "--fingerprint-platform=android")).toBe(true);
+    expect(has({ platform: "android" }, "--window-size=412,915")).toBe(true);
+  });
+  it("a desktop platform emits no window-size", () =>
+    expect(startsWith({ platform: "windows" }, "--window-size")).toBe(false));
   it("storageQuota", () =>
     expect(has({ storageQuota: 250000 }, "--fingerprint-storage-quota=250000")).toBe(true));
   it("disableGpuFingerprint → --disable-gpu-fingerprint", () =>

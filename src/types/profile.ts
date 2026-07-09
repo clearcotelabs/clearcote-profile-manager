@@ -2,8 +2,12 @@
 // One profile is persisted as profiles/<id>.json; its browser storage lives in
 // profiles/<id>/userdata/. See PLAN.md and profiles/example.profile.json.
 
-export type Platform = "windows" | "linux" | "macos";
+export type Platform = "windows" | "linux" | "macos" | "android";
 export type Brand = "Chrome" | "Edge" | "Opera" | "Vivaldi";
+/** TLS network persona — how the ClientHello follows the persona's claimed Chrome version.
+ *  "match-persona" (default) follows brandVersion; "native"/"off" keeps the build's native TLS;
+ *  "chrome-<major>" pins it. */
+export type TlsProfile = "match-persona" | "native" | "off" | (string & {});
 
 /** A saved Clearcote browser identity. */
 export interface Profile {
@@ -19,7 +23,9 @@ export interface Profile {
   // ---- Clearcote identity (maps to engine switches) ----
   /** --fingerprint seed (int or string). Drives the coherent persona. Same seed ⇒ same identity. */
   fingerprint: string;
-  /** --fingerprint-platform */
+  /** --fingerprint-platform. "android" is a best-effort MOBILE persona (mobile UA/UA-CH, touch,
+   *  mobile viewport, portrait, no PDF plugin, Mali/Adreno GPU); the launcher also sets a phone
+   *  window size for it. */
   platform?: Platform;
   /** --fingerprint-platform-version (UA-CH high-entropy OS version). */
   platformVersion?: string;
@@ -27,6 +33,10 @@ export interface Profile {
   brand?: Brand;
   /** --fingerprint-brand-version */
   brandVersion?: string;
+  /** --fingerprint-tls-profile: keep the TLS ClientHello coherent with the persona's claimed
+   *  Chrome version. Unset = "match-persona" (follows brandVersion). "native"/"off" = build's
+   *  native TLS; "chrome-<major>" pins it. Chromium-core (Chrome/Edge/Brave/Opera share the TLS). */
+  tlsProfile?: TlsProfile;
   /** --fingerprint-gpu-vendor (advanced; the persona already picks a coherent GPU). */
   gpuVendor?: string;
   /** --fingerprint-gpu-renderer */
@@ -139,6 +149,8 @@ export function profileToArgs(p: Profile): string[] {
   if (p.platformVersion) args.push(`--fingerprint-platform-version=${p.platformVersion}`);
   if (p.brand) args.push(`--fingerprint-brand=${p.brand}`);
   if (p.brandVersion) args.push(`--fingerprint-brand-version=${p.brandVersion}`);
+  if (p.tlsProfile) args.push(`--fingerprint-tls-profile=${p.tlsProfile}`);
+  if (p.platform === "android") args.push("--window-size=412,915"); // mobile viewport (a later extraArgs --window-size overrides)
   if (p.gpuVendor) args.push(`--fingerprint-gpu-vendor=${p.gpuVendor}`);
   if (p.gpuRenderer) args.push(`--fingerprint-gpu-renderer=${p.gpuRenderer}`);
   if (p.hardwareConcurrency != null)

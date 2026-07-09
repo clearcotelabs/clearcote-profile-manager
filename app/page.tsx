@@ -1,13 +1,13 @@
 "use client";
 
 import { useCallback, useEffect, useMemo, useState } from "react";
-import type { Brand, Platform, Profile } from "@/types/profile";
+import type { Brand, Platform, Profile, TlsProfile } from "@/types/profile";
 import { profileToArgs, proxyString } from "@/types/profile";
 import { api, isElectron, type Settings, type GeoResult, type LibraryProfile, type FingerprintMeta } from "@/lib/ipc";
 import { LogoMark } from "@/components/LogoMark";
 import { Mascot } from "@/components/Mascot";
 
-const PLATFORMS: Platform[] = ["windows", "macos", "linux"];
+const PLATFORMS: Platform[] = ["windows", "macos", "linux", "android"];
 const BRANDS: Brand[] = ["Chrome", "Edge", "Opera", "Vivaldi"];
 
 const randomSeed = () =>
@@ -480,6 +480,13 @@ function Editor({
               {BRANDS.map((b) => (
                 <option key={b} value={b}>{b}</option>
               ))}
+            </select>
+          </div>
+          <div>
+            <label className={label}>TLS profile</label>
+            <select className={input} value={profile.tlsProfile || ""} onChange={(e) => set("tlsProfile", (e.target.value || undefined) as TlsProfile)}>
+              <option value="">match-persona (default)</option>
+              <option value="native">native — build&apos;s TLS</option>
             </select>
           </div>
 

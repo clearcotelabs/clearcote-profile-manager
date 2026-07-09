@@ -38,6 +38,11 @@ function buildArgs(p: Profile, userDataDir: string): string[] {
   if (p.platformVersion) a.push(`--fingerprint-platform-version=${p.platformVersion}`);
   if (p.brand) a.push(`--fingerprint-brand=${p.brand}`);
   if (p.brandVersion) a.push(`--fingerprint-brand-version=${p.brandVersion}`);
+  // TLS network persona: keep the ClientHello coherent with the claimed Chrome version.
+  if (p.tlsProfile) a.push(`--fingerprint-tls-profile=${p.tlsProfile}`);
+  // Android = mobile persona: give it a phone viewport (a later extraArgs --window-size wins).
+  if (p.platform === "android" && !p.extraArgs?.some((x) => x.startsWith("--window-size")))
+    a.push("--window-size=412,915");
   if (p.gpuVendor) a.push(`--fingerprint-gpu-vendor=${p.gpuVendor}`);
   if (p.gpuRenderer) a.push(`--fingerprint-gpu-renderer=${p.gpuRenderer}`);
   if (p.hardwareConcurrency != null)

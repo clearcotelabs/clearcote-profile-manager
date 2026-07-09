@@ -66,6 +66,8 @@ Beyond the basics, each profile exposes Clearcote's full identity surface (all u
 - **Use real GPU** (`--disable-gpu-fingerprint`) — report the host's actual GPU instead of a spoofed one; the most coherent option when no matching captured profile is available.
 - **Storage quota** (`--fingerprint-storage-quota`, MB) — a realistic `navigator.storage.estimate().quota`; a tiny value reads as incognito / a test machine.
 - **GPU vendor / renderer, platform & brand version, hardware concurrency** — fine-grained persona overrides.
+- **Mobile (Android) persona** — pick `android` in the **Platform** selector for a best-effort phone identity: mobile UA / UA-CH, touch, mobile viewport (a phone `--window-size` is set automatically), portrait orientation, no PDF plugin, Mali/Adreno GPU.
+- **TLS network persona** (`--fingerprint-tls-profile`) — keep the TLS ClientHello coherent with the persona's *claimed* Chrome version instead of always emitting the build's native TLS. `match-persona` (the default) follows the brand version; `native` keeps it stock. Chromium-core (Chrome/Edge/Brave/Opera share the ClientHello).
 - **Canvas bridge** *(experimental — `--canvas-bridge-url` + `--canvas-bridge-auth`)* — forward canvas / WebGL rendering to a remote real-GPU host so the pixel readback matches the claimed GPU, for sites that pixel-hash the canvas. Needs a bridge host and a Clearcote build with canvas-bridge support.
 
 > **Tip:** the strongest coherence is a captured profile whose **GPU vendor matches your host** + farbling noise **off**.
