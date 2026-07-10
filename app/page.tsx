@@ -3,7 +3,7 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
 import type { Brand, Platform, Profile, TlsProfile } from "@/types/profile";
 import { profileToArgs, proxyString } from "@/types/profile";
-import { api, isElectron, type Settings, type GeoResult, type LibraryProfile, type FingerprintMeta } from "@/lib/ipc";
+import { api, isElectron, type Settings, type GeoResult, type LibraryProfile, type FingerprintMeta, type LicenseStatus } from "@/lib/ipc";
 import { LogoMark } from "@/components/LogoMark";
 import { Mascot } from "@/components/Mascot";
 
@@ -322,6 +322,11 @@ export default function Page() {
           binary={binary}
           settings={settings}
           onPick={pickBinary}
+          onSaveSettings={async (patch) => {
+            const next = { ...settings, ...patch };
+            setSettings(next);
+            await api.settings.set(next);
+          }}
           onClose={() => setShowSettings(false)}
         />
       )}
@@ -775,13 +780,35 @@ function SettingsModal({
   binary,
   settings,
   onPick,
+  onSaveSettings,
   onClose,
 }: {
   binary: string | null;
   settings: Settings;
   onPick: () => void;
+  onSaveSettings: (patch: Partial<Settings>) => Promise<void> | void;
   onClose: () => void;
 }) {
+  const [key, setKey] = useState(settings.licenseKey || "");
+  const [status, setStatus] = useState<LicenseStatus | null>(null);
+  const [checking, setChecking] = useState(false);
+  const dirty = (key.trim() || undefined) !== (settings.licenseKey || undefined);
+
+  async function saveKey() {
+    await onSaveSettings({ licenseKey: key.trim() || undefined });
+    setStatus(null);
+  }
+  async function checkKey() {
+    setChecking(true);
+    setStatus(null);
+    try {
+      if (dirty) await onSaveSettings({ licenseKey: key.trim() || undefined });
+      setStatus(await api.license.check(key.trim() || undefined));
+    } finally {
+      setChecking(false);
+    }
+  }
+
   return (
     <div className="fixed inset-0 z-40 flex items-center justify-center bg-black/60 p-6 backdrop-blur-sm">
       <div className="w-full max-w-lg rounded-2xl border border-line bg-surface p-6 shadow-2xl">
@@ -803,6 +830,59 @@ function SettingsModal({
             Choose binary…
           </button>
         </div>
+
+        <div className="mt-6 border-t border-line pt-5">
+          <div className={label}>PRO license key</div>
+          <p className="mb-2 text-xs text-fog/45">
+            With a key, profiles launch the <span className="font-medium text-fog/70">license-gated PRO browser</span> (auto-downloaded + SHA-256 verified) and claim one floating-concurrency slot. Leave blank for the free build — no key means no contact with the license backend.
+          </p>
+          <div className="flex gap-2">
+            <input
+              className={`${input} font-mono`}
+              type="password"
+              autoComplete="off"
+              spellCheck={false}
+              value={key}
+              onChange={(e) => setKey(e.target.value)}
+              placeholder="cc_lic_…"
+            />
+            <button
+              className="shrink-0 rounded-lg border border-line-strong px-3 py-1.5 text-xs hover:bg-elevate disabled:opacity-40"
+              onClick={saveKey}
+              disabled={!dirty}
+            >
+              Save
+            </button>
+            <button
+              className="shrink-0 rounded-lg border border-line-strong px-3 py-1.5 text-xs hover:bg-elevate disabled:opacity-40"
+              onClick={checkKey}
+              disabled={checking || !key.trim()}
+            >
+              {checking ? "Checking…" : "Check"}
+            </button>
+          </div>
+          {status && (
+            <div
+              className={`mt-2 rounded-lg px-3 py-2 text-xs ${
+                status.ok
+                  ? "bg-emerald-500/10 text-emerald-300"
+                  : "bg-rose-500/10 text-rose-300"
+              }`}
+            >
+              {status.ok ? (
+                <>
+                  ✓ Valid{status.plan ? ` — ${status.plan} plan` : ""}
+                  {typeof status.limit === "number"
+                    ? ` · ${status.used ?? 0}/${status.limit === 0 ? "unlimited" : status.limit} slots in use`
+                    : ""}
+                </>
+              ) : (
+                <>✕ {status.error || "Invalid license."}</>
+              )}
+            </div>
+          )}
+        </div>
+
         <div className="mt-6 flex justify-end">
           <button className="rounded-lg bg-sheen px-4 py-1.5 text-sm font-semibold text-[#07080a]" onClick={onClose}>
             Done
