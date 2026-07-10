@@ -8,11 +8,25 @@ import { redactProxyString, type Profile } from "@/types/profile";
 export interface Settings {
   binaryPath?: string;
   theme?: "dark" | "light";
+  /** PRO license key (`cc_lic_...`). Set = launches use the license-gated PRO browser
+   *  + a floating-concurrency slot. Empty = free mode (no backend contact). */
+  licenseKey?: string;
+  licenseApiBase?: string;
 }
 export interface LaunchResult {
   ok: boolean;
   pid?: number;
   error?: string;
+  /** True when the launch used the PRO (license-gated) binary + a leased run-token. */
+  pro?: boolean;
+}
+export interface LicenseStatus {
+  ok: boolean;
+  plan?: string;
+  used?: number;
+  limit?: number;
+  error?: string;
+  code?: string;
 }
 export interface GeoResult {
   ok: boolean;
@@ -79,6 +93,9 @@ export interface ClearcoteApi {
     get: () => Promise<Settings>;
     set: (s: Settings) => Promise<Settings>;
   };
+  license: {
+    check: (key?: string) => Promise<LicenseStatus>;
+  };
   resolveBinary: () => Promise<string | null>;
   pickBinary: () => Promise<string | null>;
   geoCheck: (p: Profile) => Promise<GeoResult>;
@@ -141,6 +158,12 @@ function buildMock(): ClearcoteApi {
         localStorage.setItem(SETTINGS_KEY, JSON.stringify(s));
         return s;
       },
+    },
+    license: {
+      check: async () => ({
+        ok: false,
+        error: "License check runs in the desktop app.",
+      }),
     },
     resolveBinary: async () => null,
     pickBinary: async () => null,

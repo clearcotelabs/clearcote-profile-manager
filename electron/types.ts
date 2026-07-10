@@ -87,12 +87,29 @@ export interface FpListResult {
 export interface Settings {
   binaryPath?: string;
   theme?: "dark" | "light";
+  /** PRO license key (`cc_lic_...`). When set, launches use the license-gated PRO
+   *  browser (auto-downloaded) + check out a floating-concurrency slot. Empty =
+   *  free mode (no backend contact, free binary). */
+  licenseKey?: string;
+  /** Override the license backend base URL (default clearcotelabs.com). */
+  licenseApiBase?: string;
 }
 
 export interface LaunchResult {
   ok: boolean;
   pid?: number;
   error?: string;
+  /** True when this launch used the PRO (license-gated) binary + a leased run-token. */
+  pro?: boolean;
+}
+
+export interface LicenseStatus {
+  ok: boolean;
+  plan?: string;
+  used?: number;
+  limit?: number;
+  error?: string;
+  code?: string;
 }
 
 export interface GeoResult {

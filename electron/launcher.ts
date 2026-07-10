@@ -1,13 +1,17 @@
-import { spawn, type ChildProcess } from "node:child_process";
+import { type ChildProcess } from "node:child_process";
 import fs from "node:fs";
 import path from "node:path";
 import zlib from "node:zlib";
 import { PROFILES_DIR, FINGERPRINTS_DIR, readSettings } from "./store";
 import { parseProxy, startRelay, needsRelay, proxyServerArg, type Relay } from "./proxy";
+import { resolveLicenseKey, acquireLease, withRunToken, type LeaseSession } from "./license";
+import { proEnsureBinary } from "./proBinary";
+import { spawnBrowser } from "./winlaunch";
 import type { Profile, LaunchResult } from "./types";
 
 const running = new Map<string, ChildProcess>();
 const relays = new Map<string, Relay>();
+const leases = new Map<string, LeaseSession>();
 
 /**
  * Resolve the Clearcote chrome.exe path (Phase 1: explicit/env/sibling-dev-build).
@@ -94,16 +98,44 @@ function buildArgs(p: Profile, userDataDir: string): string[] {
 }
 
 export async function launch(p: Profile): Promise<LaunchResult> {
-  const bin = resolveBinary();
+  if (running.has(p.id)) {
+    return { ok: false, error: "This profile is already running." };
+  }
+
+  // PRO vs free: a configured license key selects the license-gated PRO browser
+  // (auto-downloaded) + a floating-concurrency lease whose run-token is injected as
+  // CLEARCOTE_RUN_TOKEN. An explicit binary (Settings / CLEARCOTE_BINARY) always
+  // wins over the PRO auto-download, matching the SDK's precedence. No key = free.
+  const s = readSettings();
+  const licenseKey = resolveLicenseKey(s.licenseKey);
+  const hasExplicitBinary = !!(s.binaryPath || process.env.CLEARCOTE_BINARY);
+
+  let bin: string | null;
+  try {
+    if (licenseKey && !hasExplicitBinary) {
+      bin = await proEnsureBinary(licenseKey, s.licenseApiBase);
+    } else {
+      bin = resolveBinary();
+    }
+  } catch (e) {
+    return { ok: false, error: `Could not obtain the PRO browser: ${String(e)}` };
+  }
   if (!bin) {
     return {
       ok: false,
       error: "Clearcote binary not found. Set it in Settings, or set CLEARCOTE_BINARY.",
     };
   }
-  if (running.has(p.id)) {
-    return { ok: false, error: "This profile is already running." };
+
+  // Acquire the concurrency lease BEFORE launching, so an over-limit / revoked
+  // license fails fast (and never spawns a browser the gate would just refuse).
+  let lease: LeaseSession | null = null;
+  try {
+    lease = await acquireLease({ licenseKey, licenseApiBase: s.licenseApiBase });
+  } catch (e) {
+    return { ok: false, error: String((e as Error)?.message || e) };
   }
+
   const userDataDir = p.userDataDir || path.join(PROFILES_DIR, p.id, "userdata");
   let relay: Relay | null = null;
   try {
@@ -120,19 +152,27 @@ export async function launch(p: Profile): Promise<LaunchResult> {
     } else if (proxy) {
       args.push(`--proxy-server=${proxyServerArg(proxy)}`);
     }
-    const child = spawn(bin, args, { detached: false });
+    // Inject the leased run-token so the PRO engine gate admits the launch.
+    const env = lease ? withRunToken(lease.token, process.env) : undefined;
+    // spawnBrowser survives the Windows first-launch SxS/AV race ("spawn UNKNOWN") on a
+    // freshly-extracted chrome.exe: warm + back off + retry, then recover from a fresh copy.
+    const child = await spawnBrowser(bin, args, { detached: false, env });
     running.set(p.id, child);
+    if (lease) leases.set(p.id, lease);
     const cleanup = () => {
       running.delete(p.id);
       relays.get(p.id)?.stop();
       relays.delete(p.id);
+      void leases.get(p.id)?.stop(); // release the concurrency slot
+      leases.delete(p.id);
     };
     child.on("exit", cleanup);
     child.on("error", cleanup);
-    return { ok: true, pid: child.pid };
+    return { ok: true, pid: child.pid, pro: !!lease };
   } catch (e) {
     relay?.stop();
     relays.delete(p.id);
+    void lease?.stop(); // don't hold a slot for a launch that failed
     return { ok: false, error: String(e) };
   }
 }
@@ -149,6 +189,8 @@ export function stop(id: string): void {
   running.delete(id);
   relays.get(id)?.stop();
   relays.delete(id);
+  void leases.get(id)?.stop(); // release the concurrency slot
+  leases.delete(id);
 }
 
 export function listRunning(): string[] {

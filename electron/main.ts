@@ -5,6 +5,7 @@ import * as profiles from "./profiles";
 import * as launcher from "./launcher";
 import * as geo from "./geo";
 import { readSettings, writeSettings, ensureDirs, FINGERPRINTS_DIR } from "./store";
+import { checkLicense } from "./license";
 import { redactProxyString } from "./proxy";
 import type { Profile, Settings, FingerprintMeta } from "./types";
 
@@ -81,6 +82,11 @@ function registerIpc(): void {
   ipcMain.handle("settings:set", (_e, s: Settings) => {
     writeSettings(s);
     return readSettings();
+  });
+
+  ipcMain.handle("license:check", (_e, key?: string) => {
+    const s = readSettings();
+    return checkLicense(key ?? s.licenseKey, s.licenseApiBase);
   });
 
   ipcMain.handle("resolveBinary", () => launcher.resolveBinary());

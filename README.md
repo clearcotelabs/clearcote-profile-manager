@@ -55,7 +55,7 @@ Clearcote is driven by command-line identity flags (`--fingerprint`, `--fingerpr
 - **Launch in one click** — spawns the verified Clearcote binary with the profile's flags as an interactive window.
 - **Organize** — search, tag, group, duplicate, import/export.
 
-It reuses the [clearcote npm SDK](https://www.npmjs.com/package/clearcote) only to **resolve + SHA-256-verify** the browser binary (auto-download). Launching is a direct, interactive `chrome.exe` spawn — **not** Playwright automation.
+It mirrors the [clearcote npm SDK](https://www.npmjs.com/package/clearcote) to **resolve + SHA-256-verify** the browser binary (auto-download) and, with a PRO key, to check out a floating-concurrency lease (see [PRO tier](#pro-tier-license-key)). Launching is a direct, interactive `chrome.exe` spawn — **not** Playwright automation.
 
 ## Stealth options
 
@@ -71,6 +71,24 @@ Beyond the basics, each profile exposes Clearcote's full identity surface (all u
 - **Canvas bridge** *(experimental — `--canvas-bridge-url` + `--canvas-bridge-auth`)* — forward canvas / WebGL rendering to a remote real-GPU host so the pixel readback matches the claimed GPU, for sites that pixel-hash the canvas. Needs a bridge host and a Clearcote build with canvas-bridge support.
 
 > **Tip:** the strongest coherence is a captured profile whose **GPU vendor matches your host** + farbling noise **off**.
+
+## PRO tier (license key)
+
+By default the app launches the **free** Clearcote build. If you have a PRO license, paste your key
+into **Settings → PRO license key** (or set `CLEARCOTE_LICENSE_KEY`) — **Check** validates it and shows
+your plan + slots in use. It's entirely additive: with **no key** the app is unchanged (free binary,
+no contact with the license backend).
+
+With a key set, each launch:
+
+- **downloads the license-gated PRO browser** on demand (via the site's authenticated download route,
+  SHA-256-verified like the free build, cached per version), and
+- **checks out one floating-concurrency slot** — a background heartbeat keeps it alive and the slot is
+  released when you stop the profile or close the browser.
+
+The PRO engine refuses to launch without a valid run-token, so a copied binary alone won't run. An
+explicit binary in Settings still wins over the PRO auto-download; a revoked/expired key surfaces an
+error rather than silently falling back to free.
 
 ## Stack
 

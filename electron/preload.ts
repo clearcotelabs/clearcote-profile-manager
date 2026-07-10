@@ -1,7 +1,7 @@
 import { contextBridge, ipcRenderer } from "electron";
 import type {
   Profile, Settings, LaunchResult, GeoResult, ExportResult, ImportResult,
-  FpImportResult, FpListResult, LibraryProfile,
+  FpImportResult, FpListResult, LibraryProfile, LicenseStatus,
 } from "./types";
 
 // The narrow, typed surface the renderer is allowed to call. No fs / child_process
@@ -19,6 +19,9 @@ const api = {
   settings: {
     get: (): Promise<Settings> => ipcRenderer.invoke("settings:get"),
     set: (s: Settings): Promise<Settings> => ipcRenderer.invoke("settings:set", s),
+  },
+  license: {
+    check: (key?: string): Promise<LicenseStatus> => ipcRenderer.invoke("license:check", key),
   },
   resolveBinary: (): Promise<string | null> => ipcRenderer.invoke("resolveBinary"),
   pickBinary: (): Promise<string | null> => ipcRenderer.invoke("pickBinary"),
