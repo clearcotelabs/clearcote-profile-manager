@@ -3,7 +3,7 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
 import type { Brand, Platform, Profile, TlsProfile } from "@/types/profile";
 import { profileToArgs, proxyString } from "@/types/profile";
-import { api, isElectron, type Settings, type GeoResult, type LibraryProfile, type FingerprintMeta, type LicenseStatus, type VersionOption, type DownloadProgress } from "@/lib/ipc";
+import { api, isElectron, type Settings, type GeoResult, type LibraryProfile, type FingerprintMeta, type LicenseStatus, type VersionOption, type DownloadProgress, type CachedBuild } from "@/lib/ipc";
 import { LogoMark } from "@/components/LogoMark";
 import { Mascot } from "@/components/Mascot";
 
@@ -858,6 +858,26 @@ function SettingsModal({
   const [checking, setChecking] = useState(false);
   const dirty = (key.trim() || undefined) !== (settings.licenseKey || undefined);
 
+  // Downloaded-browser cache (view + remove to force a re-download).
+  const [cached, setCached] = useState<CachedBuild[] | null>(null);
+  const [busyTag, setBusyTag] = useState<string | null>(null);
+  const loadCache = () => api.cache.list().then(setCached).catch(() => setCached([]));
+  useEffect(() => {
+    void loadCache();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+  const fmtSize = (b: number) => (b >= 1e9 ? `${(b / 1e9).toFixed(1)} GB` : `${Math.round(b / 1e6)} MB`);
+  async function removeCached(b: CachedBuild) {
+    if (!confirm(`Remove the downloaded ${b.version} browser (${fmtSize(b.sizeBytes)})?\nIt will re-download automatically on the next launch that needs it.`)) return;
+    setBusyTag(b.tag);
+    try {
+      await api.cache.remove(b.tag);
+      await loadCache();
+    } finally {
+      setBusyTag(null);
+    }
+  }
+
   async function saveKey() {
     await onSaveSettings({ licenseKey: key.trim() || undefined });
     setStatus(null);
@@ -943,6 +963,49 @@ function SettingsModal({
               ) : (
                 <>✕ {status.error || "Invalid license."}</>
               )}
+            </div>
+          )}
+        </div>
+
+        <div className="mt-6 border-t border-line pt-5">
+          <div className="flex items-center justify-between">
+            <div className={label}>Downloaded browsers</div>
+            {cached && cached.length > 0 && (
+              <span className="text-[11px] text-fog/45">
+                {cached.length} · {fmtSize(cached.reduce((s, b) => s + b.sizeBytes, 0))}
+              </span>
+            )}
+          </div>
+          <p className="mb-2 text-xs text-fog/45">
+            Verified browser builds cached on disk. Remove one to reclaim space or force a fresh
+            re-download on the next launch that needs it.
+          </p>
+          {cached === null ? (
+            <div className="text-xs text-fog/45">Loading…</div>
+          ) : cached.length === 0 ? (
+            <div className="rounded-lg bg-ink/70 px-3 py-2 text-xs text-fog/45">Nothing downloaded yet.</div>
+          ) : (
+            <div className="space-y-1.5">
+              {cached.map((b) => (
+                <div key={b.tag} className="flex items-center gap-3 rounded-lg bg-ink/70 px-3 py-2">
+                  <span
+                    className={`rounded px-1.5 py-0.5 text-[10px] font-semibold ${
+                      b.tier === "pro" ? "bg-sheen/20 text-sheen" : "bg-elevate text-fog/60"
+                    }`}
+                  >
+                    {b.tier === "pro" ? "PRO" : "FREE"}
+                  </span>
+                  <span className="font-mono text-xs text-fog/80 break-all">{b.version}</span>
+                  <span className="ml-auto shrink-0 text-[11px] text-fog/45">{fmtSize(b.sizeBytes)}</span>
+                  <button
+                    className="shrink-0 rounded-md border border-line-strong px-2 py-1 text-[11px] text-rose-300 hover:bg-rose-500/10 disabled:opacity-40"
+                    onClick={() => removeCached(b)}
+                    disabled={busyTag === b.tag}
+                  >
+                    {busyTag === b.tag ? "Removing…" : "Remove"}
+                  </button>
+                </div>
+              ))}
             </div>
           )}
         </div>

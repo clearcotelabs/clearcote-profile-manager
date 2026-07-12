@@ -7,6 +7,7 @@ import * as geo from "./geo";
 import { readSettings, writeSettings, ensureDirs, FINGERPRINTS_DIR } from "./store";
 import { checkLicense } from "./license";
 import { fetchCatalog, listVersions } from "./catalog";
+import { listCached, removeCached } from "./cache";
 import { redactProxyString } from "./proxy";
 import type { Profile, Settings, FingerprintMeta } from "./types";
 
@@ -94,6 +95,10 @@ function registerIpc(): void {
       return [];
     }
   });
+
+  // Downloaded-browser cache: view what's on disk + remove a build to force a re-download.
+  ipcMain.handle("cache:list", () => listCached());
+  ipcMain.handle("cache:remove", (_e, tag: string) => removeCached(tag));
 
   ipcMain.handle("settings:get", () => readSettings());
   ipcMain.handle("settings:set", (_e, s: Settings) => {

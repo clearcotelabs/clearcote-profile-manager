@@ -96,6 +96,15 @@ export interface DownloadProgress {
   totalMB: number;
 }
 
+/** One browser build currently downloaded in the cache (removable to force a re-download). */
+export interface CachedBuild {
+  tag: string;
+  version: string;
+  tier: "free" | "pro";
+  sizeBytes: number;
+  path: string;
+}
+
 export interface ClearcoteApi {
   profiles: {
     list: () => Promise<Profile[]>;
@@ -116,6 +125,11 @@ export interface ClearcoteApi {
   };
   license: {
     check: (key?: string) => Promise<LicenseStatus>;
+  };
+  /** Downloaded-browser cache: list what's on disk, and remove a build to force a re-download. */
+  cache: {
+    list: () => Promise<CachedBuild[]>;
+    remove: (tag: string) => Promise<boolean>;
   };
   resolveBinary: () => Promise<string | null>;
   pickBinary: () => Promise<string | null>;
@@ -169,6 +183,7 @@ function buildMock(): ClearcoteApi {
     running: async () => [],
     listVersions: async () => [], // browser preview has no catalog access; UI falls back to "latest"
     onDownloadProgress: () => () => {}, // no downloads in the browser preview
+    cache: { list: async () => [], remove: async () => false }, // no on-disk cache in the browser
     settings: {
       get: async () => {
         try {

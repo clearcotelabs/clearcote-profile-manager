@@ -17,7 +17,7 @@ import { apiBase, resolveLicenseKey } from "./license";
 import { warmFiles } from "./winlaunch";
 import type { ResolvedBuild } from "./catalog";
 
-function cacheRoot(): string {
+export function cacheRoot(): string {
   const env = process.env.CLEARCOTE_CACHE;
   if (env) return env;
   if (process.platform === "win32")

@@ -4,6 +4,7 @@ import type {
   FpImportResult, FpListResult, LibraryProfile, LicenseStatus, DownloadProgress,
 } from "./types";
 import type { VersionOption } from "./catalog";
+import type { CachedBuild } from "./cache";
 
 // The narrow, typed surface the renderer is allowed to call. No fs / child_process
 // in the renderer — everything goes through these IPC channels.
@@ -30,6 +31,10 @@ const api = {
   },
   license: {
     check: (key?: string): Promise<LicenseStatus> => ipcRenderer.invoke("license:check", key),
+  },
+  cache: {
+    list: (): Promise<CachedBuild[]> => ipcRenderer.invoke("cache:list"),
+    remove: (tag: string): Promise<boolean> => ipcRenderer.invoke("cache:remove", tag),
   },
   resolveBinary: (): Promise<string | null> => ipcRenderer.invoke("resolveBinary"),
   pickBinary: (): Promise<string | null> => ipcRenderer.invoke("pickBinary"),
