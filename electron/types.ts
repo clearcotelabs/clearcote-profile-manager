@@ -9,6 +9,10 @@ export interface Profile {
   tags?: string[];
   group?: string;
   fingerprint: string;
+  /** Browser build to launch: "latest" (default — newest of your tier: Pro→150, free→149),
+   *  a major ("150" / "149"), or an exact version ("150.0.7871.114"). PRO builds need a license
+   *  key; resolved against the public /api/v1/versions catalog. Explicit binaries in Settings win. */
+  browserVersion?: string;
   platform?: string;
   platformVersion?: string;
   brand?: string;

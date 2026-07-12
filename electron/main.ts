@@ -6,6 +6,7 @@ import * as launcher from "./launcher";
 import * as geo from "./geo";
 import { readSettings, writeSettings, ensureDirs, FINGERPRINTS_DIR } from "./store";
 import { checkLicense } from "./license";
+import { fetchCatalog, listVersions } from "./catalog";
 import { redactProxyString } from "./proxy";
 import type { Profile, Settings, FingerprintMeta } from "./types";
 
@@ -77,6 +78,16 @@ function registerIpc(): void {
   ipcMain.handle("launch", (_e, p: Profile) => launcher.launch(p));
   ipcMain.handle("stop", (_e, id: string) => launcher.stop(id));
   ipcMain.handle("running", () => launcher.listRunning());
+
+  // Public browser-build catalog (drives the per-profile version dropdown). Best-effort: an
+  // unreachable catalog returns [] so the UI just falls back to "latest".
+  ipcMain.handle("versions:list", async () => {
+    try {
+      return listVersions(await fetchCatalog(readSettings().licenseApiBase));
+    } catch {
+      return [];
+    }
+  });
 
   ipcMain.handle("settings:get", () => readSettings());
   ipcMain.handle("settings:set", (_e, s: Settings) => {

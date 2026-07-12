@@ -79,6 +79,14 @@ export interface FpListResult {
   error?: string;
 }
 
+/** One available browser build (from GET /api/v1/versions), for the version dropdown. */
+export interface VersionOption {
+  version: string;
+  major: number;
+  tier: "free" | "pro";
+  tag: string;
+}
+
 export interface ClearcoteApi {
   profiles: {
     list: () => Promise<Profile[]>;
@@ -89,6 +97,8 @@ export interface ClearcoteApi {
   launch: (p: Profile) => Promise<LaunchResult>;
   stop: (id: string) => Promise<void>;
   running: () => Promise<string[]>;
+  /** Public browser-build catalog for this OS (newest major first). Drives the version dropdown. */
+  listVersions: () => Promise<VersionOption[]>;
   settings: {
     get: () => Promise<Settings>;
     set: (s: Settings) => Promise<Settings>;
@@ -146,6 +156,7 @@ function buildMock(): ClearcoteApi {
     }),
     stop: async () => {},
     running: async () => [],
+    listVersions: async () => [], // browser preview has no catalog access; UI falls back to "latest"
     settings: {
       get: async () => {
         try {

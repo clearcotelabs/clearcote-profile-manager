@@ -15,6 +15,7 @@ import { spawn } from "node:child_process";
 import { Readable } from "node:stream";
 import { apiBase, resolveLicenseKey } from "./license";
 import { warmFiles } from "./winlaunch";
+import type { ResolvedBuild } from "./catalog";
 
 function cacheRoot(): string {
   const env = process.env.CLEARCOTE_CACHE;
@@ -79,35 +80,15 @@ interface ProMeta {
   size?: number;
 }
 
-/**
- * Ensure the PRO browser binary is present + verified; return the chrome(.exe) path.
- * Cached per PRO tag. Throws on any failure — a licensed launch must get the PRO
- * build, never a silent free fall-back.
- */
-export async function proEnsureBinary(
-  licenseKey?: string,
-  licenseApiBase?: string,
+/** Download + verify + extract a build from its resolved metadata; return the chrome(.exe) path.
+ *  Cached per tag (works for both FREE and PRO — only the URL source differs). SHA-256 is the
+ *  trust anchor. Throws on any mismatch or failure. */
+async function ensureFromMeta(
+  meta: { tag: string; asset: string; binary: string; url: string; sha256: string; size?: number },
   onProgress?: ProProgress,
 ): Promise<string> {
-  const key = resolveLicenseKey(licenseKey);
-  if (!key) throw new Error("No license key — cannot fetch the PRO build.");
-  const plat = platformTag();
-  const base = apiBase(licenseApiBase);
-
-  const res = await fetch(`${base}/api/v1/download/pro?platform=${plat}`, {
-    headers: { authorization: `Bearer ${key}` },
-  });
-  if (!res.ok) {
-    const body = await res.text().catch(() => "");
-    throw new Error(`PRO download not authorized (HTTP ${res.status}): ${body.slice(0, 200)}`);
-  }
-  const meta = (await res.json()) as ProMeta;
-  if (!meta.url || !meta.sha256 || !meta.asset) {
-    throw new Error(`No PRO build is currently published for ${plat}.`);
-  }
-  const tag = meta.tag || `pro-${meta.version || "unknown"}`;
-  const binaryName = meta.binary || (plat === "windows" ? "chrome.exe" : "chrome");
-
+  const tag = meta.tag;
+  const binaryName = meta.binary;
   const destBase = join(cacheRoot(), tag);
   const browserDir = join(destBase, "browser");
   const verified = join(destBase, ".verified");
@@ -192,4 +173,61 @@ export async function proEnsureBinary(
     /* keep the extracted tree; reclaiming the archive is best-effort */
   }
   return exe;
+}
+
+/**
+ * Ensure the PRO (license-gated) browser is present + verified; return the chrome(.exe) path.
+ * `version` ("150" / "150.0.7871.114") pins a specific PRO build via /download/pro?version=;
+ * omit it for the latest PRO pin. Cached per tag. Throws on any failure — a licensed launch must
+ * get the PRO build, never a silent free fall-back.
+ */
+export async function proEnsureBinary(
+  licenseKey?: string,
+  licenseApiBase?: string,
+  version?: string,
+  onProgress?: ProProgress,
+): Promise<string> {
+  const key = resolveLicenseKey(licenseKey);
+  if (!key) throw new Error("No license key — cannot fetch the PRO build.");
+  const plat = platformTag();
+  const base = apiBase(licenseApiBase);
+
+  const q = version ? `&version=${encodeURIComponent(version)}` : "";
+  const res = await fetch(`${base}/api/v1/download/pro?platform=${plat}${q}`, {
+    headers: { authorization: `Bearer ${key}` },
+  });
+  if (!res.ok) {
+    const body = await res.text().catch(() => "");
+    throw new Error(`PRO download not authorized (HTTP ${res.status}): ${body.slice(0, 200)}`);
+  }
+  const meta = (await res.json()) as ProMeta;
+  if (!meta.url || !meta.sha256 || !meta.asset) {
+    throw new Error(`No PRO build is currently published for ${plat}.`);
+  }
+  return ensureFromMeta(
+    {
+      tag: meta.tag || `pro-${meta.version || "unknown"}`,
+      asset: meta.asset,
+      binary: meta.binary || (plat === "windows" ? "chrome.exe" : "chrome"),
+      url: meta.url,
+      sha256: meta.sha256,
+      size: meta.size,
+    },
+    onProgress,
+  );
+}
+
+/**
+ * Ensure a FREE browser build (resolved from the public catalog) is present + verified; return
+ * the chrome(.exe) path. FREE builds carry a public GitHub url + sha256 — no license needed.
+ */
+export async function freeEnsureBinary(resolved: ResolvedBuild, onProgress?: ProProgress): Promise<string> {
+  const pf = resolved.platform;
+  if (!pf.url || !pf.sha256 || !pf.asset) {
+    throw new Error(`No downloadable free build for ${resolved.version} on this OS.`);
+  }
+  return ensureFromMeta(
+    { tag: resolved.tag, asset: pf.asset, binary: pf.binary, url: pf.url, sha256: pf.sha256, size: pf.size },
+    onProgress,
+  );
 }

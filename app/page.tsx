@@ -3,7 +3,7 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
 import type { Brand, Platform, Profile, TlsProfile } from "@/types/profile";
 import { profileToArgs, proxyString } from "@/types/profile";
-import { api, isElectron, type Settings, type GeoResult, type LibraryProfile, type FingerprintMeta, type LicenseStatus } from "@/lib/ipc";
+import { api, isElectron, type Settings, type GeoResult, type LibraryProfile, type FingerprintMeta, type LicenseStatus, type VersionOption } from "@/lib/ipc";
 import { LogoMark } from "@/components/LogoMark";
 import { Mascot } from "@/components/Mascot";
 
@@ -367,6 +367,15 @@ function Editor({
   const [resolving, setResolving] = useState(false);
   const [libOpen, setLibOpen] = useState(false);
   const [fpMsg, setFpMsg] = useState<string | null>(null);
+  // Available browser builds (from the public catalog) for the version dropdown.
+  const [versions, setVersions] = useState<VersionOption[]>([]);
+  useEffect(() => {
+    let alive = true;
+    api.listVersions?.().then((v) => alive && setVersions(v || [])).catch(() => {});
+    return () => {
+      alive = false;
+    };
+  }, []);
   async function importFp() {
     setFpMsg(null);
     const r = await api.fp.import();
@@ -470,6 +479,24 @@ function Editor({
             {fpMsg && <div className="mt-1.5 text-[11px] text-amber-500">{fpMsg}</div>}
           </div>
 
+          <div>
+            <label className={label}>Browser version</label>
+            <select
+              className={input}
+              value={profile.browserVersion || "latest"}
+              onChange={(e) => set("browserVersion", e.target.value === "latest" ? undefined : e.target.value)}
+            >
+              <option value="latest">Latest (recommended)</option>
+              {versions.map((v) => (
+                <option key={v.version} value={String(v.major)}>
+                  {v.major} · {v.tier === "pro" ? "Pro" : "Free"} ({v.version})
+                </option>
+              ))}
+            </select>
+            <p className="mt-1 text-[11px] text-fog/45">
+              Latest = newest of your tier (Pro → 150, free → 149). A Pro build needs a license key in Settings.
+            </p>
+          </div>
           <div>
             <label className={label}>Platform</label>
             <select className={input} value={profile.platform || "windows"} onChange={(e) => set("platform", e.target.value as Platform)}>

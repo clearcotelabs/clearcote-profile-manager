@@ -3,6 +3,7 @@ import type {
   Profile, Settings, LaunchResult, GeoResult, ExportResult, ImportResult,
   FpImportResult, FpListResult, LibraryProfile, LicenseStatus,
 } from "./types";
+import type { VersionOption } from "./catalog";
 
 // The narrow, typed surface the renderer is allowed to call. No fs / child_process
 // in the renderer — everything goes through these IPC channels.
@@ -16,6 +17,7 @@ const api = {
   launch: (p: Profile): Promise<LaunchResult> => ipcRenderer.invoke("launch", p),
   stop: (id: string): Promise<void> => ipcRenderer.invoke("stop", id),
   running: (): Promise<string[]> => ipcRenderer.invoke("running"),
+  listVersions: (): Promise<VersionOption[]> => ipcRenderer.invoke("versions:list"),
   settings: {
     get: (): Promise<Settings> => ipcRenderer.invoke("settings:get"),
     set: (s: Settings): Promise<Settings> => ipcRenderer.invoke("settings:set", s),

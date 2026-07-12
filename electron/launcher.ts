@@ -5,9 +5,49 @@ import zlib from "node:zlib";
 import { PROFILES_DIR, FINGERPRINTS_DIR, readSettings } from "./store";
 import { parseProxy, startRelay, needsRelay, proxyServerArg, type Relay } from "./proxy";
 import { resolveLicenseKey, acquireLease, withRunToken, type LeaseSession } from "./license";
-import { proEnsureBinary } from "./proBinary";
+import { proEnsureBinary, freeEnsureBinary } from "./proBinary";
+import { fetchCatalog, resolveVersion } from "./catalog";
 import { spawnBrowser } from "./winlaunch";
+import type { Settings } from "./types";
 import type { Profile, LaunchResult } from "./types";
+
+/**
+ * Resolve the browser binary for a launch + report its tier.
+ * Precedence (mirrors the SDK): explicit Settings/CLEARCOTE_BINARY path → the profile's
+ * `browserVersion` via the public catalog (FREE → GitHub, PRO → /download/pro?version=) →
+ * a sibling dev-build (offline fallback, only when no specific version was pinned).
+ * The tier tells the caller whether to take a PRO concurrency lease (FREE builds have no gate).
+ */
+async function resolveBrowserBinary(
+  p: Profile,
+  s: Settings,
+): Promise<{ path: string; tier: "free" | "pro" | "explicit" }> {
+  const explicit = [s.binaryPath, process.env.CLEARCOTE_BINARY].find(
+    (c): c is string => !!c && fs.existsSync(c),
+  );
+  if (explicit) return { path: explicit, tier: "explicit" };
+
+  const licenseKey = resolveLicenseKey(s.licenseKey);
+  try {
+    const cat = await fetchCatalog(s.licenseApiBase);
+    const r = resolveVersion(cat, p.browserVersion, !!licenseKey);
+    const path =
+      r.tier === "pro"
+        ? await proEnsureBinary(licenseKey, s.licenseApiBase, r.version)
+        : await freeEnsureBinary(r);
+    return { path, tier: r.tier };
+  } catch (e) {
+    // Offline / catalog-unreachable: fall back to a sibling dev-build ONLY when no specific
+    // version was requested — a pinned version must resolve against the catalog or fail loudly.
+    const w = (p.browserVersion ?? "").trim().toLowerCase();
+    const wantsSpecific = w !== "" && w !== "latest" && w !== "auto";
+    if (!wantsSpecific) {
+      const sibling = resolveBinary();
+      if (sibling) return { path: sibling, tier: "explicit" };
+    }
+    throw e;
+  }
+}
 
 const running = new Map<string, ChildProcess>();
 const relays = new Map<string, Relay>();
@@ -102,38 +142,34 @@ export async function launch(p: Profile): Promise<LaunchResult> {
     return { ok: false, error: "This profile is already running." };
   }
 
-  // PRO vs free: a configured license key selects the license-gated PRO browser
-  // (auto-downloaded) + a floating-concurrency lease whose run-token is injected as
-  // CLEARCOTE_RUN_TOKEN. An explicit binary (Settings / CLEARCOTE_BINARY) always
-  // wins over the PRO auto-download, matching the SDK's precedence. No key = free.
+  // Resolve the binary + its tier from the profile's browserVersion (explicit path wins).
+  // A configured license key unlocks PRO builds; the gated PRO engine also needs a
+  // floating-concurrency lease whose run-token is injected as CLEARCOTE_RUN_TOKEN. A FREE
+  // build (e.g. version="149") has no gate — it needs no lease/slot, even for a licensed user.
   const s = readSettings();
   const licenseKey = resolveLicenseKey(s.licenseKey);
-  const hasExplicitBinary = !!(s.binaryPath || process.env.CLEARCOTE_BINARY);
 
-  let bin: string | null;
+  let bin: string;
+  let tier: "free" | "pro" | "explicit";
   try {
-    if (licenseKey && !hasExplicitBinary) {
-      bin = await proEnsureBinary(licenseKey, s.licenseApiBase);
-    } else {
-      bin = resolveBinary();
-    }
+    const resolved = await resolveBrowserBinary(p, s);
+    bin = resolved.path;
+    tier = resolved.tier;
   } catch (e) {
-    return { ok: false, error: `Could not obtain the PRO browser: ${String(e)}` };
-  }
-  if (!bin) {
-    return {
-      ok: false,
-      error: "Clearcote binary not found. Set it in Settings, or set CLEARCOTE_BINARY.",
-    };
+    return { ok: false, error: `Could not obtain the browser: ${String((e as Error)?.message || e)}` };
   }
 
-  // Acquire the concurrency lease BEFORE launching, so an over-limit / revoked
-  // license fails fast (and never spawns a browser the gate would just refuse).
+  // Acquire the concurrency lease BEFORE launching (so an over-limit / revoked license fails
+  // fast and never spawns a browser the gate would just refuse) — but ONLY for a gated launch:
+  // a resolved PRO build, or an explicit user-supplied binary paired with a license key.
+  const wantLease = !!licenseKey && (tier === "pro" || tier === "explicit");
   let lease: LeaseSession | null = null;
-  try {
-    lease = await acquireLease({ licenseKey, licenseApiBase: s.licenseApiBase });
-  } catch (e) {
-    return { ok: false, error: String((e as Error)?.message || e) };
+  if (wantLease) {
+    try {
+      lease = await acquireLease({ licenseKey, licenseApiBase: s.licenseApiBase });
+    } catch (e) {
+      return { ok: false, error: String((e as Error)?.message || e) };
+    }
   }
 
   const userDataDir = p.userDataDir || path.join(PROFILES_DIR, p.id, "userdata");

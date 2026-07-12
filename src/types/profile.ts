@@ -23,6 +23,10 @@ export interface Profile {
   // ---- Clearcote identity (maps to engine switches) ----
   /** --fingerprint seed (int or string). Drives the coherent persona. Same seed ⇒ same identity. */
   fingerprint: string;
+  /** Browser build to launch: "latest" (default — newest of your tier: Pro→150, free→149), a
+   *  major ("150" / "149"), or an exact version. PRO builds need a license key. Resolved against
+   *  the public /api/v1/versions catalog; an explicit binary in Settings always wins. */
+  browserVersion?: string;
   /** --fingerprint-platform. "android" is a best-effort MOBILE persona (mobile UA/UA-CH, touch,
    *  mobile viewport, portrait, no PDF plugin, Mali/Adreno GPU); the launcher also sets a phone
    *  window size for it. */
