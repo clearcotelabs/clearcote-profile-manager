@@ -75,7 +75,13 @@ function registerIpc(): void {
   ipcMain.handle("profiles:save", (_e, p: Profile) => profiles.saveProfile(p));
   ipcMain.handle("profiles:delete", (_e, id: string) => profiles.deleteProfile(id));
 
-  ipcMain.handle("launch", (_e, p: Profile) => launcher.launch(p));
+  // Launch, streaming browser-download progress back to the renderer (first use of a version
+  // downloads 100–250 MB — the UI shows a live bar so it never looks frozen).
+  ipcMain.handle("launch", (e, p: Profile) =>
+    launcher.launch(p, (prog) => {
+      if (!e.sender.isDestroyed()) e.sender.send("download:progress", prog);
+    }),
+  );
   ipcMain.handle("stop", (_e, id: string) => launcher.stop(id));
   ipcMain.handle("running", () => launcher.listRunning());
 

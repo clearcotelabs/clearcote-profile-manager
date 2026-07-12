@@ -107,6 +107,16 @@ export interface LaunchResult {
   pro?: boolean;
 }
 
+/** Streamed to the renderer while a launch downloads the browser build (first use of a version).
+ *  `id` is the profile being launched; `pct` 0–100; sizes in MB. Not emitted for a cached build. */
+export interface DownloadProgress {
+  id: string;
+  version: string;
+  pct: number;
+  seenMB: number;
+  totalMB: number;
+}
+
 export interface LicenseStatus {
   ok: boolean;
   plan?: string;

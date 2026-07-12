@@ -56,11 +56,20 @@ function sha256File(path: string): Promise<string> {
   });
 }
 
-/** Extract an archive with the system tar (bsdtar handles .zip and .tar.xz). */
+/** Extract an archive with bsdtar (handles both .zip and .tar.xz).
+ *  On Windows, invoke the System32 bsdtar EXPLICITLY — a bare `tar` on PATH can resolve to an
+ *  MSYS/Git GNU tar that mangles `C:\` paths and can't read .zip (fails with exit 128). Windows
+ *  10 1803+ / 11 ship `%SystemRoot%\System32\tar.exe` (libarchive/bsdtar). On Linux the PATH tar
+ *  is fine. */
+function tarBinary(): string {
+  if (process.platform !== "win32") return "tar";
+  const sys = join(process.env.SystemRoot || process.env.windir || "C:\\Windows", "System32", "tar.exe");
+  return existsSync(sys) ? sys : "tar";
+}
 function extractArchive(archive: string, dest: string): Promise<void> {
   mkdirSync(dest, { recursive: true });
   return new Promise((resolve, reject) => {
-    const p = spawn("tar", ["-xf", archive, "-C", dest], { stdio: "ignore" });
+    const p = spawn(tarBinary(), ["-xf", archive, "-C", dest], { stdio: "ignore" });
     p.on("error", reject);
     p.on("exit", (code) => (code === 0 ? resolve() : reject(new Error(`tar exited ${code} extracting ${archive}`))));
   });

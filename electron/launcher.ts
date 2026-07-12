@@ -8,7 +8,7 @@ import { resolveLicenseKey, acquireLease, withRunToken, type LeaseSession } from
 import { proEnsureBinary, freeEnsureBinary } from "./proBinary";
 import { fetchCatalog, resolveVersion } from "./catalog";
 import { spawnBrowser } from "./winlaunch";
-import type { Settings } from "./types";
+import type { Settings, DownloadProgress } from "./types";
 import type { Profile, LaunchResult } from "./types";
 
 /**
@@ -21,6 +21,7 @@ import type { Profile, LaunchResult } from "./types";
 async function resolveBrowserBinary(
   p: Profile,
   s: Settings,
+  onProgress?: (pct: number, seenMB: number, totalMB: number, version: string) => void,
 ): Promise<{ path: string; tier: "free" | "pro" | "explicit" }> {
   const explicit = [s.binaryPath, process.env.CLEARCOTE_BINARY].find(
     (c): c is string => !!c && fs.existsSync(c),
@@ -31,10 +32,14 @@ async function resolveBrowserBinary(
   try {
     const cat = await fetchCatalog(s.licenseApiBase);
     const r = resolveVersion(cat, p.browserVersion, !!licenseKey);
+    // Only fires when a download actually happens (cached builds resolve instantly, no progress).
+    const prog = onProgress
+      ? (pct: number, seenMB: number, totalMB: number) => onProgress(pct, seenMB, totalMB, r.version)
+      : undefined;
     const path =
       r.tier === "pro"
-        ? await proEnsureBinary(licenseKey, s.licenseApiBase, r.version)
-        : await freeEnsureBinary(r);
+        ? await proEnsureBinary(licenseKey, s.licenseApiBase, r.version, prog)
+        : await freeEnsureBinary(r, prog);
     return { path, tier: r.tier };
   } catch (e) {
     // Offline / catalog-unreachable: fall back to a sibling dev-build ONLY when no specific
@@ -137,7 +142,10 @@ function buildArgs(p: Profile, userDataDir: string): string[] {
   return a;
 }
 
-export async function launch(p: Profile): Promise<LaunchResult> {
+export async function launch(
+  p: Profile,
+  onDownload?: (ev: DownloadProgress) => void,
+): Promise<LaunchResult> {
   if (running.has(p.id)) {
     return { ok: false, error: "This profile is already running." };
   }
@@ -152,7 +160,13 @@ export async function launch(p: Profile): Promise<LaunchResult> {
   let bin: string;
   let tier: "free" | "pro" | "explicit";
   try {
-    const resolved = await resolveBrowserBinary(p, s);
+    const resolved = await resolveBrowserBinary(
+      p,
+      s,
+      onDownload
+        ? (pct, seenMB, totalMB, version) => onDownload({ id: p.id, version, pct, seenMB, totalMB })
+        : undefined,
+    );
     bin = resolved.path;
     tier = resolved.tier;
   } catch (e) {

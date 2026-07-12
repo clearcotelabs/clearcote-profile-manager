@@ -87,6 +87,15 @@ export interface VersionOption {
   tag: string;
 }
 
+/** Browser-download progress streamed during a launch (first use of a version). */
+export interface DownloadProgress {
+  id: string;
+  version: string;
+  pct: number;
+  seenMB: number;
+  totalMB: number;
+}
+
 export interface ClearcoteApi {
   profiles: {
     list: () => Promise<Profile[]>;
@@ -99,6 +108,8 @@ export interface ClearcoteApi {
   running: () => Promise<string[]>;
   /** Public browser-build catalog for this OS (newest major first). Drives the version dropdown. */
   listVersions: () => Promise<VersionOption[]>;
+  /** Subscribe to browser-download progress during a launch. Returns an unsubscribe fn. */
+  onDownloadProgress: (cb: (p: DownloadProgress) => void) => () => void;
   settings: {
     get: () => Promise<Settings>;
     set: (s: Settings) => Promise<Settings>;
@@ -157,6 +168,7 @@ function buildMock(): ClearcoteApi {
     stop: async () => {},
     running: async () => [],
     listVersions: async () => [], // browser preview has no catalog access; UI falls back to "latest"
+    onDownloadProgress: () => () => {}, // no downloads in the browser preview
     settings: {
       get: async () => {
         try {

@@ -3,7 +3,7 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
 import type { Brand, Platform, Profile, TlsProfile } from "@/types/profile";
 import { profileToArgs, proxyString } from "@/types/profile";
-import { api, isElectron, type Settings, type GeoResult, type LibraryProfile, type FingerprintMeta, type LicenseStatus, type VersionOption } from "@/lib/ipc";
+import { api, isElectron, type Settings, type GeoResult, type LibraryProfile, type FingerprintMeta, type LicenseStatus, type VersionOption, type DownloadProgress } from "@/lib/ipc";
 import { LogoMark } from "@/components/LogoMark";
 import { Mascot } from "@/components/Mascot";
 
@@ -29,6 +29,8 @@ const btnGhost =
 export default function Page() {
   const [profiles, setProfiles] = useState<Profile[]>([]);
   const [running, setRunning] = useState<string[]>([]);
+  const [launchingId, setLaunchingId] = useState<string | null>(null);
+  const [dl, setDl] = useState<DownloadProgress | null>(null);
   const [editing, setEditing] = useState<Profile | null>(null);
   const [query, setQuery] = useState("");
   const [settings, setSettings] = useState<Settings>({});
@@ -93,14 +95,27 @@ export default function Page() {
   function duplicate(p: Profile) {
     setEditing({ ...p, id: "", name: `${p.name} copy`, fingerprint: randomSeed(), createdAt: "", updatedAt: "" });
   }
+  // Live browser-download progress (first launch of a version downloads 100–250 MB).
+  useEffect(() => {
+    const off = api.onDownloadProgress?.((prog) => setDl(prog));
+    return () => off?.();
+  }, []);
+
   async function launch(p: Profile) {
-    const r = await api.launch(p);
-    if (r.ok) {
-      await api.profiles.save({ ...p, lastLaunchedAt: new Date().toISOString() });
-      await refresh();
-      notify(`Launched “${p.name || p.id}”.`);
-    } else {
-      notify(r.error || "Launch failed.");
+    setLaunchingId(p.id);
+    setDl(null);
+    try {
+      const r = await api.launch(p);
+      if (r.ok) {
+        await api.profiles.save({ ...p, lastLaunchedAt: new Date().toISOString() });
+        await refresh();
+        notify(`Launched “${p.name || p.id}”.`);
+      } else {
+        notify(r.error || "Launch failed.");
+      }
+    } finally {
+      setLaunchingId(null);
+      setDl(null);
     }
   }
   async function stop(p: Profile) {
@@ -287,6 +302,28 @@ export default function Page() {
                       >
                         Stop
                       </button>
+                    ) : launchingId === p.id ? (
+                      <div className="flex-1">
+                        {dl && dl.id === p.id ? (
+                          <>
+                            <div className="flex items-center justify-between text-[11px] font-medium text-fog/70">
+                              <span>Downloading Chrome {dl.version.split(".")[0]}…</span>
+                              <span>{dl.pct}% · {dl.seenMB}/{dl.totalMB} MB</span>
+                            </div>
+                            <div className="mt-1 h-1.5 w-full overflow-hidden rounded-full bg-line">
+                              <div
+                                className="h-full rounded-full bg-sheen transition-[width] duration-200"
+                                style={{ width: `${dl.pct}%` }}
+                              />
+                            </div>
+                          </>
+                        ) : (
+                          <div className="rounded-lg bg-elevate px-3 py-1.5 text-center text-xs font-semibold text-fog/70">
+                            <span className="mr-1.5 inline-block h-1.5 w-1.5 animate-pulse rounded-full bg-accent align-middle" />
+                            Launching…
+                          </div>
+                        )}
+                      </div>
                     ) : (
                       <button
                         className="flex-1 rounded-lg bg-sheen px-3 py-1.5 text-xs font-semibold text-[#07080a] hover:opacity-95"

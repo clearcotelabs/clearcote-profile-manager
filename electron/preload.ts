@@ -1,7 +1,7 @@
 import { contextBridge, ipcRenderer } from "electron";
 import type {
   Profile, Settings, LaunchResult, GeoResult, ExportResult, ImportResult,
-  FpImportResult, FpListResult, LibraryProfile, LicenseStatus,
+  FpImportResult, FpListResult, LibraryProfile, LicenseStatus, DownloadProgress,
 } from "./types";
 import type { VersionOption } from "./catalog";
 
@@ -18,6 +18,12 @@ const api = {
   stop: (id: string): Promise<void> => ipcRenderer.invoke("stop", id),
   running: (): Promise<string[]> => ipcRenderer.invoke("running"),
   listVersions: (): Promise<VersionOption[]> => ipcRenderer.invoke("versions:list"),
+  // Subscribe to browser-download progress during a launch. Returns an unsubscribe fn.
+  onDownloadProgress: (cb: (p: DownloadProgress) => void): (() => void) => {
+    const handler = (_e: unknown, data: DownloadProgress) => cb(data);
+    ipcRenderer.on("download:progress", handler);
+    return () => ipcRenderer.removeListener("download:progress", handler);
+  },
   settings: {
     get: (): Promise<Settings> => ipcRenderer.invoke("settings:get"),
     set: (s: Settings): Promise<Settings> => ipcRenderer.invoke("settings:set", s),
