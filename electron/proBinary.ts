@@ -12,7 +12,8 @@ import { createHash } from "node:crypto";
 import { homedir } from "node:os";
 import { join } from "node:path";
 import { spawn } from "node:child_process";
-import { Readable } from "node:stream";
+import { Readable, Transform } from "node:stream";
+import { pipeline } from "node:stream/promises";
 import { apiBase, resolveLicenseKey } from "./license";
 import { warmFiles } from "./winlaunch";
 import type { ResolvedBuild } from "./catalog";
@@ -107,19 +108,20 @@ async function ensureFromMeta(
   }
   mkdirSync(destBase, { recursive: true });
 
-  // stream download -> file, hashing as we go
+  // Stream the download to a temp `.part`, then verify + rename into place. We write via a single
+  // `pipeline` (NEVER a manual `.on("data")` alongside `.pipe()` — that mixing defeats backpressure
+  // and can interleave writes on large files, yielding a full-size-but-corrupt archive), and we hash
+  // the BYTES ON DISK afterwards (not the in-flight stream) so any write-side corruption or a
+  // concurrent clobber is caught by the SHA-256 gate before extraction ever runs.
   const archivePath = join(destBase, meta.asset);
+  const partPath = archivePath + ".part";
   const dl = await fetch(meta.url);
   if (!dl.ok || !dl.body) throw new Error(`PRO archive download failed (HTTP ${dl.status}).`);
   const total = Number(dl.headers.get("content-length") || meta.size || 0);
-  const h = createHash("sha256");
   let seen = 0;
   let lastPct = -1;
-  const out = createWriteStream(archivePath);
-  const nodeStream = Readable.fromWeb(dl.body as Parameters<typeof Readable.fromWeb>[0]);
-  await new Promise<void>((resolve, reject) => {
-    nodeStream.on("data", (chunk: Buffer) => {
-      h.update(chunk);
+  const counter = new Transform({
+    transform(chunk: Buffer, _enc, cb) {
       seen += chunk.length;
       if (onProgress && total) {
         const pct = Math.floor((seen * 100) / total);
@@ -128,22 +130,37 @@ async function ensureFromMeta(
           onProgress(pct, Math.floor(seen / 1e6), Math.floor(total / 1e6));
         }
       }
-    });
-    nodeStream.on("error", reject);
-    out.on("error", reject);
-    out.on("finish", resolve);
-    nodeStream.pipe(out);
+      cb(null, chunk);
+    },
   });
+  try {
+    rmSync(partPath, { force: true });
+  } catch {
+    /* ignore */
+  }
+  const nodeStream = Readable.fromWeb(dl.body as Parameters<typeof Readable.fromWeb>[0]);
+  await pipeline(nodeStream, counter, createWriteStream(partPath));
 
-  const got = h.digest("hex");
+  // Guard against a truncated/over-long transfer, then verify the on-disk hash.
+  if (total && statSync(partPath).size !== total) {
+    const actual = statSync(partPath).size;
+    try {
+      rmSync(partPath, { force: true });
+    } catch {
+      /* ignore */
+    }
+    throw new Error(`PRO archive size mismatch — expected ${total} bytes, got ${actual}. Please retry.`);
+  }
+  const got = await sha256File(partPath);
   if (got.toLowerCase() !== meta.sha256.toLowerCase()) {
     try {
-      rmSync(archivePath, { force: true });
+      rmSync(partPath, { force: true });
     } catch {
       /* ignore */
     }
     throw new Error(`PRO archive SHA-256 mismatch — refusing to use it.\n  expected ${meta.sha256}\n  got      ${got}`);
   }
+  require("node:fs").renameSync(partPath, archivePath);
 
   // extract into a temp dir, then swap into place so `browser/` only appears fully-written
   const incoming = join(destBase, ".incoming");
