@@ -19,6 +19,8 @@ const api = {
   stop: (id: string): Promise<void> => ipcRenderer.invoke("stop", id),
   running: (): Promise<string[]> => ipcRenderer.invoke("running"),
   listVersions: (): Promise<VersionOption[]> => ipcRenderer.invoke("versions:list"),
+  /** PRO rebuild revisions ("150.0.7871.114-r10", …), newest first. [] when unlicensed. */
+  listRevisions: (): Promise<string[]> => ipcRenderer.invoke("versions:revisions"),
   // Subscribe to browser-download progress during a launch. Returns an unsubscribe fn.
   onDownloadProgress: (cb: (p: DownloadProgress) => void): (() => void) => {
     const handler = (_e: unknown, data: DownloadProgress) => cb(data);

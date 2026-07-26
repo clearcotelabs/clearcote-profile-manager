@@ -3,7 +3,7 @@
 // In a plain browser (next dev / preview), fall back to a localStorage-backed mock
 // so the UI is fully usable for design + testing without Electron.
 
-import { redactProxyString, type Profile } from "@/types/profile";
+import { redactProxyString, screenWarningFromLabel, type Profile } from "@/types/profile";
 
 export interface Settings {
   binaryPath?: string;
@@ -56,6 +56,10 @@ export interface FingerprintMeta {
   cores?: number;
   memory?: number;
   screen?: string;
+  screenWidth?: number;
+  screenHeight?: number;
+  /** Set when the captured display is too small to contain a real browser window. */
+  screenWarning?: string;
   source?: "file" | "library";
 }
 export interface FpImportResult {
@@ -72,6 +76,9 @@ export interface LibraryProfile {
   gpuFamily?: string;
   renderer?: string;
   screen?: string;
+  /** Set when the indexed screen size is below the guard floor, so the picker can warn (or filter)
+   *  BEFORE downloading a capture that would produce impossible window geometry. */
+  screenWarning?: string;
 }
 export interface FpListResult {
   ok: boolean;
@@ -117,6 +124,9 @@ export interface ClearcoteApi {
   running: () => Promise<string[]>;
   /** Public browser-build catalog for this OS (newest major first). Drives the version dropdown. */
   listVersions: () => Promise<VersionOption[]>;
+  /** PRO rebuild revisions ("150.0.7871.114-r10", …), newest first — pin one for a reproducible
+   *  run, since "latest" and a bare major both follow the current pin. [] without a license key. */
+  listRevisions: () => Promise<string[]>;
   /** Subscribe to browser-download progress during a launch. Returns an unsubscribe fn. */
   onDownloadProgress: (cb: (p: DownloadProgress) => void) => () => void;
   settings: {
@@ -182,6 +192,7 @@ function buildMock(): ClearcoteApi {
     stop: async () => {},
     running: async () => [],
     listVersions: async () => [], // browser preview has no catalog access; UI falls back to "latest"
+    listRevisions: async () => [], // revisions need an authenticated PRO call — desktop app only
     onDownloadProgress: () => () => {}, // no downloads in the browser preview
     cache: { list: async () => [], remove: async () => false }, // no on-disk cache in the browser
     settings: {
@@ -238,6 +249,7 @@ function buildMock(): ClearcoteApi {
                   gpuFamily: e.gpu_family as string | undefined,
                   renderer: e.renderer as string | undefined,
                   screen: e.screen as string | undefined,
+                  screenWarning: screenWarningFromLabel(e.screen as string | undefined) ?? undefined,
                 })),
               };
             }

@@ -2,9 +2,23 @@
 
 Two layers:
 
-- **Unit (vitest, runs in CI)** — `args.test.ts`, `proxy.test.ts`. Confirm the profile-manager maps
-  every setting to the correct Clearcote switch, and that proxy strings parse / redact / relay-route
-  correctly. Run: `npm test`.
+- **Unit (vitest, runs in CI)** — Run: `npm test`.
+  - `fpargs.test.ts` — the shared switch builder (`electron/fpargs.ts`) that BOTH the launcher and
+    the UI preview use. This is where SDK parity is pinned: lightStealth, the native metadata
+    overrides, locale coherence, webrtcMdns, the canvas bridge, and the captured-profile screen
+    guard. Also pins the module's own sha256 against `node:crypto` (the lightStealth seed→row
+    mapping must match the Node and Python SDKs, and the renderer can't use `node:crypto`).
+  - `launcher.test.ts` — `electron/launcher.ts buildArgs`, i.e. the command line that is ACTUALLY
+    spawned: captured-profile gzip round-trip, donor `navigator.languages` recovery, the resolved
+    user-data-dir, and extraArgs ordering.
+  - `fpmeta.test.ts` — what counts as a valid capture, and the screen-guard wiring.
+  - `catalog.test.ts` — version + PRO **revision** resolution (`150.0.7871.114-r9`, bare `r9`) and
+    the selector carried to `/download/pro`.
+  - `args.test.ts` — the renderer's preview builder. `proxy.test.ts` — proxy parse / redact / relay.
+
+  > Note: `args.test.ts` used to be the only arg coverage, and it tests the **preview** builder.
+  > The launcher was a separate hand-maintained copy and had silently drifted from it. Both now
+  > delegate to `electron/fpargs.ts`; keep new switches there so one test run covers both paths.
 - **Runtime confirmation (manual, needs the binary)** — `confirm-applied.py`. Launches the real
   Clearcote binary with every setting set and probes the in-page surface to confirm each is actually
   applied. Run: `pip install playwright && CLEARCOTE_BINARY=<chrome.exe> python tests/confirm-applied.py`.

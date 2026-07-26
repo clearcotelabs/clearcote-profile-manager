@@ -2,7 +2,7 @@
 
 import { useCallback, useEffect, useMemo, useState } from "react";
 import type { Brand, Platform, Profile, TlsProfile } from "@/types/profile";
-import { profileToArgs, proxyString } from "@/types/profile";
+import { profileToArgs, proxyString, MIN_PROFILE_SCREEN_WIDTH, MIN_PROFILE_SCREEN_HEIGHT } from "@/types/profile";
 import { api, isElectron, type Settings, type GeoResult, type LibraryProfile, type FingerprintMeta, type LicenseStatus, type VersionOption, type DownloadProgress, type CachedBuild } from "@/lib/ipc";
 import { LogoMark } from "@/components/LogoMark";
 import { Mascot } from "@/components/Mascot";
@@ -406,9 +406,14 @@ function Editor({
   const [fpMsg, setFpMsg] = useState<string | null>(null);
   // Available browser builds (from the public catalog) for the version dropdown.
   const [versions, setVersions] = useState<VersionOption[]>([]);
+  // Pro rebuild revisions ("150.0.7871.114-r10", …). "Latest" and a bare major both track the
+  // CURRENT pin, which moves when a rebuild ships — pinning a revision is what makes a run
+  // reproducible. Empty without a license key.
+  const [revisions, setRevisions] = useState<string[]>([]);
   useEffect(() => {
     let alive = true;
     api.listVersions?.().then((v) => alive && setVersions(v || [])).catch(() => {});
+    api.listRevisions?.().then((r) => alive && setRevisions(r || [])).catch(() => {});
     return () => {
       alive = false;
     };
@@ -503,6 +508,11 @@ function Editor({
                     .filter(Boolean)
                     .join("  ·  ")}
                 </div>
+                {profile.fingerprintProfileMeta?.screenWarning && (
+                  <div className="mt-2 rounded border border-amber-500/30 bg-amber-500/10 px-2 py-1.5 text-[11px] text-amber-400">
+                    ⚠ {profile.fingerprintProfileMeta.screenWarning}
+                  </div>
+                )}
               </div>
             ) : (
               <p className="mt-1 text-xs text-fog/45">
@@ -529,9 +539,25 @@ function Editor({
                   {v.major} · {v.tier === "pro" ? "Pro" : "Free"} ({v.version})
                 </option>
               ))}
+              {revisions.length > 0 && (
+                <optgroup label="Pin an exact Pro rebuild">
+                  {revisions.map((r, i) => (
+                    <option key={r} value={r}>
+                      {r}
+                      {i === 0 ? " · current" : ""}
+                    </option>
+                  ))}
+                </optgroup>
+              )}
+              {/* A profile saved with a revision that has since been unpublished would otherwise
+                  vanish from the dropdown and silently read as "Latest". Keep it selectable. */}
+              {profile.browserVersion && /-r\d+$/.test(profile.browserVersion) && !revisions.includes(profile.browserVersion) && (
+                <option value={profile.browserVersion}>{profile.browserVersion} · pinned</option>
+              )}
             </select>
             <p className="mt-1 text-[11px] text-fog/45">
               Latest = newest of your tier (Pro → 150, free → 149). A Pro build needs a license key in Settings.
+              {revisions.length > 0 && " Latest and a bare major follow the current Pro pin, which moves when a rebuild ships — pin a revision for reproducible runs."}
             </p>
           </div>
           <div>
@@ -644,6 +670,29 @@ function Editor({
                 </span>
               </label>
 
+              <label className="flex items-start gap-2 text-sm text-fog/80 sm:col-span-2">
+                <input
+                  type="checkbox"
+                  className="mt-0.5 accent-[#38e0d6]"
+                  checked={!!profile.lightStealth}
+                  onChange={(e) => set("lightStealth", e.target.checked || undefined)}
+                />
+                <span>
+                  <span className="font-medium">Light stealth</span> — spoof only the metadata axes that survive strict
+                  anti-bot checks (cores, memory, colour depth, pixel ratio, touch points), derived coherently from the
+                  seed. Emits <span className="font-mono text-[11px]">no --fingerprint</span>, so the persona machinery and
+                  farbling never engage; rendering, TLS and the real Chrome version are untouched. Screen size is
+                  deliberately not spoofed. Any field you set below wins over the preset.
+                </span>
+              </label>
+              {profile.lightStealth && (
+                <p className="sm:col-span-2 -mt-2 rounded border border-amber-500/30 bg-amber-500/10 px-2 py-1.5 text-[11px] text-amber-400">
+                  Measured caveat: in our own lab runs this preset scored <em>worse</em> than the default on an audit
+                  suite — it drops the persona but pins hardwareConcurrency to a value that need not match the host.
+                  Treat it as a narrower surface, not a strictly better one, and test it against your target.
+                </p>
+              )}
+
               <div>
                 <label className={label}>Storage quota (MB)</label>
                 <input
@@ -653,6 +702,76 @@ function Editor({
                   onChange={(e) => set("storageQuota", e.target.value ? Number(e.target.value) : undefined)}
                   placeholder="250000 (≈ 244 GB)"
                 />
+              </div>
+              <div>
+                <label className={label}>WebRTC mDNS</label>
+                <select
+                  className={input}
+                  value={profile.webrtcMdns || "on"}
+                  onChange={(e) => set("webrtcMdns", e.target.value === "off" ? "off" : undefined)}
+                >
+                  <option value="on">Conceal host candidates (default)</option>
+                  <option value="off">Expose raw LAN IP</option>
+                </select>
+                <p className="mt-1 text-[11px] text-fog/45">
+                  Real Chrome hides local candidates behind an <span className="font-mono">.local</span> name. Turn off only
+                  if you need routable LAN/P2P candidates — it re-exposes your private IP to every page.
+                </p>
+              </div>
+
+              <div className="sm:col-span-2 rounded-lg border border-line/70 bg-ink/30 p-3">
+                <div className={label + " mb-1"}>
+                  Native metadata overrides{" "}
+                  <span className="normal-case text-fog/30">(flag &gt; persona &gt; real — leave blank to inherit)</span>
+                </div>
+                <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
+                  {(
+                    [
+                      ["deviceMemory", "Memory (GB)", "8"],
+                      ["colorDepth", "Colour depth", "24"],
+                      ["devicePixelRatio", "Pixel ratio", "1"],
+                      ["maxTouchPoints", "Touch points", "0"],
+                    ] as const
+                  ).map(([k, lbl, ph]) => (
+                    <div key={k}>
+                      <label className={label}>{lbl}</label>
+                      <input
+                        className={input}
+                        type="number"
+                        step="any"
+                        value={profile[k] ?? ""}
+                        onChange={(e) => set(k, e.target.value === "" ? undefined : Number(e.target.value))}
+                        placeholder={ph}
+                      />
+                    </div>
+                  ))}
+                </div>
+                <div className="mt-3 grid grid-cols-2 gap-3 sm:grid-cols-4">
+                  {(
+                    [
+                      ["screenWidth", "Screen W", "1920"],
+                      ["screenHeight", "Screen H", "1080"],
+                      ["availWidth", "Avail W", "1920"],
+                      ["availHeight", "Avail H", "1040"],
+                    ] as const
+                  ).map(([k, lbl, ph]) => (
+                    <div key={k}>
+                      <label className={label}>{lbl}</label>
+                      <input
+                        className={input}
+                        type="number"
+                        value={profile[k] ?? ""}
+                        onChange={(e) => set(k, e.target.value === "" ? undefined : Number(e.target.value))}
+                        placeholder={ph}
+                      />
+                    </div>
+                  ))}
+                </div>
+                <p className="mt-1.5 text-[11px] text-amber-500/80">
+                  ⚠ Screen dimensions are the risky row: a faked screen can&apos;t be reconciled with the real window and
+                  render surface, and is a reliable block trigger on strict anti-bots. Set them only when they match the
+                  host&apos;s actual display — the other four are safe to spoof individually.
+                </p>
               </div>
               <div className="grid grid-cols-2 gap-3">
                 <div>
@@ -702,9 +821,52 @@ function Editor({
                   onChange={(e) => set("canvasBridgeAuth", e.target.value || undefined)}
                   placeholder="user:secret"
                 />
+                {profile.canvasBridgeUrl && (
+                  <>
+                    <div className="mt-2 grid grid-cols-2 gap-3">
+                      <div>
+                        <label className={label}>Origin policy</label>
+                        <select
+                          className={input}
+                          value={profile.canvasBridgeMode || "all"}
+                          onChange={(e) => set("canvasBridgeMode", e.target.value === "all" ? undefined : (e.target.value as "off" | "allow" | "deny"))}
+                        >
+                          <option value="all">Bridge every origin (default)</option>
+                          <option value="allow">Only the allow list</option>
+                          <option value="deny">All except the deny list</option>
+                          <option value="off">Off</option>
+                        </select>
+                      </div>
+                      <div>
+                        <label className={label}>Cache miss</label>
+                        <select
+                          className={input}
+                          value={profile.canvasBridgeFallback || "block"}
+                          onChange={(e) => set("canvasBridgeFallback", e.target.value === "block" ? undefined : "local")}
+                        >
+                          <option value="block">Wait for the bridge (default)</option>
+                          <option value="local">Never stall — render locally</option>
+                        </select>
+                      </div>
+                    </div>
+                    {(profile.canvasBridgeMode === "allow" || profile.canvasBridgeMode === "deny") && (
+                      <input
+                        className={input + " mt-2 font-mono"}
+                        value={(profile.canvasBridgeMode === "allow" ? profile.canvasBridgeAllow : profile.canvasBridgeDeny)?.join(", ") || ""}
+                        onChange={(e) => {
+                          const v = e.target.value.split(",").map((s) => s.trim()).filter(Boolean);
+                          set(profile.canvasBridgeMode === "allow" ? "canvasBridgeAllow" : "canvasBridgeDeny", v.length ? v : undefined);
+                        }}
+                        placeholder={`${profile.canvasBridgeMode} list — example.com, shop.example`}
+                      />
+                    )}
+                  </>
+                )}
                 <p className="mt-1.5 text-[11px] text-fog/40">
                   Renders canvas / WebGL on a remote real-GPU host so the pixel readback matches the claimed GPU — for
-                  sites that pixel-hash the canvas. Leave blank to render locally.
+                  sites that pixel-hash the canvas. Leave blank to render locally. Each bridged readback is a network
+                  round-trip on the renderer thread, so restrict it to the origins that actually score canvas coherence.
+                  Enabling the bridge also adds <span className="font-mono">--no-sandbox</span>.
                 </p>
               </div>
 
@@ -780,7 +942,13 @@ function LibraryModal({
     () => Array.from(new Set((list || []).map((p) => p.gpuVendor).filter(Boolean) as string[])).sort(),
     [list],
   );
-  const shown = (list || []).filter((p) => vendor === "all" || p.gpuVendor === vendor);
+  // A capture from a display too small to hold a real browser window produces impossible geometry
+  // (window bigger than its own screen), so those are hidden by default rather than silently
+  // offered. The count is shown so the filtering is never invisible.
+  const [hideSmall, setHideSmall] = useState(true);
+  const byVendor = (list || []).filter((p) => vendor === "all" || p.gpuVendor === vendor);
+  const smallCount = byVendor.filter((p) => p.screenWarning).length;
+  const shown = hideSmall ? byVendor.filter((p) => !p.screenWarning) : byVendor;
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 p-6 backdrop-blur-sm">
       <div className="flex max-h-[80vh] w-full max-w-lg flex-col rounded-2xl border border-line bg-surface p-6 shadow-2xl">
@@ -822,6 +990,7 @@ function LibraryModal({
                   {p.renderer ? p.renderer.replace(/^ANGLE \(/, "").replace(/\)$/, "") : p.name.replace(/\.json$/, "")}
                 </span>
                 <span className="mt-0.5 block truncate font-mono text-[10px] text-fog/40">
+                  {p.screenWarning && <span className="mr-1 text-amber-500" title={p.screenWarning}>⚠</span>}
                   {[p.gpuVendor, p.screen, p.name.replace(/\.json$/, "")].filter(Boolean).join("  ·  ")}
                 </span>
               </span>
@@ -830,6 +999,15 @@ function LibraryModal({
           ))}
           {list && shown.length === 0 && <div className="p-4 text-sm text-fog/40">No profiles for this vendor.</div>}
         </div>
+        {smallCount > 0 && (
+          <label className="mt-2 flex items-center gap-2 text-[11px] text-fog/45">
+            <input type="checkbox" className="accent-[#38e0d6]" checked={hideSmall} onChange={(e) => setHideSmall(e.target.checked)} />
+            <span>
+              Hide {smallCount} capture{smallCount === 1 ? "" : "s"} with a display too small to contain a browser window
+              (under {MIN_PROFILE_SCREEN_WIDTH}×{MIN_PROFILE_SCREEN_HEIGHT}) — the window would be bigger than its own screen.
+            </span>
+          </label>
+        )}
         <p className="mt-3 text-[11px] text-fog/35">
           From{" "}
           <span className="font-mono">github.com/clearcotelabs/clearcote-profiles</span> · or use{" "}

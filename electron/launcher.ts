@@ -7,6 +7,7 @@ import { parseProxy, startRelay, needsRelay, proxyServerArg, type Relay } from "
 import { resolveLicenseKey, acquireLease, withRunToken, type LeaseSession } from "./license";
 import { proEnsureBinary, freeEnsureBinary } from "./proBinary";
 import { fetchCatalog, resolveVersion } from "./catalog";
+import { fingerprintArgs, type FpInput } from "./fpargs";
 import { spawnBrowser } from "./winlaunch";
 import type { Settings, DownloadProgress } from "./types";
 import type { Profile, LaunchResult } from "./types";
@@ -36,9 +37,11 @@ async function resolveBrowserBinary(
     const prog = onProgress
       ? (pct: number, seenMB: number, totalMB: number) => onProgress(pct, seenMB, totalMB, r.version)
       : undefined;
+    // Send the SELECTOR, not the bare version: a revision pin ("150.0.7871.114-r9") must survive
+    // the round-trip or /download/pro silently serves the current pin instead of the build asked for.
     const path =
       r.tier === "pro"
-        ? await proEnsureBinary(licenseKey, s.licenseApiBase, r.version, prog)
+        ? await proEnsureBinary(licenseKey, s.licenseApiBase, r.selector, prog)
         : await freeEnsureBinary(r, prog);
     return { path, tier: r.tier };
   } catch (e) {
@@ -81,62 +84,53 @@ export function resolveBinary(): string | null {
   return null;
 }
 
-/** Resolve tlsProfile to the concrete --fingerprint-tls-profile value the engine honors, or null.
- *  Mirrors src/types/profile.ts resolveTlsProfile — the engine ignores "match-persona"/"auto", so
- *  the default follows brandVersion's major; "native"/"off" → no switch; "chrome-<major>" pins it. */
-function resolveTls(tlsProfile?: string, brandVersion?: string): string | null {
-  const v = (tlsProfile ?? "").trim().toLowerCase();
-  if (v === "native" || v === "off") return null;
-  if (v.startsWith("chrome-") && /^\d+$/.test(v.slice(7))) return v;
-  if (/^\d+$/.test(v)) return `chrome-${v}`;
-  const head = (brandVersion ?? "").trim().split(".")[0];
-  return /^\d+$/.test(head) ? `chrome-${head}` : null;
+/** Absolute path of a profile's captured-fingerprint file (a bare filename lives in the shared
+ *  fingerprints dir). */
+function fingerprintPath(ref: string): string {
+  return path.isAbsolute(ref) ? ref : path.join(FINGERPRINTS_DIR, ref);
 }
 
-function buildArgs(p: Profile, userDataDir: string): string[] {
-  const a: string[] = [`--fingerprint=${p.fingerprint}`];
-  if (p.platform) a.push(`--fingerprint-platform=${p.platform}`);
-  if (p.platformVersion) a.push(`--fingerprint-platform-version=${p.platformVersion}`);
-  if (p.brand) a.push(`--fingerprint-brand=${p.brand}`);
-  if (p.brandVersion) a.push(`--fingerprint-brand-version=${p.brandVersion}`);
-  // TLS network persona: resolve "match-persona" to a concrete chrome-<major> (the engine ignores
-  // the "match-persona"/"auto" abstraction — it must be turned into chrome-<brandVersion major>).
-  const tls = resolveTls(p.tlsProfile, p.brandVersion);
-  if (tls) a.push(`--fingerprint-tls-profile=${tls}`);
-  // Android = mobile persona: give it a phone viewport (a later extraArgs --window-size wins).
-  if (p.platform === "android" && !p.extraArgs?.some((x) => x.startsWith("--window-size")))
-    a.push("--window-size=412,915");
-  if (p.gpuVendor) a.push(`--fingerprint-gpu-vendor=${p.gpuVendor}`);
-  if (p.gpuRenderer) a.push(`--fingerprint-gpu-renderer=${p.gpuRenderer}`);
-  if (p.hardwareConcurrency != null)
-    a.push(`--fingerprint-hardware-concurrency=${p.hardwareConcurrency}`);
-  if (p.timezone) a.push(`--timezone=${p.timezone}`);
-  if (p.acceptLanguage) a.push(`--accept-lang=${p.acceptLanguage}`);
-  if (p.location) a.push(`--fingerprint-location=${p.location}`);
-  if (p.webrtcIp) a.push(`--webrtc-ip=${p.webrtcIp}`);
-  if (p.storageQuota != null) a.push(`--fingerprint-storage-quota=${p.storageQuota}`);
-  // "Use real GPU": report the host's actual backend (most coherent when the profile/persona GPU
-  // can't match the host's real render). Overrides any gpuVendor/gpuRenderer spoof.
-  if (p.disableGpuFingerprint) a.push("--disable-gpu-fingerprint");
-  // Farbling noise is on by default; turn it off for surfaces that read as untampered to strict ML.
-  if (p.fingerprintNoise === false) a.push("--disable-fingerprint-noise");
-  // Canvas bridge: forward canvas/WebGL to a remote real-GPU host for coherent pixel readback.
-  if (p.canvasBridgeUrl) a.push(`--canvas-bridge-url=${p.canvasBridgeUrl}`);
-  if (p.canvasBridgeAuth) a.push(`--canvas-bridge-auth=${p.canvasBridgeAuth}`);
-  // Captured fingerprint profile (clearcote-profiles): gzip+base64-encode the JSON exactly as the
-  // SDK does, so its fields override the seed-derived persona. Missing/unreadable -> fall back to seed.
-  if (p.fingerprintProfile) {
-    const fpPath = path.isAbsolute(p.fingerprintProfile)
-      ? p.fingerprintProfile
-      : path.join(FINGERPRINTS_DIR, p.fingerprintProfile);
-    try {
-      const raw = fs.readFileSync(fpPath);
-      a.push(`--fingerprint-profile=${zlib.gzipSync(raw, { level: 9 }).toString("base64")}`);
-    } catch {
-      /* missing profile file — launch with just the seed */
-    }
+/** The host OS as the persona platform default, so an unset platform stays coherent with the
+ *  binary actually running (a Windows build claiming linux is an immediate contradiction). */
+function hostPlatform(): "windows" | "linux" | "macos" {
+  if (process.platform === "linux") return "linux";
+  if (process.platform === "darwin") return "macos";
+  return "windows";
+}
+
+/** Best-effort: recover the donor machine's navigator.languages from a captured profile, so an
+ *  imported identity keeps its own language order instead of falling back to en-US,en. */
+function profileAcceptLanguage(ref: string): string | undefined {
+  try {
+    const obj = JSON.parse(fs.readFileSync(fingerprintPath(ref), "utf8")) as Record<string, any>;
+    const langs = obj?.navigator?.languages;
+    if (Array.isArray(langs) && langs.length) return langs.map(String).join(",");
+  } catch {
+    /* unreadable / not a profile — fall through to the default */
   }
-  // proxy is handled in launch() (it may need a local auth-injecting relay)
+  return undefined;
+}
+
+/**
+ * The real launch command line. The fingerprint switches come from the shared builder
+ * (electron/fpargs.ts) so this path and the renderer's preview can never drift; only the bits that
+ * genuinely differ live here — reading + gzipping the captured profile, the resolved user-data-dir,
+ * and raw extraArgs. Proxy is added in launch() (it may need a local auth-injecting relay).
+ */
+export function buildArgs(p: Profile, userDataDir: string): string[] {
+  const a = fingerprintArgs(p as FpInput, {
+    hostPlatform: hostPlatform(),
+    profileAcceptLanguage: p.fingerprintProfile ? profileAcceptLanguage(p.fingerprintProfile) : undefined,
+    // gzip+base64 exactly as the SDK does — it keeps a ~40 KB capture inside Chromium's
+    // command-line length limit, and the engine gunzips + parses it.
+    encodeProfile: (ref) => {
+      try {
+        return zlib.gzipSync(fs.readFileSync(fingerprintPath(ref)), { level: 9 }).toString("base64");
+      } catch {
+        return null; // missing/unreadable profile — launch with just the seed
+      }
+    },
+  });
   a.push(`--user-data-dir=${userDataDir}`);
   if (p.extraArgs?.length) a.push(...p.extraArgs);
   return a;

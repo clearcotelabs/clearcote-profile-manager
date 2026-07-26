@@ -3,7 +3,7 @@
 // across licensed (Pro) and unlicensed (free) callers.
 
 import { describe, it, expect, vi, afterEach } from "vitest";
-import { fetchCatalog, listVersions, resolveVersion, type Catalog } from "../electron/catalog";
+import { fetchCatalog, fetchProRevisions, listVersions, resolveVersion, type Catalog } from "../electron/catalog";
 
 // A catalog with both platforms present so the test passes on Windows or Linux runners.
 const CAT: Catalog = {
@@ -78,6 +78,73 @@ describe("resolveVersion — errors + platform routing", () => {
     const r = resolveVersion(CAT, "149", false);
     expect(["chrome", "chrome.exe"]).toContain(r.platform.binary);
     expect(r.platform.url).toBeTruthy();
+  });
+});
+
+// The public /versions catalog carries ONE entry per major with no revision, while the PRO
+// download route publishes several rebuilds behind the same version (verified live: r10, r9, r3).
+// So a revision pin has to be split off, matched against the plain version, and carried through to
+// /download/pro?version= as a SELECTOR — otherwise "150.0.7871.114-r9" either fails to resolve or
+// silently downgrades to whatever the current pin happens to be.
+describe("resolveVersion — PRO revision pinning", () => {
+  it("version-qualified pin resolves and carries the revision in the selector", () => {
+    const r = resolveVersion(CAT, "150.0.7871.114-r9", true);
+    expect(r.version).toBe("150.0.7871.114");
+    expect(r.revision).toBe("r9");
+    expect(r.selector).toBe("150.0.7871.114-r9");
+  });
+  it("a bare revision pins the newest PRO build at that rebuild", () => {
+    const r = resolveVersion(CAT, "r3", true);
+    expect(r.tier).toBe("pro");
+    expect(r.selector).toBe("150.0.7871.114-r3");
+  });
+  it("the cache tag is revision-distinct, so two revisions never share an extracted tree", () => {
+    expect(resolveVersion(CAT, "150.0.7871.114-r9", true).tag).toBe("pro-150.0.7871.114-r9");
+    expect(resolveVersion(CAT, "150.0.7871.114-r3", true).tag).toBe("pro-150.0.7871.114-r3");
+    expect(resolveVersion(CAT, "150", true).tag).toBe("pro-150.0.7871.114");
+  });
+  it("a major + revision works too", () =>
+    expect(resolveVersion(CAT, "150-r10", true).selector).toBe("150.0.7871.114-r10"));
+  it("an unlicensed caller is still blocked (revisions are PRO-only)", () =>
+    expect(() => resolveVersion(CAT, "150.0.7871.114-r9", false)).toThrow(/PRO build/i));
+  it("pinning a revision on a FREE build is refused, not silently ignored", () =>
+    expect(() => resolveVersion(CAT, "149.0.7827.114-r3", true)).toThrow(/only for PRO rebuilds/i));
+  it("selector falls back to the plain version when nothing is pinned", () => {
+    const r = resolveVersion(CAT, "150", true);
+    expect(r.selector).toBe("150.0.7871.114");
+    expect(r.revision).toBeUndefined();
+  });
+  it("a plain version is unaffected by the revision parsing", () => {
+    expect(resolveVersion(CAT, "150.0.7871.114", true).selector).toBe("150.0.7871.114");
+    expect(resolveVersion(CAT, "latest", true).revision).toBeUndefined();
+  });
+});
+
+describe("fetchProRevisions", () => {
+  const realFetch = globalThis.fetch;
+  afterEach(() => {
+    globalThis.fetch = realFetch;
+  });
+  it("reads the selector list off the route's 404 body (its only enumeration channel)", async () => {
+    const available = ["150.0.7871.114-r10", "150.0.7871.114-r9", "150.0.7871.114-r3"];
+    globalThis.fetch = vi.fn(
+      async () => new Response(JSON.stringify({ error: "no", code: "PRO_VERSION_NOT_FOUND", available }), { status: 404 }),
+    ) as unknown as typeof fetch;
+    expect(await fetchProRevisions("cc_lic_x", "https://example.test")).toEqual(available);
+  });
+  it("no license key → no request at all (revisions are PRO-only)", async () => {
+    const spy = vi.fn();
+    globalThis.fetch = spy as unknown as typeof fetch;
+    expect(await fetchProRevisions(undefined, "https://example.test")).toEqual([]);
+    expect(spy).not.toHaveBeenCalled();
+  });
+  it("is best-effort — a network failure or junk body degrades to []", async () => {
+    globalThis.fetch = vi.fn(async () => {
+      throw new Error("offline");
+    }) as unknown as typeof fetch;
+    expect(await fetchProRevisions("cc_lic_x")).toEqual([]);
+    globalThis.fetch = vi.fn(async () => new Response("{}", { status: 404 })) as unknown as typeof fetch;
+    expect(await fetchProRevisions("cc_lic_x")).toEqual([]);
   });
 });
 

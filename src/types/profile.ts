@@ -2,6 +2,15 @@
 // One profile is persisted as profiles/<id>.json; its browser storage lives in
 // profiles/<id>/userdata/. See PLAN.md and profiles/example.profile.json.
 
+import { fingerprintArgs, resolveTls, type FpInput } from "../../electron/fpargs";
+
+export {
+  screenGuardWarning,
+  screenWarningFromLabel,
+  MIN_PROFILE_SCREEN_WIDTH,
+  MIN_PROFILE_SCREEN_HEIGHT,
+} from "../../electron/fpargs";
+
 export type Platform = "windows" | "linux" | "macos" | "android";
 export type Brand = "Chrome" | "Edge" | "Opera" | "Vivaldi";
 /** TLS network persona — how the ClientHello follows the persona's claimed Chrome version.
@@ -24,8 +33,13 @@ export interface Profile {
   /** --fingerprint seed (int or string). Drives the coherent persona. Same seed ⇒ same identity. */
   fingerprint: string;
   /** Browser build to launch: "latest" (default — newest of your tier: Pro→150, free→149), a
-   *  major ("150" / "149"), or an exact version. PRO builds need a license key. Resolved against
-   *  the public /api/v1/versions catalog; an explicit binary in Settings always wins. */
+   *  major ("150" / "149"), an exact version, or a REVISION-pinned PRO rebuild
+   *  ("150.0.7871.114-r10", or just "r10" for the newest PRO build at that revision).
+   *  PRO builds need a license key. Resolved against the public /api/v1/versions catalog; an
+   *  explicit binary in Settings always wins.
+   *
+   *  Pin a revision when you need reproducible runs: "latest" and a bare major both track the
+   *  current PRO pin, which moves when a rebuild ships. */
   browserVersion?: string;
   /** --fingerprint-platform. "android" is a best-effort MOBILE persona (mobile UA/UA-CH, touch,
    *  mobile viewport, portrait, no PDF plugin, Mali/Adreno GPU); the launcher also sets a phone
@@ -47,7 +61,35 @@ export interface Profile {
   gpuRenderer?: string;
   /** --fingerprint-hardware-concurrency */
   hardwareConcurrency?: number;
-  /** --timezone (IANA, e.g. "America/New_York"). */
+
+  // ---- native metadata overrides (flag > persona > real; read directly by the getters, with no
+  // --fingerprint persona machinery, so they are safe to spoof individually) ----
+  /** --fingerprint-device-memory: navigator.deviceMemory in GB (spec-clamps to 8). */
+  deviceMemory?: number;
+  /** --fingerprint-screen-width. Spoofing screen dimensions is a reliable block trigger on strict
+   *  anti-bots (a faked screen can't be reconciled with the real render surface) — opt-in only,
+   *  and deliberately NOT part of lightStealth. */
+  screenWidth?: number;
+  /** --fingerprint-screen-height (see the caveat on screenWidth). */
+  screenHeight?: number;
+  /** --fingerprint-avail-width (see the caveat on screenWidth). */
+  availWidth?: number;
+  /** --fingerprint-avail-height (see the caveat on screenWidth). */
+  availHeight?: number;
+  /** --fingerprint-color-depth (e.g. 24). */
+  colorDepth?: number;
+  /** --fingerprint-device-pixel-ratio (e.g. 1, 1.25, 1.5). */
+  devicePixelRatio?: number;
+  /** --fingerprint-max-touch-points (0 on a mouse-only desktop — 0 is a real value, not "unset"). */
+  maxTouchPoints?: number;
+  /** Light-stealth preset: a coherent, seed-derived bundle of the metadata axes that SURVIVE strict
+   *  anti-bot checks, applied via the native override switches only — and emitting NO --fingerprint,
+   *  so the persona machinery / farbling never engages. Rendering, TLS and the real Chrome version
+   *  stay untouched. Screen dimensions are deliberately not spoofed. An explicit field wins. */
+  lightStealth?: boolean;
+
+  /** --timezone (IANA, e.g. "America/New_York"). Unset derives one coherent with the locale rather
+   *  than leaking the host's (often UTC). */
   timezone?: string;
   /** --accept-lang (e.g. "en-US,en"): navigator.languages + Accept-Language header. */
   acceptLanguage?: string;
@@ -55,6 +97,11 @@ export interface Profile {
   location?: string;
   /** --webrtc-ip: WebRTC reports this IP (fabricated srflx; no STUN leak). */
   webrtcIp?: string;
+  /** WebRTC host-candidate mDNS concealment. Real Chrome hides local host candidates behind an
+   *  `<uuid>.local` name, and so does Clearcote by default — so only "off" emits anything
+   *  (Chromium's own kWebRtcHideLocalIpsWithMdns flag). "off" re-exposes the LAN IP to every page;
+   *  set it only when you need routable raw host candidates. */
+  webrtcMdns?: "on" | "off";
   /** When true (and a proxy is set), resolve the proxy exit IP and auto-fill any unset
    *  timezone / acceptLanguage / location / webrtcIp via the SDK's resolveGeo(). */
   geoip?: boolean;
@@ -77,6 +124,17 @@ export interface Profile {
   canvasBridgeUrl?: string;
   /** --canvas-bridge-auth: bridge HTTP Basic credentials, "user:secret". */
   canvasBridgeAuth?: string;
+  /** --canvas-bridge-mode: per-origin policy. Every bridged readback is a network round-trip on
+   *  the renderer thread (itself a timing signal), so restrict bridging to the origins that
+   *  actually score canvas coherence. */
+  canvasBridgeMode?: "off" | "all" | "allow" | "deny";
+  /** --canvas-bridge-allow: eTLD+1 list bridged when mode="allow". */
+  canvasBridgeAllow?: string[];
+  /** --canvas-bridge-deny: eTLD+1 list NOT bridged when mode="deny". */
+  canvasBridgeDeny?: string[];
+  /** --canvas-bridge-fallback: cold cache-miss behaviour — "block" (default) stalls for the
+   *  bridge, "local" never stalls and renders locally. */
+  canvasBridgeFallback?: "block" | "local";
 
   // ---- captured fingerprint (clearcote-profiles) ----
   /** Filename (in the app's fingerprints dir) or absolute path of a captured real-machine
@@ -110,6 +168,12 @@ export interface FingerprintMeta {
   cores?: number;
   memory?: number;
   screen?: string;
+  screenWidth?: number;
+  screenHeight?: number;
+  /** Set when the captured display is too small to contain a real browser window — the window
+   *  would be larger than the screen it claims to sit on, which no real machine can produce.
+   *  Computed by screenGuardWarning() (re-exported above). */
+  screenWarning?: string;
   source?: "file" | "library";
 }
 
@@ -144,51 +208,29 @@ export function redactProxyString(p: unknown): string {
 }
 
 /** Resolve `tlsProfile` to the concrete `--fingerprint-tls-profile` value the ENGINE accepts,
- *  or null (emit no switch → native TLS). Mirrors the SDK's resolve_tls_profile: the engine only
- *  understands `chrome-<major>` (and treats "match-persona"/"auto"/"native"/"off" as NO override),
- *  so "match-persona" (the default) must be turned into `chrome-<brandVersion-major>` here — else
- *  the switch is a silent no-op. Pure.
- *   - "native" / "off"            → null (build's native TLS)
- *   - "chrome-<major>" / a number → pinned to that major
- *   - "match-persona"/"auto"/unset→ follow brandVersion's major, or null if no brandVersion */
+ *  or null (emit no switch → native TLS). Thin wrapper over the shared resolver so callers can
+ *  keep passing a whole Profile. */
 export function resolveTlsProfile(p: Profile): string | null {
-  const v = (p.tlsProfile ?? "").trim().toLowerCase();
-  if (v === "native" || v === "off") return null;
-  if (v.startsWith("chrome-") && /^\d+$/.test(v.slice(7))) return v;
-  if (/^\d+$/.test(v)) return `chrome-${v}`;
-  // "" | "match-persona" | "auto" → follow the persona's claimed Chrome major (from brandVersion)
-  const head = (p.brandVersion ?? "").trim().split(".")[0];
-  return /^\d+$/.test(head) ? `chrome-${head}` : null;
+  return resolveTls(p.tlsProfile, p.brandVersion);
 }
 
-/** Build the chrome.exe argument list for a profile. (Reference for the launcher; the
- *  main process resolves geoip + the user-data-dir before calling this. The captured
- *  fingerprint profile is shown as a placeholder here — the launcher gzip+base64-encodes
- *  the actual file contents.) */
+/**
+ * The chrome.exe command line a profile WOULD produce, for display in the UI.
+ *
+ * The fingerprint switches come from the same shared builder the real launcher uses
+ * (electron/fpargs.ts), so what the user sees here is what actually gets spawned. Only the
+ * deliberately-different bits are local: secrets are redacted, and the captured fingerprint
+ * profile shows a human-readable placeholder instead of ~50 KB of gzip+base64.
+ *
+ * Two things the preview cannot know and the launcher can: the real host OS (used to default
+ * `--fingerprint-platform`) and the donor languages inside a captured profile. Both are cosmetic
+ * here; the launcher supplies the real values.
+ */
 export function profileToArgs(p: Profile): string[] {
-  const args: string[] = [`--fingerprint=${p.fingerprint}`];
-  if (p.platform) args.push(`--fingerprint-platform=${p.platform}`);
-  if (p.platformVersion) args.push(`--fingerprint-platform-version=${p.platformVersion}`);
-  if (p.brand) args.push(`--fingerprint-brand=${p.brand}`);
-  if (p.brandVersion) args.push(`--fingerprint-brand-version=${p.brandVersion}`);
-  const tls = resolveTlsProfile(p); // "match-persona" -> chrome-<brandVersion major> (engine needs a concrete value)
-  if (tls) args.push(`--fingerprint-tls-profile=${tls}`);
-  if (p.platform === "android") args.push("--window-size=412,915"); // mobile viewport (a later extraArgs --window-size overrides)
-  if (p.gpuVendor) args.push(`--fingerprint-gpu-vendor=${p.gpuVendor}`);
-  if (p.gpuRenderer) args.push(`--fingerprint-gpu-renderer=${p.gpuRenderer}`);
-  if (p.hardwareConcurrency != null)
-    args.push(`--fingerprint-hardware-concurrency=${p.hardwareConcurrency}`);
-  if (p.timezone) args.push(`--timezone=${p.timezone}`);
-  if (p.acceptLanguage) args.push(`--accept-lang=${p.acceptLanguage}`);
-  if (p.location) args.push(`--fingerprint-location=${p.location}`);
-  if (p.webrtcIp) args.push(`--webrtc-ip=${p.webrtcIp}`);
-  if (p.storageQuota != null) args.push(`--fingerprint-storage-quota=${p.storageQuota}`);
-  if (p.disableGpuFingerprint) args.push("--disable-gpu-fingerprint");
-  if (p.fingerprintNoise === false) args.push("--disable-fingerprint-noise");
-  if (p.canvasBridgeUrl) args.push(`--canvas-bridge-url=${p.canvasBridgeUrl}`);
-  if (p.canvasBridgeAuth) args.push("--canvas-bridge-auth=********"); // secret redacted in preview
-  if (p.fingerprintProfile)
-    args.push(`--fingerprint-profile=<gzip+base64 of ${p.fingerprintProfileMeta?.label || p.fingerprintProfile}>`);
+  const args = fingerprintArgs(p as FpInput, {
+    redactSecrets: true,
+    encodeProfile: (ref) => `<gzip+base64 of ${p.fingerprintProfileMeta?.label || ref}>`,
+  });
   const proxy = proxyString(p.proxy);
   if (proxy) {
     try {

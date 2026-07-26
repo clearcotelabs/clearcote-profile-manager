@@ -5,8 +5,10 @@ import * as profiles from "./profiles";
 import * as launcher from "./launcher";
 import * as geo from "./geo";
 import { readSettings, writeSettings, ensureDirs, FINGERPRINTS_DIR } from "./store";
-import { checkLicense } from "./license";
-import { fetchCatalog, listVersions } from "./catalog";
+import { checkLicense, resolveLicenseKey } from "./license";
+import { fetchCatalog, listVersions, fetchProRevisions } from "./catalog";
+import { screenWarningFromLabel } from "./fpargs";
+import { summarizeFingerprint } from "./fpmeta";
 import { listCached, removeCached } from "./cache";
 import { redactProxyString } from "./proxy";
 import type { Profile, Settings, FingerprintMeta } from "./types";
@@ -14,26 +16,6 @@ import type { Profile, Settings, FingerprintMeta } from "./types";
 const slug = (s: string) => s.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-+|-+$/g, "").slice(0, 40);
 
 const CLEARCOTE_PROFILES_REPO = "clearcotelabs/clearcote-profiles";
-
-/** Validate a parsed JSON looks like a clearcote-profile and summarize it for display. */
-function summarizeFingerprint(obj: unknown): { ok: boolean; meta?: FingerprintMeta } {
-  if (!obj || typeof obj !== "object") return { ok: false };
-  const o = obj as Record<string, any>;
-  const looksLikeProfile = !!(o.webgl || o.screen || o.hardware_concurrency != null);
-  if (!looksLikeProfile) return { ok: false };
-  const debug = o.webgl?.webgl1?.debug || {};
-  const sc = o.screen || {};
-  return {
-    ok: true,
-    meta: {
-      label: o.meta?.id || undefined,
-      renderer: debug.UNMASKED_RENDERER_WEBGL || undefined,
-      cores: typeof o.hardware_concurrency === "number" ? o.hardware_concurrency : undefined,
-      memory: typeof o.device_memory === "number" ? o.device_memory : undefined,
-      screen: sc.width && sc.height ? `${sc.width}x${sc.height}` : undefined,
-    },
-  };
-}
 
 /** Persist a captured-profile JSON into the shared fingerprints dir; returns its filename + meta. */
 function storeFingerprint(name: string, json: string, source: "file" | "library") {
@@ -94,6 +76,14 @@ function registerIpc(): void {
     } catch {
       return [];
     }
+  });
+
+  // PRO rebuild revisions ("150.0.7871.114-r10", …), newest first, for the version dropdown.
+  // "latest" and a bare major track the CURRENT pin, which moves when a rebuild ships — pinning a
+  // revision is what makes a run reproducible. Best-effort: [] when unlicensed or unreachable.
+  ipcMain.handle("versions:revisions", async () => {
+    const s = readSettings();
+    return fetchProRevisions(resolveLicenseKey(s.licenseKey), s.licenseApiBase);
   });
 
   // Downloaded-browser cache: view what's on disk + remove a build to force a re-download.
@@ -205,6 +195,9 @@ function registerIpc(): void {
             gpuFamily: e.gpu_family as string | undefined,
             renderer: e.renderer as string | undefined,
             screen: e.screen as string | undefined,
+            // The index's screen is "WxH" — check it so the picker can warn about a capture too
+            // small to contain a real window BEFORE the user downloads and adopts it.
+            screenWarning: screenWarningFromLabel(e.screen as string | undefined) ?? undefined,
           }));
           return { ok: true, profiles: list };
         }

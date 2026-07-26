@@ -61,14 +61,17 @@ It mirrors the [clearcote npm SDK](https://www.npmjs.com/package/clearcote) to *
 
 Beyond the basics, each profile exposes Clearcote's full identity surface (all under **Advanced stealth** in the editor, reflected live in the launch-command preview with secrets redacted):
 
-- **Captured fingerprint** — adopt a *real machine's* GPU, screen, fonts, voices & WebGL via `--fingerprint-profile`. Browse the curated [clearcote-profiles](https://github.com/clearcotelabs/clearcote-profiles) library filtered **by GPU vendor** — pick one matching your host so the imported GPU stays coherent with the actual render.
+- **Captured fingerprint** — adopt a *real machine's* GPU, screen, fonts, voices & WebGL via `--fingerprint-profile`. Browse the curated [clearcote-profiles](https://github.com/clearcotelabs/clearcote-profiles) library filtered **by GPU vendor** — pick one matching your host so the imported GPU stays coherent with the actual render. Captures taken on a display too small to contain a normal browser window are flagged on import and hidden from the picker by default: the window would end up larger than the screen it claims to sit on, which no real machine produces.
 - **Farbling noise** (on by default) — toggle off (`--disable-fingerprint-noise`) so canvas / WebGL / audio return natural, unperturbed values that read as untampered to strict detectors. Best paired with a captured profile; identity spoofs (UA / screen / GPU / persona) stay on.
 - **Use real GPU** (`--disable-gpu-fingerprint`) — report the host's actual GPU instead of a spoofed one; the most coherent option when no matching captured profile is available.
 - **Storage quota** (`--fingerprint-storage-quota`, MB) — a realistic `navigator.storage.estimate().quota`; a tiny value reads as incognito / a test machine.
 - **GPU vendor / renderer, platform & brand version, hardware concurrency** — fine-grained persona overrides.
+- **Light stealth** — spoof only a coherent, seed-derived bundle of the metadata axes that survive strict checks (cores, memory, colour depth, pixel ratio, touch points), applied through the native override switches and emitting **no** `--fingerprint`, so the persona machinery and farbling never engage. Rendering, TLS and the real Chrome version are left untouched. Screen size is deliberately not spoofed. Any field you set explicitly wins over the preset. *Not strictly better than the default* — it trades a broad persona for a much narrower surface, so test it against your target.
+- **Native metadata overrides** — `deviceMemory`, `colorDepth`, `devicePixelRatio`, `maxTouchPoints` and the screen / avail dimensions, each settable on its own. These are read directly by the getters (flag > persona > real) with no persona machinery behind them. The screen row is the risky one: a faked screen can't be reconciled with the real window and render surface, so set it only when it matches the host's actual display.
+- **WebRTC mDNS** — real Chrome hides local host candidates behind a `.local` name, and so does Clearcote by default. Switch it off only if you need routable LAN/P2P candidates — it re-exposes your private IP to every page.
 - **Mobile (Android) persona** — pick `android` in the **Platform** selector for a best-effort phone identity: mobile UA / UA-CH, touch, mobile viewport (a phone `--window-size` is set automatically), portrait orientation, no PDF plugin, Mali/Adreno GPU.
 - **TLS network persona** (`--fingerprint-tls-profile`) — keep the TLS ClientHello coherent with the persona's *claimed* Chrome version instead of always emitting the build's native TLS. `match-persona` (the default) follows the brand version; `native` keeps it stock. Chromium-core (Chrome/Edge/Brave/Opera share the ClientHello).
-- **Canvas bridge** *(experimental — `--canvas-bridge-url` + `--canvas-bridge-auth`)* — forward canvas / WebGL rendering to a remote real-GPU host so the pixel readback matches the claimed GPU, for sites that pixel-hash the canvas. Needs a bridge host and a Clearcote build with canvas-bridge support.
+- **Canvas bridge** *(experimental)* — forward canvas / WebGL rendering to a remote real-GPU host so the pixel readback matches the claimed GPU, for sites that pixel-hash the canvas. A per-origin policy (bridge everything, or an allow / deny list) and the cold-cache behaviour are both configurable: every bridged readback is a network round-trip on the renderer thread, so it's worth restricting to the origins that actually score canvas coherence. Needs a bridge host and a Clearcote build with canvas-bridge support.
 
 > **Tip:** the strongest coherence is a captured profile whose **GPU vendor matches your host** + farbling noise **off**.
 
@@ -82,13 +85,18 @@ no contact with the license backend).
 With a key set, each launch:
 
 - **downloads the license-gated PRO browser** on demand (via the site's authenticated download route,
-  SHA-256-verified like the free build, cached per version), and
+  SHA-256-verified like the free build, cached per build), and
 - **checks out one floating-concurrency slot** — a background heartbeat keeps it alive and the slot is
   released when you stop the profile or close the browser.
 
 The PRO engine refuses to launch without a valid run-token, so a copied binary alone won't run. An
 explicit binary in Settings still wins over the PRO auto-download; a revoked/expired key surfaces an
 error rather than silently falling back to free.
+
+**Pinning an exact build.** With a key set, the **Browser version** dropdown also lists the published
+PRO rebuilds (e.g. `150.0.7871.114-r10`). *Latest* and a bare major both follow the current pin, which
+moves whenever a rebuild ships — so pin a revision when you need a run to stay reproducible. Each
+revision is cached separately, so switching between them doesn't re-download.
 
 ## Stack
 
@@ -107,8 +115,10 @@ npm run dist       # build a Windows installer
 | Path | What |
 |---|---|
 | `electron/` | main process — profile storage, binary resolution, browser launch, IPC |
+| `electron/fpargs.ts` | **the** profile → Chromium-switch builder, shared by the launcher and the UI preview so the command line you see is the one that runs |
 | `app/` | Next.js renderer (the UI) |
 | `src/types/` | shared data model (`Profile`) |
+| `tests/` | vitest unit suite (`npm test`) — see [tests/README.md](tests/README.md) |
 | `profiles/` | runtime profile store — JSON per profile + per-profile `userdata/`; git-ignored except the example |
 
 ## Packaging (Windows)

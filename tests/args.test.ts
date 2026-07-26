@@ -78,10 +78,15 @@ describe("profileToArgs — every setting maps to its switch", () => {
   it("canvasBridgeUrl → --canvas-bridge-url", () =>
     expect(has({ canvasBridgeUrl: "ws://h:8443/render" }, "--canvas-bridge-url=ws://h:8443/render")).toBe(true));
   it("canvasBridgeAuth → switch present, secret redacted in the preview", () => {
-    const a = profileToArgs({ ...base, canvasBridgeAuth: "user:supersecret" });
+    // Auth only means something once the bridge is enabled, so it now rides along with the url
+    // (matching the SDK). A dangling --canvas-bridge-auth with no --canvas-bridge-url was a
+    // switch combination no real launch produces.
+    const a = profileToArgs({ ...base, canvasBridgeUrl: "ws://h:8443", canvasBridgeAuth: "user:supersecret" });
     expect(a.some((s) => s.startsWith("--canvas-bridge-auth="))).toBe(true);
     expect(a.join(" ")).not.toContain("supersecret");
   });
+  it("canvasBridgeAuth WITHOUT a url emits nothing (the bridge isn't enabled)", () =>
+    expect(startsWith({ canvasBridgeAuth: "user:supersecret" }, "--canvas-bridge")).toBe(false));
 
   it("proxy → --proxy-server host:port with credentials stripped (preview)", () => {
     const a = profileToArgs({ ...base, proxy: "http://user:pass@host:8080" });
@@ -91,8 +96,20 @@ describe("profileToArgs — every setting maps to its switch", () => {
 
   it("unset optional fields emit no switch", () => {
     const a = profileToArgs(base);
-    for (const pre of ["--timezone=", "--proxy-server=", "--webrtc-ip=", "--fingerprint-platform=", "--fingerprint-profile="])
+    for (const pre of ["--proxy-server=", "--webrtc-ip=", "--fingerprint-profile=", "--fingerprint-location="])
       expect(a.some((s) => s.startsWith(pre))).toBe(false);
+  });
+
+  // Four switches are now emitted even when the profile sets nothing, because their ABSENCE is
+  // itself the tell: Chromium would otherwise fall back to the host's OS/locale/timezone and leak
+  // it (e.g. UTC on a VM, or en-GB under an en-US persona). Covered in depth in fpargs.test.ts.
+  it("locale/persona defaults are always present, not left to the host", () => {
+    const a = profileToArgs(base);
+    expect(a).toContain("--accept-lang=en-US,en");
+    expect(a).toContain("--lang=en-US");
+    expect(a).toContain("--timezone=America/New_York");
+    expect(a).toContain("--fingerprint-brand=chrome");
+    expect(a.some((s) => s.startsWith("--fingerprint-platform="))).toBe(true);
   });
 
   it("a fully-populated profile emits all switches at once", () => {

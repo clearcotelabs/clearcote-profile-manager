@@ -10,8 +10,12 @@ export interface Profile {
   group?: string;
   fingerprint: string;
   /** Browser build to launch: "latest" (default — newest of your tier: Pro→150, free→149),
-   *  a major ("150" / "149"), or an exact version ("150.0.7871.114"). PRO builds need a license
-   *  key; resolved against the public /api/v1/versions catalog. Explicit binaries in Settings win. */
+   *  a major ("150" / "149"), an exact version ("150.0.7871.114"), or a REVISION-pinned PRO build
+   *  ("150.0.7871.114-r10", or just "r10"). PRO builds need a license key; resolved against the
+   *  public /api/v1/versions catalog. Explicit binaries in Settings win.
+   *
+   *  Pin a revision for reproducible runs: "latest" and a bare major both follow the current PRO
+   *  pin, which moves under you when a rebuild ships. */
   browserVersion?: string;
   platform?: string;
   platformVersion?: string;
@@ -24,10 +28,41 @@ export interface Profile {
   gpuVendor?: string;
   gpuRenderer?: string;
   hardwareConcurrency?: number;
+
+  // ---- native metadata overrides (flag > persona > real; safe to spoof individually) ----
+  /** --fingerprint-device-memory: navigator.deviceMemory in GB (spec-clamps to 8). */
+  deviceMemory?: number;
+  /** --fingerprint-screen-width. NOTE: spoofing screen dimensions is a reliable block trigger on
+   *  strict anti-bots (a faked screen can't be reconciled with the real render surface), so it is
+   *  opt-in and NOT part of lightStealth. Best when the host's real display matches. */
+  screenWidth?: number;
+  /** --fingerprint-screen-height (see the caveat on screenWidth). */
+  screenHeight?: number;
+  /** --fingerprint-avail-width (see the caveat on screenWidth). */
+  availWidth?: number;
+  /** --fingerprint-avail-height (see the caveat on screenWidth). */
+  availHeight?: number;
+  /** --fingerprint-color-depth (e.g. 24). */
+  colorDepth?: number;
+  /** --fingerprint-device-pixel-ratio (e.g. 1, 1.25, 1.5). */
+  devicePixelRatio?: number;
+  /** --fingerprint-max-touch-points (0 on a mouse-only desktop; 0 is a real value, not "unset"). */
+  maxTouchPoints?: number;
+  /** Light-stealth preset: spoof a coherent, seed-derived bundle of the metadata axes that survive
+   *  strict anti-bot checks (hardwareConcurrency, deviceMemory, colorDepth, devicePixelRatio,
+   *  maxTouchPoints) via the NATIVE override switches only — and deliberately emit NO --fingerprint,
+   *  so the persona machinery / farbling never engages. Rendering, TLS and the real Chrome version
+   *  are untouched. An explicit field wins over the preset. */
+  lightStealth?: boolean;
+
   timezone?: string;
   acceptLanguage?: string;
   location?: string;
   webrtcIp?: string;
+  /** WebRTC host-candidate mDNS concealment. Real Chrome hides local host candidates behind an
+   *  `<uuid>.local` name; that is the default here too, so only "off" emits anything (Chromium's
+   *  own kWebRtcHideLocalIpsWithMdns feature flag). "off" re-exposes the LAN IP to every page. */
+  webrtcMdns?: "on" | "off";
   geoip?: boolean;
   /** --disable-gpu-fingerprint: report the host's real GPU instead of a spoofed one. */
   disableGpuFingerprint?: boolean;
@@ -39,6 +74,17 @@ export interface Profile {
   canvasBridgeUrl?: string;
   /** --canvas-bridge-auth: bridge HTTP Basic credentials, "user:secret". */
   canvasBridgeAuth?: string;
+  /** --canvas-bridge-mode: per-origin policy. Restrict bridging to the origins where canvas
+   *  coherence is actually scored — every bridged readback is a network round-trip on the
+   *  renderer thread, which is itself a timing signal. */
+  canvasBridgeMode?: "off" | "all" | "allow" | "deny";
+  /** --canvas-bridge-allow: eTLD+1 list bridged when mode="allow". */
+  canvasBridgeAllow?: string[];
+  /** --canvas-bridge-deny: eTLD+1 list NOT bridged when mode="deny". */
+  canvasBridgeDeny?: string[];
+  /** --canvas-bridge-fallback: cold cache-miss behaviour. "block" (default) stalls for the
+   *  bridge; "local" never stalls and renders locally instead. */
+  canvasBridgeFallback?: "block" | "local";
   /** Filename (in the fingerprints dir) or absolute path of a captured clearcote-profile to load
    *  via --fingerprint-profile. When set, its fields override the seed-derived persona. */
   fingerprintProfile?: string;
@@ -61,6 +107,12 @@ export interface FingerprintMeta {
   cores?: number;
   memory?: number;
   screen?: string;
+  screenWidth?: number;
+  screenHeight?: number;
+  /** Set when the captured display is too small to contain a real browser window — the window
+   *  would be larger than the screen it claims to sit on, an impossible geometry. See
+   *  screenGuardWarning() in electron/fpargs.ts. */
+  screenWarning?: string;
   source?: "file" | "library";
 }
 
@@ -74,6 +126,9 @@ export interface FpImportResult {
 export interface LibraryProfile {
   name: string;
   downloadUrl: string;
+  /** Set when the indexed screen size is below the guard floor — lets the picker warn (or filter)
+   *  BEFORE downloading a capture that would produce impossible window geometry. */
+  screenWarning?: string;
   /** From the curated clearcote-profiles index.json (when available) — pick one whose GPU vendor
    *  matches your host so the imported GPU stays coherent with the host's real render. */
   gpuVendor?: string;
