@@ -118,6 +118,17 @@ export interface Profile {
    *  --disable-fingerprint-noise — natural, unperturbed surfaces that read as untampered to strict
    *  ML detectors (pair with a captured profile). Identity spoofs (UA/screen/GPU/persona) stay on. */
   fingerprintNoise?: boolean;
+  /** `false` → `--disable-gpu-string-spoof`. Reports the machine's REAL WebGL
+   *  UNMASKED_VENDOR/RENDERER and changes nothing else: the limit table, extension list,
+   *  precision formats and readPixels farble all stay on the persona. The GPU-string half of
+   *  `disableGpuFingerprint`, for hosts that rasterise in software. `navigator.gpu` still follows
+   *  the wide flag, so WebGPU keeps describing the persona. Inert before 150 r12. */
+  gpuStringSpoof?: boolean;
+  /** `false` → `--disable-canvas-noise`. Unfarbles 2D canvas readback (`getImageData`, and
+   *  `toDataURL` of a 2D canvas) ONLY — WebGL `readPixels` and every other farbled surface stay
+   *  noised, unlike `fingerprintNoise: false` which is the process-wide off switch. Inert before
+   *  150 r12. */
+  canvasNoise?: boolean;
   /** --fingerprint-storage-quota in MEGABYTES (navigator.storage.estimate().quota). A tiny value
    *  reads as incognito / a test machine; set a realistic on-disk value (e.g. 250000 ≈ 244 GB). */
   storageQuota?: number;

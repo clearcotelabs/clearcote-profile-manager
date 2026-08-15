@@ -68,6 +68,13 @@ export interface Profile {
   disableGpuFingerprint?: boolean;
   /** Per-eTLD+1 farbling noise; default on. false → --disable-fingerprint-noise. */
   fingerprintNoise?: boolean;
+  /** false → --disable-gpu-string-spoof: report the REAL WebGL vendor/renderer and change nothing
+   *  else. The GPU-string half of disableGpuFingerprint, for a host that rasterises in software.
+   *  Note navigator.gpu still follows the wide flag. Inert before 150 r12. */
+  gpuStringSpoof?: boolean;
+  /** false → --disable-canvas-noise: unfarble 2D canvas readback (getImageData, toDataURL) only,
+   *  leaving WebGL readPixels and every other surface noised. Inert before 150 r12. */
+  canvasNoise?: boolean;
   /** --fingerprint-storage-quota in MB (navigator.storage.estimate().quota). */
   storageQuota?: number;
   /** --canvas-bridge-url: forward canvas/WebGL to a remote real-GPU host (ws://host:port/path). */

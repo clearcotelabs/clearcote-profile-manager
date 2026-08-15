@@ -256,6 +256,8 @@ export interface FpInput {
   webrtcMdns?: "on" | "off";
   disableGpuFingerprint?: boolean;
   fingerprintNoise?: boolean;
+  gpuStringSpoof?: boolean;
+  canvasNoise?: boolean;
   storageQuota?: number;
   canvasBridgeUrl?: string;
   canvasBridgeAuth?: string;
@@ -367,6 +369,13 @@ export function fingerprintArgs(input: FpInput, opts: FpArgsOptions = {}): strin
 
   if (p.disableGpuFingerprint) args.push("--disable-gpu-fingerprint");
   if (p.fingerprintNoise === false) args.push("--disable-fingerprint-noise");
+  // The two NARROW halves of the switches above, for when the broad one costs too much coherence.
+  // Both are `false`-triggered like fingerprintNoise, and both are inert before 150 r12.
+  //   gpuStringSpoof:false  reports the real WebGL vendor/renderer and nothing else — the GPU-string
+  //     half of --disable-gpu-fingerprint, for a host that rasterises in software.
+  //   canvasNoise:false     unfarbles 2D canvas readback only, leaving WebGL and audio noised.
+  if (p.gpuStringSpoof === false) args.push("--disable-gpu-string-spoof");
+  if (p.canvasNoise === false) args.push("--disable-canvas-noise");
 
   if (p.fingerprintProfile && opts.encodeProfile) {
     const encoded = opts.encodeProfile(p.fingerprintProfile);

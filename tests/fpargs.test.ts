@@ -346,3 +346,39 @@ describe("portable profile", () => {
   it("redaction does not hide the plain --portable-profile toggle", () =>
     expect(args({ portableProfile: true }, { redactSecrets: true })).toContain("--portable-profile"));
 });
+
+// ---------------------------------------------------------------------------
+// The NARROW halves of the two broad rendering switches. Both are `false`-triggered, so the
+// asymmetry that catches people out is that leaving them undefined must emit nothing at all.
+// ---------------------------------------------------------------------------
+describe("narrow rendering switches", () => {
+  const args = (p: Partial<FpInput>) => fingerprintArgs({ fingerprint: "seed", ...p } as FpInput);
+
+  it("emit nothing when unset", () => {
+    const out = args({});
+    expect(out).not.toContain("--disable-gpu-string-spoof");
+    expect(out).not.toContain("--disable-canvas-noise");
+  });
+
+  it("emit nothing when explicitly true — true is the default, not a request", () => {
+    const out = args({ gpuStringSpoof: true, canvasNoise: true });
+    expect(out).not.toContain("--disable-gpu-string-spoof");
+    expect(out).not.toContain("--disable-canvas-noise");
+  });
+
+  it("gpuStringSpoof:false → --disable-gpu-string-spoof", () =>
+    expect(args({ gpuStringSpoof: false })).toContain("--disable-gpu-string-spoof"));
+
+  it("canvasNoise:false → --disable-canvas-noise", () =>
+    expect(args({ canvasNoise: false })).toContain("--disable-canvas-noise"));
+
+  it("are independent of the broad switches", () => {
+    // The narrow ones must not imply, or be implied by, the wide ones.
+    const narrow = args({ gpuStringSpoof: false, canvasNoise: false });
+    expect(narrow).not.toContain("--disable-gpu-fingerprint");
+    expect(narrow).not.toContain("--disable-fingerprint-noise");
+    const wide = args({ disableGpuFingerprint: true, fingerprintNoise: false });
+    expect(wide).not.toContain("--disable-gpu-string-spoof");
+    expect(wide).not.toContain("--disable-canvas-noise");
+  });
+});
