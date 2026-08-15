@@ -259,3 +259,24 @@ describe("shouldAutoEnableGeoip", () => {
     expect(coherenceIssues(legacy, { major: 151 }).map((i) => i.id)).toContain("proxy-without-geolocation");
   });
 });
+
+describe("UDP relaying only applies to SOCKS5", () => {
+  it("fires when requested with an http proxy", () =>
+    expect(ids({ ...CLEAN, socks5Udp: true, proxy: "http://u:p@h:8080" })).toContain(
+      "udp-relay-without-socks5",
+    ));
+  it("fires when requested with no proxy at all", () =>
+    expect(ids({ ...CLEAN, socks5Udp: true })).toContain("udp-relay-without-socks5"));
+  // SOCKS4 has no UDP ASSOCIATE command, so it is as much a no-op as an http proxy.
+  it("flags UDP relaying on a SOCKS4 proxy", () =>
+    expect(ids({ ...CLEAN, socks5Udp: true, proxy: "socks4://h:1080" })).toContain(
+      "udp-relay-without-socks5"));
+  it("is silent with a socks5 proxy — the case it is for", () =>
+    expect(ids({ ...CLEAN, socks5Udp: true, proxy: "socks5://u:p@h:1080", geoip: true })).not.toContain(
+      "udp-relay-without-socks5",
+    ));
+  it("is silent when the option is off", () =>
+    expect(ids({ ...CLEAN, proxy: "http://u:p@h:8080", geoip: true })).not.toContain(
+      "udp-relay-without-socks5",
+    ));
+});

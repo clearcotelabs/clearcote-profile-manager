@@ -188,6 +188,10 @@ export interface Profile {
   shaderDialect?: "hlsl";
 
   // ---- network ----
+  /** --socks5-udp: relay WebRTC's UDP through the SOCKS5 proxy rather than letting it go direct.
+   *  Off by default. Only meaningful for a socks5:// proxy, and most residential vendors refuse
+   *  the UDP command — when they do, the browser falls back to its normal behaviour. */
+  socks5Udp?: boolean;
   /** Proxy as a single string: "scheme://user:pass@host:port" (auth optional), e.g.
    *  "http://user:pass@host:8080" or "socks5://user:pass@host:1080". Authenticated http/https go
    *  through a local auth-injecting relay; authenticated SOCKS5 is authenticated by the engine
@@ -279,7 +283,7 @@ export function profileToArgs(p: Profile): string[] {
   // Same builder the launcher uses, so the preview shows the real credential handling: an
   // authenticated SOCKS5 proxy gets its --socks5-credentials switch here too (password masked),
   // instead of the preview quietly implying the credentials go nowhere.
-  args.push(...proxyArgs(parseProxy(p.proxy), { redactSecrets: true }));
+  args.push(...proxyArgs(parseProxy(p.proxy), { redactSecrets: true, socks5Udp: p.socks5Udp }));
   if (p.userDataDir) args.push(`--user-data-dir=${p.userDataDir}`);
   if (p.extraArgs?.length) args.push(...p.extraArgs);
   return args;

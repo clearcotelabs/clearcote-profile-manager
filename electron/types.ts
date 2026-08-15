@@ -114,6 +114,11 @@ export interface Profile {
    *  Windows persona on a LINUX host does not answer with the Vulkan backend's SPIR-V while
    *  claiming a Direct3D11 renderer. Off unless asked for; needs engine 151 r15+. */
   shaderDialect?: "hlsl";
+  /** Relay WebRTC's UDP through the SOCKS5 proxy too, instead of letting it go direct
+   *  (--socks5-udp). Off by default, and only meaningful for a socks5:// proxy. Most residential
+   *  vendors REFUSE the UDP command, in which case the browser falls back silently — so this is
+   *  worth enabling only against a proxy you know relays UDP. */
+  socks5Udp?: boolean;
   /** Proxy as a single string: "scheme://user:pass@host:port" (auth optional), e.g.
    *  "http://user:pass@host:8080" or "socks5://user:pass@host:1080". Authenticated http/https
    *  proxies are served to the browser via a local auth-injecting relay; authenticated SOCKS5 goes

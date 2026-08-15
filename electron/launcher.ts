@@ -3,7 +3,7 @@ import fs from "node:fs";
 import path from "node:path";
 import zlib from "node:zlib";
 import { PROFILES_DIR, FINGERPRINTS_DIR, readSettings } from "./store";
-import { parseProxy, startRelay, needsRelay, proxyArgs, socks5AuthSupportWarning, type Relay } from "./proxy";
+import { parseProxy, startRelay, needsRelay, proxyArgs, socks5AuthSupportWarning, socks5UdpSupportWarning, type Relay } from "./proxy";
 import { geoCheck } from "./geo";
 import { resolveLicenseKey, acquireLease, withRunToken, type LeaseSession } from "./license";
 import { proEnsureBinary, freeEnsureBinary } from "./proBinary";
@@ -215,6 +215,8 @@ export async function launch(
   const proxy = parseProxy(p.proxy);
   const socksWarning = socks5AuthSupportWarning(proxy, major);
   if (socksWarning) warnings.push(socksWarning);
+  const udpWarning = socks5UdpSupportWarning(proxy, p.socks5Udp, major);
+  if (udpWarning) warnings.push(udpWarning);
   let env: NodeJS.ProcessEnv | undefined;
   try {
     env = withShaderDialect(p.shaderDialect, undefined);
@@ -282,7 +284,7 @@ export async function launch(
       relays.set(p.id, relay);
       args.push(...proxyArgs(proxy, { relayUrl: relay.url }));
     } else {
-      args.push(...proxyArgs(proxy));
+      args.push(...proxyArgs(proxy, { socks5Udp: p.socks5Udp }));
     }
     // Inject the leased run-token so the PRO engine gate admits the launch, preserving any
     // shader-dialect variable already folded in above.

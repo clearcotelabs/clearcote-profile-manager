@@ -25,7 +25,9 @@ export {
   socks5CredentialsArg,
   proxyArgs,
   socks5AuthSupportWarning,
+  socks5UdpSupportWarning,
   SOCKS5_AUTH_MIN_MAJOR,
+  SOCKS5_UDP_MIN_MAJOR,
   type ParsedProxy,
 } from "./proxyargs";
 

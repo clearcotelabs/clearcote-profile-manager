@@ -203,6 +203,22 @@ export function coherenceIssues(
     });
   }
 
+  // ── UDP relaying only means something for a SOCKS5 proxy ─────────────────
+  // Two silent no-ops worth naming. On an http/https proxy the switch does nothing at all; and
+  // even on socks5, most residential vendors refuse the UDP command, in which case the browser
+  // falls back with nothing to see. The second is not decidable from the profile, so it is stated
+  // as a caveat rather than asserted as a fault.
+  if (profile.socks5Udp && !/^socks5/i.test(String(profile.proxy ?? ""))) {
+    out.push({
+      id: "udp-relay-without-socks5",
+      severity: "warn",
+      field: "socks5Udp",
+      message:
+        "UDP relaying is on but this profile has no SOCKS5 proxy, so the setting does nothing — an http/https proxy cannot carry UDP.",
+      fix: "Use a socks5:// proxy, or turn UDP relaying off so the profile does not claim something it is not doing.",
+    });
+  }
+
   // ── Light stealth deliberately emits no persona ───────────────────────────
   // A captured profile is loaded through --fingerprint-profile, which still applies, but the seed
   // persona it is meant to refine is gone. Two identity sources, one switched off.

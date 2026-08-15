@@ -312,6 +312,17 @@ export const FIELDS: FieldDef[] = [
       "One string, credentials inline. An authenticated http/https proxy is served through a local auth-injecting relay, so the browser never prompts. An authenticated socks5 proxy is authenticated by the engine itself (RFC 1929), which stock Chromium cannot do at all — it needs build 151.",
   },
   {
+    key: "socks5Udp",
+    cat: "network",
+    label: "Relay UDP through the proxy",
+    type: "check",
+    desc: "Send WebRTC's UDP through the SOCKS5 proxy too, instead of letting it go direct.",
+    hint: "Most residential proxies refuse UDP; when they do, the browser quietly falls back.",
+    keywords: "--socks5-udp webrtc voice video associate rfc1928 datagram",
+    why:
+      "Ordinary browsers cannot proxy UDP at all, so WebRTC normally bypasses the proxy. This routes it through the same SOCKS5 endpoint that already carries TCP. It needs a proxy that permits the UDP command — a self-hosted one usually does, a residential vendor usually does not.",
+  },
+  {
     onValue: true,
     offValue: false,
     key: "geoip",

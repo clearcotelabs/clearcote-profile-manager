@@ -112,14 +112,48 @@ export function socks5CredentialsArg(p: ParsedProxy): string | null {
  */
 export function proxyArgs(
   p: ParsedProxy | null,
-  opts: { relayUrl?: string; redactSecrets?: boolean } = {},
+  opts: { relayUrl?: string; redactSecrets?: boolean; socks5Udp?: boolean } = {},
 ): string[] {
   if (!p) return [];
   if (opts.relayUrl) return [`--proxy-server=${opts.relayUrl}`];
   const args = [`--proxy-server=${proxyServerArg(p)}`];
   const creds = socks5CredentialsArg(p);
   if (creds) args.push(`--socks5-credentials=${opts.redactSecrets ? `${p.username ?? ""}:********` : creds}`);
+  // UDP relaying is opt-in and only means anything for a SOCKS5 proxy. UDP ASSOCIATE is a SOCKS5
+  // command — SOCKS4 has no equivalent and http/https carry only TCP — so for anything else this
+  // would be a switch that is accepted and silently does nothing.
+  if (opts.socks5Udp && p.scheme.startsWith("socks5")) args.push("--socks5-udp");
   return args;
+}
+
+/** Engine major that relays UDP through a SOCKS5 proxy. Shipped in 151 r17 — the switch is ignored
+ *  by 151 builds older than that, which the revision cannot express, so this gate catches only the
+ *  wrong-major case and the launch warning covers the rest. */
+export const SOCKS5_UDP_MIN_MAJOR = 151;
+
+/**
+ * A warning when UDP relaying is requested but cannot work, or null when the pairing is fine.
+ *
+ * Two ways it silently does nothing, and both are worth saying out loud: an engine that predates
+ * the feature ignores the switch, and — far more common — most residential proxies refuse the UDP
+ * command outright, so the browser falls back to its normal behaviour with no visible sign.
+ */
+export function socks5UdpSupportWarning(
+  p: ParsedProxy | null,
+  requested: boolean | undefined,
+  major?: number,
+): string | null {
+  if (!requested) return null;
+  if (!p || !p.scheme.startsWith("socks5")) {
+    return "UDP relaying only applies to a SOCKS5 proxy; it does nothing for an http/https or SOCKS4 one.";
+  }
+  if (major !== undefined && major < SOCKS5_UDP_MIN_MAJOR) {
+    return (
+      `UDP relaying needs Clearcote ${SOCKS5_UDP_MIN_MAJOR} r17 or newer; the running build is ` +
+      `${major}, which ignores it and sends UDP as before.`
+    );
+  }
+  return null;
 }
 
 /** Engine major that implements --socks5-credentials. Older binaries ignore an unknown switch

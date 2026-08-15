@@ -8,6 +8,8 @@ import {
   socks5CredentialsArg,
   proxyArgs,
   socks5AuthSupportWarning,
+  socks5UdpSupportWarning,
+  SOCKS5_UDP_MIN_MAJOR,
 } from "../electron/proxy";
 
 describe("parseProxy", () => {
@@ -161,4 +163,60 @@ describe("redactProxyString", () => {
   });
   it("no-credential proxy is unchanged in substance", () =>
     expect(redactProxyString("http://host:8080")).toContain("host:8080"));
+});
+
+// ---------------------------------------------------------------------------
+// UDP relaying (--socks5-udp). Opt-in, socks5-only, and worth warning about: most residential
+// proxies refuse the UDP command, in which case the browser falls back with no visible sign.
+// ---------------------------------------------------------------------------
+describe("proxyArgs — UDP relaying", () => {
+  const args = (s: string | null, opts?: Parameters<typeof proxyArgs>[1]) =>
+    proxyArgs(s === null ? null : parseProxy(s), opts);
+
+  it("is absent unless asked for", () =>
+    expect(args("socks5://u:p@h:1080")).not.toContain("--socks5-udp"));
+
+  it("is emitted for a socks5 proxy when requested", () =>
+    expect(args("socks5://u:p@h:1080", { socks5Udp: true })).toContain("--socks5-udp"));
+
+  it("is emitted for a credential-less socks5 proxy too", () =>
+    expect(args("socks5://h:1080", { socks5Udp: true })).toContain("--socks5-udp"));
+
+  it("is NOT emitted for an http proxy — it would be a switch that does nothing", () =>
+    expect(args("http://u:p@h:8080", { socks5Udp: true })).not.toContain("--socks5-udp"));
+
+  it("is NOT emitted when the relay carries the proxy", () =>
+    expect(args("http://u:p@h:8080", { socks5Udp: true, relayUrl: "http://127.0.0.1:1" })).not.toContain(
+      "--socks5-udp",
+    ));
+
+  it("does not disturb the credentials switch", () => {
+    const out = args("socks5://u:p@h:1080", { socks5Udp: true });
+    expect(out).toContain("--proxy-server=socks5://h:1080");
+    expect(out).toContain("--socks5-credentials=u:p");
+  });
+});
+
+describe("socks5UdpSupportWarning", () => {
+  const w = (s: string | null, requested?: boolean, major?: number) =>
+    socks5UdpSupportWarning(s === null ? null : parseProxy(s), requested, major);
+
+  it("silent when not requested", () => {
+    expect(w("socks5://u:p@h:1080", false, 151)).toBeNull();
+    expect(w("socks5://u:p@h:1080", undefined, 151)).toBeNull();
+  });
+  it("silent on a build that supports it", () =>
+    expect(w("socks5://u:p@h:1080", true, SOCKS5_UDP_MIN_MAJOR)).toBeNull());
+  it("warns that an http proxy cannot relay UDP", () =>
+    expect(w("http://u:p@h:8080", true, SOCKS5_UDP_MIN_MAJOR)).toMatch(/only applies to a SOCKS5/i));
+  it("warns with no proxy at all", () =>
+    expect(w(null, true, SOCKS5_UDP_MIN_MAJOR)).toMatch(/only applies to a SOCKS5/i));
+  it("warns that an older MAJOR ignores it", () =>
+    expect(w("socks5://u:p@h:1080", true, SOCKS5_UDP_MIN_MAJOR - 1)).toMatch(/needs Clearcote/i));
+  // SOCKS4 predates the UDP ASSOCIATE command entirely, so the switch would be accepted and do
+  // nothing — the same silent no-op as an http proxy, and worth the same warning.
+  it("warns that a SOCKS4 proxy cannot relay UDP", () =>
+    expect(w("socks4://h:1080", true, SOCKS5_UDP_MIN_MAJOR)).toMatch(/only applies to a SOCKS5/i));
+  it("stays quiet when the major is unknown rather than guessing", () =>
+    expect(w("socks5://u:p@h:1080", true, undefined)).toBeNull());
 });
