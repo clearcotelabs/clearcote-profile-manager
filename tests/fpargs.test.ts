@@ -302,3 +302,47 @@ describe("screenGuardWarning", () => {
     expect(screenGuardWarning(1920, undefined)).toBeNull();
   });
 });
+
+// ---------------------------------------------------------------------------
+// Portable profile / cookie encryption key (engine 151 r14+)
+//
+// Cookies are the one thing in a user-data-dir that does NOT survive being copied to another
+// machine: they are sealed with a key the OS keychain/DPAPI holds for the machine that created
+// them. These two switches are the opt-ins that change that.
+// ---------------------------------------------------------------------------
+describe("portable profile", () => {
+  const args = (p: Partial<FpInput>, opts?: Parameters<typeof fingerprintArgs>[1]) =>
+    fingerprintArgs({ fingerprint: "seed", ...p } as FpInput, opts);
+
+  it("off by default — neither switch appears", () => {
+    const out = args({});
+    expect(out.some((a) => a.startsWith("--portable-profile"))).toBe(false);
+    expect(out.some((a) => a.startsWith("--profile-encryption-key"))).toBe(false);
+  });
+
+  it("portableProfile → --portable-profile", () =>
+    expect(args({ portableProfile: true })).toContain("--portable-profile"));
+
+  it("portableProfile false is treated as off", () =>
+    expect(args({ portableProfile: false })).not.toContain("--portable-profile"));
+
+  it("encryptionKey → --profile-encryption-key", () =>
+    expect(args({ encryptionKey: "s3cret-key" })).toContain("--profile-encryption-key=s3cret-key"));
+
+  it("an explicit key WINS over portableProfile, and only one switch is emitted", () => {
+    // Emitting both would leave --portable-profile (which writes the key to disk) looking effective
+    // while the stronger option is in force — two contradictory answers to where the key lives.
+    const out = args({ portableProfile: true, encryptionKey: "k" });
+    expect(out).toContain("--profile-encryption-key=k");
+    expect(out).not.toContain("--portable-profile");
+  });
+
+  it("the key is redacted in the preview", () => {
+    const out = args({ encryptionKey: "s3cret-key" }, { redactSecrets: true });
+    expect(out).toContain("--profile-encryption-key=********");
+    expect(out.join(" ")).not.toContain("s3cret-key");
+  });
+
+  it("redaction does not hide the plain --portable-profile toggle", () =>
+    expect(args({ portableProfile: true }, { redactSecrets: true })).toContain("--portable-profile"));
+});

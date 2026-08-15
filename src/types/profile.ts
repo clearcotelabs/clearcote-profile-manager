@@ -3,6 +3,10 @@
 // profiles/<id>/userdata/. See PLAN.md and profiles/example.profile.json.
 
 import { fingerprintArgs, resolveTls, type FpInput } from "../../electron/fpargs";
+// The PURE proxy module, not ./proxy — that one pulls in node:net for the relay and would break
+// the renderer bundle. Same split, and same reason, as electron/fpargs.ts.
+import { parseProxy, proxyArgs } from "../../electron/proxyargs";
+import { SHADER_DIALECT_ENV } from "../../electron/shaderdialect";
 
 export {
   screenGuardWarning,
@@ -144,9 +148,30 @@ export interface Profile {
   /** Cached summary of the captured profile, for display in the UI. */
   fingerprintProfileMeta?: FingerprintMeta;
 
+  // ---- portable profile (engine 151 r14+) ----
+  /** --portable-profile: keep the cookie encryption key INSIDE the profile folder so it can be
+   *  copied to another machine with sessions intact. Everything else in a user-data-dir already
+   *  moves by copying the folder; cookies do not, because they are sealed with a key the OS holds
+   *  for the machine that created them. Trade-off: the cookie DB is then effectively unencrypted
+   *  at rest. Ignored when `encryptionKey` is set. */
+  portableProfile?: boolean;
+  /** --profile-encryption-key: supply the cookie key yourself so NO key material is written to
+   *  disk. The stronger form of `portableProfile` — it wins when both are set. */
+  encryptionKey?: string;
+
+  // ---- shader dialect (engine 151 r15+) ----
+  /** CLEARCOTE_SHADER_DIALECT (an env var, not a switch — the code lives in the GPU process).
+   *  "hlsl" re-translates shaders for getTranslatedShaderSource() so a Windows persona on a LINUX
+   *  host does not answer with the Vulkan backend's SPIR-V while advertising a Direct3D11
+   *  renderer. Off by default; rendering is unaffected either way, and it is a no-op on a Windows
+   *  host. */
+  shaderDialect?: "hlsl";
+
   // ---- network ----
   /** Proxy as a single string: "scheme://user:pass@host:port" (auth optional), e.g.
-   *  "http://user:pass@host:8080" or "socks5://host:1080". */
+   *  "http://user:pass@host:8080" or "socks5://user:pass@host:1080". Authenticated http/https go
+   *  through a local auth-injecting relay; authenticated SOCKS5 is authenticated by the engine
+   *  itself via --socks5-credentials (151 r14+ — stock Chromium cannot do it at all). */
   proxy?: string;
 
   // ---- launch ----
@@ -231,17 +256,17 @@ export function profileToArgs(p: Profile): string[] {
     redactSecrets: true,
     encodeProfile: (ref) => `<gzip+base64 of ${p.fingerprintProfileMeta?.label || ref}>`,
   });
-  const proxy = proxyString(p.proxy);
-  if (proxy) {
-    try {
-      const u = new URL(/:\/\//.test(proxy) ? proxy : `http://${proxy}`);
-      // creds stripped in the preview; the launcher injects them via a local relay if present
-      args.push(`--proxy-server=${u.protocol}//${u.hostname}${u.port ? `:${u.port}` : ""}`);
-    } catch {
-      /* ignore */
-    }
-  }
+  // Same builder the launcher uses, so the preview shows the real credential handling: an
+  // authenticated SOCKS5 proxy gets its --socks5-credentials switch here too (password masked),
+  // instead of the preview quietly implying the credentials go nowhere.
+  args.push(...proxyArgs(parseProxy(p.proxy), { redactSecrets: true }));
   if (p.userDataDir) args.push(`--user-data-dir=${p.userDataDir}`);
   if (p.extraArgs?.length) args.push(...p.extraArgs);
   return args;
+}
+
+/** Environment variables the launch sets, for display beside the command line. Not switches: the
+ *  shader dialect is read by the GPU process, which never receives the fingerprint switches. */
+export function profileToEnv(p: Profile): Record<string, string> {
+  return p.shaderDialect ? { [SHADER_DIALECT_ENV]: p.shaderDialect } : {};
 }

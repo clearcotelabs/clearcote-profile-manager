@@ -19,6 +19,9 @@ export interface LaunchResult {
   error?: string;
   /** True when the launch used the PRO (license-gated) binary + a leased run-token. */
   pro?: boolean;
+  /** Non-fatal problems with an otherwise successful launch — an option that will silently do
+   *  nothing (a switch the resolved build predates), or geoip failing to resolve the exit region. */
+  warnings?: string[];
 }
 export interface LicenseStatus {
   ok: boolean;

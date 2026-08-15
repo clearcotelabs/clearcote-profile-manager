@@ -73,7 +73,30 @@ Beyond the basics, each profile exposes Clearcote's full identity surface (all u
 - **TLS network persona** (`--fingerprint-tls-profile`) — keep the TLS ClientHello coherent with the persona's *claimed* Chrome version instead of always emitting the build's native TLS. `match-persona` (the default) follows the brand version; `native` keeps it stock. Chromium-core (Chrome/Edge/Brave/Opera share the ClientHello).
 - **Canvas bridge** *(experimental)* — forward canvas / WebGL rendering to a remote real-GPU host so the pixel readback matches the claimed GPU, for sites that pixel-hash the canvas. A per-origin policy (bridge everything, or an allow / deny list) and the cold-cache behaviour are both configurable: every bridged readback is a network round-trip on the renderer thread, so it's worth restricting to the origins that actually score canvas coherence. Needs a bridge host and a Clearcote build with canvas-bridge support.
 
+- **Portable profile** *(Clearcote 151 r14+)* — a profile folder already moves between machines by
+  copying it, with one exception: cookies. They're sealed with a key the OS keychain / DPAPI holds
+  for the machine that created them, so a copied profile decrypts to an empty jar and every session
+  is lost. **Portable profile** (`--portable-profile`) keeps that key inside the folder so it travels
+  whole — at the cost of the cookie database being effectively unencrypted at rest. **Cookie
+  encryption key** (`--profile-encryption-key`) is the stronger form: you hold the key, so nothing
+  sensitive is written to disk. It wins when both are set, and is redacted in the preview and on
+  export.
+- **HLSL shader dialect** *(Clearcote 151 r15+)* — only for a Windows persona on a **Linux** host. A
+  page can ask which shader source the graphics backend produced; a Windows persona advertises a
+  Direct3D11 renderer while Linux's Vulkan backend answers with SPIR-V, and the two contradict each
+  other. This re-translates for that query alone — rendering is untouched. Off by default: it's a
+  different code path from the one that drew, so a shader it can't translate falls back to the
+  honest answer. A no-op on a Windows host.
+
 > **Tip:** the strongest coherence is a captured profile whose **GPU vendor matches your host** + farbling noise **off**.
+
+### geoip
+
+`geoip` resolves the **proxy's** exit region at launch and fills any timezone / Accept-Language /
+**geolocation** / WebRTC IP you left unset; anything you set yourself always wins. Leave it off (and
+set no location) and the Geolocation API reports the host's real position — geolocation is not
+derived from the proxy on its own. The lookup speaks SOCKS5 with authentication directly, so it works
+through the same residential proxies the browser uses.
 
 ## PRO tier (license key)
 
@@ -94,9 +117,28 @@ explicit binary in Settings still wins over the PRO auto-download; a revoked/exp
 error rather than silently falling back to free.
 
 **Pinning an exact build.** With a key set, the **Browser version** dropdown also lists the published
-PRO rebuilds (e.g. `150.0.7871.114-r10`). *Latest* and a bare major both follow the current pin, which
+PRO rebuilds (e.g. `151.0.7922.108-r15`). *Latest* and a bare major both follow the current pin, which
 moves whenever a rebuild ships — so pin a revision when you need a run to stay reproducible. Each
 revision is cached separately, so switching between them doesn't re-download.
+
+The dropdown is built from the public `/api/v1/versions` catalog, so a newly published major appears
+without updating this app.
+
+### Chromium 151 (PRO)
+
+151 is the current PRO engine. Three of its changes are visible here:
+
+- **Authenticated SOCKS5 proxies work** (r14). A `socks5://user:pass@host:port` proxy is now
+  authenticated by the engine itself (RFC 1929), which stock Chromium cannot do at all — no local
+  relay, no manual prompt. On 149/150 the credentials cannot be carried and the app says so at
+  launch rather than letting it look like a bad proxy.
+- **Portable profiles** (r14) — see **Portable profile** under *Advanced stealth*.
+- **HLSL shader dialect** (r15) — opt-in, for running a Windows persona on a Linux host.
+
+Everything else in 151 is engine-side and needs nothing from this app: the reported browser version
+now matches the engine it actually is, device-pixel-ratio agrees across JavaScript / request headers
+/ image selection, pointer coordinates agree with the reported window position, and one arithmetic
+function now matches the operating system the persona claims.
 
 ## Stack
 

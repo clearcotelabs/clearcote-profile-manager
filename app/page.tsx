@@ -2,7 +2,7 @@
 
 import { useCallback, useEffect, useMemo, useState } from "react";
 import type { Brand, Platform, Profile, TlsProfile } from "@/types/profile";
-import { profileToArgs, proxyString, MIN_PROFILE_SCREEN_WIDTH, MIN_PROFILE_SCREEN_HEIGHT } from "@/types/profile";
+import { profileToArgs, profileToEnv, proxyString, MIN_PROFILE_SCREEN_WIDTH, MIN_PROFILE_SCREEN_HEIGHT } from "@/types/profile";
 import { api, isElectron, type Settings, type GeoResult, type LibraryProfile, type FingerprintMeta, type LicenseStatus, type VersionOption, type DownloadProgress, type CachedBuild } from "@/lib/ipc";
 import { LogoMark } from "@/components/LogoMark";
 import { Mascot } from "@/components/Mascot";
@@ -109,7 +109,10 @@ export default function Page() {
       if (r.ok) {
         await api.profiles.save({ ...p, lastLaunchedAt: new Date().toISOString() });
         await refresh();
-        notify(`Launched “${p.name || p.id}”.`);
+        // Warnings mean the browser DID start but an option silently won't take effect (a switch
+        // the resolved build predates, or geoip failing to resolve). Saying so beats letting the
+        // user discover it from a site that blocks them.
+        notify(r.warnings?.length ? `Launched “${p.name || p.id}” — ${r.warnings.join(" ")}` : `Launched “${p.name || p.id}”.`);
       } else {
         notify(r.error || "Launch failed.");
       }
@@ -445,6 +448,11 @@ function Editor({
     }
   }
   const args = profileToArgs({ ...profile, userDataDir: `profiles/${profile.id || "<id>"}/userdata` });
+  // Environment set alongside the switches — the shader dialect is read by the GPU process, which
+  // never receives the fingerprint switches, so it would be invisible in an args-only preview.
+  const envLines = Object.entries(profileToEnv(profile))
+    .map(([k, v]) => `${k}=${v} \\\n`)
+    .join("");
 
   return (
     <>
@@ -607,7 +615,10 @@ function Editor({
             <div className="flex items-center gap-2">
               <input id="geoip" type="checkbox" checked={!!profile.geoip} onChange={(e) => set("geoip", e.target.checked)} className="accent-[#38e0d6]" />
               <label htmlFor="geoip" className="flex-1 text-sm text-fog/80">
-                <span className="font-medium">geoip</span> — auto-match timezone / language / WebRTC IP to the proxy&apos;s exit region
+                <span className="font-medium">geoip</span> — at launch, fill any unset timezone / language /{" "}
+                <span className="font-medium">geolocation</span> / WebRTC IP from the proxy&apos;s exit region. Values you
+                set yourself always win. Without this (and without a location set), the Geolocation API reports the
+                host&apos;s real position.
               </label>
               {profile.proxy && (
                 <button className={btnGhost} onClick={resolveGeo} disabled={resolving}>
@@ -633,7 +644,10 @@ function Editor({
               placeholder="http://user:pass@host:8080  ·  socks5://host:1080"
             />
             <p className="mt-1.5 text-[11px] text-fog/40">
-              One string, credentials inline. An authenticated http/https proxy is served to the browser through a local auth-injecting relay — no manual proxy prompt.
+              One string, credentials inline. An authenticated http/https proxy is served through a local auth-injecting
+              relay — no manual proxy prompt. An authenticated <span className="font-mono text-[11px]">socks5://</span>{" "}
+              proxy is authenticated by the engine itself (RFC 1929), which stock Chromium cannot do at all — it needs
+              Clearcote 151 (r14+); on an older build it will fail to connect.
             </p>
           </div>
 
@@ -692,6 +706,59 @@ function Editor({
                   Treat it as a narrower surface, not a strictly better one, and test it against your target.
                 </p>
               )}
+
+              {/* ---- portable profile (engine 151 r14+) ---- */}
+              <label className="flex items-start gap-2 text-sm text-fog/80 sm:col-span-2">
+                <input
+                  type="checkbox"
+                  className="mt-0.5 accent-[#38e0d6]"
+                  checked={!!profile.portableProfile}
+                  disabled={!!profile.encryptionKey}
+                  onChange={(e) => set("portableProfile", e.target.checked || undefined)}
+                />
+                <span>
+                  <span className="font-medium">Portable profile</span> — keep the cookie encryption key inside the
+                  profile folder so it can be copied to another machine with sessions intact. Everything else in a
+                  profile already moves by copying the folder; cookies don&apos;t, because they&apos;re sealed with a key
+                  the OS holds for the machine that made them. Trade-off: the cookie database is then effectively
+                  unencrypted at rest. Needs Clearcote 151 (r14+).
+                </span>
+              </label>
+
+              <div className="sm:col-span-2">
+                <label className={label}>Cookie encryption key (optional)</label>
+                <input
+                  className={input + " font-mono"}
+                  type="password"
+                  autoComplete="off"
+                  value={profile.encryptionKey || ""}
+                  onChange={(e) => set("encryptionKey", e.target.value || undefined)}
+                  placeholder="(supply your own — nothing sensitive is written to disk)"
+                />
+                <p className="mt-1 text-[11px] text-fog/40">
+                  The stronger form of the toggle above: you hold the key, so no key material is stored beside the
+                  cookies. Wins over <span className="font-mono">--portable-profile</span> when both are set. Redacted in
+                  the preview and on export — keep your own copy, as a lost key means a lost cookie jar.
+                </p>
+              </div>
+
+              {/* ---- shader dialect (engine 151 r15+) ---- */}
+              <label className="flex items-start gap-2 text-sm text-fog/80 sm:col-span-2">
+                <input
+                  type="checkbox"
+                  className="mt-0.5 accent-[#38e0d6]"
+                  checked={profile.shaderDialect === "hlsl"}
+                  onChange={(e) => set("shaderDialect", e.target.checked ? "hlsl" : undefined)}
+                />
+                <span>
+                  <span className="font-medium">HLSL shader dialect</span> — for a Windows persona on a{" "}
+                  <em>Linux</em> host. A page can ask what shader source the graphics backend produced; a Windows
+                  persona claims a Direct3D11 renderer while Linux&apos;s Vulkan backend answers with SPIR-V, and the two
+                  contradict each other. This re-translates for that query alone — drawing is unaffected. Off by
+                  default: it&apos;s a different code path from the one that rendered, so a shader it can&apos;t
+                  translate falls back to the honest answer. No-op on a Windows host. Needs Clearcote 151 (r15+).
+                </span>
+              </label>
 
               <div>
                 <label className={label}>Storage quota (MB)</label>
@@ -893,7 +960,7 @@ function Editor({
           <div className="sm:col-span-2">
             <label className={label}>Launch command (preview)</label>
             <pre className="max-h-28 overflow-auto rounded-lg bg-ink/80 p-3 font-mono text-[11px] leading-relaxed text-fog/60">
-              chrome.exe {args.join(" \\\n  ")}
+              {envLines}chrome.exe {args.join(" \\\n  ")}
             </pre>
           </div>
         </div>

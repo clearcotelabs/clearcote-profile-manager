@@ -264,6 +264,8 @@ export interface FpInput {
   canvasBridgeDeny?: string[];
   canvasBridgeFallback?: "block" | "local";
   fingerprintProfile?: string;
+  portableProfile?: boolean;
+  encryptionKey?: string;
   extraArgs?: string[];
 }
 
@@ -275,7 +277,7 @@ export interface FpArgsOptions {
    *  Return null to omit the switch. The launcher reads + gzip+base64-encodes the file; the
    *  renderer preview returns a short placeholder. Omitted entirely => no switch. */
   encodeProfile?: (ref: string) => string | null;
-  /** Redact secrets (canvas-bridge credentials) for display. */
+  /** Redact secrets (canvas-bridge credentials, cookie encryption key) for display. */
   redactSecrets?: boolean;
   /** Best-effort Accept-Language recovered from the captured profile's navigator.languages, used
    *  when the profile itself sets none — so an imported identity keeps the donor's language order. */
@@ -382,6 +384,20 @@ export function fingerprintArgs(input: FpInput, opts: FpArgsOptions = {}): strin
     if (p.canvasBridgeDeny?.length) args.push(`--canvas-bridge-deny=${p.canvasBridgeDeny.join(",")}`);
     if (p.canvasBridgeFallback) args.push(`--canvas-bridge-fallback=${p.canvasBridgeFallback}`);
     if (!args.includes("--no-sandbox")) args.push("--no-sandbox");
+  }
+
+  // Portable profile (engine 151 r14+). Everything in a user-data-dir already survives a copy to
+  // another machine EXCEPT cookies: they are sealed with a key the OS keychain/DPAPI holds for the
+  // machine that created them, so the jar decrypts to nothing elsewhere and every session is lost.
+  //   --portable-profile        keeps that key inside the profile folder, so the folder travels
+  //                             whole. The cookie DB is then effectively unencrypted at rest.
+  //   --profile-encryption-key  supplies the key yourself, so no secret is written to disk at all.
+  // The explicit key wins when both are set — it is the strictly stronger option, and emitting both
+  // would leave the weaker one looking effective. Mirrors the SDK's portableArgs().
+  if (p.encryptionKey) {
+    args.push(`--profile-encryption-key=${opts.redactSecrets ? "********" : p.encryptionKey}`);
+  } else if (p.portableProfile) {
+    args.push("--portable-profile");
   }
 
   const tls = resolveTls(p.tlsProfile, p.brandVersion);

@@ -1,5 +1,5 @@
 import { describe, it, expect } from "vitest";
-import { profileToArgs, proxyString, redactProxyString, resolveTlsProfile, type Profile } from "../src/types/profile";
+import { profileToArgs, profileToEnv, proxyString, redactProxyString, resolveTlsProfile, type Profile } from "../src/types/profile";
 
 const base: Profile = { id: "t", name: "t", fingerprint: "seed-1", createdAt: "", updatedAt: "" };
 const has = (p: Partial<Profile>, sw: string) => profileToArgs({ ...base, ...p }).includes(sw);
@@ -140,4 +140,40 @@ describe("proxyString / redactProxyString", () => {
     expect(r).toContain("h:8080");
   });
   it("empty proxy → empty string", () => expect(proxyString(undefined)).toBe(""));
+});
+
+// ---------------------------------------------------------------------------
+// Preview parity for the r14/r15 options. The preview is what the user reads before launching, so
+// an option missing here reads as "this does nothing" even when the launcher emits it.
+// ---------------------------------------------------------------------------
+describe("preview — r14/r15 options", () => {
+  it("an authenticated socks5 proxy shows its credentials switch, password masked", () => {
+    const out = profileToArgs({ ...base, proxy: "socks5://user:s3cret@gw.example.com:10000" });
+    expect(out).toContain("--proxy-server=socks5://gw.example.com:10000");
+    expect(out).toContain("--socks5-credentials=user:********");
+    expect(out.join(" ")).not.toContain("s3cret");
+  });
+
+  it("an authenticated http proxy shows no credentials switch (the relay carries them)", () => {
+    const out = profileToArgs({ ...base, proxy: "http://user:s3cret@h:8080" });
+    expect(out).toContain("--proxy-server=http://h:8080");
+    expect(out.some((a) => a.startsWith("--socks5-credentials"))).toBe(false);
+    expect(out.join(" ")).not.toContain("s3cret");
+  });
+
+  it("portable profile", () =>
+    expect(has({ portableProfile: true }, "--portable-profile")).toBe(true));
+
+  it("the cookie encryption key is never shown in clear text", () => {
+    const out = profileToArgs({ ...base, encryptionKey: "my-real-key" });
+    expect(out).toContain("--profile-encryption-key=********");
+    expect(out.join(" ")).not.toContain("my-real-key");
+  });
+
+  it("shaderDialect is an ENV var, not a switch — it must not leak into the args", () => {
+    const out = profileToArgs({ ...base, shaderDialect: "hlsl" });
+    expect(out.some((a) => a.toLowerCase().includes("hlsl"))).toBe(false);
+    expect(profileToEnv({ ...base, shaderDialect: "hlsl" })).toEqual({ CLEARCOTE_SHADER_DIALECT: "hlsl" });
+    expect(profileToEnv(base)).toEqual({});
+  });
 });

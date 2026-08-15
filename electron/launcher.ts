@@ -3,11 +3,13 @@ import fs from "node:fs";
 import path from "node:path";
 import zlib from "node:zlib";
 import { PROFILES_DIR, FINGERPRINTS_DIR, readSettings } from "./store";
-import { parseProxy, startRelay, needsRelay, proxyServerArg, type Relay } from "./proxy";
+import { parseProxy, startRelay, needsRelay, proxyArgs, socks5AuthSupportWarning, type Relay } from "./proxy";
+import { geoCheck } from "./geo";
 import { resolveLicenseKey, acquireLease, withRunToken, type LeaseSession } from "./license";
 import { proEnsureBinary, freeEnsureBinary } from "./proBinary";
 import { fetchCatalog, resolveVersion } from "./catalog";
 import { fingerprintArgs, type FpInput } from "./fpargs";
+import { withShaderDialect, shaderDialectWarning } from "./shaderdialect";
 import { spawnBrowser } from "./winlaunch";
 import type { Settings, DownloadProgress } from "./types";
 import type { Profile, LaunchResult } from "./types";
@@ -23,10 +25,12 @@ async function resolveBrowserBinary(
   p: Profile,
   s: Settings,
   onProgress?: (pct: number, seenMB: number, totalMB: number, version: string) => void,
-): Promise<{ path: string; tier: "free" | "pro" | "explicit" }> {
+): Promise<{ path: string; tier: "free" | "pro" | "explicit"; major?: number }> {
   const explicit = [s.binaryPath, process.env.CLEARCOTE_BINARY].find(
     (c): c is string => !!c && fs.existsSync(c),
   );
+  // An explicit binary's version is unknowable from the path, so `major` stays undefined and the
+  // version-gated warnings below stay quiet rather than guessing.
   if (explicit) return { path: explicit, tier: "explicit" };
 
   const licenseKey = resolveLicenseKey(s.licenseKey);
@@ -43,7 +47,7 @@ async function resolveBrowserBinary(
       r.tier === "pro"
         ? await proEnsureBinary(licenseKey, s.licenseApiBase, r.selector, prog)
         : await freeEnsureBinary(r, prog);
-    return { path, tier: r.tier };
+    return { path, tier: r.tier, major: r.major };
   } catch (e) {
     // Offline / catalog-unreachable: fall back to a sibling dev-build ONLY when no specific
     // version was requested — a pinned version must resolve against the catalog or fail loudly.
@@ -112,6 +116,41 @@ function profileAcceptLanguage(ref: string): string | undefined {
 }
 
 /**
+ * Fill any UNSET timezone / acceptLanguage / location / webrtcIp from the proxy's exit-IP geo.
+ *
+ * This is what the `geoip` toggle promises, and until now nothing performed it: the flag was saved
+ * on the profile and shown as a chip, but no code path ever read it, so a profile with geoip on and
+ * no explicit `location` launched with no --fingerprint-location at all and the Geolocation API
+ * returned the host's real position. Explicit values always win — geoip fills gaps, it never
+ * overrides a choice the user made.
+ *
+ * Best-effort: a proxy that cannot be reached returns the profile unchanged plus a warning, because
+ * failing to enrich is not a reason to refuse a launch the user asked for.
+ */
+export async function applyGeoip(p: Profile): Promise<{ profile: Profile; warning?: string }> {
+  if (!p.geoip || !p.proxy) return { profile: p };
+  const unset = (v: unknown) => v === undefined || v === null || v === "";
+  // Nothing to fill — skip the network round-trip entirely.
+  if (!unset(p.timezone) && !unset(p.acceptLanguage) && !unset(p.location) && !unset(p.webrtcIp)) {
+    return { profile: p };
+  }
+  const geo = await geoCheck(p);
+  if (!geo.ok) {
+    return {
+      profile: p,
+      warning: `geoip is on but the proxy's exit region could not be resolved (${geo.error}). Launching with the profile's own timezone / language / location.`,
+    };
+  }
+  const enriched: Profile = { ...p };
+  if (unset(enriched.timezone) && geo.timezone) enriched.timezone = geo.timezone;
+  if (unset(enriched.acceptLanguage) && geo.acceptLanguage) enriched.acceptLanguage = geo.acceptLanguage;
+  if (unset(enriched.location) && geo.lat != null && geo.lon != null) enriched.location = `${geo.lat},${geo.lon}`;
+  // Coherent WebRTC: report the proxy's egress IP rather than letting WebRTC contradict HTTP.
+  if (unset(enriched.webrtcIp) && geo.ip) enriched.webrtcIp = geo.ip;
+  return { profile: enriched };
+}
+
+/**
  * The real launch command line. The fingerprint switches come from the shared builder
  * (electron/fpargs.ts) so this path and the renderer's preview can never drift; only the bits that
  * genuinely differ live here — reading + gzipping the captured profile, the resolved user-data-dir,
@@ -153,6 +192,7 @@ export async function launch(
 
   let bin: string;
   let tier: "free" | "pro" | "explicit";
+  let major: number | undefined;
   try {
     const resolved = await resolveBrowserBinary(
       p,
@@ -163,9 +203,33 @@ export async function launch(
     );
     bin = resolved.path;
     tier = resolved.tier;
+    major = resolved.major;
   } catch (e) {
     return { ok: false, error: `Could not obtain the browser: ${String((e as Error)?.message || e)}` };
   }
+
+  // Non-fatal problems worth telling the user about, surfaced on the result rather than thrown:
+  // each describes an option that will silently do nothing, which is the worst way to find out.
+  const warnings: string[] = [];
+  const proxy = parseProxy(p.proxy);
+  const socksWarning = socks5AuthSupportWarning(proxy, major);
+  if (socksWarning) warnings.push(socksWarning);
+  let env: NodeJS.ProcessEnv | undefined;
+  try {
+    env = withShaderDialect(p.shaderDialect, undefined);
+  } catch (e) {
+    // An invalid dialect is a typo in saved config; refuse rather than launch a browser that
+    // quietly reports the honest dialect while the profile claims otherwise.
+    return { ok: false, error: String((e as Error)?.message || e) };
+  }
+  const dialectWarning = shaderDialectWarning(p.shaderDialect, major);
+  if (dialectWarning) warnings.push(dialectWarning);
+
+  // geoip fills unset timezone / language / location / WebRTC IP from the proxy's exit region.
+  // Done BEFORE buildArgs so the enriched values reach the switches.
+  const geo = await applyGeoip(p);
+  if (geo.warning) warnings.push(geo.warning);
+  p = geo.profile;
 
   // Acquire the concurrency lease BEFORE launching (so an over-limit / revoked license fails
   // fast and never spawns a browser the gate would just refuse) — but ONLY for a gated launch:
@@ -187,17 +251,18 @@ export async function launch(
     const args = buildArgs(p, userDataDir);
     // Proxy: an authenticated http/https proxy is reached via a local relay that injects the
     // credentials (Chromium ignores inline user:pass@), so the browser only ever sees 127.0.0.1.
-    // SOCKS and credential-less proxies are passed straight through.
-    const proxy = parseProxy(p.proxy);
+    // An authenticated SOCKS5 proxy goes straight to the engine, which does RFC 1929 itself via
+    // --socks5-credentials. Credential-less proxies need neither.
     if (proxy && needsRelay(proxy)) {
       relay = await startRelay(proxy);
       relays.set(p.id, relay);
-      args.push(`--proxy-server=${relay.url}`);
-    } else if (proxy) {
-      args.push(`--proxy-server=${proxyServerArg(proxy)}`);
+      args.push(...proxyArgs(proxy, { relayUrl: relay.url }));
+    } else {
+      args.push(...proxyArgs(proxy));
     }
-    // Inject the leased run-token so the PRO engine gate admits the launch.
-    const env = lease ? withRunToken(lease.token, process.env) : undefined;
+    // Inject the leased run-token so the PRO engine gate admits the launch, preserving any
+    // shader-dialect variable already folded in above.
+    if (lease) env = withRunToken(lease.token, env ?? process.env);
     // spawnBrowser survives the Windows first-launch SxS/AV race ("spawn UNKNOWN") on a
     // freshly-extracted chrome.exe: warm + back off + retry, then recover from a fresh copy.
     const child = await spawnBrowser(bin, args, { detached: false, env });
@@ -212,7 +277,7 @@ export async function launch(
     };
     child.on("exit", cleanup);
     child.on("error", cleanup);
-    return { ok: true, pid: child.pid, pro: !!lease };
+    return { ok: true, pid: child.pid, pro: !!lease, warnings: warnings.length ? warnings : undefined };
   } catch (e) {
     relay?.stop();
     relays.delete(p.id);

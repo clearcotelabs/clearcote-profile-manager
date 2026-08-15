@@ -90,9 +90,22 @@ export interface Profile {
   fingerprintProfile?: string;
   /** Cached summary of the captured profile, for display. */
   fingerprintProfileMeta?: FingerprintMeta;
+  /** Keep the cookie encryption key WITH the profile so the folder is portable between machines
+   *  (--portable-profile). Cookies are otherwise sealed with an OS-held, machine-bound key, so a
+   *  copied profile loses every session. The cookie DB is then effectively unencrypted at rest.
+   *  Needs engine 151 r14+. Ignored when `encryptionKey` is set. */
+  portableProfile?: boolean;
+  /** --profile-encryption-key: supply the cookie encryption key yourself, so no key material is
+   *  written to disk at all. The stronger form of `portableProfile`; wins when both are set. */
+  encryptionKey?: string;
+  /** CLEARCOTE_SHADER_DIALECT: re-translate shaders to HLSL for getTranslatedShaderSource() so a
+   *  Windows persona on a LINUX host does not answer with the Vulkan backend's SPIR-V while
+   *  claiming a Direct3D11 renderer. Off unless asked for; needs engine 151 r15+. */
+  shaderDialect?: "hlsl";
   /** Proxy as a single string: "scheme://user:pass@host:port" (auth optional), e.g.
-   *  "http://user:pass@host:8080" or "socks5://host:1080". Authenticated http/https proxies are
-   *  served to the browser via a local auth-injecting relay (see electron/proxy.ts). */
+   *  "http://user:pass@host:8080" or "socks5://user:pass@host:1080". Authenticated http/https
+   *  proxies are served to the browser via a local auth-injecting relay; authenticated SOCKS5 goes
+   *  to the engine's own --socks5-credentials (151 r14+). See electron/proxy.ts. */
   proxy?: string;
   extraArgs?: string[];
   createdAt: string;
@@ -160,6 +173,9 @@ export interface LaunchResult {
   error?: string;
   /** True when this launch used the PRO (license-gated) binary + a leased run-token. */
   pro?: boolean;
+  /** Non-fatal problems with an otherwise successful launch — an option that will silently do
+   *  nothing (a switch the resolved build predates), or geoip failing to resolve. */
+  warnings?: string[];
 }
 
 /** Streamed to the renderer while a launch downloads the browser build (first use of a version).

@@ -1,85 +1,35 @@
-// Proxy handling. A profile's `proxy` is a single string, e.g.
-//   http://user:pass@host:port  ·  socks5://host:1080  ·  host:8080
+// The local auth-injecting relay for authenticated http/https proxies.
 //
-// Chromium's --proxy-server IGNORES inline credentials (it would just prompt). So for an
-// authenticated http/https proxy we run a tiny LOCAL relay on 127.0.0.1 that forwards to the
-// upstream proxy with Proxy-Authorization injected, and point the spawned browser at the relay —
-// the browser never sees (or has to prompt for) the credentials. Verified end-to-end against a
-// real authenticated proxy (HTTP + HTTPS/CONNECT).
+// Parsing and switch-building live in ./proxyargs (pure, no `node:` imports, so the renderer can
+// import it too); this module owns the socket machinery and re-exports them so existing importers
+// keep working. Chromium's --proxy-server IGNORES inline credentials, so they travel by one of two
+// routes:
+//
+//   http/https + credentials → the relay below listens on 127.0.0.1, forwards to the upstream proxy
+//     with Proxy-Authorization injected, and the browser is pointed at it — so the browser never
+//     sees (or has to prompt for) the credentials. Verified end-to-end against a real authenticated
+//     proxy (HTTP + HTTPS/CONNECT).
+//
+//   socks5 + credentials → --socks5-credentials, native in the engine since 151 r14 (RFC 1929,
+//     which stock Chromium does not implement at all). No relay: this one speaks HTTP upstream, not
+//     SOCKS. See proxyArgs() in ./proxyargs.
 import http from "node:http";
 import net from "node:net";
 
-export interface ParsedProxy {
-  scheme: string; // http | https | socks5 | socks4 | socks
-  host: string;
-  port: number;
-  username?: string;
-  password?: string;
-  raw: string; // the original/normalized string
-}
+export {
+  parseProxy,
+  proxyServerArg,
+  redactProxyString,
+  isAuthenticatedSocks,
+  needsRelay,
+  socks5CredentialsArg,
+  proxyArgs,
+  socks5AuthSupportWarning,
+  SOCKS5_AUTH_MIN_MAJOR,
+  type ParsedProxy,
+} from "./proxyargs";
 
-/** Parse a proxy string ("scheme://user:pass@host:port", "user:pass@host:port", "host:port") —
- *  or the legacy { server, username, password } object — into its parts. Returns null if unusable. */
-export function parseProxy(input: unknown): ParsedProxy | null {
-  if (!input) return null;
-  let raw: string;
-  if (typeof input === "object") {
-    const o = input as { server?: string; username?: string; password?: string };
-    if (!o.server) return null;
-    try {
-      const u = new URL(/:\/\//.test(o.server) ? o.server : `http://${o.server}`);
-      if (o.username) u.username = o.username;
-      if (o.password) u.password = o.password;
-      raw = u.toString();
-    } catch {
-      return null;
-    }
-  } else {
-    raw = String(input).trim();
-  }
-  if (!raw) return null;
-  const withScheme = /^[a-zA-Z][a-zA-Z0-9+.-]*:\/\//.test(raw) ? raw : `http://${raw}`;
-  try {
-    const u = new URL(withScheme);
-    const scheme = (u.protocol || "http:").replace(":", "") || "http";
-    const port = Number(u.port) || (scheme === "https" ? 443 : scheme.startsWith("socks") ? 1080 : 80);
-    return {
-      scheme,
-      host: u.hostname,
-      port,
-      username: u.username ? decodeURIComponent(u.username) : undefined,
-      password: u.password ? decodeURIComponent(u.password) : undefined,
-      raw,
-    };
-  } catch {
-    return null;
-  }
-}
-
-/** The --proxy-server value WITHOUT credentials (for direct, non-relayed use). */
-export function proxyServerArg(p: ParsedProxy): string {
-  return `${p.scheme}://${p.host}:${p.port}`;
-}
-
-/** Only authenticated http/https proxies need the relay; SOCKS + credential-less proxies go
- *  straight to chrome (SOCKS auth and no-auth are handled natively / not at all by Chromium). */
-export function needsRelay(p: ParsedProxy): boolean {
-  return !!p.username && (p.scheme === "http" || p.scheme === "https");
-}
-
-/** A proxy string with the password removed (for export / display). */
-export function redactProxyString(input: unknown): string {
-  const p = parseProxy(input);
-  if (!p) return typeof input === "string" ? input : "";
-  if (!p.password) return p.raw;
-  try {
-    const u = new URL(/:\/\//.test(p.raw) ? p.raw : `http://${p.raw}`);
-    u.password = "";
-    return u.toString();
-  } catch {
-    return p.raw;
-  }
-}
+import type { ParsedProxy } from "./proxyargs";
 
 export interface Relay {
   url: string; // "http://127.0.0.1:<port>" to give chrome via --proxy-server

@@ -124,10 +124,17 @@ function registerIpc(): void {
       filters: [{ name: "JSON", extensions: ["json"] }],
     });
     if (r.canceled || !r.filePath) return { ok: false };
-    const redact = opts?.redact !== false; // redact proxy passwords by default
-    const list = profiles.listProfiles().map((p) =>
-      redact && p.proxy ? { ...p, proxy: redactProxyString(p.proxy) } : p,
-    );
+    // Redact every secret by default: an exported profile set is the thing people paste into a
+    // ticket or share with a colleague. Proxy passwords AND the cookie encryption key — that key
+    // decrypts the exported profile's whole cookie jar, so it is at least as sensitive.
+    const redact = opts?.redact !== false;
+    const list = profiles.listProfiles().map((p) => {
+      if (!redact) return p;
+      const out = { ...p };
+      if (out.proxy) out.proxy = redactProxyString(out.proxy);
+      if (out.encryptionKey) delete out.encryptionKey;
+      return out;
+    });
     fs.writeFileSync(r.filePath, JSON.stringify(list, null, 2), "utf8");
     return { ok: true, path: r.filePath, count: list.length };
   });
