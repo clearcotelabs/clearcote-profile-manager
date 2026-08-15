@@ -193,3 +193,14 @@ describe("coherenceSummary", () => {
     expect(coherenceSummary([])).toEqual({ errors: 0, warnings: 0, ok: true });
   });
 });
+
+describe("device memory is left to the engine", () => {
+  // MEASURED on 151 r16: asked 1 it reports 2, asked 6 it reports 4, asked 64 or 128 it reports 32.
+  // The engine applies Chromium's own quantization and clamp, so a rule here would flag values the
+  // browser silently corrects -- a false positive, which is the one thing this panel must not do.
+  it("says nothing about any device-memory value, in range or out", () => {
+    for (const v of [1, 2, 4, 6, 8, 16, 32, 64, 128]) {
+      expect(coherenceIssues({ ...CLEAN, platform: "windows", deviceMemory: v }), `deviceMemory=${v}`).toEqual([]);
+    }
+  });
+});

@@ -23,7 +23,25 @@ Two layers:
   Clearcote binary with every setting set and probes the in-page surface to confirm each is actually
   applied. Run: `pip install playwright && CLEARCOTE_BINARY=<chrome.exe> python tests/confirm-applied.py`.
 
-## What actually applies (confirmed against the Chromium 149 build)
+## What actually applies (re-confirmed against 151 r16 — `applied.e2e.test.ts`)
+
+`tests/applied.e2e.test.ts` launches through the app's own launcher and reads each setting back off
+the page. Run it with `CLEARCOTE_E2E=1 CLEARCOTE_BINARY=<chrome.exe> CLEARCOTE_LICENSE_KEY=...`.
+All 15 checks pass on 151 r16: platform + platform version, brand, cores, memory, screen, avail,
+colour depth, pixel ratio, touch points, timezone, Accept-Language, storage quota, geolocation, GPU
+vendor/renderer, window-frame coherence, and the three noise/GPU switches.
+
+Two things worth recording, both measured rather than assumed:
+
+- **`deviceMemory` is sanitized by the engine, so the app needs no guard.** Asked for 1 it reports
+  2, for 6 it reports 4, and for 64 or 128 it reports 32 — Chromium's power-of-two quantization plus
+  the desktop [2, 32] clamp (Android [1, 8]). The 8 GB ceiling from the original W3C text was raised
+  in crbug.com/454354290, so 16 and 32 are ordinary desktop values. A coherence rule here was
+  written and then removed: it would have flagged values the browser silently corrects.
+- **`gpuStringSpoof: false` is genuinely narrow.** It swaps the WebGL vendor/renderer for the real
+  ones while cores, screen and timezone stay on the persona — verified side by side.
+
+## Historical: the 149-era table
 
 `gpuVendor` / `gpuRenderer` and `location` apply as of **clearcote-browser v0.1.0-pre.10**
 (commit `d7bbe67` wired `--fingerprint-gpu-vendor/-renderer` + `--fingerprint-location`, which were

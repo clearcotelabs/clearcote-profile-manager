@@ -241,7 +241,32 @@ export const FIELDS: FieldDef[] = [
       "Not strictly better than the default: it trades a broad persona for a much narrower surface. In our own lab runs it scored worse on an audit suite. Test it against your target.",
   },
   { key: "hardwareConcurrency", cat: "hardware", label: "CPU cores", type: "number", placeholder: "persona default", keywords: "--fingerprint-hardware-concurrency navigator" },
-  { stepAny: true, key: "deviceMemory", cat: "hardware", label: "Memory (GB)", type: "number", placeholder: "persona default", keywords: "--fingerprint-device-memory navigator devicememory", why: "navigator.deviceMemory, which the spec clamps to 8." },
+  {
+    key: "deviceMemory",
+    cat: "hardware",
+    label: "Memory (GB)",
+    type: "select",
+    defaultOption: "",
+    // A CLOSED set, not a free number. Chromium reports RAM rounded to the nearest power of two and
+    // then clamped — desktop to [2, 32], Android to [1, 8] (see
+    // third_party/blink/common/device_memory/approximated_device_memory.cc, limits updated in
+    // crbug.com/454354290; the old 8 GB ceiling everyone remembers is long gone). The engine's
+    // persona path quantizes to a power of two but does NOT apply the clamp, so a value outside the
+    // range passes straight through to the page — measured: 16 arrives as 16. Offering a text box
+    // invited a 64 that no browser can report, so the choice is constrained here instead.
+    options: [
+      { value: "", label: "(persona default)" },
+      { value: "1", label: "1 — Android only" },
+      { value: "2", label: "2" },
+      { value: "4", label: "4" },
+      { value: "8", label: "8" },
+      { value: "16", label: "16" },
+      { value: "32", label: "32 — desktop maximum" },
+    ],
+    keywords: "--fingerprint-device-memory navigator devicememory ram",
+    why:
+      "navigator.deviceMemory, reported as a power of two. Desktop Chromium clamps it to 2–32 and Android to 1–8, so a machine with 64 GB still reports 32.",
+  },
   {
     key: "screenWidth",
     cat: "hardware",

@@ -43,6 +43,13 @@ export interface CoherenceContext {
  *  dialect (r15). Kept here so the rules read declaratively; mirrors electron/proxyargs.ts. */
 export const MIN_MAJOR_151 = 151;
 
+/** MEASURED on 151 r16, so no rule guards it: the engine enforces Chromium's own deviceMemory
+ *  rules itself. Asked for 1 it reports 2, for 6 it reports 4, and for 64 or 128 it reports 32 --
+ *  power-of-two quantization plus the desktop [2, 32] clamp (Android [1, 8]). A value outside the
+ *  range is corrected rather than leaked, so flagging one here would tell the user a profile is
+ *  broken when the browser handles it. The editor still offers a closed list, to save anyone the
+ *  confusion of typing 64 and reading 32. */
+
 const isSet = (v: unknown): boolean =>
   v !== undefined && v !== null && v !== "" && v !== false && !(Array.isArray(v) && v.length === 0);
 
