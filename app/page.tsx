@@ -742,6 +742,32 @@ function Editor({
                 </p>
               </div>
 
+              {/* ---- Widevine / EME ---- */}
+              <label className="flex items-start gap-2 text-sm text-fog/80 sm:col-span-2">
+                <input
+                  type="checkbox"
+                  className="mt-0.5 accent-[#38e0d6]"
+                  checked={!!profile.widevine}
+                  onChange={(e) => set("widevine", e.target.checked || undefined)}
+                />
+                <span>
+                  <span className="font-medium">Widevine (DRM)</span> — fetch Google&apos;s Widevine CDM and seed it into
+                  this profile, so DRM video plays and the EME surface matches a real Chrome. Clearcote is fully open
+                  source, so it builds the EME plumbing but can&apos;t bundle Google&apos;s proprietary CDM — while this
+                  profile claims the <span className="font-mono text-[11px]">Google Chrome</span> brand, which always
+                  ships one. Without it, a page sees a browser Google doesn&apos;t make. Downloaded once from
+                  Google&apos;s own component server (where real Chrome gets it), SHA-256 verified, then shared by every
+                  profile that opts in.
+                </span>
+              </label>
+              {!profile.widevine && (profile.brand ?? "Chrome").toLowerCase().includes("chrome") && (
+                <p className="sm:col-span-2 -mt-2 rounded border border-amber-500/30 bg-amber-500/10 px-2 py-1.5 text-[11px] text-amber-400">
+                  This profile reports the <span className="font-mono">Google Chrome</span> brand with no CDM — a
+                  mismatch a page can read in one property lookup, and one the public audit flags. Enable the toggle
+                  above, or pick a non-Chrome brand, which is what a de-Googled build honestly is.
+                </p>
+              )}
+
               {/* ---- shader dialect (engine 151 r15+) ---- */}
               <label className="flex items-start gap-2 text-sm text-fog/80 sm:col-span-2">
                 <input

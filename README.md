@@ -81,6 +81,15 @@ Beyond the basics, each profile exposes Clearcote's full identity surface (all u
   encryption key** (`--profile-encryption-key`) is the stronger form: you hold the key, so nothing
   sensitive is written to disk. It wins when both are set, and is redacted in the preview and on
   export.
+- **Widevine (DRM)** — fetch Google's Widevine CDM and seed it into the profile. Clearcote is fully
+  open source, so it builds the EME plumbing but cannot bundle Google's proprietary CDM — while
+  every profile claims the **Google Chrome** brand by default, and Google's build always ships one.
+  A browser that asserts that brand, implements EME, and then rejects `com.widevine.alpha` describes
+  a browser Google does not make, readable in a single property lookup (the public audit flags
+  exactly this). Opting in downloads the CDM once from Google's own component server — where real
+  Chrome gets it — verifies its SHA-256, and shares it across profiles. If you would rather not run
+  a proprietary blob, set the profile's brand to something other than Chrome instead: a build
+  reporting **Chromium** is honestly what a de-Googled browser is, and is exempt from the check.
 - **HLSL shader dialect** *(Clearcote 151 r15+)* — only for a Windows persona on a **Linux** host. A
   page can ask which shader source the graphics backend produced; a Windows persona advertises a
   Direct3D11 renderer while Linux's Vulkan backend answers with SPIR-V, and the two contradict each

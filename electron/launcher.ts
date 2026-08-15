@@ -10,6 +10,7 @@ import { proEnsureBinary, freeEnsureBinary } from "./proBinary";
 import { fetchCatalog, resolveVersion } from "./catalog";
 import { fingerprintArgs, type FpInput } from "./fpargs";
 import { withShaderDialect, shaderDialectWarning } from "./shaderdialect";
+import { seedWidevine, widevineArgs, claimsChromeBrand } from "./widevine";
 import { spawnBrowser } from "./winlaunch";
 import type { Settings, DownloadProgress } from "./types";
 import type { Profile, LaunchResult } from "./types";
@@ -225,6 +226,16 @@ export async function launch(
   const dialectWarning = shaderDialectWarning(p.shaderDialect, major);
   if (dialectWarning) warnings.push(dialectWarning);
 
+  // A profile claiming the Google Chrome brand with no CDM contradicts itself: Google's branded
+  // build ships Widevine on both desktop platforms, so a browser asserting that brand, implementing
+  // EME, and then rejecting com.widevine.alpha describes a browser Google does not ship. Say it
+  // once here rather than leaving it to be discovered from a site that scores it.
+  if (!p.widevine && claimsChromeBrand(p.brand)) {
+    warnings.push(
+      'This profile reports the "Google Chrome" brand but has no Widevine CDM, which Google\'s build always ships — a mismatch a page can read directly. Enable Widevine (DRM) on the profile, or set its brand to something other than Chrome.',
+    );
+  }
+
   // geoip fills unset timezone / language / location / WebRTC IP from the proxy's exit region.
   // Done BEFORE buildArgs so the enriched values reach the switches.
   const geo = await applyGeoip(p);
@@ -249,6 +260,19 @@ export async function launch(
   try {
     fs.mkdirSync(userDataDir, { recursive: true });
     const args = buildArgs(p, userDataDir);
+    // Widevine: seed the CDM into this profile before the browser reads it. Downloaded once into a
+    // shared cache and copied in, so only the first opt-in launch pays for it. A failure here is
+    // non-fatal — DRM and the brand row stay as they were, and the user is told why.
+    if (p.widevine) {
+      try {
+        await seedWidevine(userDataDir);
+        args.push(...widevineArgs(args));
+      } catch (e) {
+        warnings.push(
+          `Widevine is enabled but the CDM could not be installed (${String((e as Error)?.message || e)}). Launching without it — DRM playback will fail.`,
+        );
+      }
+    }
     // Proxy: an authenticated http/https proxy is reached via a local relay that injects the
     // credentials (Chromium ignores inline user:pass@), so the browser only ever sees 127.0.0.1.
     // An authenticated SOCKS5 proxy goes straight to the engine, which does RFC 1929 itself via

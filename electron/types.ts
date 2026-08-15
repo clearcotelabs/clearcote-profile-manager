@@ -98,6 +98,11 @@ export interface Profile {
   /** --profile-encryption-key: supply the cookie encryption key yourself, so no key material is
    *  written to disk at all. The stronger form of `portableProfile`; wins when both are set. */
   encryptionKey?: string;
+  /** Fetch Google's Widevine CDM and seed it into this profile, so EME/DRM works and the browser
+   *  stops contradicting its own "Google Chrome" brand (Google's build ships the CDM; this
+   *  open-source one cannot bundle it). Downloaded once from Google's component server, SHA-256
+   *  verified, then shared by every profile that opts in. */
+  widevine?: boolean;
   /** CLEARCOTE_SHADER_DIALECT: re-translate shaders to HLSL for getTranslatedShaderSource() so a
    *  Windows persona on a LINUX host does not answer with the Vulkan backend's SPIR-V while
    *  claiming a Direct3D11 renderer. Off unless asked for; needs engine 151 r15+. */

@@ -159,6 +159,15 @@ export interface Profile {
    *  disk. The stronger form of `portableProfile` — it wins when both are set. */
   encryptionKey?: string;
 
+  // ---- Widevine / EME ----
+  /** Fetch Google's Widevine CDM and seed it into this profile. Clearcote is fully open source, so
+   *  it compiles the EME plumbing but cannot bundle Google's proprietary CDM — while every profile
+   *  claims the "Google Chrome" brand by default, and Google's build always ships the CDM. A
+   *  browser asserting that brand and then rejecting `com.widevine.alpha` contradicts itself in one
+   *  property lookup. Opting in downloads the CDM once from Google's own component server (the same
+   *  place real Chrome gets it), verifies its SHA-256, and shares it across profiles. */
+  widevine?: boolean;
+
   // ---- shader dialect (engine 151 r15+) ----
   /** CLEARCOTE_SHADER_DIALECT (an env var, not a switch — the code lives in the GPU process).
    *  "hlsl" re-translates shaders for getTranslatedShaderSource() so a Windows persona on a LINUX
