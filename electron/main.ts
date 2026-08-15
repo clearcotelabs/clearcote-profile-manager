@@ -1,4 +1,4 @@
-import { app, BrowserWindow, ipcMain, dialog } from "electron";
+import { app, BrowserWindow, ipcMain, dialog, shell } from "electron";
 import path from "node:path";
 import fs from "node:fs";
 import * as profiles from "./profiles";
@@ -11,6 +11,7 @@ import { screenWarningFromLabel } from "./fpargs";
 import { summarizeFingerprint } from "./fpmeta";
 import { listCached, removeCached } from "./cache";
 import { redactProxyString } from "./proxy";
+import { checkForUpdate, downloadUpdate, CHECK_INTERVAL_MS, type UpdateInfo } from "./appupdate";
 import type { Profile, Settings, FingerprintMeta } from "./types";
 
 const slug = (s: string) => s.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-+|-+$/g, "").slice(0, 40);
@@ -116,6 +117,44 @@ function registerIpc(): void {
   });
 
   ipcMain.handle("geo:check", (_e, p: Profile) => geo.geoCheck(p));
+
+  // ── App updates ────────────────────────────────────────────────────────────
+  // Check, tell, download-and-verify — the person runs the installer. See electron/appupdate.ts
+  // for why this is not electron-updater.
+  ipcMain.handle("update:check", async (_e, force?: boolean) => {
+    const s = readSettings();
+    // Default ON: a user on an old build has no other way to learn a fix shipped.
+    if (s.updateCheck === false && !force) return null;
+    if (!force && s.lastUpdateCheck) {
+      const age = Date.now() - Date.parse(s.lastUpdateCheck);
+      if (Number.isFinite(age) && age >= 0 && age < CHECK_INTERVAL_MS) return null;
+    }
+    const info = await checkForUpdate(app.getVersion());
+    // Record the attempt either way, so an unreachable GitHub is not retried on every launch.
+    writeSettings({ ...readSettings(), lastUpdateCheck: new Date().toISOString() });
+    if (!info) return null;
+    // A version the user dismissed stays dismissed until something newer ships.
+    if (info.available && readSettings().skippedVersion === info.latest && !force) return null;
+    return info;
+  });
+
+  ipcMain.handle("update:download", async (e, info: UpdateInfo) =>
+    downloadUpdate(info, (pct, seenMB, totalMB) =>
+      e.sender.send("update:progress", { pct, seenMB, totalMB }),
+    ),
+  );
+
+  // openPath, not spawn: the OS shell runs the installer with the user's own elevation prompt in
+  // front of them, rather than this app starting an installer on their behalf.
+  ipcMain.handle("update:run", async (_e, file: string) => {
+    await shell.openPath(file);
+  });
+  ipcMain.handle("update:reveal", (_e, file: string) => shell.showItemInFolder(file));
+  ipcMain.handle("update:skip", (_e, version: string) => {
+    writeSettings({ ...readSettings(), skippedVersion: version });
+  });
+  ipcMain.handle("update:openReleases", (_e, url: string) => shell.openExternal(url));
+
 
   ipcMain.handle("profiles:export", async (_e, opts?: { redact?: boolean }) => {
     const r = await dialog.showSaveDialog({

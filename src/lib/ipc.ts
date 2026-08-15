@@ -12,6 +12,11 @@ export interface Settings {
    *  + a floating-concurrency slot. Empty = free mode (no backend contact). */
   licenseKey?: string;
   licenseApiBase?: string;
+  /** Check GitHub once a day for a newer release of this app. On unless turned off. */
+  updateCheck?: boolean;
+  lastUpdateCheck?: string;
+  /** A version the user dismissed; the banner stays gone until something newer ships. */
+  skippedVersion?: string;
 }
 export interface LaunchResult {
   ok: boolean;
@@ -115,6 +120,25 @@ export interface CachedBuild {
   path: string;
 }
 
+export interface UpdateAsset { name: string; url: string; size: number }
+export interface UpdateInfo {
+  available: boolean;
+  latest: string;
+  current: string;
+  releaseUrl: string;
+  notes?: string;
+  asset?: UpdateAsset;
+  sumsUrl?: string;
+}
+export interface UpdateDownloadResult {
+  ok: boolean;
+  path?: string;
+  error?: string;
+  /** False when the release published no checksums, so nothing could be checked. "Downloaded" and
+   *  "downloaded and verified" are different claims and the UI says which one it is. */
+  verified?: boolean;
+}
+
 export interface ClearcoteApi {
   profiles: {
     list: () => Promise<Profile[]>;
@@ -144,6 +168,15 @@ export interface ClearcoteApi {
     list: () => Promise<CachedBuild[]>;
     remove: (tag: string) => Promise<boolean>;
   };
+  update: {
+    check: (force?: boolean) => Promise<UpdateInfo | null>;
+    download: (info: UpdateInfo) => Promise<UpdateDownloadResult>;
+    run: (file: string) => Promise<void>;
+    reveal: (file: string) => Promise<void>;
+    skip: (version: string) => Promise<void>;
+    openReleases: (url: string) => Promise<void>;
+  };
+  onUpdateProgress: (cb: (p: { pct: number; seenMB: number; totalMB: number }) => void) => () => void;
   resolveBinary: () => Promise<string | null>;
   pickBinary: () => Promise<string | null>;
   geoCheck: (p: Profile) => Promise<GeoResult>;
@@ -197,6 +230,19 @@ function buildMock(): ClearcoteApi {
     listVersions: async () => [], // browser preview has no catalog access; UI falls back to "latest"
     listRevisions: async () => [], // revisions need an authenticated PRO call — desktop app only
     onDownloadProgress: () => () => {}, // no downloads in the browser preview
+    // The browser preview never offers an update: there is no installed app to replace, and
+    // pretending otherwise would put a dead button in the design preview.
+    update: {
+      check: async () => null,
+      download: async () => ({ ok: false, error: "Updating only works in the desktop app." }),
+      run: async () => {},
+      reveal: async () => {},
+      skip: async () => {},
+      openReleases: async (url: string) => {
+        window.open(url, "_blank", "noopener");
+      },
+    },
+    onUpdateProgress: () => () => {},
     cache: { list: async () => [], remove: async () => false }, // no on-disk cache in the browser
     settings: {
       get: async () => {

@@ -5,6 +5,7 @@ import type {
 } from "./types";
 import type { VersionOption } from "./catalog";
 import type { CachedBuild } from "./cache";
+import type { UpdateInfo, DownloadResult } from "./appupdate";
 
 // The narrow, typed surface the renderer is allowed to call. No fs / child_process
 // in the renderer — everything goes through these IPC channels.
@@ -37,6 +38,24 @@ const api = {
   cache: {
     list: (): Promise<CachedBuild[]> => ipcRenderer.invoke("cache:list"),
     remove: (tag: string): Promise<boolean> => ipcRenderer.invoke("cache:remove", tag),
+  },
+  update: {
+    /** Newest release vs this build. `force` ignores the once-a-day throttle (the Settings button).
+     *  Resolves null when the check is off, throttled, or GitHub is unreachable. */
+    check: (force?: boolean): Promise<UpdateInfo | null> => ipcRenderer.invoke("update:check", force),
+    /** Download the matching asset and verify it against the release's SHA256SUMS. */
+    download: (info: UpdateInfo): Promise<DownloadResult> => ipcRenderer.invoke("update:download", info),
+    /** Open the verified installer, or reveal it in Explorer. The user does the installing. */
+    run: (file: string): Promise<void> => ipcRenderer.invoke("update:run", file),
+    reveal: (file: string): Promise<void> => ipcRenderer.invoke("update:reveal", file),
+    /** Stop offering this version until a newer one ships. */
+    skip: (version: string): Promise<void> => ipcRenderer.invoke("update:skip", version),
+    openReleases: (url: string): Promise<void> => ipcRenderer.invoke("update:openReleases", url),
+  },
+  onUpdateProgress: (cb: (p: { pct: number; seenMB: number; totalMB: number }) => void): (() => void) => {
+    const handler = (_e: unknown, data: { pct: number; seenMB: number; totalMB: number }) => cb(data);
+    ipcRenderer.on("update:progress", handler);
+    return () => ipcRenderer.removeListener("update:progress", handler);
   },
   resolveBinary: (): Promise<string | null> => ipcRenderer.invoke("resolveBinary"),
   pickBinary: (): Promise<string | null> => ipcRenderer.invoke("pickBinary"),

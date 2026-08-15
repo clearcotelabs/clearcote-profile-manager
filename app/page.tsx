@@ -3,7 +3,7 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
 import type { Profile } from "@/types/profile";
 import { MIN_PROFILE_SCREEN_WIDTH, MIN_PROFILE_SCREEN_HEIGHT } from "@/types/profile";
-import { api, isElectron, type Settings, type LibraryProfile, type FingerprintMeta, type LicenseStatus, type DownloadProgress, type CachedBuild } from "@/lib/ipc";
+import { api, isElectron, type Settings, type LibraryProfile, type FingerprintMeta, type LicenseStatus, type DownloadProgress, type CachedBuild, type UpdateInfo } from "@/lib/ipc";
 import ProfileEditor from "@/components/ProfileEditor";
 import { LogoMark } from "@/components/LogoMark";
 import { Mascot } from "@/components/Mascot";
@@ -45,6 +45,14 @@ export default function Page() {
   const [isEl, setIsEl] = useState(false);
   const [theme, setTheme] = useState<"dark" | "light">("dark");
   const [mounted, setMounted] = useState(false);
+  // App update. Checked once on launch (the main process applies the once-a-day throttle and the
+  // "off" setting), so a user on an old build learns that a fix shipped — which is otherwise
+  // impossible: the browser engine updates itself while the app driving it cannot.
+  const [update, setUpdate] = useState<UpdateInfo | null>(null);
+  const [updDl, setUpdDl] = useState<{ pct: number; seenMB: number; totalMB: number } | null>(null);
+  const [updFile, setUpdFile] = useState<{ path: string; verified: boolean } | null>(null);
+  const [updBusy, setUpdBusy] = useState(false);
+  const [updErr, setUpdErr] = useState<string | null>(null);
 
   const refresh = useCallback(async () => {
     setProfiles(await api.profiles.list());
@@ -76,6 +84,35 @@ export default function Page() {
     const t = setInterval(async () => setRunning(await api.running()), 2500);
     return () => clearInterval(t);
   }, []);
+
+  useEffect(() => {
+    let alive = true;
+    api.update?.check().then((u) => alive && u?.available && setUpdate(u)).catch(() => {});
+    const off = api.onUpdateProgress?.((p) => setUpdDl(p));
+    return () => {
+      alive = false;
+      off?.();
+    };
+  }, []);
+
+  async function downloadUpdate() {
+    if (!update) return;
+    setUpdBusy(true);
+    setUpdErr(null);
+    setUpdDl(null);
+    try {
+      const r = await api.update.download(update);
+      if (r.ok && r.path) setUpdFile({ path: r.path, verified: !!r.verified });
+      else setUpdErr(r.error || "Download failed.");
+    } finally {
+      setUpdBusy(false);
+      setUpdDl(null);
+    }
+  }
+  async function skipUpdate() {
+    if (update) await api.update.skip(update.latest);
+    setUpdate(null);
+  }
 
   const notify = (m: string) => {
     setToast(m);
@@ -210,6 +247,80 @@ export default function Page() {
         {!isEl && (
           <div className="mt-4 rounded-lg border border-iris/25 bg-iris/5 px-3 py-2 text-xs text-iris">
             Browser preview — profiles are stored locally in this browser and launching is disabled. Run the desktop app for the full experience.
+          </div>
+        )}
+
+        {/* A new release exists. Notified, never installed behind your back: this build is unsigned,
+            so an unattended install would be an unverified code path — see electron/appupdate.ts. */}
+        {update && (
+          <div className="mt-4 rounded-lg border border-accent/30 bg-accent/5 px-3 py-2.5 text-xs">
+            <div className="flex flex-wrap items-center gap-x-3 gap-y-2">
+              <span className="font-medium text-accent">Version {update.latest} is available</span>
+              <span className="text-fog/40">you have {update.current}</span>
+              <span className="flex-1" />
+              {!updFile && (
+                <>
+                  <button className={btnGhost + " py-1"} onClick={() => api.update.openReleases(update.releaseUrl)}>
+                    What&apos;s new
+                  </button>
+                  <button
+                    className="rounded-lg bg-sheen px-3 py-1 text-xs font-semibold text-[#07080a] disabled:opacity-40"
+                    onClick={downloadUpdate}
+                    disabled={updBusy || !update.asset}
+                    title={update.asset?.name || "No matching asset — use the release page"}
+                  >
+                    {updBusy ? "Downloading…" : "Download"}
+                  </button>
+                  <button className={btnGhost + " py-1"} onClick={skipUpdate}>
+                    Skip
+                  </button>
+                </>
+              )}
+              {updFile && (
+                <>
+                  <button
+                    className="rounded-lg bg-sheen px-3 py-1 text-xs font-semibold text-[#07080a]"
+                    onClick={() => api.update.run(updFile.path)}
+                  >
+                    Run installer
+                  </button>
+                  <button className={btnGhost + " py-1"} onClick={() => api.update.reveal(updFile.path)}>
+                    Show in folder
+                  </button>
+                </>
+              )}
+            </div>
+
+            {updDl && (
+              <div className="mt-2">
+                <div className="h-1 w-full overflow-hidden rounded bg-line">
+                  <div className="h-full bg-sheen transition-all" style={{ width: `${updDl.pct}%` }} />
+                </div>
+                <p className="mt-1 text-[11px] text-fog/40">
+                  {updDl.pct}% · {updDl.seenMB.toFixed(1)} / {updDl.totalMB.toFixed(1)} MB
+                </p>
+              </div>
+            )}
+
+            {updFile && (
+              // "Downloaded" and "downloaded and verified" are different claims, so which one it is
+              // gets said. The checksum ships from the same release as the binary, so it catches a
+              // corrupted or tampered download — not a compromised release. Signing is what would
+              // cover that, and this build is unsigned.
+              <p className="mt-2 text-[11px] text-fog/45">
+                {updFile.verified
+                  ? "✓ SHA-256 matches the checksum published with the release — so the download is intact. That is not a signature: the app is unsigned, and Windows will warn on first run (More info → Run anyway)."
+                  : "⚠ Downloaded, but the release published no checksums file, so nothing could be verified. Check it by hand before running it."}
+              </p>
+            )}
+
+            {updErr && <p className="mt-2 text-[11px] text-amber-500">{updErr}</p>}
+            {!update.asset && (
+              <p className="mt-2 text-[11px] text-fog/45">
+                No asset matched this installation, so nothing is offered automatically — open the release page and
+                pick the right one.
+              </p>
+            )}
           </div>
         )}
 
@@ -522,6 +633,7 @@ function SettingsModal({
   const dirty = (key.trim() || undefined) !== (settings.licenseKey || undefined);
 
   // Downloaded-browser cache (view + remove to force a re-download).
+  const [updMsg, setUpdMsg] = useState<string | null>(null);
   const [cached, setCached] = useState<CachedBuild[] | null>(null);
   const [busyTag, setBusyTag] = useState<string | null>(null);
   const loadCache = () => api.cache.list().then(setCached).catch(() => setCached([]));
@@ -632,6 +744,53 @@ function SettingsModal({
 
         <div className="mt-6 border-t border-line pt-5">
           <div className="flex items-center justify-between">
+            {/* Update checking. A toggle rather than invisible behaviour: this audience is exactly
+                the one that cares whether an app phones home, and the copy says where it goes. */}
+            <div className="rounded-lg border border-line p-3">
+              <label className="flex items-start gap-2.5 text-sm text-fog/80">
+                <input
+                  type="checkbox"
+                  className="mt-0.5 accent-[#38e0d6]"
+                  checked={settings.updateCheck !== false}
+                  onChange={(e) => onSaveSettings({ updateCheck: e.target.checked })}
+                />
+                <span>
+                  <span className="font-medium text-fog">Check for app updates</span> — once a day, ask
+                  <span className="font-mono text-[11px]"> api.github.com</span> whether a newer release exists. Nothing
+                  is downloaded or installed without you clicking: this build is unsigned, so an unattended install
+                  would be a code path nobody verified.
+                  <span className="mt-1 block text-[11px] text-fog/40">
+                    The browser engine already updates itself, so with this off an old app can sit on fixed bugs
+                    indefinitely.
+                  </span>
+                </span>
+              </label>
+              <div className="mt-2 flex items-center gap-2">
+                <button
+                  className={btnGhost + " py-1 text-xs"}
+                  onClick={async () => {
+                    setUpdMsg("Checking…");
+                    const u = await api.update.check(true);
+                    setUpdMsg(
+                      !u
+                        ? "Could not reach GitHub."
+                        : u.available
+                          ? `Version ${u.latest} is available — see the banner.`
+                          : `Up to date (${u.current}).`,
+                    );
+                  }}
+                >
+                  Check now
+                </button>
+                {settings.lastUpdateCheck && (
+                  <span className="text-[11px] text-fog/35">
+                    last checked {new Date(settings.lastUpdateCheck).toLocaleString()}
+                  </span>
+                )}
+              </div>
+              {updMsg && <p className="mt-1.5 text-[11px] text-fog/50">{updMsg}</p>}
+            </div>
+
             <div className={label}>Downloaded browsers</div>
             {cached && cached.length > 0 && (
               <span className="text-[11px] text-fog/45">

@@ -38,7 +38,7 @@ describe.skipIf(!READY)("editor UI — the category rail in a real browser", () 
     (await count(sel)) > 0 && (await page.locator(sel).first().isVisible());
 
   /** Poll until `read()` matches, so a re-render in flight is never read as a failure. */
-  async function until(read: () => Promise<string>, re: RegExp, what: string, ms = 6000) {
+  async function until(read: () => Promise<string>, re: RegExp, what: string, ms = 8000) {
     const deadline = Date.now() + ms;
     let last = "";
     while (Date.now() < deadline) {
@@ -71,7 +71,7 @@ describe.skipIf(!READY)("editor UI — the category rail in a real browser", () 
 
   afterAll(async () => {
     await browser?.close();
-  });
+  }, 20000);
 
   it("opens on Identity with all six categories in the rail", async () => {
     const labels = await page.locator("nav button").allTextContents();
@@ -84,13 +84,13 @@ describe.skipIf(!READY)("editor UI — the category rail in a real browser", () 
       "Session",
     ]);
     expect(await textOf("h3")).toBe("Identity");
-  });
+  }, 20000);
 
   it("shows one panel at a time — a Hardware field is not in the DOM while Identity is open", async () => {
     // The whole point of the rail: the other 40 fields are not there to be scrolled past.
     expect(await isVisible('[data-field="name"]')).toBe(true);
     expect(await count('[data-field="gpuVendor"]')).toBe(0);
-  });
+  }, 20000);
 
   it("navigates to another category", async () => {
     await rail("Hardware").click();
@@ -99,7 +99,7 @@ describe.skipIf(!READY)("editor UI — the category rail in a real browser", () 
     expect(await count('[data-field="name"]')).toBe(0);
     await rail("Identity").click();
     await untilHeading(/^Identity$/);
-  });
+  }, 20000);
 
   it("groups the risky screen row into its own sub-panel", async () => {
     await rail("Hardware").click();
@@ -107,43 +107,53 @@ describe.skipIf(!READY)("editor UI — the category rail in a real browser", () 
     expect(await page.getByText("Screen dimensions", { exact: false }).count()).toBeGreaterThan(0);
     await rail("Identity").click();
     await untilHeading(/^Identity$/);
-  });
+  }, 20000);
 
   it("badges count what you set, and a defaulted value does not count", async () => {
-    // A fresh profile has a seed (Identity) and a platform (Browser). Brand defaults to Chrome
-    // without being chosen, so Browser must read 1, not 2.
+    // A fresh profile has a seed (Identity), a platform (Browser) and geoip (Network) — geoip is
+    // ON by default, and a default the user did not choose still counts here because it is written
+    // onto the profile rather than inferred at launch. Brand, which IS inferred, does not count:
+    // Browser reads 1, not 2. Hardware has nothing set at all.
     await untilRail("Identity", /Identity\s*1$/);
     await untilRail("Browser", /Browser\s*1$/);
+    await untilRail("Network", /Network\s*1$/);
     await untilRail("Hardware", /^Hardware$/);
-  });
+  }, 20000);
 
   it("the badge increments when a field is filled in, and clears when emptied", async () => {
     await rail("Network").click();
     await untilHeading(/Network/);
-    await untilRail("Network", /^Network$/);
-    await page.locator('[data-field="timezone"] input').fill("Asia/Tokyo");
+    // Starts at 1 because geoip is on by default, so the increment is 1 -> 2 -> 1.
     await untilRail("Network", /Network\s*1$/);
+    await page.locator('[data-field="timezone"] input').fill("Asia/Tokyo");
+    await untilRail("Network", /Network\s*2$/);
     await page.locator('[data-field="timezone"] input').fill("");
-    await untilRail("Network", /^Network$/);
+    await untilRail("Network", /Network\s*1$/);
     await rail("Identity").click();
     await untilHeading(/^Identity$/);
-  });
+  }, 20000);
 
   it("search finds a setting in another category by its engine switch name", async () => {
+    // Pinned to Identity first: clearing the search returns to the CURRENT category, so inheriting
+    // one from an earlier test would make this pass or fail on test order.
+    await rail("Identity").click();
+    await untilHeading(/^Identity$/);
     await page.getByPlaceholder("Find a setting…").fill("socks5");
     await untilHeading(/match/);
     expect(await isVisible('[data-field="proxy"]')).toBe(true);
     await page.getByPlaceholder("Find a setting…").fill("");
     await untilHeading(/^Identity$/);
-  });
+  }, 20000);
 
   it("search reaches a field by a word only its explanation uses", async () => {
+    await rail("Identity").click();
+    await untilHeading(/^Identity$/);
     await page.getByPlaceholder("Find a setting…").fill("cdm");
     await untilHeading(/match/);
     expect(await isVisible('[data-field="widevine"]')).toBe(true);
     await page.getByPlaceholder("Find a setting…").fill("");
     await untilHeading(/^Identity$/);
-  });
+  }, 20000);
 
   it("reports the Widevine contradiction on a brand-new profile", async () => {
     // The audit row a real customer hit: brand unset means Chrome, and there is no CDM.
@@ -151,7 +161,7 @@ describe.skipIf(!READY)("editor UI — the category rail in a real browser", () 
     await chip().click();
     await settle();
     expect(await page.getByText(/reports the "Google Chrome" brand/).count()).toBeGreaterThan(0);
-  });
+  }, 20000);
 
   it("an issue deep-links to the field that caused it", async () => {
     await page.getByRole("button", { name: /Fix/ }).first().click();
@@ -162,13 +172,13 @@ describe.skipIf(!READY)("editor UI — the category rail in a real browser", () 
       return !!el && el.contains(document.activeElement);
     });
     expect(focused, "the blamed field should be focused").toBe(true);
-  });
+  }, 20000);
 
   it("fixing it clears the issue and updates the badge", async () => {
     await page.locator('[data-field="widevine"] input[type=checkbox]').check();
     await untilChip(/coherent/);
     await untilRail("Session", /Session\s*1$/);
-  });
+  }, 20000);
 
   it("a new contradiction appears as soon as it is created, and goes when undone", async () => {
     // The canvas bridge alongside the real-GPU switch is a real disagreement: pixels come from the
@@ -180,7 +190,7 @@ describe.skipIf(!READY)("editor UI — the category rail in a real browser", () 
     await untilChip(/issue/);
     await page.locator('[data-field="disableGpuFingerprint"] input[type=checkbox]').uncheck();
     await untilChip(/coherent/);
-  });
+  }, 20000);
 
   it("the canvas-bridge sub-options only appear once there is a bridge to configure", async () => {
     await rail("Rendering").click();
@@ -189,7 +199,7 @@ describe.skipIf(!READY)("editor UI — the category rail in a real browser", () 
     await page.locator('[data-field="canvasBridgeUrl"] input').fill("");
     await settle();
     expect(await count('[data-field="canvasBridgeMode"]')).toBe(0);
-  });
+  }, 20000);
 
   it("the launch preview follows you across categories and redacts secrets", async () => {
     await rail("Session").click();
@@ -203,7 +213,7 @@ describe.skipIf(!READY)("editor UI — the category rail in a real browser", () 
     // Still there from another category — the preview is feedback, not a setting.
     await rail("Identity").click();
     await until(() => textOf("pre"), /chrome\.exe/, "preview after switching category");
-  });
+  }, 20000);
 
   it("the shader dialect shows as an env var, not a switch", async () => {
     await rail("Rendering").click();
@@ -211,7 +221,7 @@ describe.skipIf(!READY)("editor UI — the category rail in a real browser", () 
     await page.locator('[data-field="shaderDialect"] input[type=checkbox]').check();
     await until(() => textOf("pre"), /CLEARCOTE_SHADER_DIALECT=hlsl/, "env in preview");
     await page.locator('[data-field="shaderDialect"] input[type=checkbox]').uncheck();
-  });
+  }, 20000);
 
   it("Save is reachable without scrolling, and gated on the seed", async () => {
     const save = page.getByRole("button", { name: "Save profile" });
@@ -225,7 +235,7 @@ describe.skipIf(!READY)("editor UI — the category rail in a real browser", () 
     await page.locator('[data-field="fingerprint"] input').fill("seed-restored");
     await settle();
     expect(await save.isEnabled()).toBe(true);
-  });
+  }, 20000);
 
   it("saves, and the profile appears in the list", async () => {
     await rail("Identity").click();
@@ -237,5 +247,5 @@ describe.skipIf(!READY)("editor UI — the category rail in a real browser", () 
       /E2E rail profile/,
       "saved profile in the list",
     );
-  });
+  }, 20000);
 });

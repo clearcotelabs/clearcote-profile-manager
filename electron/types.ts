@@ -177,6 +177,15 @@ export interface Settings {
   licenseKey?: string;
   /** Override the license backend base URL (default clearcotelabs.com). */
   licenseApiBase?: string;
+  /** Check GitHub once a day for a newer release of THIS app. On unless turned off: a user sitting
+   *  on an old build has no other way to learn a fix shipped, and the engine already updates itself
+   *  while the app that drives it cannot. It contacts api.github.com, which the Settings copy says
+   *  out loud rather than leaving it as invisible behaviour. */
+  updateCheck?: boolean;
+  /** ISO timestamp of the last check, so a restart does not re-check. */
+  lastUpdateCheck?: string;
+  /** A version the user dismissed, so the banner stays gone until a newer one ships. */
+  skippedVersion?: string;
 }
 
 export interface LaunchResult {
