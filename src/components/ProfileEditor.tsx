@@ -27,7 +27,7 @@ import {
   type CategoryId,
   type FieldDef,
 } from "@/lib/fields";
-import { coherenceIssues, coherenceSummary, type Issue } from "@/lib/coherence";
+import { coherenceIssues, coherenceSummary, shouldAutoEnableGeoip, type Issue } from "@/lib/coherence";
 import {
   profileToArgs,
   profileToEnv,
@@ -91,6 +91,9 @@ export default function ProfileEditor({ profile, onChange, onSave, onCancel, ren
   const [versions, setVersions] = useState<VersionOption[]>([]);
   const [revisions, setRevisions] = useState<string[]>([]);
   const [flash, setFlash] = useState<string | null>(null);
+  /** Set when we turned geoip on for the user, so the editor can say so rather than
+   *  silently changing a setting they did not touch. */
+  const [autoGeoip, setAutoGeoip] = useState(false);
 
   const panelRef = useRef<HTMLDivElement>(null);
 
@@ -451,8 +454,29 @@ export default function ProfileEditor({ profile, onChange, onSave, onCancel, ren
               className={input + " font-mono"}
               value={proxyString(profile.proxy)}
               placeholder="http://user:pass@host:8080  ·  socks5://user:pass@host:1080"
-              onChange={(e) => set("proxy", e.target.value || undefined)}
+              onChange={(e) => {
+                const next = e.target.value || undefined;
+                // Auto-correct, once: the moment a profile FIRST gains a proxy, turn geoip on so the
+                // persona's region follows the exit rather than the host. Fired on the transition —
+                // not on every keystroke — so unticking geoip afterwards sticks instead of being
+                // switched back on under the user. Legacy profiles that arrive already incoherent
+                // are handled by the coherence warning instead, since silently rewriting a saved
+                // profile on open is not ours to do.
+                if (shouldAutoEnableGeoip(profile, next)) {
+                  onChange({ ...profile, proxy: next, geoip: true });
+                  setAutoGeoip(true);
+                  return;
+                }
+                if (!next) setAutoGeoip(false);
+                set("proxy", next);
+              }}
             />
+            {autoGeoip && profile.geoip && (
+              <p className="mt-1 text-[11px] text-accent">
+                geoip switched on — timezone, language and position will follow this proxy&apos;s exit region at
+                launch. Untick it below if you don&apos;t want that.
+              </p>
+            )}
             {geo && (
               <p className={"mt-1 text-[11px] " + (geo.ok ? "text-accent" : "text-amber-500")}>
                 {geo.ok

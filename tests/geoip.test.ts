@@ -128,3 +128,45 @@ describe("applyGeoip — failure is not fatal", () => {
     expect(warning).toMatch(/geoip/i);
   });
 });
+
+// ---------------------------------------------------------------------------
+// geoip is now ON by default, and switched on automatically when a proxy is added.
+//
+// The off-by-default version is what a customer actually hit: the profile looked configured, no
+// --fingerprint-location was emitted, and the Geolocation API kept reporting the real position.
+// Both halves of the fix are pinned here — the default itself, and that applyGeoip still refuses to
+// override anything the user chose, because a default that silently overwrites is worse than the
+// bug it replaces.
+// ---------------------------------------------------------------------------
+describe("geoip default", () => {
+  it("a new profile has geoip on", async () => {
+    // Mirrors newProfile() in app/page.tsx. Kept as an explicit assertion because the default is the
+    // whole fix: flipping it back to false would restore the reported bug with every test still green.
+    const { readFileSync } = await import("node:fs");
+    const page = readFileSync(new URL("../app/page.tsx", import.meta.url), "utf8");
+    const line = page.split("\n").find((l) => l.includes("function newProfile") || l.includes("geoip:"));
+    expect(page).toMatch(/geoip:\s*true/);
+    expect(line).toBeDefined();
+  });
+
+  it("still fills only what the user left blank", async () => {
+    // The default being ON makes this guarantee load-bearing: geoip now runs for nearly every
+    // proxied profile, so if it overrode explicit values it would quietly rewrite people's personas.
+    geoCheck.mockResolvedValue(SUCCESS);
+    const { profile: out } = await applyGeoip(
+      profile({ geoip: true, timezone: "Europe/Berlin", location: "52.5,13.4" }),
+    );
+    expect(out.timezone).toBe("Europe/Berlin");
+    expect(out.location).toBe("52.5,13.4");
+    expect(out.acceptLanguage).toBe("en-US,en");
+    expect(out.webrtcIp).toBe("23.147.168.31");
+  });
+
+  it("a user who turns geoip off is still respected at launch", async () => {
+    geoCheck.mockResolvedValue(SUCCESS);
+    const p = profile({ geoip: false });
+    const r = await applyGeoip(p);
+    expect(r.profile).toBe(p);
+    expect(geoCheck).not.toHaveBeenCalled();
+  });
+});

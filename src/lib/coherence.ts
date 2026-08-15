@@ -232,6 +232,26 @@ export function coherenceIssues(
   return [...out.filter((i) => i.severity === "error"), ...out.filter((i) => i.severity === "warn")];
 }
 
+/**
+ * Should adding a proxy switch geoip on for the user?
+ *
+ * True only on the TRANSITION where a profile first gains a proxy while geoip is off and no
+ * location was set by hand. Deliberately not "is this profile currently incoherent" — that is the
+ * `proxy-without-geolocation` rule's job, and answering it here would flip the toggle back on every
+ * time someone deliberately turned it off, which is a fight the user should win.
+ *
+ * The two mechanisms are complementary: this one corrects new intent as it is expressed, the rule
+ * warns about state that already exists (a saved profile from before the default changed, or a
+ * deliberate choice worth a second look). Silently rewriting a stored profile on open is neither.
+ */
+export function shouldAutoEnableGeoip(
+  profile: { proxy?: unknown; geoip?: unknown; location?: unknown },
+  nextProxy: string | undefined,
+): boolean {
+  const gained = !profile.proxy && !!nextProxy;
+  return gained && !profile.geoip && !isSet(profile.location);
+}
+
 /** Convenience for the header chip. */
 export function coherenceSummary(issues: Issue[]): { errors: number; warnings: number; ok: boolean } {
   const errors = issues.filter((i) => i.severity === "error").length;

@@ -319,7 +319,7 @@ export const FIELDS: FieldDef[] = [
     label: "geoip",
     type: "check",
     desc: "At launch, fill any unset timezone, language, geolocation and WebRTC IP from the proxy's exit region.",
-    hint: "Values you set yourself always win.",
+    hint: "On by default, and switched on automatically when you add a proxy. Values you set yourself always win.",
     keywords: "auto match exit region",
     why:
       "Without this, and without a geolocation set, the Geolocation API reports the host's real position — the proxy alone does not move it.",

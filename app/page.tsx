@@ -16,7 +16,11 @@ const slugify = (s: string) =>
 
 function newProfile(): Profile {
   const now = new Date().toISOString();
-  return { id: "", name: "", fingerprint: randomSeed(), platform: "windows", geoip: false, createdAt: now, updatedAt: now };
+  // geoip ON by default. It only does anything once a proxy is set, and when one IS set, matching
+  // the persona's timezone/language/position to the proxy's exit region is what everyone wants —
+  // the off-by-default version shipped a profile that looked configured while the Geolocation API
+  // quietly kept reporting the real position, which is exactly how a customer found it.
+  return { id: "", name: "", fingerprint: randomSeed(), platform: "windows", geoip: true, createdAt: now, updatedAt: now };
 }
 
 const input =

@@ -5,7 +5,7 @@
 // Every issue also has to name a field that actually exists, or the "Fix →" deep-link goes nowhere.
 
 import { describe, it, expect } from "vitest";
-import { coherenceIssues, coherenceSummary } from "../src/lib/coherence";
+import { coherenceIssues, coherenceSummary, shouldAutoEnableGeoip } from "../src/lib/coherence";
 import { fieldByKey } from "../src/lib/fields";
 
 const ids = (p: Record<string, unknown>, ctx = {}) => coherenceIssues(p, ctx).map((i) => i.id);
@@ -202,5 +202,60 @@ describe("device memory is left to the engine", () => {
     for (const v of [1, 2, 4, 6, 8, 16, 32, 64, 128]) {
       expect(coherenceIssues({ ...CLEAN, platform: "windows", deviceMemory: v }), `deviceMemory=${v}`).toEqual([]);
     }
+  });
+});
+
+// ---------------------------------------------------------------------------
+// Auto-correct: adding a proxy switches geoip on.
+//
+// This is the other half of the geoip fix — the default handles NEW profiles, this handles the
+// moment an existing one gains a proxy. The pair has to be exactly complementary: correct new
+// intent, warn about existing state, and never fight a deliberate choice.
+// ---------------------------------------------------------------------------
+describe("shouldAutoEnableGeoip", () => {
+  const P = "socks5://u:p@gw.example.com:10000";
+
+  it("fires when a profile first gains a proxy", () => {
+    expect(shouldAutoEnableGeoip({}, P)).toBe(true);
+    expect(shouldAutoEnableGeoip({ geoip: false }, P)).toBe(true);
+  });
+
+  it("does NOT fire when geoip is already on — nothing to correct", () => {
+    expect(shouldAutoEnableGeoip({ geoip: true }, P)).toBe(false);
+  });
+
+  it("does NOT fire when a location was set by hand — that is already coherent", () => {
+    expect(shouldAutoEnableGeoip({ location: "48.85,2.35" }, P)).toBe(false);
+  });
+
+  it("does NOT fire while EDITING an existing proxy", () => {
+    // The key anti-loop property. Someone who sets a proxy, unticks geoip, then fixes a typo in the
+    // proxy must not have geoip switched back on under them.
+    expect(shouldAutoEnableGeoip({ proxy: "socks5://old:1080", geoip: false }, P)).toBe(false);
+  });
+
+  it("does NOT fire when the proxy is being cleared", () => {
+    expect(shouldAutoEnableGeoip({ proxy: P, geoip: false }, undefined)).toBe(false);
+    expect(shouldAutoEnableGeoip({ proxy: P, geoip: false }, "")).toBe(false);
+  });
+
+  it("does NOT fire with no proxy on either side", () => {
+    expect(shouldAutoEnableGeoip({}, undefined)).toBe(false);
+  });
+
+  it("treats an empty location string as unset", () => {
+    expect(shouldAutoEnableGeoip({ location: "" }, P)).toBe(true);
+  });
+
+  it("is complementary to the warning, not overlapping", () => {
+    // After auto-correct applies, the warning must go quiet — otherwise the user is told to fix
+    // something that was just fixed for them.
+    const before = { brand: "Chromium", browserVersion: "151" } as Record<string, unknown>;
+    expect(shouldAutoEnableGeoip(before, P)).toBe(true);
+    const after = { ...before, proxy: P, geoip: true };
+    expect(coherenceIssues(after, { major: 151 }).map((i) => i.id)).not.toContain("proxy-without-geolocation");
+    // ...and a profile that arrives already incoherent (saved before the default changed) still warns.
+    const legacy = { ...before, proxy: P, geoip: false };
+    expect(coherenceIssues(legacy, { major: 151 }).map((i) => i.id)).toContain("proxy-without-geolocation");
   });
 });
