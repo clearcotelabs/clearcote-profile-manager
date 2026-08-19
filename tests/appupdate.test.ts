@@ -36,48 +36,73 @@ describe("compareVersions", () => {
   });
 });
 
-describe("pickAsset — match how the app was installed", () => {
+describe("pickAsset — match the host OS, then how the app was installed", () => {
+  // A release carries every platform at once, which is exactly why the OS cut has to come first.
   const assets: UpdateAsset[] = [
     { name: "Clearcote-Profile-Manager-0.10.0-setup.exe", url: "u1", size: 1 },
     { name: "Clearcote-Profile-Manager-0.10.0-x64.zip", url: "u2", size: 2 },
+    { name: "Clearcote-Profile-Manager-0.10.0-x64.AppImage", url: "u4", size: 4 },
+    { name: "Clearcote-Profile-Manager-0.10.0-x64.tar.gz", url: "u5", size: 5 },
     { name: "SHA256SUMS.txt", url: "u3", size: 3 },
   ];
+  // The tests pin the platform rather than inheriting it, so the suite asserts the same thing on a
+  // Windows laptop and on the Linux CI runner.
+  const win = { platform: "win32" as const, execPath: "C:/Apps/Clearcote/app.exe" };
+  const linux = { platform: "linux" as const, execPath: "/opt/clearcote/clearcote-profile-manager" };
 
   it("an NSIS install gets the installer — it sits beside its uninstaller", () => {
-    const got = pickAsset(assets, {
-      execPath: "C:/Apps/Clearcote/app.exe",
-      existsSync: (p) => p.includes("Uninstall"),
-    });
+    const got = pickAsset(assets, { ...win, existsSync: (p) => p.includes("Uninstall") });
     expect(got?.name).toMatch(/setup\.exe$/);
   });
 
   it("a portable copy gets the zip, never the installer", () => {
     // Handing a zip user an installer would silently create a SECOND, separate installation while
     // they carry on running the old folder.
-    const got = pickAsset(assets, { execPath: "D:/portable/cc/app.exe", existsSync: () => false });
+    const got = pickAsset(assets, { ...win, execPath: "D:/portable/cc/app.exe", existsSync: () => false });
     expect(got?.name).toMatch(/\.zip$/);
+  });
+
+  it("never offers a Windows download to a Linux host", () => {
+    for (const appImage of ["/home/me/Apps/cc.AppImage", undefined]) {
+      const got = pickAsset(assets, { ...linux, appImage, existsSync: () => false });
+      expect(got?.name).not.toMatch(/\.(exe|zip)$/i);
+    }
+  });
+
+  it("an AppImage updates itself, a tarball install gets the tarball", () => {
+    // The AppImage launcher exports APPIMAGE; without it this copy was unpacked from the tarball,
+    // and swapping in an AppImage would leave the old directory sitting there being run.
+    expect(pickAsset(assets, { ...linux, appImage: "/home/me/Apps/cc.AppImage" })?.name).toMatch(/\.AppImage$/);
+    expect(pickAsset(assets, { ...linux, appImage: "" })?.name).toMatch(/\.tar\.gz$/);
   });
 
   it("never offers the checksums file as the download", () => {
     for (const exists of [() => true, () => false]) {
-      expect(pickAsset(assets, { execPath: "C:/x/app.exe", existsSync: exists })?.name).not.toMatch(/SHA256SUMS/);
+      expect(pickAsset(assets, { ...win, existsSync: exists })?.name).not.toMatch(/SHA256SUMS/);
+      expect(pickAsset(assets, { ...linux, existsSync: exists })?.name).not.toMatch(/SHA256SUMS/);
     }
   });
 
   it("returns nothing when the release has no usable asset", () => {
-    expect(pickAsset([{ name: "SHA256SUMS.txt", url: "u", size: 1 }], { execPath: "C:/x/app.exe", existsSync: () => false })).toBeUndefined();
-    expect(pickAsset([], { execPath: "C:/x/app.exe", existsSync: () => false })).toBeUndefined();
+    const sums = [{ name: "SHA256SUMS.txt", url: "u", size: 1 }];
+    expect(pickAsset(sums, { ...win, existsSync: () => false })).toBeUndefined();
+    expect(pickAsset(sums, { ...linux })).toBeUndefined();
+    expect(pickAsset([], { ...win, existsSync: () => false })).toBeUndefined();
+    expect(pickAsset([], { ...linux })).toBeUndefined();
   });
 
-  it("falls back to the installer when only it is published", () => {
-    const only = [assets[0]];
-    expect(pickAsset(only, { execPath: "C:/x/app.exe", existsSync: () => false })?.name).toMatch(/setup\.exe$/);
+  it("falls back to the one shape that was published, on either OS", () => {
+    expect(pickAsset([assets[0]], { ...win, existsSync: () => false })?.name).toMatch(/setup\.exe$/);
+    // A Linux release that shipped only an AppImage still updates a tarball install — an unusable
+    // asset is worse than one that asks for a slightly different unpack.
+    expect(pickAsset([assets[2]], { ...linux, appImage: "" })?.name).toMatch(/\.AppImage$/);
+    expect(pickAsset([assets[3]], { ...linux, appImage: "/x/cc.AppImage" })?.name).toMatch(/\.tar\.gz$/);
   });
 
   it("survives a filesystem that throws", () => {
     expect(() =>
       pickAsset(assets, {
-        execPath: "C:/x/app.exe",
+        ...win,
         existsSync: () => {
           throw new Error("EPERM");
         },

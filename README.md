@@ -4,7 +4,7 @@ A desktop app to **create, save, organize, and launch [Clearcote](https://github
 
 ![Clearcote Profile Manager](docs/screenshots/profile-manager.png)
 
-> **Status:** built — profile create/edit/launch, proxy geo-resolve, import/export, a light/dark theme (dark by default), and a portable Windows build. Full design + phases in **[PLAN.md](PLAN.md)**.
+> **Status:** built — profile create/edit/launch, proxy geo-resolve, import/export, a light/dark theme (dark by default), and packaged builds for **Windows and Linux** (both cut by CI on every release). Full design + phases in **[PLAN.md](PLAN.md)**.
 
 <details>
 <summary>More screenshots — meet Clyde, light theme, editor</summary>
@@ -25,18 +25,36 @@ A desktop app to **create, save, organize, and launch [Clearcote](https://github
 
 ## Download
 
-Prebuilt Windows builds are on the **[Releases page](https://github.com/clearcotelabs/clearcote-profile-manager/releases)** — no need to build from source:
+Prebuilt **Windows and Linux** builds are on the **[Releases page](https://github.com/clearcotelabs/clearcote-profile-manager/releases)** — no need to build from source. Every release carries both.
+
+**Windows (x64)**
 
 - **Installer** — `Clearcote-Profile-Manager-<version>-setup.exe` · double-click to install.
 - **Portable** — `Clearcote-Profile-Manager-<version>-x64.zip` · unzip and run `Clearcote Profile Manager.exe` (no install).
 
+**Linux (x64)**
+
+- **AppImage** — `Clearcote-Profile-Manager-<version>-x64.AppImage` · no install and no root:
+
+  ```bash
+  chmod +x Clearcote-Profile-Manager-<version>-x64.AppImage
+  ./Clearcote-Profile-Manager-<version>-x64.AppImage
+  ```
+
+- **Tarball** — `Clearcote-Profile-Manager-<version>-x64.tar.gz` · unpack and run `clearcote-profile-manager`.
+
+The app launches the Linux Clearcote build (`chrome`, no extension) — the same catalog and the same
+version dropdown as on Windows. Point it at one in **Settings**, or let it auto-detect a sibling
+`linux-x64/` dev build or `CLEARCOTE_BINARY`.
+
 ### Verify it's genuine (recommended)
 
-Every release is **built entirely by [GitHub Actions](.github/workflows/release.yml)** on a `windows-latest` runner from the tagged commit — not on anyone's machine — so the build is public and auditable. Two independent ways to confirm your download wasn't tampered with:
+Every release is **built entirely by [GitHub Actions](.github/workflows/release.yml)** from the tagged commit — Windows on a `windows-latest` runner, Linux on `ubuntu-latest`, each packaged natively, never on anyone's machine — so the build is public and auditable. Two independent ways to confirm your download wasn't tampered with:
 
 ```bash
 # 1. Provenance — cryptographically proves it came from THIS repo's CI at the release commit
 gh attestation verify Clearcote-Profile-Manager-<version>-setup.exe -R clearcotelabs/clearcote-profile-manager
+gh attestation verify Clearcote-Profile-Manager-<version>-x64.AppImage -R clearcotelabs/clearcote-profile-manager
 
 # 2. Checksum — SHA256SUMS.txt ships with every release
 sha256sum -c SHA256SUMS.txt          # macOS / Linux
@@ -151,14 +169,14 @@ function now matches the operating system the persona claims.
 
 ## Stack
 
-Electron · Next.js (App Router) · React · TypeScript · Tailwind CSS · packaged with electron-builder (Windows-first, matching the browser).
+Electron · Next.js (App Router) · React · TypeScript · Tailwind CSS · packaged with electron-builder for Windows x64 and Linux x64 — the two platforms the browser itself ships on.
 
 ## Quickstart (once implemented — see PLAN.md Phase 1)
 
 ```bash
 npm install
 npm run dev        # Electron shell + Next.js renderer
-npm run dist       # build a Windows installer
+npm run dist       # package for whichever OS you are on
 ```
 
 ## Layout
@@ -172,16 +190,28 @@ npm run dist       # build a Windows installer
 | `tests/` | vitest unit suite (`npm test`) — see [tests/README.md](tests/README.md) |
 | `profiles/` | runtime profile store — JSON per profile + per-profile `userdata/`; git-ignored except the example |
 
-## Packaging (Windows)
+## Packaging (Windows + Linux)
 
-Releases are cut automatically by [GitHub Actions](.github/workflows/release.yml) when a `v*` tag is pushed (build on a clean `windows-latest` runner → checksums → provenance attestation → GitHub Release). To build locally instead:
+Releases are cut automatically by [GitHub Actions](.github/workflows/release.yml) when a `v*` tag is pushed: a matrix builds **both** platforms on clean runners (`windows-latest`, `ubuntu-latest`), then one job collects them → checksums → provenance attestation → a single GitHub Release. Both platforms are built on every release, so a release cannot quietly go Windows-only.
+
+To build locally instead:
 
 ```bash
-npm run make-icon     # build/icon.ico from the brand mark (once)
-npm run dist          # next export + electron compile + electron-builder NSIS installer → release/
+npm run make-icon     # build/icon.ico + build/icon.png from the brand mark (once)
+npm run dist          # package for the CURRENT OS → release/
+npm run dist:win      # Windows: NSIS installer + portable zip
+npm run dist:linux    # Linux: AppImage + tar.gz
 ```
 
-This produces a signed-able NSIS installer in `release/`. A **portable build** (no installer) is also produced as `release/win-unpacked/` — zip it and run `Clearcote Profile Manager.exe` directly.
+`npm run dist` targets the host: on Windows it produces a signed-able NSIS installer plus a **portable build** at `release/win-unpacked/` (zip it and run `Clearcote Profile Manager.exe` directly); on Linux it produces the AppImage and the tarball, alongside `release/linux-unpacked/`.
+
+> **Do not cross-build the Linux artifacts from Windows.** `--linux tar.gz` appears to succeed there,
+> but NTFS has no executable bit, so every file in the tarball comes out `0644` — including
+> `clearcote-profile-manager` and `chrome-sandbox`, which makes the unpacked app unrunnable until the
+> user chmods it themselves. `--linux AppImage` does not even get that far: it fails on the icon
+> symlink with *"A required privilege is not held by the client"* unless Windows Developer Mode is on.
+> Build Linux artifacts on Linux — or push the tag and let CI do it, which is why the workflow packages
+> each platform on its own native runner.
 
 > **Note — NSIS installer on Windows:** electron-builder fetches `winCodeSign`, whose archive contains macOS symlinks. Extracting them needs symlink privilege, so on Windows **enable Developer Mode** (Settings → For developers) *or* run the build from an elevated shell once; otherwise `electron-builder` errors with *"Cannot create symbolic link"*. The portable `win-unpacked` build does not require this.
 

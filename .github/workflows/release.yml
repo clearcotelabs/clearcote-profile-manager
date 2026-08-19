@@ -1,8 +1,8 @@
 name: Release
 
-# Build the Windows app entirely on GitHub's runners (no local machine), publish a
-# GitHub Release, and attach a build-provenance attestation + SHA-256 checksums so
-# anyone can prove the downloaded artifact came from this repo's CI at this commit.
+# Build the app entirely on GitHub's runners (no local machine) for BOTH Windows and Linux,
+# publish a single GitHub Release, and attach a build-provenance attestation + SHA-256 checksums
+# so anyone can prove the downloaded artifact came from this repo's CI at this commit.
 
 on:
   push:
@@ -16,7 +16,25 @@ permissions:
 
 jobs:
   build:
-    runs-on: windows-latest
+    # Each OS packages natively — no cross-building, no Docker, no Wine. Both are built on every
+    # release; a Windows-only or Linux-only release is never a thing that can happen by accident.
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - os: windows-latest
+            name: windows
+            # Installer + portable zip.
+            artifacts: |
+              release/*.exe
+              release/*.zip
+          - os: ubuntu-latest
+            name: linux
+            # AppImage (run it anywhere) + tarball (unpack and run).
+            artifacts: |
+              release/*.AppImage
+              release/*.tar.gz
+    runs-on: ${{ matrix.os }}
     steps:
       - name: Checkout
         uses: actions/checkout@v4
@@ -30,22 +48,40 @@ jobs:
       - name: Install dependencies
         run: npm ci
 
-      - name: Build installer + portable (electron-builder)
+      - name: Package (electron-builder)
         run: npm run dist
         env:
           # Unsigned build — the provenance attestation + checksums are the integrity proof.
           CSC_IDENTITY_AUTO_DISCOVERY: "false"
 
+      - name: Collect artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: dist-${{ matrix.name }}
+          path: ${{ matrix.artifacts }}
+          if-no-files-found: error
+          retention-days: 7
+
+  release:
+    needs: build
+    runs-on: ubuntu-latest
+    steps:
+      - name: Download both platforms' artifacts
+        uses: actions/download-artifact@v4
+        with:
+          pattern: dist-*
+          merge-multiple: true
+          path: release
+
       - name: Generate SHA256SUMS
-        shell: pwsh
         run: |
-          Set-Location release
-          $items = Get-ChildItem -File | Where-Object { $_.Extension -in '.exe', '.zip' }
-          if (-not $items) { throw 'No .exe/.zip artifacts found in release/' }
-          $items | ForEach-Object {
-            "$((Get-FileHash $_.FullName -Algorithm SHA256).Hash.ToLower())  $($_.Name)"
-          } | Set-Content -Encoding ascii SHA256SUMS.txt
-          Get-Content SHA256SUMS.txt
+          cd release
+          ls -la
+          shopt -s nullglob
+          files=(*.exe *.zip *.AppImage *.tar.gz)
+          if [ ${#files[@]} -eq 0 ]; then echo "No artifacts found in release/" >&2; exit 1; fi
+          sha256sum "${files[@]}" > SHA256SUMS.txt
+          cat SHA256SUMS.txt
 
       - name: Attest build provenance
         uses: actions/attest-build-provenance@v2
@@ -53,6 +89,8 @@ jobs:
           subject-path: |
             release/*.exe
             release/*.zip
+            release/*.AppImage
+            release/*.tar.gz
 
       - name: Publish GitHub Release
         uses: softprops/action-gh-release@v2
@@ -62,31 +100,41 @@ jobs:
           files: |
             release/*.exe
             release/*.zip
+            release/*.AppImage
+            release/*.tar.gz
             release/SHA256SUMS.txt
           body: |
             **Clearcote Profile Manager** — a desktop app to create, save, organize, and launch
             [Clearcote](https://github.com/clearcotelabs/clearcote-browser) browser identities.
 
             ## Download
+
+            **Windows (x64)**
             - **Installer** — `Clearcote-Profile-Manager-*-setup.exe` · double-click to install.
             - **Portable** — `Clearcote-Profile-Manager-*-x64.zip` · unzip and run `Clearcote Profile Manager.exe` (no install).
 
+            **Linux (x64)**
+            - **AppImage** — `Clearcote-Profile-Manager-*-x64.AppImage` · `chmod +x` it and run; no install, no root.
+            - **Tarball** — `Clearcote-Profile-Manager-*-x64.tar.gz` · unpack and run `clearcote-profile-manager`.
+
             ## Built in the open — verify it yourself
-            This build was produced **entirely by GitHub Actions** on a `windows-latest` runner
-            from this tagged commit — no local machines. The workflow and full logs are public.
-            Two independent ways to confirm nothing was tampered with:
+            Both builds were produced **entirely by GitHub Actions** — Windows on a `windows-latest`
+            runner, Linux on `ubuntu-latest` — from this tagged commit, with no local machines. The
+            workflow and full logs are public. Two independent ways to confirm nothing was tampered
+            with:
 
             **1 · Provenance attestation** (proves it came from *this* repo's CI at *this* commit):
             ```
             gh attestation verify Clearcote-Profile-Manager-${{ github.ref_name }}-setup.exe -R ${{ github.repository }}
+            gh attestation verify Clearcote-Profile-Manager-${{ github.ref_name }}-x64.AppImage -R ${{ github.repository }}
             ```
 
             **2 · SHA-256 checksums** (`SHA256SUMS.txt`):
             ```
-            # Windows (PowerShell)
-            (Get-FileHash .\Clearcote-Profile-Manager-${{ github.ref_name }}-setup.exe -Algorithm SHA256).Hash
             # macOS / Linux
             sha256sum -c SHA256SUMS.txt
+            # Windows (PowerShell)
+            (Get-FileHash .\Clearcote-Profile-Manager-${{ github.ref_name }}-setup.exe -Algorithm SHA256).Hash
             ```
 
             > **Unsigned build.** Windows SmartScreen may warn on first run — choose **More info → Run anyway**.

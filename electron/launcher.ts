@@ -67,17 +67,21 @@ const relays = new Map<string, Relay>();
 const leases = new Map<string, LeaseSession>();
 
 /**
- * Resolve the Clearcote chrome.exe path (Phase 1: explicit/env/sibling-dev-build).
- * Order: Settings.binaryPath → CLEARCOTE_BINARY → sibling `../win-x64/chrome.exe`.
+ * Resolve the Clearcote browser path (Phase 1: explicit/env/sibling-dev-build).
+ * Order: Settings.binaryPath → CLEARCOTE_BINARY → a sibling dev build for THIS host
+ * (`../win-x64/chrome.exe` on Windows, `../linux-x64/chrome` on Linux).
  * TODO Phase 3: fall back to the clearcote SDK's executablePath() (auto-download + SHA-256 verify).
  */
 export function resolveBinary(): string | null {
   const s = readSettings();
+  // Only the host's own layout is probed: a Windows chrome.exe sitting next to a Linux checkout is
+  // not runnable here, and silently "finding" it would fail later as a confusing spawn error.
+  const [dir, exe] = process.platform === "win32" ? ["win-x64", "chrome.exe"] : ["linux-x64", "chrome"];
   const candidates = [
     s.binaryPath,
     process.env.CLEARCOTE_BINARY,
-    path.resolve(process.cwd(), "..", "win-x64", "chrome.exe"), // clearcoat/win-x64 dev build
-    path.resolve(process.cwd(), "win-x64", "chrome.exe"),
+    path.resolve(process.cwd(), "..", dir, exe), // clearcoat/<plat>-x64 dev build
+    path.resolve(process.cwd(), dir, exe),
   ].filter((c): c is string => !!c);
   for (const c of candidates) {
     try {

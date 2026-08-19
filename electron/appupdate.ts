@@ -75,15 +75,36 @@ export function compareVersions(a: string, b: string): number {
 /**
  * Which asset suits THIS copy of the app.
  *
- * An NSIS install sits beside its uninstaller; the portable zip does not. Handing a zip user an
- * installer would silently create a second, separate installation, so the two are told apart rather
- * than defaulting to the installer for everyone. When it cannot be decided, no asset is offered and
- * the UI points at the release page — better than guessing wrong about where someone's app lives.
+ * A release carries every platform's downloads, so the first cut is the host OS — offering a
+ * Windows installer to someone on Linux is not a near miss, it is an unusable file.
+ *
+ * Within an OS, the shape of the install decides. On Windows an NSIS install sits beside its
+ * uninstaller and the portable zip does not; handing a zip user an installer would silently create
+ * a second, separate installation. On Linux the same question is whether this copy is running as an
+ * AppImage (the launcher exports APPIMAGE with the path to it) or from an unpacked tarball. When it
+ * cannot be decided, no asset is offered and the UI points at the release page — better than
+ * guessing wrong about where somebody's app lives.
  */
 export function pickAsset(
   assets: UpdateAsset[],
-  opts: { execPath: string; existsSync?: (p: string) => boolean } = { execPath: process.execPath },
+  opts: {
+    execPath: string;
+    existsSync?: (p: string) => boolean;
+    platform?: NodeJS.Platform;
+    /** The AppImage this process was launched from, when it was — `process.env.APPIMAGE`. */
+    appImage?: string;
+  } = { execPath: process.execPath },
 ): UpdateAsset | undefined {
+  const platform = opts.platform ?? process.platform;
+  const find = (re: RegExp) => assets.find((a) => re.test(a.name));
+
+  if (platform === "linux") {
+    const appImage = find(/\.AppImage$/i);
+    const tarball = find(/\.tar\.gz$/i);
+    const runningAsAppImage = !!(opts.appImage ?? process.env.APPIMAGE);
+    return runningAsAppImage ? appImage ?? tarball : tarball ?? appImage;
+  }
+
   const exists = opts.existsSync ?? existsSync;
   const dir = path.dirname(opts.execPath);
   let installed = false;
@@ -92,8 +113,8 @@ export function pickAsset(
   } catch {
     installed = false;
   }
-  const setup = assets.find((a) => /setup\.exe$/i.test(a.name));
-  const zip = assets.find((a) => /\.zip$/i.test(a.name));
+  const setup = find(/setup\.exe$/i);
+  const zip = find(/\.zip$/i);
   return installed ? setup : zip ?? setup;
 }
 

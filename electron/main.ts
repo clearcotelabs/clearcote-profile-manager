@@ -104,10 +104,16 @@ function registerIpc(): void {
 
   ipcMain.handle("resolveBinary", () => launcher.resolveBinary());
   ipcMain.handle("pickBinary", async () => {
+    // The Linux binary is a bare `chrome` with no extension, and an "exe"-only filter would hide
+    // the very file being asked for — so the filter follows the host, and Linux keeps an
+    // all-files fallback rather than trusting an extensionless match.
+    const win = process.platform === "win32";
     const r = await dialog.showOpenDialog({
-      title: "Select the Clearcote chrome.exe",
+      title: win ? "Select the Clearcote chrome.exe" : "Select the Clearcote chrome binary",
       properties: ["openFile"],
-      filters: [{ name: "Clearcote browser", extensions: ["exe"] }],
+      filters: win
+        ? [{ name: "Clearcote browser", extensions: ["exe"] }]
+        : [{ name: "All files", extensions: ["*"] }],
     });
     if (r.canceled || !r.filePaths[0]) return null;
     const s = readSettings();

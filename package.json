@@ -19,6 +19,8 @@
     "build": "next build && npm run electron:build",
     "start": "cross-env ELECTRON_DEV=0 electron .",
     "dist": "npm run build && electron-builder --publish never",
+    "dist:win": "npm run build && electron-builder --win --publish never",
+    "dist:linux": "npm run build && electron-builder --linux --publish never",
     "lint": "next lint",
     "typecheck": "tsc --noEmit && tsc -p electron --noEmit",
     "test": "vitest run"
@@ -69,6 +71,18 @@
       "perMachine": false,
       "allowToChangeInstallationDirectory": true,
       "artifactName": "Clearcote-Profile-Manager-${version}-setup.${ext}"
+    },
+    "linux": {
+      "target": [
+        "AppImage",
+        "tar.gz"
+      ],
+      "icon": "build/icon.png",
+      "category": "Network",
+      "synopsis": "Create, organize, and launch Clearcote browser identities",
+      "desktop": {
+        "StartupWMClass": "clearcote-profile-manager"
+      }
     }
   }
 }

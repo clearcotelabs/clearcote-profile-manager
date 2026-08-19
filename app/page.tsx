@@ -9,6 +9,13 @@ import { LogoMark } from "@/components/LogoMark";
 import { Mascot } from "@/components/Mascot";
 
 
+/** The host OS, for the few strings that would otherwise name the wrong platform's files. The
+ *  renderer has a real navigator, so this needs no extra IPC (same trick as the editor). */
+function hostIsWindows(): boolean {
+  if (typeof navigator === "undefined") return true;
+  return `${navigator.platform} ${navigator.userAgent}`.toLowerCase().includes("win");
+}
+
 const randomSeed = () =>
   Math.random().toString(36).slice(2, 10) + Math.random().toString(36).slice(2, 6);
 const slugify = (s: string) =>
@@ -309,7 +316,10 @@ export default function Page() {
               // cover that, and this build is unsigned.
               <p className="mt-2 text-[11px] text-fog/45">
                 {updFile.verified
-                  ? "✓ SHA-256 matches the checksum published with the release — so the download is intact. That is not a signature: the app is unsigned, and Windows will warn on first run (More info → Run anyway)."
+                  ? "✓ SHA-256 matches the checksum published with the release — so the download is intact. That is not a signature: the app is unsigned" +
+                    (hostIsWindows()
+                      ? ", and Windows will warn on first run (More info → Run anyway)."
+                      : ". An AppImage also needs its executable bit set (chmod +x) before it will run.")
                   : "⚠ Downloaded, but the release published no checksums file, so nothing could be verified. Check it by hand before running it."}
               </p>
             )}
@@ -680,7 +690,8 @@ function SettingsModal({
         <div className="mt-5">
           <div className={label}>Clearcote browser binary</div>
           <p className="mb-2 text-xs text-fog/45">
-            Path to <span className="font-mono">chrome.exe</span>. Auto-detected from a sibling <span className="font-mono">win-x64</span> build or <span className="font-mono">CLEARCOTE_BINARY</span>; override here.
+            Path to <span className="font-mono">{hostIsWindows() ? "chrome.exe" : "chrome"}</span>. Auto-detected from a sibling{" "}
+            <span className="font-mono">{hostIsWindows() ? "win-x64" : "linux-x64"}</span> build or <span className="font-mono">CLEARCOTE_BINARY</span>; override here.
           </p>
           <div className="rounded-lg bg-ink/70 px-3 py-2 font-mono text-[11px] text-fog/60 break-all">
             {settings.binaryPath || binary || "(not set)"}
