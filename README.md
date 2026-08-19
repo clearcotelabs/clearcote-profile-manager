@@ -34,11 +34,11 @@ Prebuilt **Windows and Linux** builds are on the **[Releases page](https://githu
 
 **Linux (x64)**
 
-- **AppImage** — `Clearcote-Profile-Manager-<version>-x64.AppImage` · no install and no root:
+- **AppImage** — `Clearcote-Profile-Manager-<version>-x86_64.AppImage` · no install and no root:
 
   ```bash
-  chmod +x Clearcote-Profile-Manager-<version>-x64.AppImage
-  ./Clearcote-Profile-Manager-<version>-x64.AppImage
+  chmod +x Clearcote-Profile-Manager-<version>-x86_64.AppImage
+  ./Clearcote-Profile-Manager-<version>-x86_64.AppImage
   ```
 
 - **Tarball** — `Clearcote-Profile-Manager-<version>-x64.tar.gz` · unpack and run `clearcote-profile-manager`.
@@ -54,7 +54,7 @@ Every release is **built entirely by [GitHub Actions](.github/workflows/release.
 ```bash
 # 1. Provenance — cryptographically proves it came from THIS repo's CI at the release commit
 gh attestation verify Clearcote-Profile-Manager-<version>-setup.exe -R clearcotelabs/clearcote-profile-manager
-gh attestation verify Clearcote-Profile-Manager-<version>-x64.AppImage -R clearcotelabs/clearcote-profile-manager
+gh attestation verify Clearcote-Profile-Manager-<version>-x86_64.AppImage -R clearcotelabs/clearcote-profile-manager
 
 # 2. Checksum — SHA256SUMS.txt ships with every release
 sha256sum -c SHA256SUMS.txt          # macOS / Linux

@@ -66,6 +66,11 @@ jobs:
     needs: build
     runs-on: ubuntu-latest
     steps:
+      # The tag is "v0.12.0" but every artifact is named "0.12.0" — pasting the tag into the
+      # verify commands below hands people a filename that does not exist.
+      - name: Resolve the bare version
+        run: echo "VERSION=${GITHUB_REF_NAME#v}" >> "$GITHUB_ENV"
+
       - name: Download both platforms' artifacts
         uses: actions/download-artifact@v4
         with:
@@ -114,7 +119,7 @@ jobs:
             - **Portable** — `Clearcote-Profile-Manager-*-x64.zip` · unzip and run `Clearcote Profile Manager.exe` (no install).
 
             **Linux (x64)**
-            - **AppImage** — `Clearcote-Profile-Manager-*-x64.AppImage` · `chmod +x` it and run; no install, no root.
+            - **AppImage** — `Clearcote-Profile-Manager-*-x86_64.AppImage` · `chmod +x` it and run; no install, no root.
             - **Tarball** — `Clearcote-Profile-Manager-*-x64.tar.gz` · unpack and run `clearcote-profile-manager`.
 
             ## Built in the open — verify it yourself
@@ -125,8 +130,8 @@ jobs:
 
             **1 · Provenance attestation** (proves it came from *this* repo's CI at *this* commit):
             ```
-            gh attestation verify Clearcote-Profile-Manager-${{ github.ref_name }}-setup.exe -R ${{ github.repository }}
-            gh attestation verify Clearcote-Profile-Manager-${{ github.ref_name }}-x64.AppImage -R ${{ github.repository }}
+            gh attestation verify Clearcote-Profile-Manager-${{ env.VERSION }}-setup.exe -R ${{ github.repository }}
+            gh attestation verify Clearcote-Profile-Manager-${{ env.VERSION }}-x86_64.AppImage -R ${{ github.repository }}
             ```
 
             **2 · SHA-256 checksums** (`SHA256SUMS.txt`):
@@ -134,7 +139,7 @@ jobs:
             # macOS / Linux
             sha256sum -c SHA256SUMS.txt
             # Windows (PowerShell)
-            (Get-FileHash .\Clearcote-Profile-Manager-${{ github.ref_name }}-setup.exe -Algorithm SHA256).Hash
+            (Get-FileHash .\Clearcote-Profile-Manager-${{ env.VERSION }}-setup.exe -Algorithm SHA256).Hash
             ```
 
             > **Unsigned build.** Windows SmartScreen may warn on first run — choose **More info → Run anyway**.
