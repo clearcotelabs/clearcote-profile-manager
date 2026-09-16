@@ -390,16 +390,16 @@ export const FIELDS: FieldDef[] = [
   {
     key: "gpuStringSpoof",
     cat: "rendering",
-    label: "Real GPU strings only",
+    label: "Spoof GPU strings",
     type: "check",
     defaultOn: true,
     onValue: true,
     offValue: false,
-    desc: "Report the real WebGL vendor and renderer, while the limits, extensions and readback stay on the persona.",
-    hint: "The narrow half of “use real GPU”. Needs 150 r12 or newer.",
-    keywords: "--disable-gpu-string-spoof unmasked vendor renderer software rasterise swiftshader",
+    desc: "Report the persona's WebGL vendor and renderer. On by default. Off reports the host's real strings while the limits, extensions and readback stay on the persona.",
+    hint: "Turning this off is the narrow half of “use real GPU”. Needs 150 r12 or newer.",
+    keywords: "--disable-gpu-string-spoof unmasked vendor renderer real software rasterise swiftshader",
     why:
-      "For a host that rasterises in software, where a spoofed GPU string cannot be backed by the render. navigator.gpu still follows the wide switch, so WebGPU keeps describing the persona.",
+      "Turn off for a host that rasterises in software, where a spoofed GPU string cannot be backed by the render. navigator.gpu still follows the wide switch, so WebGPU keeps describing the persona.",
   },
   {
     key: "canvasNoise",

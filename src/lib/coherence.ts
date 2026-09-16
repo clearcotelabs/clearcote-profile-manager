@@ -159,7 +159,7 @@ export function coherenceIssues(
       severity: "warn",
       field: "gpuStringSpoof",
       message:
-        "“Real GPU strings only” is redundant here — “use real GPU” already reports the real vendor and renderer, along with everything else.",
+        "Turning off “Spoof GPU strings” is redundant here — “use real GPU” already reports the real vendor and renderer, along with everything else.",
       fix: "Turn off the wide switch if you only wanted the strings, or leave this one on.",
     });
   }
