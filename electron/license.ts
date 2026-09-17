@@ -69,13 +69,25 @@ function cachePath(licenseKey: string): string {
 function readCache(licenseKey: string): { token: string; exp: number } | null {
   try {
     const d = JSON.parse(readFileSync(cachePath(licenseKey), "utf8"));
-    if (d && typeof d.token === "string" && typeof d.exp === "number") return d;
+    // A per-browser (free-tier) token belongs to the one browser it was checked out for; offline
+    // grace on it would start a browser without a slot. Paid tokens keep their offline grace.
+    if (d && typeof d.token === "string" && typeof d.exp === "number" && planFromToken(d.token) !== PER_BROWSER_PLAN) return d;
   } catch {
     /* ignore */
   }
   return null;
 }
+
+/** The plan whose tokens are per browser (the GitHub free tier). */
+const PER_BROWSER_PLAN = "free";
+
+/** One id per browser launch: the backend counts every launch_id as its own slot on per-browser plans. */
+export function newLaunchId(): string {
+  return randomUUID().replace(/-/g, "");
+}
+
 function writeCache(licenseKey: string, token: string, exp: number): void {
+  if (planFromToken(token) === PER_BROWSER_PLAN) return; // never cache a per-browser token
   try {
     mkdirSync(join(homedir(), ".clearcote"), { recursive: true });
     writeFileSync(cachePath(licenseKey), JSON.stringify({ token, exp }));
@@ -146,6 +158,9 @@ export async function acquireLease(opts: {
 
   const base = apiBase(opts.licenseApiBase);
   const instanceId = randomUUID();
+  // This launch's id. The launcher already takes one lease per browser; sending launch_id lets the
+  // backend count it that way on per-browser plans (the free tier), and a re-checkout below re-uses it.
+  const launchId = newLaunchId();
   const warn = (m: string) => {
     if (!opts.quiet) process.stderr.write(`[clearcote] [license] ${m}\n`);
   };
@@ -154,6 +169,7 @@ export async function acquireLease(opts: {
   try {
     const res = await postJson(`${base}/api/v1/lease/checkout`, licenseKey, {
       instance_id: instanceId,
+      launch_id: launchId,
       os: osTag(),
       sdk_version: opts.sdkVersion,
     });
@@ -187,6 +203,7 @@ export async function acquireLease(opts: {
       if (res.status === 409) {
         const co = await postJson(`${base}/api/v1/lease/checkout`, licenseKey, {
           instance_id: instanceId,
+          launch_id: launchId,
           os: osTag(),
           sdk_version: opts.sdkVersion,
         });
@@ -251,6 +268,7 @@ export async function checkLicense(licenseKey?: string, licenseApiBase?: string)
   try {
     const res = await postJson(`${base}/api/v1/lease/checkout`, key, {
       instance_id: randomUUID(),
+      launch_id: newLaunchId(),
       os: osTag(),
       sdk_version: "profile-manager",
     });

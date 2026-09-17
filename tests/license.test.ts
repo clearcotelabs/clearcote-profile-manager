@@ -110,3 +110,88 @@ describe("proEnsureBinary (license-gated download)", () => {
     expect((init.headers as Record<string, string>).authorization).toBe("Bearer cc_lic_probe");
   });
 });
+
+describe("per-browser leases (the GitHub free tier)", () => {
+  const OLD = { key: process.env.CLEARCOTE_LICENSE_KEY, home: process.env.HOME, prof: process.env.USERPROFILE };
+  afterEach(() => {
+    for (const [k, v] of Object.entries({ CLEARCOTE_LICENSE_KEY: OLD.key, HOME: OLD.home, USERPROFILE: OLD.prof })) {
+      if (v === undefined) delete process.env[k];
+      else process.env[k] = v;
+    }
+    vi.restoreAllMocks();
+  });
+
+  const tok = (plan: string) => Buffer.from(JSON.stringify({ v: 1, plan })).toString("base64url") + ".sig";
+
+  async function isolatedHome() {
+    const { mkdtempSync } = await import("node:fs");
+    const { tmpdir } = await import("node:os");
+    const { join } = await import("node:path");
+    const home = mkdtempSync(join(tmpdir(), "pm-perbrowser-"));
+    process.env.HOME = home;
+    process.env.USERPROFILE = home;
+    return home;
+  }
+
+  function fakeBackend(plan: string) {
+    const bodies: Record<string, unknown>[] = [];
+    vi.spyOn(globalThis, "fetch").mockImplementation(async (url: unknown, init?: RequestInit) => {
+      const ep = String(url).split("/").pop();
+      const body = init?.body ? JSON.parse(String(init.body)) : {};
+      if (ep === "checkout") {
+        bodies.push(body);
+        return new Response(JSON.stringify({ lease_id: `L${bodies.length}`, token: tok(plan), exp: Math.floor(Date.now() / 1000) + 900, lease_ttl_sec: 360, heartbeat_interval_sec: 3600, concurrency: { used: 1, limit: 1 }, lease_scope: plan === "free" ? "browser" : undefined }), { status: 200 });
+      }
+      return new Response("{}", { status: 200 });
+    });
+    return bodies;
+  }
+
+  it("every launch sends its own launch_id (and the Settings key check sends one too)", async () => {
+    await isolatedHome();
+    process.env.CLEARCOTE_LICENSE_KEY = "cc_lic_pm_free_1";
+    const bodies = fakeBackend("free");
+    const a = await acquireLease({});
+    const b = await acquireLease({});
+    await checkLicense();
+    expect(bodies).toHaveLength(3);
+    for (const x of bodies) expect(String(x.launch_id)).toMatch(/^[A-Za-z0-9_-]{8,64}$/);
+    expect(new Set(bodies.map((x) => x.launch_id)).size).toBe(3);
+    await a?.stop();
+    await b?.stop();
+  });
+
+  it("a free token is never written to the offline cache, and never used for offline grace", async () => {
+    const home = await isolatedHome();
+    const { existsSync, readdirSync, mkdirSync, writeFileSync } = await import("node:fs");
+    const { join } = await import("node:path");
+    const { createHash } = await import("node:crypto");
+    const key = "cc_lic_pm_free_2";
+    process.env.CLEARCOTE_LICENSE_KEY = key;
+    fakeBackend("free");
+    const a = await acquireLease({});
+    await a?.stop();
+    const dir = join(home, ".clearcote");
+    expect(existsSync(dir) ? readdirSync(dir).filter((f) => f.startsWith("lease-")) : []).toEqual([]);
+
+    // an older build's cached free token must not start a browser while the backend is unreachable
+    mkdirSync(dir, { recursive: true });
+    const id = createHash("sha256").update(key).digest("hex").slice(0, 16);
+    writeFileSync(join(dir, `lease-${id}.json`), JSON.stringify({ token: tok("free"), exp: Math.floor(Date.now() / 1000) + 800 }));
+    vi.restoreAllMocks();
+    vi.spyOn(globalThis, "fetch").mockRejectedValue(new TypeError("fetch failed"));
+    await expect(acquireLease({ quiet: true })).rejects.toThrow(/Could not reach the license server/);
+  });
+
+  it("a paid token still gets written to the cache and keeps its offline grace", async () => {
+    await isolatedHome();
+    process.env.CLEARCOTE_LICENSE_KEY = "cc_lic_pm_paid_1";
+    fakeBackend("pro");
+    const a = await acquireLease({});
+    await a?.stop();
+    vi.restoreAllMocks();
+    vi.spyOn(globalThis, "fetch").mockRejectedValue(new TypeError("fetch failed"));
+    const offline = await acquireLease({ quiet: true });
+    expect(offline?.token).toBe(tok("pro"));
+  });
+});
