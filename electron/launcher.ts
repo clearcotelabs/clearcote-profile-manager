@@ -291,8 +291,15 @@ export async function launch(
       args.push(...proxyArgs(proxy, { socks5Udp: p.socks5Udp }));
     }
     // Inject the leased run-token so the PRO engine gate admits the launch, preserving any
-    // shader-dialect variable already folded in above.
-    if (lease) env = withRunToken(lease.token, env ?? process.env);
+    // shader-dialect variable already folded in above. The token is also mirrored into a file this
+    // launch owns: a supporting engine re-reads it and stops a running FREE browser once the token
+    // stops advancing (revoked / checked in / over the limit), and refuses a free launch without it.
+    let releaseTokenFile: (() => void) | undefined;
+    if (lease) {
+      const bound = lease.bindLaunch();
+      releaseTokenFile = bound.release;
+      env = withRunToken(lease.token, env ?? process.env, bound.path);
+    }
     // spawnBrowser survives the Windows first-launch SxS/AV race ("spawn UNKNOWN") on a
     // freshly-extracted chrome.exe: warm + back off + retry, then recover from a fresh copy.
     const child = await spawnBrowser(bin, args, { detached: false, env });
@@ -302,6 +309,7 @@ export async function launch(
       running.delete(p.id);
       relays.get(p.id)?.stop();
       relays.delete(p.id);
+      releaseTokenFile?.(); // remove this launch's run-token file
       void leases.get(p.id)?.stop(); // release the concurrency slot
       leases.delete(p.id);
     };

@@ -7,13 +7,15 @@
 // spawns the PRO browser with CLEARCOTE_RUN_TOKEN set — the gated build refuses to
 // launch without it. With no key this whole module is inert (free mode).
 
-import { existsSync, readFileSync, mkdirSync, writeFileSync } from "node:fs";
-import { homedir } from "node:os";
+import { existsSync, readFileSync, mkdirSync, writeFileSync, rmSync } from "node:fs";
+import { homedir, tmpdir } from "node:os";
 import { join } from "node:path";
 import { createHash, randomUUID } from "node:crypto";
 
 export const DEFAULT_API_BASE = "https://www.clearcotelabs.com";
 const RUN_TOKEN_ENV = "CLEARCOTE_RUN_TOKEN";
+/** Points the engine at a file it re-reads while the browser runs (see {@link LeaseSession.bindLaunch}). */
+export const RUN_TOKEN_FILE_ENV = "CLEARCOTE_RUN_TOKEN_FILE";
 
 export class LicenseError extends Error {
   code: string;
@@ -137,8 +139,63 @@ export function planFromToken(token: string): string | undefined {
 export interface LeaseSession {
   token: string;
   leaseId: string;
+  /**
+   * Mirror this lease's rotating run-token into a file for one launch (CLEARCOTE_RUN_TOKEN_FILE).
+   * A supporting engine (152 r23+) re-reads it and stops a running FREE browser once the token
+   * stops advancing, so revoke / check-in / over-limit reach a browser that is already open — and a
+   * free launch WITHOUT the file is refused by the engine. Older engines ignore it, so binding is
+   * always safe. Call `release()` when that browser closes.
+   */
+  bindLaunch(): { path: string; release: () => void };
   /** Release the slot + stop the heartbeat (best-effort; safe to call twice). */
   stop(): Promise<void>;
+}
+
+/** Per-launch run-token files that follow one lease's rotation. Every write is best-effort: the
+ * launch still carries CLEARCOTE_RUN_TOKEN, so a failure here never stops a browser starting. */
+class TokenFileSet {
+  private paths = new Set<string>();
+
+  bind(current: string): { path: string; release: () => void } {
+    const path = join(tmpdir(), `clearcote-rt-${randomUUID()}.tok`);
+    this.write(path, current);
+    this.paths.add(path);
+    return {
+      path,
+      release: () => {
+        this.paths.delete(path);
+        try {
+          rmSync(path, { force: true });
+        } catch {
+          /* already gone */
+        }
+      },
+    };
+  }
+
+  /** Rewrite every live file with the freshly-rotated token. */
+  update(token: string): void {
+    for (const p of this.paths) this.write(p, token);
+  }
+
+  closeAll(): void {
+    for (const p of this.paths) {
+      try {
+        rmSync(p, { force: true });
+      } catch {
+        /* already gone */
+      }
+    }
+    this.paths.clear();
+  }
+
+  private write(path: string, token: string): void {
+    try {
+      writeFileSync(path, token, { mode: 0o600 });
+    } catch {
+      /* best-effort */
+    }
+  }
 }
 
 /**
@@ -185,13 +242,28 @@ export async function acquireLease(opts: {
     const now = Math.floor(Date.now() / 1000);
     if (cached && cached.exp > now + 60) {
       warn(`backend unreachable (${String(e)}); using cached run-token (offline grace).`);
-      return { token: cached.token, leaseId: "cached", stop: async () => {} };
+      // Offline grace is paid-only (readCache refuses per-browser tokens), and the cached token
+      // never rotates — bind it anyway so the engine sees the file and the launch is consistent.
+      const files = new TokenFileSet();
+      return {
+        token: cached.token,
+        leaseId: "cached",
+        bindLaunch: () => files.bind(cached.token),
+        stop: async () => files.closeAll(),
+      };
     }
     throw new LicenseError(`Could not reach the license server and no valid cached token: ${String(e)}`);
   }
 
   let leaseId = checkout.lease_id;
   let currentToken = checkout.token;
+  const tokenFiles = new TokenFileSet();
+  // One place that advances the token, so every rotation (heartbeat AND the 409 re-checkout below)
+  // reaches the bound files. A token that stops advancing is exactly what the engine stops on.
+  const setToken = (t: string) => {
+    currentToken = t;
+    tokenFiles.update(t);
+  };
   const hbMs = Math.max(5, checkout.heartbeat_interval_sec || 30) * 1000;
 
   const timer = setInterval(async () => {
@@ -210,14 +282,14 @@ export async function acquireLease(opts: {
         if (co.ok) {
           const data = (await co.json()) as CheckoutResponse;
           leaseId = data.lease_id;
-          currentToken = data.token;
+          setToken(data.token);
           writeCache(licenseKey, data.token, data.exp);
         }
         return;
       }
       if (res.ok) {
         const data = (await res.json()) as { token: string; exp: number };
-        currentToken = data.token;
+        setToken(data.token);
         writeCache(licenseKey, data.token, data.exp);
       }
     } catch {
@@ -231,6 +303,7 @@ export async function acquireLease(opts: {
     if (stopped) return;
     stopped = true;
     clearInterval(timer);
+    tokenFiles.closeAll();
     try {
       await postJson(`${base}/api/v1/lease/checkin`, licenseKey, { lease_id: leaseId });
     } catch {
@@ -243,6 +316,7 @@ export async function acquireLease(opts: {
       return currentToken;
     },
     leaseId,
+    bindLaunch: () => tokenFiles.bind(currentToken),
     stop,
   } as LeaseSession;
 }
@@ -297,8 +371,12 @@ export async function checkLicense(licenseKey?: string, licenseApiBase?: string)
 export function withRunToken(
   token: string,
   baseEnv: NodeJS.ProcessEnv | undefined,
+  tokenFile?: string,
 ): NodeJS.ProcessEnv {
   const out: NodeJS.ProcessEnv = { ...(baseEnv ?? process.env) };
   out[RUN_TOKEN_ENV] = token;
+  // Opt in to engine-side online enforcement when a refreshable file is bound. Without it a FREE
+  // licence is refused by a supporting engine, because nothing could stop the browser later.
+  if (tokenFile) out[RUN_TOKEN_FILE_ENV] = tokenFile;
   return out;
 }
