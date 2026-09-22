@@ -1,15 +1,18 @@
 import { type ChildProcess } from "node:child_process";
+import { EventEmitter } from "node:events";
 import fs from "node:fs";
 import path from "node:path";
 import zlib from "node:zlib";
 import { PROFILES_DIR, FINGERPRINTS_DIR, readSettings, writeSettings } from "./store";
-import { markLaunched } from "./profiles";
+import { markLaunched, recordGeo } from "./profiles";
+import { Tail, type ExitFacts } from "./exitreason";
+import { stopGracefully, type StopOutcome } from "./procstop";
 import { parseProxy, startRelay, needsRelay, proxyArgs, socks5AuthSupportWarning, socks5UdpSupportWarning, type Relay } from "./proxy";
 import { geoCheck } from "./geo";
 import { resolveLicenseKey, acquireLease, withRunToken, planFromToken, type LeaseSession } from "./license";
 import { proEnsureBinary, freeEnsureBinary } from "./proBinary";
 import { fetchCatalog, resolveVersion } from "./catalog";
-import { fingerprintArgs, type FpInput } from "./fpargs";
+import { fingerprintArgs, startUrlArg, type FpInput } from "./fpargs";
 import { withShaderDialect, shaderDialectWarning } from "./shaderdialect";
 import { seedWidevine, widevineArgs, claimsChromeBrand } from "./widevine";
 import { spawnBrowser } from "./winlaunch";
@@ -35,21 +38,8 @@ async function resolveBrowserBinary(
   // version-gated warnings below stay quiet rather than guessing.
   if (explicit) return { path: explicit, tier: "explicit" };
 
-  const licenseKey = resolveLicenseKey(s.licenseKey);
   try {
-    const cat = await fetchCatalog(s.licenseApiBase);
-    const r = resolveVersion(cat, p.browserVersion, !!licenseKey);
-    // Only fires when a download actually happens (cached builds resolve instantly, no progress).
-    const prog = onProgress
-      ? (pct: number, seenMB: number, totalMB: number) => onProgress(pct, seenMB, totalMB, r.version)
-      : undefined;
-    // Send the SELECTOR, not the bare version: a revision pin ("150.0.7871.114-r9") must survive
-    // the round-trip or /download/pro silently serves the current pin instead of the build asked for.
-    const path =
-      r.tier === "pro"
-        ? await proEnsureBinary(licenseKey, s.licenseApiBase, r.selector, prog)
-        : await freeEnsureBinary(r, prog);
-    return { path, tier: r.tier, major: r.major };
+    return await ensureBuild(p.browserVersion, s, onProgress);
   } catch (e) {
     // Offline / catalog-unreachable: fall back to a sibling dev-build ONLY when no specific
     // version was requested — a pinned version must resolve against the catalog or fail loudly.
@@ -60,6 +50,34 @@ async function resolveBrowserBinary(
       if (sibling) return { path: sibling, tier: "explicit" };
     }
     throw e;
+  }
+}
+
+/**
+ * Make sure the build a version selection resolves to is downloaded and verified; return its path.
+ * Used by every launch, and by Settings → Storage "Download now" so the first launch is not a
+ * 250 MB wait. Downloads of the same build share one transfer (see proBinary.ts).
+ */
+export async function ensureBuild(
+  browserVersion: string | undefined,
+  s: Settings,
+  onProgress?: (pct: number, seenMB: number, totalMB: number, version: string) => void,
+): Promise<{ path: string; tier: "free" | "pro"; major: number; version: string }> {
+  const licenseKey = resolveLicenseKey(s.licenseKey);
+  {
+    const cat = await fetchCatalog(s.licenseApiBase);
+    const r = resolveVersion(cat, browserVersion, !!licenseKey);
+    // Only fires when a download actually happens (cached builds resolve instantly, no progress).
+    const prog = onProgress
+      ? (pct: number, seenMB: number, totalMB: number) => onProgress(pct, seenMB, totalMB, r.version)
+      : undefined;
+    // Send the SELECTOR, not the bare version: a revision pin ("150.0.7871.114-r9") must survive
+    // the round-trip or /download/pro silently serves the current pin instead of the build asked for.
+    const path =
+      r.tier === "pro"
+        ? await proEnsureBinary(licenseKey, s.licenseApiBase, r.selector, prog)
+        : await freeEnsureBinary(r, prog);
+    return { path, tier: r.tier, major: r.major, version: r.version };
   }
 }
 
@@ -79,6 +97,30 @@ function rememberPlan(lease: LeaseSession | null): void {
 const running = new Map<string, ChildProcess>();
 const relays = new Map<string, Relay>();
 const leases = new Map<string, LeaseSession>();
+/** The binary each running browser was launched from — a build in use is never pruned. */
+const runningBins = new Map<string, string>();
+/** Profiles whose browser THIS app is stopping, so their exit is not reported as unexpected. */
+const stopping = new Set<string>();
+let quitting = false;
+
+/**
+ * Events for the main window. "exited" fires when a browser stops without the app asking —
+ * closed from its own window, crashed, ended from Task Manager, or stopped by the licence
+ * watchdog — with the facts electron/exitreason.ts classifies.
+ */
+export const browserEvents = new EventEmitter();
+export interface ExitEvent extends ExitFacts {
+  id: string;
+}
+
+/** Set while the app quits: browsers it closes on the way out are not "unexpected". */
+export function setQuitting(v: boolean): void {
+  quitting = v;
+}
+
+export function runningBinaries(): string[] {
+  return [...runningBins.values()];
+}
 
 /**
  * Resolve the Clearcote browser path (Phase 1: explicit/env/sibling-dev-build).
@@ -160,6 +202,8 @@ export async function applyGeoip(p: Profile): Promise<{ profile: Profile; warnin
       warning: `geoip is on but the proxy's exit region could not be resolved (${geo.error}). Launching with the profile's own timezone / language / location.`,
     };
   }
+  // Keep what we learned, so the card can show where this profile's traffic exits.
+  recordGeo(p.id, geo, p.proxy);
   const enriched: Profile = { ...p };
   if (unset(enriched.timezone) && geo.timezone) enriched.timezone = geo.timezone;
   if (unset(enriched.acceptLanguage) && geo.acceptLanguage) enriched.acceptLanguage = geo.acceptLanguage;
@@ -191,6 +235,10 @@ export function buildArgs(p: Profile, userDataDir: string): string[] {
   });
   a.push(`--user-data-dir=${userDataDir}`);
   if (p.extraArgs?.length) a.push(...p.extraArgs);
+  // The start page goes LAST: Chromium opens every non-switch argument as a URL. startUrlArg only
+  // ever returns an http(s) URL, so a value can never smuggle in a switch.
+  const url = startUrlArg(p.startUrl);
+  if (url) a.push(url);
   return a;
 }
 
@@ -319,19 +367,48 @@ export async function launch(
     }
     // spawnBrowser survives the Windows first-launch SxS/AV race ("spawn UNKNOWN") on a
     // freshly-extracted chrome.exe: warm + back off + retry, then recover from a fresh copy.
-    const child = await spawnBrowser(bin, args, { detached: false, env });
+    //
+    // stdio: nothing read from stdout, and stderr drained into a small tail. Both used to be
+    // unread pipes (Node's default): a browser that logged enough filled the pipe and FROZE on its
+    // next write. The tail is also how an exit is explained — the licence watchdog exits with
+    // code 0, like a normal close, and only its stderr line tells them apart.
+    const child = await spawnBrowser(bin, args, { detached: false, env, stdio: ["ignore", "ignore", "pipe"] });
+    const tail = new Tail();
+    child.stderr?.on("data", (d: Buffer) => tail.push(d));
+    const startedAt = Date.now();
     running.set(p.id, child);
+    runningBins.set(p.id, bin);
     markLaunched(p.id); // lastLaunchedAt only, on the profile as saved now — see profiles.ts
     if (lease) leases.set(p.id, lease);
+    let cleaned = false;
     const cleanup = () => {
+      if (cleaned) return;
+      cleaned = true;
       running.delete(p.id);
+      runningBins.delete(p.id);
       relays.get(p.id)?.stop();
       relays.delete(p.id);
       releaseTokenFile?.(); // remove this launch's run-token file
       void leases.get(p.id)?.stop(); // release the concurrency slot
       leases.delete(p.id);
     };
-    child.on("exit", cleanup);
+    child.on("exit", (code, signal) => {
+      // Read before cleanup() drops the lease.
+      const refusal = leases.get(p.id)?.refusal;
+      const asked = stopping.has(p.id) || quitting;
+      cleanup();
+      if (!asked) {
+        const ev: ExitEvent = {
+          id: p.id,
+          code,
+          signal,
+          stderrTail: tail.text(),
+          leaseRefusal: refusal,
+          ranForMs: Date.now() - startedAt,
+        };
+        browserEvents.emit("exited", ev);
+      }
+    });
     child.on("error", cleanup);
     return { ok: true, pid: child.pid, pro: !!lease, warnings: warnings.length ? warnings : undefined };
   } catch (e) {
@@ -342,20 +419,31 @@ export async function launch(
   }
 }
 
-export function stop(id: string): void {
+/**
+ * Close a profile's browser the way its own window would, force it only if it will not go, and
+ * resolve once the process has exited AND its licence slot has been checked back in — so a caller
+ * can launch another profile straight after on a one-browser plan.
+ */
+export async function stop(id: string, opts: { timeoutMs?: number } = {}): Promise<StopOutcome> {
   const c = running.get(id);
-  if (c) {
-    try {
-      c.kill();
-    } catch {
-      /* ignore */
-    }
+  const lease = leases.get(id);
+  if (!c) {
+    await lease?.stop();
+    return "gone";
   }
-  running.delete(id);
-  relays.get(id)?.stop();
-  relays.delete(id);
-  void leases.get(id)?.stop(); // release the concurrency slot
-  leases.delete(id);
+  stopping.add(id);
+  try {
+    const outcome = await stopGracefully(c, { timeoutMs: opts.timeoutMs });
+    await lease?.stop(); // the exit handler started the check-in; this waits for it
+    return outcome;
+  } finally {
+    stopping.delete(id);
+  }
+}
+
+/** Stop every running browser (quitting the app). */
+export async function stopAll(opts: { timeoutMs?: number } = {}): Promise<void> {
+  await Promise.all(listRunning().map((id) => stop(id, opts)));
 }
 
 export function listRunning(): string[] {

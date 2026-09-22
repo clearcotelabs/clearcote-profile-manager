@@ -43,12 +43,20 @@ export function sortProfiles(list: Profile[], running: string[], key: SortKey): 
 export interface Section {
   /** null: profiles with no group (headed "No group" only when named groups exist too). */
   group: string | null;
+  /** Lower-cased, trimmed — what order and collapse state are keyed on. "" for no group. */
+  key: string;
   profiles: Profile[];
 }
 
-/** Split an already-sorted list into group sections, keeping the sort inside each. Groups appear in
- *  the order their first member does; "Work" and "work " are one group, shown as first written. */
-export function groupProfiles(list: Profile[]): Section[] {
+/** How a group is matched everywhere: "Work" and " work" are one group. */
+export const groupKey = (g: string | undefined | null): string => (g ?? "").trim().toLowerCase();
+
+/**
+ * Split an already-sorted list into group sections, keeping the sort inside each. Groups listed in
+ * `order` (keys) come first, in that order — the person arranged them; the rest follow in the order
+ * their first member appears. "Work" and "work " are one group, shown as first written.
+ */
+export function groupProfiles(list: Profile[], order: string[] = []): Section[] {
   const named = new Map<string, Section>();
   const loose: Profile[] = [];
   for (const p of list) {
@@ -58,14 +66,107 @@ export function groupProfiles(list: Profile[]): Section[] {
       continue;
     }
     const key = g.toLowerCase();
-    const s = named.get(key) ?? { group: g, profiles: [] };
+    const s = named.get(key) ?? { group: g, key, profiles: [] };
     s.profiles.push(p);
     named.set(key, s);
   }
-  if (named.size === 0) return [{ group: null, profiles: loose }];
-  const out = [...named.values()];
-  if (loose.length) out.push({ group: null, profiles: loose });
+  if (named.size === 0) return [{ group: null, key: "", profiles: loose }];
+  const rank = (k: string) => {
+    const i = order.indexOf(k);
+    return i < 0 ? Number.MAX_SAFE_INTEGER : i;
+  };
+  const appear = [...named.keys()];
+  const out = [...named.values()].sort((a, b) => rank(a.key) - rank(b.key) || appear.indexOf(a.key) - appear.indexOf(b.key));
+  if (loose.length) out.push({ group: null, key: "", profiles: loose });
   return out;
+}
+
+/** The group order after moving `key` one place up (-1) or down (+1) among the groups shown. */
+export function moveGroup(shown: string[], key: string, dir: -1 | 1): string[] {
+  const order = shown.filter((k) => k !== "");
+  const i = order.indexOf(key);
+  const j = i + dir;
+  if (i < 0 || j < 0 || j >= order.length) return order;
+  [order[i], order[j]] = [order[j], order[i]];
+  return order;
+}
+
+/**
+ * The selection after a click on `id`. A range click (Shift) selects every profile shown between
+ * the previous click (`from`) and this one; otherwise the click toggles just `id`. `from` must be
+ * read when the click happens — see the page's toggleSelect for why.
+ */
+export function nextSelection(
+  prev: ReadonlySet<string>,
+  id: string,
+  opts: { range: boolean; from: string | null; order: string[] },
+): Set<string> {
+  const next = new Set(prev);
+  const a = opts.from ? opts.order.indexOf(opts.from) : -1;
+  const b = opts.order.indexOf(id);
+  if (opts.range && a >= 0 && b >= 0) {
+    for (const x of opts.order.slice(Math.min(a, b), Math.max(a, b) + 1)) next.add(x);
+  } else if (next.has(id)) next.delete(id);
+  else next.add(id);
+  return next;
+}
+
+export interface ListFilter {
+  query?: string;
+  /** Only profiles carrying this tag (case-insensitive). */
+  tag?: string;
+  /** Only this group (a groupKey; "" = profiles with no group). */
+  group?: string;
+  runningOnly?: boolean;
+}
+
+/** The text a search matches: names, ids, groups, notes, versions, proxies, exit country, tags. */
+function haystack(p: Profile): string {
+  return [
+    p.name,
+    p.id,
+    p.fingerprint,
+    p.group,
+    p.notes,
+    p.browserVersion,
+    proxySummary(p.proxy),
+    p.lastGeo?.country,
+    p.lastGeo?.city,
+    p.lastGeo?.countryCode,
+    ...(p.tags || []),
+  ]
+    .filter(Boolean)
+    .join(" ")
+    .toLowerCase();
+}
+
+export function filterProfiles(list: Profile[], f: ListFilter, running: string[] = []): Profile[] {
+  const q = (f.query ?? "").toLowerCase().trim();
+  const tag = f.tag?.trim().toLowerCase();
+  const run = new Set(running);
+  return list.filter(
+    (p) =>
+      (!q || haystack(p).includes(q)) &&
+      (!tag || (p.tags || []).some((t) => t.trim().toLowerCase() === tag)) &&
+      (f.group === undefined || groupKey(p.group) === f.group) &&
+      (!f.runningOnly || run.has(p.id)),
+  );
+}
+
+/**
+ * Where the profile's traffic exits, for its card — or null when unknown or measured for a
+ * DIFFERENT proxy than the one it has now (an old answer about another proxy is worse than none).
+ */
+export function geoLabel(p: Profile, now = Date.now()): { text: string; title: string } | null {
+  const g = p.lastGeo;
+  const px = proxySummary(p.proxy);
+  if (!g || !px || g.proxy !== px || !(g.countryCode || g.country)) return null;
+  const place = [g.city, g.countryCode || g.country].filter(Boolean).join(", ");
+  const when = relativeTime(g.at, now);
+  return {
+    text: place,
+    title: `Exits via ${px}${g.ip ? ` as ${g.ip}` : ""}${g.country ? ` (${g.country})` : ""}${when ? `, checked ${when}` : ""}.`,
+  };
 }
 
 /** "just now" · "5 minutes ago" · "yesterday" · "3 weeks ago" · then a date. */

@@ -19,6 +19,7 @@ export interface GeoResult {
   ip?: string;
   country?: string;
   countryCode?: string;
+  city?: string;
   timezone?: string;
   lat?: number;
   lon?: number;
@@ -46,7 +47,7 @@ export function languageForCountry(cc?: string): string {
 }
 
 const GEO_HOST = "ip-api.com";
-const GEO_PATH = "/json/?fields=status,message,query,country,countryCode,timezone,lat,lon";
+const GEO_PATH = "/json/?fields=status,message,query,country,countryCode,city,timezone,lat,lon";
 const GEO_PORT = 80;
 
 /** Open a byte pipe to `host:port` — directly, or through the profile's proxy. Returns the socket
@@ -195,6 +196,7 @@ export async function geoCheck(profile: Profile, timeoutMs = 12000): Promise<Geo
       ip: j.query as string,
       country: j.country as string,
       countryCode: cc,
+      city: (j.city as string) || undefined,
       timezone: j.timezone as string,
       lat: j.lat as number,
       lon: j.lon as number,

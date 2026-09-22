@@ -2,7 +2,7 @@
 // One profile is persisted as profiles/<id>.json; its browser storage lives in
 // profiles/<id>/userdata/. See PLAN.md and profiles/example.profile.json.
 
-import { fingerprintArgs, resolveTls, type FpInput } from "../../electron/fpargs";
+import { fingerprintArgs, resolveTls, startUrlArg, type FpInput } from "../../electron/fpargs";
 // The PURE proxy module, not ./proxy — that one pulls in node:net for the relay and would break
 // the renderer bundle. Same split, and same reason, as electron/fpargs.ts.
 import { parseProxy, proxyArgs } from "../../electron/proxyargs";
@@ -21,6 +21,18 @@ export type Brand = "Chrome" | "Edge" | "Opera" | "Vivaldi";
  *  "match-persona" (default) follows brandVersion; "native"/"off" keeps the build's native TLS;
  *  "chrome-<major>" pins it. */
 export type TlsProfile = "match-persona" | "native" | "off" | (string & {});
+
+/** Where a profile's traffic exited, as last measured. */
+export interface LastGeo {
+  ip?: string;
+  country?: string;
+  countryCode?: string;
+  city?: string;
+  /** ISO time of the lookup. */
+  at: string;
+  /** "scheme host:port" of the proxy it was measured through. */
+  proxy: string;
+}
 
 /** A saved Clearcote browser identity. */
 export interface Profile {
@@ -206,6 +218,11 @@ export interface Profile {
   createdAt: string; // ISO 8601
   updatedAt: string; // ISO 8601
   lastLaunchedAt?: string; // ISO 8601
+  /** A page the browser opens at launch (http/https only — see fpargs.ts startUrlArg). */
+  startUrl?: string;
+  /** The proxy's exit location as last looked up, for the card. `proxy` is the proxy it was
+   *  measured for (scheme host:port, no credentials): a changed proxy makes it stale. */
+  lastGeo?: LastGeo;
   /** Resolved persistent user-data-dir (default: profiles/<id>/userdata). */
   userDataDir?: string;
 }
@@ -286,6 +303,9 @@ export function profileToArgs(p: Profile): string[] {
   args.push(...proxyArgs(parseProxy(p.proxy), { redactSecrets: true, socks5Udp: p.socks5Udp }));
   if (p.userDataDir) args.push(`--user-data-dir=${p.userDataDir}`);
   if (p.extraArgs?.length) args.push(...p.extraArgs);
+  // Last, exactly as the launcher does (electron/launcher.ts buildArgs).
+  const url = startUrlArg(p.startUrl);
+  if (url) args.push(url);
   return args;
 }
 

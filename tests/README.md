@@ -32,18 +32,39 @@ Four layers:
     plain explanation and one action. Uses the real strings (the screenshot's 403 included).
   - `profileList.test.ts` — sort, grouping, relative times, version chips, the free-plan pin check,
     proxy redaction on cards, and unsaved-change detection.
+  - `lifecycle.test.ts` — why a browser stopped (the licence watchdog exits 0 like a normal close;
+    only its stderr line tells them apart), the graceful stop and its forced fallback, and what
+    closing the window does while browsers run.
+  - `storage.test.ts` — which builds can go (Latest, pins, running and the custom binary always
+    stay), the plan from real catalog rules and offline, temp copies, the rename-first delete (on
+    Windows also a build with a file held open, which must be refused whole), and window placement.
+  - `profiledata.test.ts` — the exit place kept on a profile, group rename, export with or without
+    secrets, and clearing a Chromium profile's cache while keeping cookies, logins and site storage.
+  - `launchparts.test.ts` — the start page as a URL (never a switch, always last), a lease's refusal
+    memory and shared check-in, "valid but busy", and one download per build.
+  - `listfeatures.test.ts` — the proxy-list import (including host:port:user:pass), filters, group
+    order, the exit-place label, exit notices, the one-browser swap, and Shift+click ranges.
 - **UI end-to-end (opt-in, real browser)** — `editor.e2e.test.ts` and `ui.e2e.test.ts` drive the
   renderer in Chrome against `next dev`, using its in-browser mock of the Electron bridge. They cover
   what only a browser shows: dialogs (Esc on the top one only, focus trap and return, scroll lock,
   fitting a 560px-tall or phone-width window), the unsaved-changes guard, Ctrl+S, the ⋯ menu,
   delete + Undo, keyboard shortcuts, sorting, card content, the update suggestion and its Settings
   switch, and contrast in both themes.
+  `qol.e2e.test.ts` covers filters, groups (fold, move, rename, ungroup), multi-select and bulk
+  actions, the swap on a one-browser plan, exit notices, export with secrets, the proxy-list import,
+  and Settings → General, Storage and Licence. It drives the mock's opt-in hooks
+  (`clearcote.mock.launch`/`limit`/`storage`/`target`/`license`/`prefetch` in localStorage, and
+  `window.__clearcoteMock.exit()`), which play the desktop app's side.
   Run: `npm run next:dev -- -p 3100`, then
-  `CLEARCOTE_UI_E2E=1 CLEARCOTE_UI_BROWSER=<chrome.exe> npx vitest run tests/ui.e2e.test.ts tests/editor.e2e.test.ts`.
+  `CLEARCOTE_UI_E2E=1 CLEARCOTE_UI_BROWSER=<chrome.exe> npx vitest run tests/ui.e2e.test.ts tests/editor.e2e.test.ts tests/qol.e2e.test.ts`.
 - **App end-to-end (opt-in, the real Electron app)** — `app.e2e.test.ts` starts the built app with a
   throwaway `--user-data-dir` (never your real profiles) and checks the IPC behind trash/undo, the
   real launch target, `lastLaunchedAt` written by the main process, the plan learned from a lease,
-  and the update check on every start. With a key it also launches a real browser.
+  and the update check on every start. With a key it also launches real browsers: Stop must leave
+  Chromium's `exit_type` at "Normal" (a hard kill leaves "Crashed"), a browser killed from outside
+  must say so on its card, and closing the window must hide to the tray, remember an "ask" answer,
+  or close every browser properly before quitting. Build pruning, temp copies and cache clearing
+  run against a throwaway cache and temp folder, never the real ones.
   Run: `npm run build`, then `CLEARCOTE_APP_E2E=1 CLEARCOTE_LICENSE_KEY=cc_lic_... npx vitest run tests/app.e2e.test.ts`.
   Set `E2E_OUTCOMES=<file>` to record which of the two accepted outcomes the licence-dependent
   tests took.

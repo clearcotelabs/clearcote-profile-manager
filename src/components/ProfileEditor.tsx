@@ -79,6 +79,8 @@ export interface ProfileEditorProps {
   dirty?: boolean;
   /** Open on this field (a launch error's "Change version" lands on the version picker). */
   initialField?: string;
+  /** Other profiles' names, lower-cased — two cards with the same name are hard to tell apart. */
+  takenNames?: string[];
   /** Rendered above the panel when the library picker is open. */
   renderLibrary?: (onApply: (file: string, meta?: FingerprintMeta) => void, onClose: () => void) => React.ReactNode;
 }
@@ -90,6 +92,7 @@ export default function ProfileEditor({
   onCancel,
   dirty,
   initialField,
+  takenNames = [],
   renderLibrary,
 }: ProfileEditorProps) {
   const titleId = useId();
@@ -161,6 +164,7 @@ export default function ProfileEditor({
   }, []);
 
   const canSave = !!profile.fingerprint;
+  const dupName = !!profile.name?.trim() && takenNames.includes(profile.name.trim().toLowerCase());
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
       if ((e.ctrlKey || e.metaKey) && !e.altKey && e.key.toLowerCase() === "s") {
@@ -594,6 +598,11 @@ export default function ProfileEditor({
         }
       >
         {f.type === "custom" ? renderCustom(f) : renderPlain(f)}
+        {f.key === "name" && dupName && (
+          <p className="mt-1 text-[11px] text-warn" role="status">
+            Another profile is already called “{profile.name.trim()}”. A different name keeps the two apart in the list.
+          </p>
+        )}
       </div>
     );
   }

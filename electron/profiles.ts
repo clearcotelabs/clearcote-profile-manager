@@ -1,7 +1,8 @@
 import fs from "node:fs";
 import path from "node:path";
 import { PROFILES_DIR, ensureDirs } from "./store";
-import type { Profile } from "./types";
+import { parseProxy, redactProxyString } from "./proxyargs";
+import type { LastGeo, Profile } from "./types";
 
 const EXAMPLE = "example.profile.json";
 
@@ -86,6 +87,154 @@ export function markLaunched(id: string, at = new Date().toISOString()): Profile
   } catch {
     return null;
   }
+}
+
+/** "scheme host:port" — how a proxy is identified without its credentials. */
+export function proxyKey(proxy: unknown): string {
+  const p = parseProxy(proxy);
+  return p ? `${p.scheme} ${p.host}:${p.port}` : "";
+}
+
+/**
+ * Keep a proxy exit lookup on the saved profile (lastGeo only — same discipline as markLaunched),
+ * so the card can say where the traffic goes. Quiet no-op for an unknown profile or a failed lookup.
+ */
+export function recordGeo(
+  id: string,
+  geo: { ok: boolean; ip?: string; country?: string; countryCode?: string; city?: string },
+  proxy: unknown,
+  at = new Date().toISOString(),
+): Profile | null {
+  if (!geo.ok) return null;
+  try {
+    const cur = getProfile(id);
+    if (!cur) return null;
+    const lastGeo: LastGeo = {
+      ip: geo.ip,
+      country: geo.country,
+      countryCode: geo.countryCode,
+      city: geo.city,
+      at,
+      proxy: proxyKey(proxy),
+    };
+    const out: Profile = { ...cur, lastGeo };
+    fs.writeFileSync(profilePath(id), JSON.stringify(out, null, 2), "utf8");
+    return out;
+  } catch {
+    return null;
+  }
+}
+
+/**
+ * Rename a group on every profile in it. Groups are matched the way the list shows them — trimmed,
+ * case-insensitive — so "Work" and "work " both move. Renaming to "" takes them out of any group.
+ * Returns how many profiles changed. updatedAt is left alone: the profiles themselves did not change.
+ */
+export function renameGroup(from: string, to: string): number {
+  const key = from.trim().toLowerCase();
+  if (!key) return 0;
+  const next = to.trim();
+  let n = 0;
+  for (const p of listProfiles()) {
+    if ((p.group ?? "").trim().toLowerCase() !== key) continue;
+    const out: Profile = { ...p, group: next || undefined };
+    if (!next) delete out.group;
+    fs.writeFileSync(profilePath(p.id), JSON.stringify(out, null, 2), "utf8");
+    n++;
+  }
+  return n;
+}
+
+/**
+ * The profiles as they go into an export file. Secrets are left out unless asked for: an export is
+ * what people paste into a ticket, but it is also how a set moves to a new machine, and there the
+ * proxy passwords and the cookie encryption key are exactly what must come along.
+ */
+export function exportList(list: Profile[], opts: { includeSecrets?: boolean } = {}): Profile[] {
+  if (opts.includeSecrets) return list;
+  return list.map((p) => {
+    const out = { ...p };
+    if (out.proxy) out.proxy = redactProxyString(out.proxy);
+    delete out.encryptionKey;
+    return out;
+  });
+}
+
+/** Total size of a directory tree, without blocking the main process on a big profile. */
+export async function dirSizeAsync(dir: string): Promise<number> {
+  let total = 0;
+  const walk = async (d: string): Promise<void> => {
+    let entries: fs.Dirent[];
+    try {
+      entries = await fs.promises.readdir(d, { withFileTypes: true });
+    } catch {
+      return;
+    }
+    await Promise.all(
+      entries.map(async (e) => {
+        const p = path.join(d, e.name);
+        if (e.isDirectory()) return walk(p);
+        try {
+          // Await FIRST: `total += await …` reads `total` before the await, so parallel stats would
+          // overwrite each other's additions (a test caught exactly that: 1530 of 5599 bytes).
+          const { size } = await fs.promises.stat(p);
+          total += size;
+        } catch {
+          /* vanished or locked */
+        }
+      }),
+    );
+  };
+  await walk(dir);
+  return total;
+}
+
+/** Where a profile's browser data lives. */
+export function userDataDirOf(p: Pick<Profile, "id" | "userDataDir">): string {
+  return p.userDataDir || path.join(PROFILES_DIR, p.id, "userdata");
+}
+
+/**
+ * What "clear cache" removes inside each Chromium profile (Default, Profile 1…): caches the browser
+ * rebuilds on its own. Cookies, Login Data, Local Storage, IndexedDB, Session Storage, History,
+ * Preferences and Extensions are NOT here — clearing the cache keeps you signed in.
+ */
+export const CACHE_DIRS_PER_PROFILE = [
+  "Cache",
+  "Code Cache",
+  "GPUCache",
+  "DawnGraphiteCache",
+  "DawnWebGPUCache",
+  path.join("Service Worker", "CacheStorage"),
+  path.join("Service Worker", "ScriptCache"),
+];
+/** The same, at the top of the user-data dir (shared by all Chromium profiles in it). */
+export const CACHE_DIRS_TOP = ["GrShaderCache", "GraphiteDawnCache", "ShaderCache", "component_crx_cache", "extensions_crx_cache"];
+
+/** Delete the browser caches under a user-data dir; returns the bytes freed. The caller must make
+ *  sure the browser is not running (its files are open on Windows). */
+export async function clearBrowsingCache(userDataDir: string): Promise<number> {
+  const targets: string[] = CACHE_DIRS_TOP.map((d) => path.join(userDataDir, d));
+  let entries: fs.Dirent[] = [];
+  try {
+    entries = await fs.promises.readdir(userDataDir, { withFileTypes: true });
+  } catch {
+    return 0;
+  }
+  for (const e of entries) {
+    if (!e.isDirectory()) continue;
+    const prof = path.join(userDataDir, e.name);
+    // A Chromium profile directory is the one holding a Preferences file.
+    if (!fs.existsSync(path.join(prof, "Preferences"))) continue;
+    for (const d of CACHE_DIRS_PER_PROFILE) targets.push(path.join(prof, d));
+  }
+  let freed = 0;
+  for (const t of targets) {
+    if (!fs.existsSync(t)) continue;
+    freed += await dirSizeAsync(t);
+    await fs.promises.rm(t, { recursive: true, force: true });
+  }
+  return freed;
 }
 
 export function deleteProfile(id: string): void {

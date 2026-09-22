@@ -1,4 +1,4 @@
-import { app, BrowserWindow, ipcMain, dialog, shell } from "electron";
+import { app, BrowserWindow, ipcMain, dialog, shell, Tray, Menu, screen, type NativeImage } from "electron";
 import path from "node:path";
 import fs from "node:fs";
 import * as profiles from "./profiles";
@@ -9,7 +9,10 @@ import { checkLicense, resolveLicenseKey } from "./license";
 import { fetchCatalog, listVersions, fetchProRevisions } from "./catalog";
 import { screenWarningFromLabel } from "./fpargs";
 import { summarizeFingerprint } from "./fpmeta";
-import { listCached, removeCached } from "./cache";
+import { listCached, removeCached, listTempCopies, cleanTempCopies, purgeDeleting } from "./cache";
+import { storagePlan, pruneBuilds } from "./storage";
+import { restoreBounds } from "./windowstate";
+import { closeAction, askText, ASK_BUTTONS } from "./closeguard";
 import { redactProxyString } from "./proxy";
 import { checkForUpdate, downloadUpdate, startupCheckEnabled, type UpdateInfo } from "./appupdate";
 import { launchTarget, resetLaunchTargetCache } from "./launchTarget";
@@ -30,12 +33,27 @@ function storeFingerprint(name: string, json: string, source: "file" | "library"
 
 const isDev = process.env.ELECTRON_DEV === "1";
 
+let mainWin: BrowserWindow | null = null;
+let tray: Tray | null = null;
+let quittingApp = false;
+
+const MIN_W = 900;
+const MIN_H = 600;
+
 function createWindow(): void {
+  // Reopen where it was — but only on a screen that still exists (windowstate.ts).
+  const restored = restoreBounds(
+    readSettings().window,
+    screen.getAllDisplays().map((d) => d.workArea),
+    { minWidth: MIN_W, minHeight: MIN_H },
+  );
   const win = new BrowserWindow({
-    width: 1180,
-    height: 820,
-    minWidth: 900,
-    minHeight: 600,
+    width: restored.bounds?.width ?? 1180,
+    height: restored.bounds?.height ?? 820,
+    x: restored.bounds?.x,
+    y: restored.bounds?.y,
+    minWidth: MIN_W,
+    minHeight: MIN_H,
     backgroundColor: "#07080a", // Ink
     title: "Clearcote Profile Manager",
     autoHideMenuBar: true,
@@ -44,6 +62,53 @@ function createWindow(): void {
       contextIsolation: true,
       nodeIntegration: false,
     },
+  });
+  mainWin = win;
+  if (restored.maximized) win.maximize();
+
+  // Remember the size and place (the normal bounds, so un-maximising lands where it was).
+  const saveBounds = () => {
+    if (win.isDestroyed() || win.isMinimized()) return;
+    const b = win.getNormalBounds();
+    writeSettings({ ...readSettings(), window: { ...b, maximized: win.isMaximized() } });
+  };
+  let saveTimer: NodeJS.Timeout | null = null;
+  const saveSoon = () => {
+    if (saveTimer) clearTimeout(saveTimer);
+    saveTimer = setTimeout(saveBounds, 600);
+  };
+  for (const ev of ["resize", "move", "maximize", "unmaximize"] as const) win.on(ev as "resize", saveSoon);
+
+  // Closing with browsers open: ask, keep running in the tray, or close them and quit (closeguard.ts).
+  win.on("close", (e) => {
+    saveBounds();
+    const running = launcher.listRunning().length;
+    const action = closeAction(running, readSettings().closeBehavior, quittingApp);
+    if (action === "close") return;
+    e.preventDefault();
+    if (action === "tray") return hideToTray(win);
+    if (action === "stop-and-quit") return void stopAndQuit();
+    const q = askText(running);
+    void dialog
+      .showMessageBox(win, {
+        type: "question",
+        buttons: [...ASK_BUTTONS],
+        defaultId: 0,
+        cancelId: 2,
+        title: "Browsers are still running",
+        message: q.message,
+        detail: q.detail,
+        checkboxLabel: "Remember my choice (Settings → General changes it)",
+      })
+      .then(({ response, checkboxChecked }) => {
+        if (response === 2) return;
+        if (checkboxChecked) writeSettings({ ...readSettings(), closeBehavior: response === 0 ? "tray" : "quit" });
+        if (response === 0) hideToTray(win);
+        else void stopAndQuit();
+      });
+  });
+  win.on("closed", () => {
+    if (mainWin === win) mainWin = null;
   });
 
   // The renderer arms `beforeunload` while the profile editor holds unsaved changes. Electron never
@@ -67,6 +132,81 @@ function createWindow(): void {
     win.loadFile(path.join(__dirname, "..", "out", "index.html"));
   }
 }
+
+function showWindow(): void {
+  if (!mainWin || mainWin.isDestroyed()) {
+    createWindow();
+    return;
+  }
+  if (mainWin.isMinimized()) mainWin.restore();
+  mainWin.show();
+  mainWin.focus();
+  tray?.destroy(); // the tray is only there while the window is hidden
+  tray = null;
+}
+
+async function trayIcon(): Promise<NativeImage> {
+  // The app's own icon, straight from the executable — nothing extra to package.
+  return app.getFileIcon(process.execPath, { size: "small" });
+}
+
+function refreshTrayMenu(): void {
+  if (!tray) return;
+  const byId = new Map(profiles.listProfiles().map((p) => [p.id, p.name?.trim() || p.id]));
+  const runningIds = launcher.listRunning();
+  tray.setToolTip(
+    runningIds.length === 1 ? "Clearcote Profile Manager — 1 browser running" : `Clearcote Profile Manager — ${runningIds.length} browsers running`,
+  );
+  tray.setContextMenu(
+    Menu.buildFromTemplate([
+      { label: "Open Clearcote Profile Manager", click: showWindow },
+      { type: "separator" },
+      ...runningIds.map((id) => ({
+        label: `Stop “${byId.get(id) ?? id}”`,
+        click: () => void launcher.stop(id).then(refreshTrayMenu),
+      })),
+      ...(runningIds.length ? [{ type: "separator" as const }] : []),
+      { label: runningIds.length ? "Close browsers and quit" : "Quit", click: () => void stopAndQuit() },
+    ]),
+  );
+}
+
+function hideToTray(win: BrowserWindow): void {
+  void trayIcon().then((icon) => {
+    if (!tray) {
+      tray = new Tray(icon);
+      tray.on("click", showWindow);
+      if (process.platform === "win32") {
+        tray.displayBalloon({
+          title: "Still running",
+          content: "Your browsers keep running. The app is in the tray — click it to open it again.",
+        });
+      }
+    }
+    refreshTrayMenu();
+    win.hide();
+  });
+}
+
+/** Close every browser gracefully (each licence slot checked back in), then quit. */
+async function stopAndQuit(): Promise<void> {
+  if (quittingApp) return;
+  quittingApp = true;
+  launcher.setQuitting(true);
+  await launcher.stopAll({ timeoutMs: 8000 });
+  tray?.destroy();
+  tray = null;
+  app.quit();
+}
+
+/** Remove builds nothing needs any more, after a download brought a newer one. */
+function autoPruneSoon(): void {
+  if (readSettings().autoPruneBuilds === false) return;
+  // After the launch settles: the new build is running by then, so it is kept either way.
+  setTimeout(() => void pruneBuilds(readSettings()).catch(() => {}), 3000);
+}
+
+const ALLOWED_EXTERNAL = [/^https:\/\/www\.clearcotelabs\.com\//, /^https:\/\/github\.com\/clearcotelabs\//];
 
 function registerIpc(): void {
   ipcMain.handle("profiles:list", () => profiles.listProfiles());
@@ -99,12 +239,23 @@ function registerIpc(): void {
 
   // Launch, streaming browser-download progress back to the renderer (first use of a version
   // downloads 100–250 MB — the UI shows a live bar so it never looks frozen).
-  ipcMain.handle("launch", (e, p: Profile) =>
-    launcher.launch(p, (prog) => {
+  ipcMain.handle("launch", async (e, p: Profile) => {
+    let downloaded = false;
+    const r = await launcher.launch(p, (prog) => {
+      downloaded = true;
       if (!e.sender.isDestroyed()) e.sender.send("download:progress", prog);
-    }),
-  );
-  ipcMain.handle("stop", (_e, id: string) => launcher.stop(id));
+    });
+    if (downloaded) autoPruneSoon();
+    refreshTrayMenu();
+    return r;
+  });
+  // Graceful: the browser closes like its own window would, and the call returns once its licence
+  // slot is checked back in (procstop.ts).
+  ipcMain.handle("stop", async (_e, id: string) => {
+    const outcome = await launcher.stop(id);
+    refreshTrayMenu();
+    return outcome;
+  });
   ipcMain.handle("running", () => launcher.listRunning());
 
   // Public browser-build catalog (drives the per-profile version dropdown). Best-effort: an
@@ -128,6 +279,78 @@ function registerIpc(): void {
   // Downloaded-browser cache: view what's on disk + remove a build to force a re-download.
   ipcMain.handle("cache:list", () => listCached());
   ipcMain.handle("cache:remove", (_e, tag: string) => removeCached(tag));
+
+  // Settings → Storage. What can go and why the rest stays (cacheplan.ts), removing it, the
+  // browser copies outside the cache, each profile's own data, and fetching the build ahead of time.
+  ipcMain.handle("storage:plan", async () => {
+    const plan = await storagePlan(readSettings());
+    const view = (b: { tag: string; version: string; tier: string; sizeBytes: number }) => ({
+      tag: b.tag,
+      version: b.version,
+      tier: b.tier,
+      sizeBytes: b.sizeBytes,
+    });
+    return {
+      keep: plan.keep.map((k) => ({ ...view(k.build), reasons: k.reasons })),
+      remove: plan.remove.map(view),
+      freeBytes: plan.freeBytes,
+      offline: plan.offline,
+    };
+  });
+  ipcMain.handle("storage:prune", () => pruneBuilds(readSettings()));
+  ipcMain.handle("storage:temp", () => listTempCopies());
+  ipcMain.handle("storage:cleanTemp", () => cleanTempCopies());
+  ipcMain.handle("storage:profileSizes", async () => {
+    const run = new Set(launcher.listRunning());
+    return Promise.all(
+      profiles.listProfiles().map(async (p) => ({
+        id: p.id,
+        name: p.name?.trim() || p.id,
+        bytes: await profiles.dirSizeAsync(profiles.userDataDirOf(p)),
+        running: run.has(p.id),
+      })),
+    );
+  });
+  ipcMain.handle("profiles:clearCache", async (_e, id: string) => {
+    if (!profiles.isSafeId(id)) return { ok: false, error: "Invalid profile id." };
+    if (launcher.listRunning().includes(id)) return { ok: false, error: "Stop this profile's browser first — it has its cache open." };
+    const p = profiles.getProfile(id);
+    if (!p) return { ok: false, error: "That profile no longer exists." };
+    return { ok: true, freedBytes: await profiles.clearBrowsingCache(profiles.userDataDirOf(p)) };
+  });
+  ipcMain.handle("build:prefetch", async (e) => {
+    let downloaded = false;
+    try {
+      const r = await launcher.ensureBuild(undefined, readSettings(), (pct, seenMB, totalMB, version) => {
+        downloaded = true;
+        if (!e.sender.isDestroyed()) e.sender.send("prefetch:progress", { pct, seenMB, totalMB, version });
+      });
+      if (downloaded) autoPruneSoon();
+      resetLaunchTargetCache();
+      return { ok: true, version: r.version, major: r.major, downloaded };
+    } catch (err) {
+      return { ok: false, error: String((err as Error)?.message || err) };
+    }
+  });
+
+  ipcMain.handle("profiles:renameGroup", (_e, from: string, to: string) => profiles.renameGroup(String(from), String(to)));
+
+  // Look up where a profile's proxy exits, and keep the answer on the profile for its card.
+  ipcMain.handle("geo:checkProfile", async (_e, id: string) => {
+    if (!profiles.isSafeId(id)) return { ok: false, error: "Invalid profile id." };
+    const p = profiles.getProfile(id);
+    if (!p) return { ok: false, error: "That profile no longer exists." };
+    const g = await geo.geoCheck(p);
+    const saved = profiles.recordGeo(id, g, p.proxy);
+    return g.ok ? { ...g, profile: saved ?? undefined } : g;
+  });
+
+  // Links out of the app go only to our own pages.
+  ipcMain.handle("openExternal", (_e, url: string) => {
+    if (!ALLOWED_EXTERNAL.some((re) => re.test(String(url)))) return false;
+    void shell.openExternal(url);
+    return true;
+  });
 
   ipcMain.handle("settings:get", () => readSettings());
   ipcMain.handle("settings:set", (_e, s: Settings) => {
@@ -199,7 +422,7 @@ function registerIpc(): void {
   ipcMain.handle("update:openReleases", (_e, url: string) => shell.openExternal(url));
 
 
-  ipcMain.handle("profiles:export", async (_e, opts?: { redact?: boolean; ids?: string[] }) => {
+  ipcMain.handle("profiles:export", async (_e, opts?: { includeSecrets?: boolean; ids?: string[] }) => {
     // `ids` exports just those profiles (a card's "Export…"); omitted, everything.
     const only = opts?.ids?.length ? new Set(opts.ids) : null;
     const chosen = profiles.listProfiles().filter((p) => !only || only.has(p.id));
@@ -210,17 +433,8 @@ function registerIpc(): void {
       filters: [{ name: "JSON", extensions: ["json"] }],
     });
     if (r.canceled || !r.filePath) return { ok: false };
-    // Redact every secret by default: an exported profile set is the thing people paste into a
-    // ticket or share with a colleague. Proxy passwords AND the cookie encryption key — that key
-    // decrypts the exported profile's whole cookie jar, so it is at least as sensitive.
-    const redact = opts?.redact !== false;
-    const list = chosen.map((p) => {
-      if (!redact) return p;
-      const out = { ...p };
-      if (out.proxy) out.proxy = redactProxyString(out.proxy);
-      if (out.encryptionKey) delete out.encryptionKey;
-      return out;
-    });
+    // Secrets are left out unless the person ticked "include" — see profiles.ts exportList.
+    const list = profiles.exportList(chosen, { includeSecrets: !!opts?.includeSecrets });
     fs.writeFileSync(r.filePath, JSON.stringify(list, null, 2), "utf8");
     return { ok: true, path: r.filePath, count: list.length };
   });
@@ -327,19 +541,26 @@ function registerIpc(): void {
 if (!app.requestSingleInstanceLock()) {
   app.quit();
 } else {
-  app.on("second-instance", () => {
-    const win = BrowserWindow.getAllWindows()[0];
-    if (!win) return;
-    if (win.isMinimized()) win.restore();
-    win.focus();
-  });
+  app.on("second-instance", () => showWindow()); // also brings it back from the tray
 }
 
 app.whenReady().then(() => {
   if (!app.hasSingleInstanceLock()) return;
   ensureDirs();
   profiles.purgeTrash(); // deletes past their undo window, from this run or an earlier one
+  void purgeDeleting(); // a cache removal interrupted between rename and delete
   registerIpc();
+  // A browser that stopped without being asked to: tell the window, so its card can say why.
+  launcher.browserEvents.on("exited", (ev) => {
+    if (mainWin && !mainWin.isDestroyed()) mainWin.webContents.send("browser:exited", ev);
+    refreshTrayMenu();
+  });
+  // Quitting from anywhere else (the OS, a menu) closes the browsers properly first.
+  app.on("before-quit", (e) => {
+    if (quittingApp || launcher.listRunning().length === 0) return;
+    e.preventDefault();
+    void stopAndQuit();
+  });
   createWindow();
   app.on("activate", () => {
     if (BrowserWindow.getAllWindows().length === 0) createWindow();

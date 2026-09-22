@@ -514,6 +514,17 @@ export const FIELDS: FieldDef[] = [
     why:
       "The stronger form of a portable profile: you hold the key, so no key material is stored beside the cookies. It wins when both are set. Redacted in the preview and dropped on export — keep your own copy, because a lost key is a lost cookie jar.",
   },
+  {
+    key: "startUrl",
+    cat: "session",
+    label: "Start page",
+    type: "text",
+    full: true,
+    mono: true,
+    placeholder: "https://example.com",
+    keywords: "homepage url open at launch start page first tab",
+    why: "Opened when the browser starts. Only http and https addresses are used — anything else is ignored, so this field can never add a command-line switch. A bare host like example.com gets https:// added.",
+  },
   { key: "userDataDir", cat: "session", label: "Data directory", type: "text", full: true, mono: true, placeholder: "profiles/<id>/userdata", keywords: "--user-data-dir storage path" },
   {
     key: "extraArgs",

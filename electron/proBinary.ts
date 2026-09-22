@@ -90,10 +90,31 @@ interface ProMeta {
   size?: number;
 }
 
+/** Transfers in flight, by build tag. A second request for the same build — a launch while
+ *  Settings → "Download now" is still fetching it, or two profiles on the same build launched
+ *  together — joins the first instead of writing the same `.part` file at the same time. */
+const inFlight = new Map<string, { promise: Promise<string>; listeners: Set<ProProgress> }>();
+
 /** Download + verify + extract a build from its resolved metadata; return the chrome(.exe) path.
  *  Cached per tag (works for both FREE and PRO — only the URL source differs). SHA-256 is the
  *  trust anchor. Throws on any mismatch or failure. */
-async function ensureFromMeta(
+function ensureFromMeta(
+  meta: { tag: string; asset: string; binary: string; url: string; sha256: string; size?: number },
+  onProgress?: ProProgress,
+): Promise<string> {
+  const running = inFlight.get(meta.tag);
+  if (running) {
+    if (onProgress) running.listeners.add(onProgress);
+    return running.promise;
+  }
+  const listeners = new Set<ProProgress>(onProgress ? [onProgress] : []);
+  const fanOut: ProProgress = (pct, seenMB, totalMB) => listeners.forEach((l) => l(pct, seenMB, totalMB));
+  const promise = ensureFromMetaOnce(meta, fanOut).finally(() => inFlight.delete(meta.tag));
+  inFlight.set(meta.tag, { promise, listeners });
+  return promise;
+}
+
+async function ensureFromMetaOnce(
   meta: { tag: string; asset: string; binary: string; url: string; sha256: string; size?: number },
   onProgress?: ProProgress,
 ): Promise<string> {

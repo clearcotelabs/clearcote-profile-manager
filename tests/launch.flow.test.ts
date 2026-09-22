@@ -59,6 +59,13 @@ vi.mock("../electron/winlaunch", () => ({
   isWinLaunchRace: () => false,
   spawnBrowser: (...a: unknown[]) => spawnMock(...a),
 }));
+// Never a real taskkill against a fake pid: the polite close is played by the fake child.
+const stopMock = vi.fn(async (child: EventEmitter & { exitCode: number | null }) => {
+  child.exitCode = 0;
+  child.emit("exit", 0, null);
+  return "graceful" as const;
+});
+vi.mock("../electron/procstop", () => ({ stopGracefully: (c: never) => stopMock(c) }));
 
 type L = typeof import("../electron/launcher");
 type P = typeof import("../electron/profiles");
@@ -77,8 +84,10 @@ function lease(plan: string, leaseId = "L1") {
   };
 }
 function fakeChild() {
-  const c = new EventEmitter() as EventEmitter & { pid: number; kill: () => void };
+  const c = new EventEmitter() as EventEmitter & { pid: number; kill: () => void; stderr: EventEmitter; exitCode: number | null };
   c.pid = 4242;
+  c.exitCode = null;
+  c.stderr = new EventEmitter();
   c.kill = () => c.emit("exit", 0);
   return c;
 }
@@ -173,5 +182,73 @@ describe("launch() — bookkeeping on success", () => {
     expect(r.ok).toBe(false);
     expect(r.error).toMatch(/ENOENT/);
     expect(profiles.getProfile("nospawn")?.lastLaunchedAt).toBeUndefined();
+  });
+});
+
+describe("launch() — the browser's life after it starts", () => {
+  const WATCHDOG = "[clearcote] licence: the run-token stopped refreshing (revoked, checked in, or over the concurrency limit); stopping.";
+
+  it("stderr is drained into a tail and stdout ignored — never an unread pipe that can freeze the browser", async () => {
+    leaseMock.mockResolvedValue(lease("free"));
+    await launcher.launch(profile("pipes"));
+    const opts = spawnMock.mock.calls[0][2] as { stdio: unknown };
+    expect(opts.stdio).toEqual(["ignore", "ignore", "pipe"]);
+  });
+
+  it("a browser that stops on its own is reported, with its stderr tail and the lease's refusal", async () => {
+    let child!: ReturnType<typeof fakeChild>;
+    spawnMock.mockImplementation(async () => (child = fakeChild()));
+    const refusing = { ...lease("free"), refusal: { status: 403, code: "LICENSE_REVOKED" } };
+    leaseMock.mockResolvedValue(refusing);
+    const events: unknown[] = [];
+    const on = (ev: unknown) => events.push(ev);
+    launcher.browserEvents.on("exited", on);
+    try {
+      await launcher.launch(profile("watched"));
+      child.stderr.emit("data", Buffer.from("[1:2:INFO:x] starting\n" + WATCHDOG + "\n"));
+      child.emit("exit", 0, null);
+      expect(events).toHaveLength(1);
+      expect(events[0]).toMatchObject({ id: "watched", code: 0, signal: null, leaseRefusal: { status: 403, code: "LICENSE_REVOKED" } });
+      expect((events[0] as { stderrTail: string }).stderrTail).toContain(WATCHDOG);
+      expect(launcher.listRunning()).not.toContain("watched");
+    } finally {
+      launcher.browserEvents.off("exited", on);
+    }
+  });
+
+  it("stop() closes it politely, waits for the check-in, and is NOT reported as unexpected", async () => {
+    let checkedIn = false;
+    const l = {
+      ...lease("free"),
+      stop: vi.fn(async () => {
+        await new Promise((r) => setTimeout(r, 30));
+        checkedIn = true;
+      }),
+    };
+    leaseMock.mockResolvedValue(l);
+    const events: unknown[] = [];
+    const on = (ev: unknown) => events.push(ev);
+    launcher.browserEvents.on("exited", on);
+    try {
+      await launcher.launch(profile("polite"));
+      expect(await launcher.stop("polite")).toBe("graceful");
+      expect(stopMock).toHaveBeenCalled();
+      expect(checkedIn).toBe(true); // resolved only after the slot was given back
+      expect(events).toEqual([]);
+      expect(launcher.listRunning()).not.toContain("polite");
+      expect(launcher.runningBinaries()).toEqual([]);
+    } finally {
+      launcher.browserEvents.off("exited", on);
+    }
+  });
+
+  it("while it runs, its binary is listed as in use (so the cache cleanup never removes it)", async () => {
+    leaseMock.mockResolvedValue(lease("free"));
+    await launcher.launch(profile("inuse"));
+    expect(launcher.runningBinaries()).toEqual([path.join(ROOT, "fake-chrome.exe")]);
+  });
+
+  it("stop() on something not running is 'gone' and harmless", async () => {
+    expect(await launcher.stop("never-launched")).toBe("gone");
   });
 });

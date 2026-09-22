@@ -128,6 +128,11 @@ export interface Profile {
   createdAt: string;
   updatedAt: string;
   lastLaunchedAt?: string;
+  /** A page the browser opens at launch (http/https only — see fpargs.ts startUrlArg). */
+  startUrl?: string;
+  /** The proxy's exit location as last looked up, for the card. `proxy` is the proxy it was
+   *  measured for (scheme host:port, no credentials): a changed proxy makes it stale. */
+  lastGeo?: LastGeo;
   userDataDir?: string;
 }
 
@@ -173,6 +178,18 @@ export interface FpListResult {
   error?: string;
 }
 
+/** Where a profile's traffic exited, as last measured. */
+export interface LastGeo {
+  ip?: string;
+  country?: string;
+  countryCode?: string;
+  city?: string;
+  /** ISO time of the lookup. */
+  at: string;
+  /** "scheme host:port" of the proxy it was measured through. */
+  proxy: string;
+}
+
 export interface Settings {
   binaryPath?: string;
   theme?: "dark" | "light";
@@ -196,6 +213,12 @@ export interface Settings {
    *  process — written on a lease or a licence check, cleared when the key changes — so the header
    *  can name the plan without a network round-trip. */
   lastPlan?: string;
+  /** Closing the window while browsers run: ask, keep running in the tray, or close them and quit. */
+  closeBehavior?: "ask" | "tray" | "quit";
+  /** Remove cached builds nothing needs once a newer one is downloaded. On unless turned off. */
+  autoPruneBuilds?: boolean;
+  /** Window size/position at last close, restored on start when it is still on a screen. */
+  window?: { x: number; y: number; width: number; height: number; maximized?: boolean };
 }
 
 export interface LaunchResult {

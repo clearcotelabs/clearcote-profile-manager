@@ -64,6 +64,8 @@ describe.skipIf(!READY)("editor UI — the category rail in a real browser", () 
     const errors: string[] = [];
     page.on("pageerror", (e) => errors.push(e.message));
     await page.goto(ORIGIN, { waitUntil: "domcontentloaded" });
+    // Clicking before React has hydrated does nothing — wait for the page to say it is live.
+    await page.waitForSelector('main[data-ready="1"]', { timeout: 60000 });
     await page.getByRole("button", { name: "+ New profile" }).click();
     await page.waitForSelector('[data-field="name"]');
     if (errors.length) throw new Error(`renderer threw: ${errors.join(" | ")}`);

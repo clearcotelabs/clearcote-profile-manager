@@ -147,8 +147,18 @@ export interface LeaseSession {
    * always safe. Call `release()` when that browser closes.
    */
   bindLaunch(): { path: string; release: () => void };
-  /** Release the slot + stop the heartbeat (best-effort; safe to call twice). */
+  /** Release the slot + stop the heartbeat (best-effort; safe to call twice — every caller awaits
+   *  the same check-in). */
   stop(): Promise<void>;
+  /** Set while the server refuses heartbeats (revoked, over the limit…); cleared by the next OK. */
+  readonly refusal?: LeaseRefusal;
+}
+
+/** Why the licence server last refused to renew a lease. */
+export interface LeaseRefusal {
+  status: number;
+  code?: string;
+  error?: string;
 }
 
 /** Per-launch run-token files that follow one lease's rotation. Every write is best-effort: the
@@ -284,6 +294,10 @@ export async function acquireLease(opts: {
           leaseId = data.lease_id;
           setToken(data.token);
           writeCache(licenseKey, data.token, data.exp);
+          refusal = undefined;
+        } else {
+          const body = (await co.json().catch(() => ({}))) as { error?: string; code?: string };
+          refusal = { status: co.status, code: body.code, error: body.error };
         }
         return;
       }
@@ -291,6 +305,12 @@ export async function acquireLease(opts: {
         const data = (await res.json()) as { token: string; exp: number };
         setToken(data.token);
         writeCache(licenseKey, data.token, data.exp);
+        refusal = undefined;
+      } else {
+        // The token stops advancing now, and a FREE engine will stop its browser once its grace
+        // runs out. Keep the server's reason, so the card can say WHY the browser closed.
+        const body = (await res.json().catch(() => ({}))) as { error?: string; code?: string };
+        refusal = { status: res.status, code: body.code, error: body.error };
       }
     } catch {
       /* transient — offline grace until token exp */
@@ -298,22 +318,28 @@ export async function acquireLease(opts: {
   }, hbMs);
   (timer as unknown as { unref?: () => void }).unref?.();
 
-  let stopped = false;
-  const stop = async () => {
-    if (stopped) return;
-    stopped = true;
-    clearInterval(timer);
-    tokenFiles.closeAll();
-    try {
-      await postJson(`${base}/api/v1/lease/checkin`, licenseKey, { lease_id: leaseId });
-    } catch {
-      /* best-effort; the lease TTL will reclaim it anyway */
+  let refusal: LeaseRefusal | undefined;
+  // One check-in, shared: every caller of stop() awaits the SAME request, so "stop this browser,
+  // then launch that one" really waits until the server has the slot back.
+  let stopping: Promise<void> | null = null;
+  const stop = () => {
+    if (!stopping) {
+      clearInterval(timer);
+      tokenFiles.closeAll();
+      stopping = postJson(`${base}/api/v1/lease/checkin`, licenseKey, { lease_id: leaseId }).then(
+        () => undefined,
+        () => undefined, // best-effort; the lease TTL will reclaim it anyway
+      );
     }
+    return stopping;
   };
 
   return {
     get token() {
       return currentToken;
+    },
+    get refusal() {
+      return refusal;
     },
     leaseId,
     bindLaunch: () => tokenFiles.bind(currentToken),
@@ -323,6 +349,8 @@ export async function acquireLease(opts: {
 
 export interface LicenseStatus {
   ok: boolean;
+  /** Valid, but every browser slot is in use right now (the check could not take one). */
+  busy?: boolean;
   plan?: string;
   used?: number;
   limit?: number;
@@ -353,6 +381,12 @@ export async function checkLicense(licenseKey?: string, licenseApiBase?: string)
       token?: string;
       concurrency?: { used: number; limit: number };
     };
+    // Refused for being AT its browser limit is still a verdict on the key: it is valid and live,
+    // every slot is just in use (a free key with its one browser open). Say that, instead of the
+    // "check failed" this used to report whenever a profile was running.
+    if (res.status === 429 || body.code === "CONCURRENCY_LIMIT_EXCEEDED") {
+      return { ok: true, busy: true, code: body.code, used: body.concurrency?.used, limit: body.concurrency?.limit };
+    }
     if (!res.ok) return { ok: false, error: body.error || `HTTP ${res.status}`, code: body.code };
     // release the probe slot right away (best-effort)
     if (body.lease_id) await postJson(`${base}/api/v1/lease/checkin`, key, { lease_id: body.lease_id }).catch(() => {});

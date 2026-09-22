@@ -6,14 +6,23 @@
 // Done button were pushed off-screen with nothing able to scroll them back. The frame (and Esc,
 // focus, scroll locking) now comes from the shared Dialog, and only the panel scrolls.
 
-import { useEffect, useId, useState } from "react";
-import { api, type Settings, type LicenseStatus, type CachedBuild } from "@/lib/ipc";
+import { useId, useState } from "react";
+import { api, type Settings, type LicenseStatus } from "@/lib/ipc";
 import Dialog, { DialogFooter, DialogHeader } from "./Dialog";
-import { useConfirm } from "./Confirm";
+import StorageSection from "./StorageSection";
 
-export type Section = "browser" | "license" | "updates" | "storage";
+export type Section = "general" | "browser" | "license" | "updates" | "storage";
+
+/** Where a free key comes from: sign in with GitHub, Licenses, "Get it free" (the site's own FAQ). */
+export const FREE_KEY_URL = "https://www.clearcotelabs.com/dashboard/licenses";
 
 const SECTIONS: { id: Section; label: string; title: string; blurb: string }[] = [
+  {
+    id: "general",
+    label: "General",
+    title: "General",
+    blurb: "How the app behaves.",
+  },
   {
     id: "browser",
     label: "Browser",
@@ -35,8 +44,8 @@ const SECTIONS: { id: Section; label: string; title: string; blurb: string }[] =
   {
     id: "storage",
     label: "Storage",
-    title: "Downloaded browsers",
-    blurb: "Verified browser builds cached on disk. Remove one to reclaim space; it downloads again on the next launch that needs it.",
+    title: "Storage",
+    blurb: "What the app keeps on disk, what each part is for, and what can go.",
   },
 ];
 
@@ -44,8 +53,6 @@ const input =
   "w-full min-w-0 rounded-lg bg-ink/70 border border-line px-3 py-2 text-sm text-fog placeholder-fog/30 outline-none focus:border-accent/60 focus:ring-1 focus:ring-accent/40";
 const btn =
   "shrink-0 rounded-lg border border-line-strong px-3 py-1.5 text-xs font-medium text-fog/80 hover:bg-elevate transition disabled:opacity-40 disabled:hover:bg-transparent";
-
-const fmtSize = (b: number) => (b >= 1e9 ? `${(b / 1e9).toFixed(1)} GB` : `${Math.round(b / 1e6)} MB`);
 
 function hostIsWindows(): boolean {
   if (typeof navigator === "undefined") return true;
@@ -119,7 +126,6 @@ export default function SettingsModal({
   const [section, setSection] = useState<Section>(initialSection);
   const current = SECTIONS.find((s) => s.id === section)!;
   const titleId = useId();
-  const confirm = useConfirm();
 
   // ── Licence ──────────────────────────────────────────────────────────────
   const [key, setKey] = useState(settings.licenseKey || "");
@@ -129,15 +135,18 @@ export default function SettingsModal({
   const dirty = (key.trim() || undefined) !== (settings.licenseKey || undefined);
 
   async function saveKey() {
-    await onSaveSettings({ licenseKey: key.trim() || undefined });
+    const next = key.trim() || undefined;
+    await onSaveSettings({ licenseKey: next });
     setStatus(null);
+    // A saved key is checked at once, so a typo shows up here instead of at the next launch.
+    if (next) await checkKey(next);
   }
-  async function checkKey() {
+  async function checkKey(saved?: string) {
     setChecking(true);
     setStatus(null);
     try {
-      if (dirty) await onSaveSettings({ licenseKey: key.trim() || undefined });
-      setStatus(await api.license.check(key.trim() || undefined));
+      if (saved === undefined && dirty) await onSaveSettings({ licenseKey: key.trim() || undefined });
+      setStatus(await api.license.check(saved ?? (key.trim() || undefined)));
     } finally {
       setChecking(false);
     }
@@ -156,31 +165,6 @@ export default function SettingsModal({
       );
     } finally {
       setUpdChecking(false);
-    }
-  }
-
-  // ── Storage ──────────────────────────────────────────────────────────────
-  const [cached, setCached] = useState<CachedBuild[] | null>(null);
-  const [busyTag, setBusyTag] = useState<string | null>(null);
-  const loadCache = () => api.cache.list().then(setCached).catch(() => setCached([]));
-  useEffect(() => {
-    void loadCache();
-  }, []);
-  const total = (cached || []).reduce((s, b) => s + b.sizeBytes, 0);
-  async function removeCached(b: CachedBuild) {
-    const ok = await confirm({
-      title: `Remove build ${b.version}?`,
-      body: `This frees ${fmtSize(b.sizeBytes)}. It downloads again, and is verified again, on the next launch that needs it.`,
-      confirmLabel: "Remove",
-      tone: "danger",
-    });
-    if (!ok) return;
-    setBusyTag(b.tag);
-    try {
-      await api.cache.remove(b.tag);
-      await loadCache();
-    } finally {
-      setBusyTag(null);
     }
   }
 
@@ -208,11 +192,6 @@ export default function SettingsModal({
                       }
                     >
                       {s.label}
-                      {s.id === "storage" && cached && cached.length > 0 && (
-                        <span className="ml-auto rounded-full bg-elevate px-1.5 text-[10px] tabular-nums text-fog/50">
-                          {cached.length}
-                        </span>
-                      )}
                       {s.id === "license" && settings.licenseKey && (
                         <span className="ml-auto h-1.5 w-1.5 rounded-full bg-accent" title="Key set" />
                       )}
@@ -227,6 +206,41 @@ export default function SettingsModal({
           <div className="min-h-0 overflow-y-auto px-5 py-4">
             <h3 className="text-[15px] font-semibold">{current.title}</h3>
             <p className="mb-4 mt-0.5 max-w-[62ch] text-xs text-fog/40">{current.blurb}</p>
+
+            {section === "general" && (
+              <Card>
+                <div className="px-4 py-3.5">
+                  {/* A plain heading, not <legend>: a legend sits ON the card's top border. */}
+                  <div id="close-behavior-title" className="text-[13px] font-medium text-fog">
+                    When you close the window while browsers are running
+                  </div>
+                  <p className="mt-0.5 text-xs leading-relaxed text-fog/45">
+                    The app keeps each browser's licence renewed. If it quits, a browser on the free plan stops by itself
+                    within a few minutes.
+                  </p>
+                  <div className="mt-3 space-y-1.5" role="radiogroup" aria-labelledby="close-behavior-title">
+                    {(
+                      [
+                        ["ask", "Ask me each time"],
+                        ["tray", "Keep running in the tray"],
+                        ["quit", "Close the browsers and quit"],
+                      ] as const
+                    ).map(([v, text]) => (
+                      <label key={v} className="flex items-center gap-2.5 rounded-lg px-2 py-1.5 text-sm text-fog/80 hover:bg-elevate">
+                        <input
+                          type="radio"
+                          name="close-behavior"
+                          className="accent-[#38e0d6]"
+                          checked={(settings.closeBehavior ?? "ask") === v}
+                          onChange={() => onSaveSettings({ closeBehavior: v })}
+                        />
+                        {text}
+                      </label>
+                    ))}
+                  </div>
+                </div>
+              </Card>
+            )}
 
             {section === "browser" && (
               <Card>
@@ -307,7 +321,7 @@ export default function SettingsModal({
                       <button className={btn} onClick={saveKey} disabled={!dirty}>
                         Save
                       </button>
-                      <button className={btn} onClick={checkKey} disabled={checking || !key.trim()}>
+                      <button className={btn} onClick={() => checkKey()} disabled={checking || !key.trim()}>
                         {checking ? "Checking…" : "Check"}
                       </button>
                     </div>
@@ -318,7 +332,9 @@ export default function SettingsModal({
                           status.ok ? "bg-ok/10 text-ok" : "bg-danger/10 text-danger"
                         }`}
                       >
-                        {status.ok ? (
+                        {status.ok && status.busy ? (
+                          <>✓ Valid — every browser slot is in use right now, so the check could not take one.</>
+                        ) : status.ok ? (
                           <>
                             ✓ Valid{status.plan ? ` — ${status.plan} plan` : ""}
                             {typeof status.limit === "number"
@@ -334,6 +350,16 @@ export default function SettingsModal({
                 </Card>
                 <Card>
                   <Row
+                    title="No key yet?"
+                    hint="A free key runs the same licensed build, one browser at a time. Sign in with GitHub, open Licenses and click Get it free. It lasts 30 days and renews for free."
+                  >
+                    <button className={btn} onClick={() => void api.openExternal(FREE_KEY_URL)}>
+                      Get a free key ↗
+                    </button>
+                  </Row>
+                </Card>
+                <Card>
+                  <Row
                     title="With a key"
                     hint="Profiles launch the licence-gated browser (downloaded and SHA-256 verified), and each running browser holds one of your plan's slots. The free plan always runs the latest build."
                   />
@@ -343,8 +369,8 @@ export default function SettingsModal({
                   />
                 </Card>
                 <p className="text-[11px] text-fog/35">
-                  Check briefly takes one slot to ask the licence service, so on a one-browser plan it reports the limit
-                  while a profile is running.
+                  A saved key is checked straight away. The check briefly takes one browser slot, so while every slot is in
+                  use it can only confirm the key is valid.
                 </p>
               </div>
             )}
@@ -389,48 +415,10 @@ export default function SettingsModal({
             )}
 
             {section === "storage" && (
-              <>
-                {cached === null ? (
-                  <div className="text-xs text-fog/45">Loading…</div>
-                ) : cached.length === 0 ? (
-                  <div className="rounded-xl border border-dashed border-line px-4 py-8 text-center text-xs text-fog/45">
-                    Nothing downloaded yet.
-                  </div>
-                ) : (
-                  <>
-                    <div className="mb-3 flex items-baseline gap-2">
-                      <span className="text-2xl font-semibold tabular-nums">{fmtSize(total)}</span>
-                      <span className="text-xs text-fog/45">
-                        in {cached.length} build{cached.length === 1 ? "" : "s"}
-                      </span>
-                    </div>
-                    <Card>
-                      {cached.map((b) => (
-                        <div key={b.tag} className="flex items-center gap-3 px-4 py-2.5">
-                          <span
-                            className={`shrink-0 rounded px-1.5 py-0.5 text-[10px] font-semibold ${
-                              b.tier === "pro" ? "bg-accent/10 text-accent" : "bg-elevate text-fog/60"
-                            }`}
-                          >
-                            {b.tier === "pro" ? "PRO" : "FREE"}
-                          </span>
-                          <span className="min-w-0 flex-1 truncate font-mono text-xs text-fog/80" title={b.path}>
-                            {b.version}
-                          </span>
-                          <span className="shrink-0 text-[11px] tabular-nums text-fog/45">{fmtSize(b.sizeBytes)}</span>
-                          <button
-                            className="shrink-0 rounded-md px-2 py-1 text-[11px] text-danger/80 hover:bg-danger/10 hover:text-danger disabled:opacity-40"
-                            onClick={() => removeCached(b)}
-                            disabled={busyTag === b.tag}
-                          >
-                            {busyTag === b.tag ? "Removing…" : "Remove"}
-                          </button>
-                        </div>
-                      ))}
-                    </Card>
-                  </>
-                )}
-              </>
+              <StorageSection
+                autoPrune={settings.autoPruneBuilds !== false}
+                onAutoPrune={(v) => onSaveSettings({ autoPruneBuilds: v })}
+              />
             )}
           </div>
         </div>

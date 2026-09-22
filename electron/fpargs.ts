@@ -201,6 +201,27 @@ export function resolveTls(tlsProfile?: string | number, brandVersion?: string):
  *  `screen`, and `availHeight` is smaller still. Profiles captured on smaller displays produce
  *  geometry no real machine can (window taller than the screen it sits on), which is exactly the
  *  kind of internal contradiction coherence checks look for. */
+/**
+ * The start page as a command-line argument, or null. Chromium opens any non-switch argument as a
+ * URL, so the value is only ever passed through as a parsed http(s) URL: "--disable-web-security"
+ * or "file:///C:/…" in the field must never become a switch or a local-file open. A bare host
+ * ("example.com") gets https:// added, which is what people mean when they type one.
+ */
+export function startUrlArg(raw: unknown): string | null {
+  if (typeof raw !== "string") return null;
+  const v = raw.trim();
+  if (!v || v.startsWith("-")) return null;
+  const withScheme = /^[a-z][a-z0-9+.-]*:/i.test(v) ? v : `https://${v}`;
+  try {
+    const u = new URL(withScheme);
+    if (u.protocol !== "http:" && u.protocol !== "https:") return null;
+    if (!u.hostname) return null;
+    return u.toString();
+  } catch {
+    return null;
+  }
+}
+
 export const MIN_PROFILE_SCREEN_WIDTH = 1280;
 export const MIN_PROFILE_SCREEN_HEIGHT = 890;
 

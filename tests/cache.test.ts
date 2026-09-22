@@ -38,17 +38,17 @@ describe("downloaded-browser cache", () => {
     expect(list.some((b) => b.tag === "pro-partial")).toBe(false);
   });
 
-  it("removeCached deletes the build so the next launch re-downloads it", () => {
-    expect(removeCached("pro-150.0.7871.114")).toBe(true);
+  it("removeCached deletes the build so the next launch re-downloads it", async () => {
+    expect(await removeCached("pro-150.0.7871.114")).toBe(true);
     expect(existsSync(join(dir, "pro-150.0.7871.114"))).toBe(false);
     expect(listCached().map((b) => b.tag)).toEqual(["v0.1.0-pre.21"]);
   });
 
-  it("removeCached returns false for a missing tag and rejects path traversal", () => {
-    expect(removeCached("nope-tag")).toBe(false);
-    expect(() => removeCached("../evil")).toThrow(/invalid/i);
-    expect(() => removeCached("a/b")).toThrow(/invalid/i);
-    expect(() => removeCached("a\\b")).toThrow(/invalid/i);
+  it("removeCached returns false for a missing tag and rejects path traversal", async () => {
+    expect(await removeCached("nope-tag")).toBe(false);
+    await expect(removeCached("../evil")).rejects.toThrow(/invalid/i);
+    await expect(removeCached("a/b")).rejects.toThrow(/invalid/i);
+    await expect(removeCached("a\\b")).rejects.toThrow(/invalid/i);
   });
 
   it("returns [] when the cache root does not exist", () => {

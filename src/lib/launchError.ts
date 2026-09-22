@@ -6,10 +6,14 @@
 // on it. This maps the known shapes to a title, a plain explanation and the ONE action that fixes
 // it, and keeps the original text for "Copy details".
 
+import { classifyExit, type ExitFacts } from "../../electron/exitreason";
+
 export type NoticeAction =
   | { kind: "edit"; field: string }
   | { kind: "settings"; section: "license" | "browser" }
-  | { kind: "retry" };
+  | { kind: "retry" }
+  /** One-browser plan: stop the profile that holds the slot, then launch this one. */
+  | { kind: "swap"; stopId: string; stopName: string };
 
 export interface LaunchNotice {
   tone: "error" | "warning";
@@ -165,6 +169,93 @@ export function describeLaunchWarnings(warnings: string[]): LaunchNotice {
 
 export function actionLabel(a: NoticeAction): string {
   if (a.kind === "retry") return "Try again";
+  if (a.kind === "swap") return `Stop “${a.stopName}” and launch`;
   if (a.kind === "settings") return a.section === "license" ? "Licence settings" : "Browser settings";
   return a.field === "browserVersion" ? "Change version" : "Edit profile";
+}
+
+/**
+ * On a plan at its browser limit, the most useful fix is usually "close the one that is open".
+ * Offer that when exactly one other profile is running HERE — with several, which to close is the
+ * person's call, and the notice already says what is going on.
+ */
+export function withSwap(n: LaunchNotice, code: string | undefined, runningOthers: { id: string; name: string }[]): LaunchNotice {
+  if (code !== "CONCURRENCY_LIMIT_EXCEEDED" || runningOthers.length !== 1) return n;
+  const o = runningOthers[0];
+  return { ...n, action: { kind: "swap", stopId: o.id, stopName: o.name } };
+}
+
+/** The last line the browser printed that says something, for a notice. */
+function lastLine(tail?: string): string | undefined {
+  const lines = (tail ?? "").split(/\r?\n/).map((l) => l.trim()).filter(Boolean);
+  const l = lines[lines.length - 1];
+  return l ? (l.length > 180 ? l.slice(0, 177) + "…" : l) : undefined;
+}
+
+/**
+ * Why a browser stopped without the app asking, as a card notice — or null when there is nothing
+ * to say (closed from its own window). See electron/exitreason.ts for how the facts are read.
+ */
+export function describeExit(ev: ExitFacts): LaunchNotice | null {
+  const r = classifyExit(ev);
+  const raw = ev.stderrTail?.trim() ? ev.stderrTail.trim() : undefined;
+  switch (r.kind) {
+    case "normal":
+      return null;
+    case "licence": {
+      const ref = ev.leaseRefusal;
+      const code = ref?.code?.toUpperCase();
+      const inactive = code === "LICENSE_REVOKED" || code === "LICENSE_EXPIRED" || ref?.status === 403;
+      const why =
+        code === "CONCURRENCY_LIMIT_EXCEEDED"
+          ? "Another browser took this licence's only slot."
+          : inactive
+            ? ref?.error || "The licence is no longer active."
+            : ref?.error ||
+              "Its licence stopped renewing: the key was revoked or expired, or the browser was over its plan's limit. On the free plan this also happens a few minutes after the app is closed.";
+      return {
+        tone: "warning",
+        title: "Closed by the licence check",
+        lines: [why],
+        action: inactive ? { kind: "settings", section: "license" } : { kind: "retry" },
+        raw,
+      };
+    }
+    case "crash":
+      return {
+        tone: "error",
+        title: "The browser crashed",
+        lines: [
+          `${r.name ? r.name[0].toUpperCase() + r.name.slice(1) + " — " : ""}${r.codeLabel}. The profile's data is not affected; launch it again.`,
+        ],
+        action: { kind: "retry" },
+        raw,
+      };
+    case "killed":
+      return {
+        tone: "warning",
+        title: "Closed from outside the app",
+        lines: [`Something other than this app ended the browser (${r.codeLabel}) — Task Manager, a script, or the system.`],
+        action: { kind: "retry" },
+        raw,
+      };
+    case "profile-in-use":
+      return {
+        tone: "warning",
+        title: "This profile's data is already open",
+        lines: ["Another browser window is using the same data folder. Close it, then launch again."],
+        action: { kind: "retry" },
+        raw,
+      };
+    default: {
+      const said = lastLine(ev.stderrTail);
+      return {
+        tone: "error",
+        title: "The browser stopped unexpectedly",
+        lines: [`It ended with ${r.codeLabel}.`, ...(said ? [`Its last message: ${said}`] : [])],
+        action: { kind: "retry" },
+        raw,
+      };
+    }
+  }
 }

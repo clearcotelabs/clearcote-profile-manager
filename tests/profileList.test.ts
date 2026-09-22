@@ -61,7 +61,7 @@ describe("sortProfiles", () => {
 
 describe("groupProfiles", () => {
   it("no groups at all → one unnamed section, order kept", () => {
-    expect(groupProfiles([P("a"), P("b")])).toEqual([{ group: null, profiles: [P("a"), P("b")] }]);
+    expect(groupProfiles([P("a"), P("b")])).toEqual([{ group: null, key: "", profiles: [P("a"), P("b")] }]);
   });
 
   it("groups in order of first appearance, ungrouped last, case/space-insensitive", () => {

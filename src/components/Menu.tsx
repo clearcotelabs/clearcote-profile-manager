@@ -18,7 +18,19 @@ export interface MenuItem {
   shortcut?: string;
 }
 
-export default function Menu({ label, items }: { label: string; items: (MenuItem | "separator")[] }) {
+export default function Menu({
+  label,
+  items,
+  quiet = false,
+  align = "right",
+}: {
+  label: string;
+  items: (MenuItem | "separator")[];
+  /** A borderless trigger, for inside a heading. */
+  quiet?: boolean;
+  /** Which edge of the trigger the menu lines up with — "left" near the page's left edge. */
+  align?: "left" | "right";
+}) {
   const [open, setOpen] = useState(false);
   const [up, setUp] = useState(false);
   const btnRef = useRef<HTMLButtonElement>(null);
@@ -77,7 +89,11 @@ export default function Menu({ label, items }: { label: string; items: (MenuItem
     <div className={"relative " + (open ? "z-30" : "")}>
       <button
         ref={btnRef}
-        className="rounded-lg border border-line px-2.5 py-1.5 text-xs font-medium text-fog/70 transition hover:bg-elevate hover:text-fog"
+        className={
+          quiet
+            ? "rounded-md px-1.5 py-0.5 text-xs text-fog/35 transition hover:bg-elevate hover:text-fog"
+            : "rounded-lg border border-line px-2.5 py-1.5 text-xs font-medium text-fog/70 transition hover:bg-elevate hover:text-fog"
+        }
         aria-label={label}
         title={label}
         aria-haspopup="menu"
@@ -101,7 +117,8 @@ export default function Menu({ label, items }: { label: string; items: (MenuItem
           aria-label={label}
           onKeyDown={onKeyDown}
           className={
-            "absolute right-0 min-w-[190px] rounded-xl border border-line-strong bg-surface p-1 shadow-2xl " +
+            "absolute min-w-[190px] rounded-xl border border-line-strong bg-surface p-1 shadow-2xl " +
+            (align === "left" ? "left-0 " : "right-0 ") +
             (up ? "bottom-full mb-1" : "top-full mt-1")
           }
         >

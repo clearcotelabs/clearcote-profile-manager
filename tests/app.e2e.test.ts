@@ -14,6 +14,7 @@
 import { describe, it, expect, beforeAll, afterAll } from "vitest";
 import fs from "node:fs";
 import os from "node:os";
+import { execFileSync } from "node:child_process";
 import path from "node:path";
 import type { ElectronApplication, Page } from "playwright-core";
 
@@ -42,7 +43,7 @@ describe.skipIf(!READY)("the desktop app, end to end", () => {
   };
   const profileOnDisk = (id: string) => readJson(path.join(PROFILES, `${id}.json`)) as Record<string, string>;
 
-  async function start() {
+  async function start(extraEnv: Record<string, string> = {}) {
     const { _electron } = await import("playwright-core");
     // eslint-disable-next-line @typescript-eslint/no-require-imports
     const electronPath = require("electron") as unknown as string;
@@ -50,6 +51,7 @@ describe.skipIf(!READY)("the desktop app, end to end", () => {
     delete env.ELECTRON_DEV; // load the built renderer
     delete env.ELECTRON_RUN_AS_NODE;
     if (!KEY) delete env.CLEARCOTE_LICENSE_KEY;
+    Object.assign(env, extraEnv);
     app = await _electron.launch({ executablePath: electronPath, args: [APP_DIR, `--user-data-dir=${UDD}`], env });
     win = await app.firstWindow();
     await win.waitForSelector('main[data-ready="1"]', { timeout: 60000 });
@@ -86,9 +88,12 @@ describe.skipIf(!READY)("the desktop app, end to end", () => {
         path.join(PROFILES, `${id}.json`),
         JSON.stringify({ id, name: id, fingerprint: `seed-${id}`, platform: "windows", createdAt: now, updatedAt: "2026-01-01T00:00:00.000Z", ...over }),
       );
-    seed("alpha");
+    seed("alpha", { group: "Team" });
+    seed("beta", { group: "team " });
     seed("pinned", { browserVersion: "151.0.7922.108-r18" });
-    fs.writeFileSync(SETTINGS, JSON.stringify({ theme: "dark" }));
+    // autoPruneBuilds off: these tests launch from your REAL build cache, which must never be pruned
+    // by a test. The pruning test further down runs against a throwaway cache instead.
+    fs.writeFileSync(SETTINGS, JSON.stringify({ theme: "dark", autoPruneBuilds: false }));
     await start();
   }, T);
 
@@ -201,5 +206,169 @@ describe.skipIf(!READY)("the desktop app, end to end", () => {
     await win.keyboard.press("Escape");
     await card.getByRole("button", { name: "Stop" }).click();
     await until(async () => card.getByRole("button", { name: "Launch" }).count(), (n) => n > 0, "stopped");
+  }, 240000);
+
+  // ── Quality-of-life round: what only the real app can show ─────────────────
+
+  /** The main browser process of a profile, found by its --user-data-dir (never anything else). */
+  function browserPid(id: string): number | null {
+    if (process.platform !== "win32") return null;
+    const udd = path.join(PROFILES, id, "userdata");
+    const ps =
+      "Get-CimInstance Win32_Process -Filter \"Name='chrome.exe'\" | Where-Object { $_.CommandLine -like '*--user-data-dir=" +
+      udd +
+      "*' -and $_.CommandLine -notlike '*--type=*' } | Select-Object -First 1 -ExpandProperty ProcessId";
+    const out = execFileSync("powershell", ["-NoProfile", "-Command", ps], { encoding: "utf8" }).trim();
+    return out ? Number(out) : null;
+  }
+  const alive = (pid: number) => {
+    try {
+      process.kill(pid, 0);
+      return true;
+    } catch {
+      return false;
+    }
+  };
+  /** What Chromium recorded about its last shutdown: "Normal", or "Crashed" after a hard kill. */
+  const exitType = (id: string) => {
+    try {
+      return (readJson(path.join(PROFILES, id, "userdata", "Default", "Preferences")) as { profile?: { exit_type?: string } }).profile?.exit_type;
+    } catch {
+      return undefined;
+    }
+  };
+  async function launchAndWait(id: string) {
+    const card = win.locator(`[data-card="${id}"]`);
+    await card.getByRole("button", { name: "Launch" }).click();
+    await card.getByRole("button", { name: "Stop" }).waitFor({ timeout: 120000 });
+    return card;
+  }
+  const winVisible = () => app!.evaluate(({ BrowserWindow }) => BrowserWindow.getAllWindows()[0]?.isVisible() ?? false);
+
+  it.runIf(!!KEY && process.platform === "win32")("Stop closes the browser gracefully — Chromium records a NORMAL exit, not a crash", async () => {
+    const card = await launchAndWait("alpha");
+    // Chromium writes Preferences in batches; wait until it has recorded its "running" state, so
+    // this proves the SHUTDOWN, not just an untouched file.
+    await until(() => exitType("alpha"), (v) => v === "Crashed", "the running state was written", 60000);
+    await card.getByRole("button", { name: "Stop" }).click();
+    await card.getByRole("button", { name: "Launch" }).waitFor({ timeout: 30000 });
+    await until(() => exitType("alpha"), (v) => v === "Normal", "a normal shutdown recorded");
+  }, 240000);
+
+  it.runIf(!!KEY && process.platform === "win32")("a browser ended from outside the app says so on its card", async () => {
+    const card = await launchAndWait("alpha");
+    const pid = await until(() => browserPid("alpha"), (p) => !!p, "found the browser process");
+    execFileSync("taskkill", ["/F", "/PID", String(pid)]); // what Task Manager's End task does
+    await card.getByText("Closed from outside the app").waitFor({ timeout: 30000 });
+    expect(await card.textContent()).toContain("exit code 1");
+    await card.getByRole("button", { name: "Dismiss" }).click();
+  }, 240000);
+
+  it.runIf(!!KEY && process.platform === "win32")("close to the tray: the window hides and the browser keeps running", async () => {
+    fs.writeFileSync(SETTINGS, JSON.stringify({ ...settings(), closeBehavior: "tray" }));
+    await launchAndWait("alpha");
+    const pid = await until(() => browserPid("alpha"), (p) => !!p, "browser pid");
+    await app!.evaluate(({ BrowserWindow }) => BrowserWindow.getAllWindows()[0].close());
+    await until(winVisible, (v) => v === false, "hidden to the tray");
+    await new Promise((r) => setTimeout(r, 1500));
+    expect(alive(pid!)).toBe(true);
+    await app!.evaluate(({ BrowserWindow }) => BrowserWindow.getAllWindows()[0].show());
+    await until(winVisible, (v) => v === true, "shown again");
+  }, 240000);
+
+  it.runIf(!!KEY && process.platform === "win32")("'ask' remembers the choice when told to", async () => {
+    const cur = settings();
+    delete cur.closeBehavior;
+    fs.writeFileSync(SETTINGS, JSON.stringify(cur));
+    // Stand in for the person clicking "Keep running in the tray" with "Remember my choice" ticked.
+    await app!.evaluate(({ dialog }) => {
+      (dialog as unknown as { showMessageBox: unknown }).showMessageBox = async () => ({ response: 0, checkboxChecked: true });
+    });
+    await app!.evaluate(({ BrowserWindow }) => BrowserWindow.getAllWindows()[0].close());
+    await until(winVisible, (v) => v === false, "hidden to the tray");
+    await until(() => settings().closeBehavior, (v) => v === "tray", "choice remembered");
+    await app!.evaluate(({ BrowserWindow }) => BrowserWindow.getAllWindows()[0].show());
+  }, 120000);
+
+  it.runIf(!!KEY && process.platform === "win32")("close and quit: every browser is closed properly before the app exits", async () => {
+    fs.writeFileSync(SETTINGS, JSON.stringify({ ...settings(), closeBehavior: "quit" }));
+    const pid = await until(() => browserPid("alpha"), (p) => !!p, "alpha still running from before");
+    const exited = new Promise<void>((r) => app!.process().once("exit", () => r()));
+    await app!.evaluate(({ BrowserWindow }) => BrowserWindow.getAllWindows()[0].close());
+    await exited;
+    app = null;
+    await until(() => alive(pid!), (v) => v === false, "browser closed with the app");
+    expect(exitType("alpha")).toBe("Normal");
+    fs.writeFileSync(SETTINGS, JSON.stringify({ ...settings(), closeBehavior: "ask" }));
+    await start();
+  }, 240000);
+
+  it("the window reopens where it was", async () => {
+    await app!.evaluate(({ BrowserWindow }) => BrowserWindow.getAllWindows()[0].setBounds({ x: 120, y: 90, width: 1000, height: 700 }));
+    await until(() => settings().window as { x: number } | undefined, (w) => !!w && w.x === 120, "saved");
+    await stopApp();
+    await start();
+    const b = await app!.evaluate(({ BrowserWindow }) => BrowserWindow.getAllWindows()[0].getBounds());
+    expect(Math.abs(b.x - 120)).toBeLessThanOrEqual(2);
+    expect(Math.abs(b.y - 90)).toBeLessThanOrEqual(2);
+    expect(Math.abs(b.width - 1000)).toBeLessThanOrEqual(2);
+    expect(Math.abs(b.height - 700)).toBeLessThanOrEqual(2);
+  }, T);
+
+  it("renaming a group renames it on every profile file", async () => {
+    await win.getByRole("button", { name: "Group Team" }).click();
+    await win.getByRole("menuitem", { name: "Rename group…" }).click();
+    await win.getByRole("dialog").getByLabel("New name").fill("Crew");
+    await win.getByRole("dialog").getByRole("button", { name: "Rename" }).click();
+    await until(() => [profileOnDisk("alpha").group, profileOnDisk("beta").group].join(), (v) => v === "Crew,Crew", "both renamed on disk");
+  }, T);
+
+  it("Storage: removes only unused builds, cleans temp copies, clears a cache but keeps the logins", async () => {
+    // A throwaway cache and temp folder — never the real ones.
+    const fakeCache = fs.mkdtempSync(path.join(os.tmpdir(), "ccpm-app-cache-"));
+    const fakeTmp = fs.mkdtempSync(path.join(os.tmpdir(), "ccpm-app-tmp-"));
+    try {
+      const build = (dir: string, marker = true) => {
+        fs.mkdirSync(path.join(dir, "browser"), { recursive: true });
+        fs.writeFileSync(path.join(dir, "browser", "chrome.exe"), Buffer.alloc(1_500_000));
+        if (marker) fs.writeFileSync(path.join(dir, ".verified"), "x");
+      };
+      build(path.join(fakeCache, "pro-153.0.8010.36-r27")); // what Latest runs (licensed)
+      build(path.join(fakeCache, "pro-152.0.7977.82-r22")); // nothing uses it
+      build(path.join(fakeCache, "pro-151.0.7922.108-r18")); // "pinned" pins it
+      build(path.join(fakeTmp, "clearcote-recover-abc"), false);
+      build(path.join(fakeTmp, "clearcote-live", "0123456789abcdef"), false);
+      // A cache next to real logins, in the profile that has been launched.
+      const def = path.join(PROFILES, "alpha", "userdata", "Default");
+      fs.mkdirSync(path.join(def, "Cache", "Cache_Data"), { recursive: true });
+      fs.writeFileSync(path.join(def, "Cache", "Cache_Data", "data_1"), Buffer.alloc(300_000));
+      if (!fs.existsSync(path.join(def, "Preferences"))) fs.writeFileSync(path.join(def, "Preferences"), "{}");
+
+      await stopApp();
+      await start({ CLEARCOTE_CACHE: fakeCache, TEMP: fakeTmp, TMP: fakeTmp });
+      await win.keyboard.press("Control+Comma");
+      const dlg = win.getByRole("dialog", { name: "Settings" });
+      await dlg.getByRole("button", { name: "Storage" }).click();
+      if (KEY) {
+        await dlg.getByRole("button", { name: /^Remove unused · frees 2 MB$/ }).click({ timeout: 30000 });
+        await dlg.getByText(/^Removed 1 build/).waitFor();
+        expect(fs.readdirSync(fakeCache).sort()).toEqual(["pro-151.0.7922.108-r18", "pro-153.0.8010.36-r27"]);
+      }
+      await dlg.getByRole("button", { name: "Clean up" }).click();
+      await dlg.getByText(/^Cleaned up/).waitFor();
+      expect(fs.existsSync(path.join(fakeTmp, "clearcote-recover-abc"))).toBe(false);
+      expect(fs.existsSync(path.join(fakeTmp, "clearcote-live", "0123456789abcdef"))).toBe(false);
+
+      await dlg.getByRole("button", { name: "Clear cache of alpha" }).click();
+      await win.getByRole("dialog", { name: "Clear the cache of “alpha”?" }).getByRole("button", { name: "Clear cache" }).click();
+      await dlg.getByText(/^Cleared .* from “alpha”\./).waitFor();
+      expect(fs.existsSync(path.join(def, "Cache"))).toBe(false);
+      expect(fs.existsSync(path.join(def, "Preferences"))).toBe(true);
+      await win.keyboard.press("Escape");
+    } finally {
+      await stopApp();
+      fs.rmSync(fakeCache, { recursive: true, force: true });
+      fs.rmSync(fakeTmp, { recursive: true, force: true });
+    }
   }, 240000);
 });

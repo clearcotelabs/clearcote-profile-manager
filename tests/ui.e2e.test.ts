@@ -302,9 +302,9 @@ describe.skipIf(!READY)("usability pass — in a real browser", () => {
     expect(await page.locator('[data-card="c"]').textContent()).toContain("Never launched");
     expect(await page.locator('[data-card="c"]').textContent()).toContain("latest build");
     // "Work" and "work " are one group; ungrouped profiles get their own heading.
-    const heads = await page.locator("main section h2").allTextContents();
+    const heads = await page.locator("main section [data-group-name]").allTextContents();
     // The heading is spelled the way its first profile (in the current order) wrote it.
-    expect(heads.map((h) => h.replace(/\d+$/, "").trim().toLowerCase())).toEqual(["work", "no group"]);
+    expect(heads.map((h) => h.trim().toLowerCase())).toEqual(["work", "no group"]);
   }, T);
 
   it("sorting: recently used first by default, Name on request — and the choice is remembered", async () => {
