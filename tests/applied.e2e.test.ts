@@ -27,7 +27,9 @@ import type { Profile } from "../electron/types";
 const READY =
   process.env.CLEARCOTE_E2E === "1" && !!process.env.CLEARCOTE_BINARY && !!process.env.CLEARCOTE_LICENSE_KEY;
 
-const ROOT = fs.mkdtempSync(path.join(os.tmpdir(), "ccpm-applied-"));
+// Only created when the suite actually runs: this file is imported (and skipped) on every `npm test`,
+// and a top-level mkdtemp left an empty ccpm-applied-* folder in %TEMP% each time.
+const ROOT = READY ? fs.mkdtempSync(path.join(os.tmpdir(), "ccpm-applied-")) : path.join(os.tmpdir(), "ccpm-applied-unused");
 vi.mock("electron", () => ({ app: { getPath: () => ROOT } }));
 
 function freePort(): Promise<number> {

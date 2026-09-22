@@ -1,6 +1,6 @@
 # Tests
 
-Two layers:
+Four layers:
 
 - **Unit (vitest, runs in CI)** — Run: `npm test`.
   - `fpargs.test.ts` — the shared switch builder (`electron/fpargs.ts`) that BOTH the launcher and
@@ -19,6 +19,37 @@ Two layers:
   > Note: `args.test.ts` used to be the only arg coverage, and it tests the **preview** builder.
   > The launcher was a separate hand-maintained copy and had silently drifted from it. Both now
   > delegate to `electron/fpargs.ts`; keep new switches there so one test run covers both paths.
+  - `profiles.test.ts` — delete to trash + undo + purge (with real files; on Windows also a data
+    folder held open, which must leave everything in place), safe ids, `markLaunched` touching only
+    `lastLaunchedAt`, and an import that never overwrites.
+  - `launch.flow.test.ts` — `launch()` with the network, download and spawn stubbed: licence error
+    codes reach the UI, an edit saved during a long first download survives the launch, and the
+    plan is learned from a real lease (not from an offline cached one).
+  - `launchTarget.test.ts` — what the header pill says (custom binary / plan · build / offline), the
+    catalog cache and timeout, the settings merge that keeps the learned plan, and the
+    update-check switch.
+  - `launchError.test.ts` — every launch-failure message the app produces, mapped to a title, a
+    plain explanation and one action. Uses the real strings (the screenshot's 403 included).
+  - `profileList.test.ts` — sort, grouping, relative times, version chips, the free-plan pin check,
+    proxy redaction on cards, and unsaved-change detection.
+- **UI end-to-end (opt-in, real browser)** — `editor.e2e.test.ts` and `ui.e2e.test.ts` drive the
+  renderer in Chrome against `next dev`, using its in-browser mock of the Electron bridge. They cover
+  what only a browser shows: dialogs (Esc on the top one only, focus trap and return, scroll lock,
+  fitting a 560px-tall or phone-width window), the unsaved-changes guard, Ctrl+S, the ⋯ menu,
+  delete + Undo, keyboard shortcuts, sorting, card content, the update suggestion and its Settings
+  switch, and contrast in both themes.
+  Run: `npm run next:dev -- -p 3100`, then
+  `CLEARCOTE_UI_E2E=1 CLEARCOTE_UI_BROWSER=<chrome.exe> npx vitest run tests/ui.e2e.test.ts tests/editor.e2e.test.ts`.
+- **App end-to-end (opt-in, the real Electron app)** — `app.e2e.test.ts` starts the built app with a
+  throwaway `--user-data-dir` (never your real profiles) and checks the IPC behind trash/undo, the
+  real launch target, `lastLaunchedAt` written by the main process, the plan learned from a lease,
+  and the update check on every start. With a key it also launches a real browser.
+  Run: `npm run build`, then `CLEARCOTE_APP_E2E=1 CLEARCOTE_LICENSE_KEY=cc_lic_... npx vitest run tests/app.e2e.test.ts`.
+  Set `E2E_OUTCOMES=<file>` to record which of the two accepted outcomes the licence-dependent
+  tests took.
+
+  > Every suite cleans up after itself: a full run leaves nothing in `%TEMP%`. Create temp folders
+  > in hooks, not at module level — a skipped suite's module and describe body still run.
 - **Runtime confirmation (manual, needs the binary)** — `confirm-applied.py`. Launches the real
   Clearcote binary with every setting set and probes the in-page surface to confirm each is actually
   applied. Run: `pip install playwright && CLEARCOTE_BINARY=<chrome.exe> python tests/confirm-applied.py`.

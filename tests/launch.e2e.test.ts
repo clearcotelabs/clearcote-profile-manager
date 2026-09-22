@@ -36,7 +36,8 @@ const READY =
 
 const PROXY = process.env.CLEARCOTE_TEST_PROXY;
 
-const ROOT = fs.mkdtempSync(path.join(os.tmpdir(), "ccpm-e2e-"));
+// Only created when the suite actually runs — it is imported (and skipped) on every `npm test`.
+const ROOT = READY ? fs.mkdtempSync(path.join(os.tmpdir(), "ccpm-e2e-")) : path.join(os.tmpdir(), "ccpm-e2e-unused");
 vi.mock("electron", () => ({ app: { getPath: () => ROOT } }));
 
 /** An OS-assigned free port, so concurrent runs don't collide on a hard-coded debugging port. */

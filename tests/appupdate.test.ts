@@ -1,9 +1,11 @@
 // The update check. Three things here are load-bearing and easy to get subtly wrong: comparing
 // versions, picking the asset that matches how the app was installed, and reading the checksums.
 
-import { describe, it, expect, vi, afterEach } from "vitest";
+import { describe, it, expect, vi, afterEach, beforeAll, afterAll } from "vitest";
 import { createHash } from "node:crypto";
-import { existsSync, readFileSync } from "node:fs";
+import { existsSync, mkdtempSync, readFileSync, rmSync } from "node:fs";
+import { tmpdir } from "node:os";
+import { join } from "node:path";
 import { compareVersions, pickAsset, parseSums, downloadUpdate, type UpdateAsset, type UpdateInfo } from "../electron/appupdate";
 
 describe("compareVersions", () => {
@@ -154,6 +156,23 @@ describe("downloadUpdate — overlapping downloads never clobber each other", ()
   const realFetch = globalThis.fetch;
   afterEach(() => {
     globalThis.fetch = realFetch;
+  });
+
+  // updateDir() lives under os.tmpdir(), which reads TEMP/TMP on every call — so point those at a
+  // private folder for this suite and remove it after. Otherwise every run left megabytes of test
+  // "installers" in the real %TEMP%\clearcote-update.
+  const saved = { TEMP: process.env.TEMP, TMP: process.env.TMP, TMPDIR: process.env.TMPDIR };
+  let sandbox = "";
+  beforeAll(() => {
+    sandbox = mkdtempSync(join(tmpdir(), "ccpm-update-test-"));
+    process.env.TEMP = process.env.TMP = process.env.TMPDIR = sandbox;
+  });
+  afterAll(() => {
+    for (const [k, v] of Object.entries(saved)) {
+      if (v === undefined) delete process.env[k];
+      else process.env[k] = v;
+    }
+    rmSync(sandbox, { recursive: true, force: true });
   });
 
   const payload = Buffer.alloc(3 * 1024 * 1024, 0).map((_, i) => (i * 31) & 0xff);

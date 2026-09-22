@@ -4,7 +4,7 @@
 // with the host's real position. These tests pin the behaviour the toggle promises, with the
 // network stubbed so they are deterministic.
 
-import { describe, it, expect, vi, beforeEach, afterEach } from "vitest";
+import { describe, it, expect, vi, beforeEach, afterEach, afterAll } from "vitest";
 import fs from "node:fs";
 import os from "node:os";
 import path from "node:path";
@@ -15,9 +15,11 @@ vi.mock("../electron/geo", () => ({ geoCheck }));
 
 // electron/store.ts resolves its dirs from app.getPath("userData") at import time, so the module
 // has to be stubbed before launcher is pulled in.
-vi.mock("electron", () => ({
-  app: { getPath: () => fs.mkdtempSync(path.join(os.tmpdir(), "ccpm-geoip-")) },
-}));
+// One folder for the whole file, removed at the end. (getPath() used to create a new one on every
+// call and never remove any.)
+const ROOT = fs.mkdtempSync(path.join(os.tmpdir(), "ccpm-geoip-"));
+vi.mock("electron", () => ({ app: { getPath: () => ROOT } }));
+afterAll(() => fs.rmSync(ROOT, { recursive: true, force: true }));
 
 // Imported after the mocks are registered so the launcher binds to the stubs.
 const { applyGeoip } = await import("../electron/launcher");

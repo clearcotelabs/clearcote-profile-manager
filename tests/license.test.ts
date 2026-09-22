@@ -1,7 +1,7 @@
 // PRO licensing client (electron/license.ts) + pro-binary fetch (electron/proBinary.ts).
 // Hermetic — the only network is a mocked `fetch`. Mirrors the clearcote SDK's tests.
 
-import { describe, it, expect, vi, afterEach, beforeEach } from "vitest";
+import { describe, it, expect, vi, afterEach, beforeEach, afterAll } from "vitest";
 import {
   resolveLicenseKey,
   acquireLease,
@@ -10,6 +10,14 @@ import {
   planFromToken,
 } from "../electron/license";
 import { proEnsureBinary } from "../electron/proBinary";
+
+/** Every isolated HOME the tests below make — removed when the file finishes, rather than being left
+ *  in %TEMP% on every run as they used to be. */
+const HOMES: string[] = [];
+afterAll(async () => {
+  const { rmSync } = await import("node:fs");
+  for (const h of HOMES) rmSync(h, { recursive: true, force: true });
+});
 
 describe("resolveLicenseKey (explicit > env > file)", () => {
   const OLD = process.env.CLEARCOTE_LICENSE_KEY;
@@ -39,6 +47,7 @@ describe("free mode is inert (no key => no backend contact)", () => {
     const { tmpdir } = await import("node:os");
     const { join } = await import("node:path");
     const home = mkdtempSync(join(tmpdir(), "pm-nokey-"));
+    HOMES.push(home);
     process.env.HOME = home;
     process.env.USERPROFILE = home;
   });
@@ -156,6 +165,7 @@ describe("per-browser leases (the GitHub free tier)", () => {
     const { tmpdir } = await import("node:os");
     const { join } = await import("node:path");
     const home = mkdtempSync(join(tmpdir(), "pm-perbrowser-"));
+    HOMES.push(home);
     process.env.HOME = home;
     process.env.USERPROFILE = home;
     return home;
@@ -246,6 +256,7 @@ describe("per-launch run-token files (engine online enforcement)", () => {
     const { tmpdir } = await import("node:os");
     const { join } = await import("node:path");
     const home = mkdtempSync(join(tmpdir(), "pm-tokenfile-"));
+    HOMES.push(home);
     process.env.HOME = home;
     process.env.USERPROFILE = home;
   }
