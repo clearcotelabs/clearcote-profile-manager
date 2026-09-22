@@ -18,7 +18,7 @@ import { createHash } from "node:crypto";
 import { createWriteStream, existsSync, mkdirSync, mkdtempSync, readdirSync, renameSync, rmSync, statSync } from "node:fs";
 import { tmpdir } from "node:os";
 import path from "node:path";
-import { Readable } from "node:stream";
+import { Readable, Transform } from "node:stream";
 import { pipeline } from "node:stream/promises";
 
 export const REPO = "clearcotelabs/clearcote-profile-manager";
@@ -287,13 +287,35 @@ async function fetchAndVerify(
     if (!res.ok || !res.body) return { ok: false, error: `Download failed (HTTP ${res.status}).` };
 
     const total = Number(res.headers.get("content-length")) || info.asset.size || 0;
+    // Progress is counted INSIDE the pipeline, never by a 'data' listener beside it. In the app the
+    // callback sends to the window, and in Electron's main process that send lets Node run queued
+    // stream work before it returns: a listener beside pipeline() saw the next chunk arrive inside
+    // the current one, the file writer received the two swapped, and every download came out the
+    // right size with the wrong bytes — "Checksum mismatch", a different hash each time. A Transform
+    // cannot reorder: a chunk that arrives while it is busy waits in its write queue. The same pass
+    // hashes the bytes as they arrive, so a mismatch can say which side went wrong.
+    const arriving = createHash("sha256");
     let seen = 0;
-    const src = Readable.fromWeb(res.body as Parameters<typeof Readable.fromWeb>[0]);
-    src.on("data", (c: Buffer) => {
-      seen += c.length;
-      if (onProgress && total) onProgress(Math.round((seen / total) * 100), seen / 1048576, total / 1048576);
+    let lastPct = -1;
+    const counter = new Transform({
+      transform(chunk: Buffer, _enc, cb) {
+        seen += chunk.length;
+        arriving.update(chunk);
+        const pct = total ? Math.min(100, Math.floor((seen * 100) / total)) : -1;
+        // Once per whole percent: about a hundred messages to the window, not one per network chunk.
+        if (onProgress && pct > lastPct) {
+          lastPct = pct;
+          try {
+            onProgress(pct, seen / 1048576, total / 1048576);
+          } catch {
+            /* progress is cosmetic — a window closed mid-download must not fail it */
+          }
+        }
+        cb(null, chunk);
+      },
     });
-    await pipeline(src, createWriteStream(dest));
+    await pipeline(Readable.fromWeb(res.body as Parameters<typeof Readable.fromWeb>[0]), counter, createWriteStream(dest));
+    const arrived = arriving.digest("hex");
 
     if (!existsSync(dest) || statSync(dest).size === 0) {
       return { ok: false, error: "Download produced an empty file." };
@@ -312,12 +334,16 @@ async function fetchAndVerify(
     const expected = parseSums(await sumsRes.text())[info.asset.name];
     if (!expected) return { ok: true, path: dest, verified: false };
 
+    // The gate is the file on disk — that is what the person will run.
     const actual = await sha256File(dest);
     if (actual !== expected) {
       // The caller deletes the whole per-download directory on any failure.
       return {
         ok: false,
-        error: `Checksum mismatch — the download does not match the published SHA-256 and has been deleted. Expected ${expected.slice(0, 16)}…, got ${actual.slice(0, 16)}….`,
+        error:
+          arrived === expected
+            ? `The download matched the published SHA-256, but the file saved to disk does not, so it has been deleted. Something changed it while it was being written — please try again. Expected ${expected.slice(0, 16)}…, on disk ${actual.slice(0, 16)}….`
+            : `Checksum mismatch — the download does not match the published SHA-256 and has been deleted. Expected ${expected.slice(0, 16)}…, got ${actual.slice(0, 16)}….`,
       };
     }
     return { ok: true, path: dest, verified: true };

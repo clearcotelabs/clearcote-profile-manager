@@ -408,9 +408,9 @@ function registerIpc(): void {
   });
 
   ipcMain.handle("update:download", async (e, info: UpdateInfo) =>
-    downloadUpdate(info, (pct, seenMB, totalMB) =>
-      e.sender.send("update:progress", { pct, seenMB, totalMB }),
-    ),
+    downloadUpdate(info, (pct, seenMB, totalMB) => {
+      if (!e.sender.isDestroyed()) e.sender.send("update:progress", { pct, seenMB, totalMB });
+    }),
   );
 
   // openPath, not spawn: the OS shell runs the installer with the user's own elevation prompt in

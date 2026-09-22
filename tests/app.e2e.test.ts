@@ -14,6 +14,9 @@
 import { describe, it, expect, beforeAll, afterAll } from "vitest";
 import fs from "node:fs";
 import os from "node:os";
+import http from "node:http";
+import type { AddressInfo } from "node:net";
+import { createHash, randomBytes } from "node:crypto";
 import { execFileSync } from "node:child_process";
 import path from "node:path";
 import type { ElectronApplication, Page } from "playwright-core";
@@ -133,6 +136,58 @@ describe.skipIf(!READY)("the desktop app, end to end", () => {
     fs.writeFileSync(SETTINGS, JSON.stringify({ ...settings(), updateCheck: true }));
     await start();
   }, T * 2);
+
+  it("an app update downloaded through the window lands byte-for-byte, with progress per percent", async () => {
+    // What the banner's Download button does, against a local "release". Every download through
+    // the app used to fail "Checksum mismatch": the progress sent to the window let the next chunk
+    // overtake the current one on its way to the file. Plain-Node runs never showed it — only this
+    // path, the real main process sending to a real window, does. Random bytes, so any reordering
+    // changes the hash.
+    const payload = randomBytes(48 * 1024 * 1024);
+    const sha = createHash("sha256").update(payload).digest("hex");
+    const name = "Clearcote-Profile-Manager-9.9.9-setup.exe";
+    const server = http.createServer((req, res) => {
+      if (req.url?.endsWith("/SHA256SUMS.txt")) return void res.end(`${sha}  ${name}\n`);
+      res.writeHead(200, { "content-length": payload.length });
+      res.end(payload);
+    });
+    await new Promise<void>((r) => server.listen(0, "127.0.0.1", r));
+    const base = `http://127.0.0.1:${(server.address() as AddressInfo).port}`;
+    const info = {
+      available: true,
+      latest: "9.9.9",
+      current: "0.0.1",
+      releaseUrl: base,
+      asset: { name, url: `${base}/${name}`, size: payload.length },
+      sumsUrl: `${base}/SHA256SUMS.txt`,
+    };
+    type Out = { res: { ok: boolean; verified?: boolean; path?: string; error?: string }; pcts: number[] };
+    let out: Out | null = null;
+    try {
+      out = (await win.evaluate(async (i) => {
+        type Bridge = {
+          update: { download: (x: unknown) => Promise<Out["res"]> };
+          onUpdateProgress: (cb: (p: { pct: number }) => void) => () => void;
+        };
+        const api = (window as unknown as { clearcote: Bridge }).clearcote;
+        const pcts: number[] = [];
+        const off = api.onUpdateProgress((p) => pcts.push(p.pct));
+        const res = await api.update.download(i);
+        await new Promise((r) => setTimeout(r, 300)); // let the last progress messages arrive
+        off();
+        return { res, pcts };
+      }, info)) as Out;
+      expect(out.res.error).toBeUndefined();
+      expect(out.res).toMatchObject({ ok: true, verified: true });
+      expect(createHash("sha256").update(fs.readFileSync(out.res.path!)).digest("hex")).toBe(sha);
+      expect(out.pcts.at(-1)).toBe(100);
+      expect(out.pcts.length).toBeLessThanOrEqual(101);
+    } finally {
+      server.close();
+      // The download's own folder under %TEMP%\clearcote-update — never leave an "installer" behind.
+      if (out?.res.path) fs.rmSync(path.dirname(out.res.path), { recursive: true, force: true });
+    }
+  }, T);
 
   it("the window asks before closing with unsaved edits (the handler is attached)", async () => {
     const n = await app!.evaluate(({ BrowserWindow }) => BrowserWindow.getAllWindows()[0].webContents.listenerCount("will-prevent-unload"));

@@ -28,6 +28,13 @@ Four layers:
   - `launchTarget.test.ts` — what the header pill says (custom binary / plan · build / offline), the
     catalog cache and timeout, the settings merge that keeps the learned plan, and the
     update-check switch.
+  - `appupdate.test.ts` — the app's own updates: version order, which file each kind of install
+    gets, the checksums file, and the download. Overlapping downloads, a short transfer, and
+    progress reported to the window, which must never reorder the file. In the app, sending to the
+    window lets Node run queued work before it returns (simulated here with
+    `process._tickCallback()`); progress counted beside the pipeline instead of inside it failed
+    every in-app update with "Checksum mismatch". Also: a mismatch says whether the bytes arrived
+    wrong or changed on the way to disk.
   - `launchError.test.ts` — every launch-failure message the app produces, mapped to a title, a
     plain explanation and one action. Uses the real strings (the screenshot's 403 included).
   - `profileList.test.ts` — sort, grouping, relative times, version chips, the free-plan pin check,
@@ -60,7 +67,9 @@ Four layers:
 - **App end-to-end (opt-in, the real Electron app)** — `app.e2e.test.ts` starts the built app with a
   throwaway `--user-data-dir` (never your real profiles) and checks the IPC behind trash/undo, the
   real launch target, `lastLaunchedAt` written by the main process, the plan learned from a lease,
-  and the update check on every start. With a key it also launches real browsers: Stop must leave
+  and the update check on every start. An update downloaded through the window, from a local
+  release of random bytes, must land byte-for-byte; plain-Node runs never showed the reordering
+  that broke this, only the real window does. With a key it also launches real browsers: Stop must leave
   Chromium's `exit_type` at "Normal" (a hard kill leaves "Crashed"), a browser killed from outside
   must say so on its card, and closing the window must hide to the tray, remember an "ask" answer,
   or close every browser properly before quitting. Build pruning, temp copies and cache clearing

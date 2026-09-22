@@ -2,11 +2,58 @@
 // versions, picking the asset that matches how the app was installed, and reading the checksums.
 
 import { describe, it, expect, vi, afterEach, beforeAll, afterAll } from "vitest";
-import { createHash } from "node:crypto";
+import { createHash, randomBytes } from "node:crypto";
 import { existsSync, mkdtempSync, readFileSync, rmSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { compareVersions, pickAsset, parseSums, downloadUpdate, type UpdateAsset, type UpdateInfo } from "../electron/appupdate";
+
+// One test below damages the file on its way to disk, to check what the error then says. Only the
+// write stream the updater opens is wrapped, and only while `damage.next` is set.
+const damage = vi.hoisted(() => ({ next: false }));
+vi.mock("node:fs", async (importOriginal) => {
+  const fs = await importOriginal<typeof import("node:fs")>();
+  const createWriteStream = ((...args: Parameters<typeof fs.createWriteStream>) => {
+    const ws = fs.createWriteStream(...args);
+    if (!damage.next) return ws;
+    damage.next = false;
+    let done = false;
+    const flip = (b: Buffer) => {
+      if (done) return b;
+      done = true;
+      const c = Buffer.from(b);
+      c[0] ^= 0xff;
+      return c;
+    };
+    type W = { _write: (c: Buffer, e: BufferEncoding, cb: (err?: Error | null) => void) => void; _writev?: (cs: { chunk: Buffer; encoding: BufferEncoding }[], cb: (err?: Error | null) => void) => void };
+    const w = ws as unknown as W;
+    const write = w._write.bind(ws);
+    w._write = (c, e, cb) => write(flip(c), e, cb);
+    const writev = w._writev?.bind(ws);
+    if (writev) w._writev = (cs, cb) => writev(cs.map((x, i) => (i === 0 ? { ...x, chunk: flip(x.chunk) } : x)), cb);
+    return ws;
+  }) as typeof fs.createWriteStream;
+  return { ...fs, default: { ...fs, createWriteStream }, createWriteStream };
+});
+
+/** Point TEMP/TMP (os.tmpdir() reads them on every call, so updateDir() follows) at a private
+ *  folder for the enclosing describe, and remove it after — so no test "installer" is ever left in
+ *  the real %TEMP%\clearcote-update. */
+function useTempSandbox(): void {
+  const saved = { TEMP: process.env.TEMP, TMP: process.env.TMP, TMPDIR: process.env.TMPDIR };
+  let sandbox = "";
+  beforeAll(() => {
+    sandbox = mkdtempSync(join(tmpdir(), "ccpm-update-test-"));
+    process.env.TEMP = process.env.TMP = process.env.TMPDIR = sandbox;
+  });
+  afterAll(() => {
+    for (const [k, v] of Object.entries(saved)) {
+      if (v === undefined) delete process.env[k];
+      else process.env[k] = v;
+    }
+    rmSync(sandbox, { recursive: true, force: true });
+  });
+}
 
 describe("compareVersions", () => {
   it("orders by numeric component, not lexically", () => {
@@ -157,23 +204,7 @@ describe("downloadUpdate — overlapping downloads never clobber each other", ()
   afterEach(() => {
     globalThis.fetch = realFetch;
   });
-
-  // updateDir() lives under os.tmpdir(), which reads TEMP/TMP on every call — so point those at a
-  // private folder for this suite and remove it after. Otherwise every run left megabytes of test
-  // "installers" in the real %TEMP%\clearcote-update.
-  const saved = { TEMP: process.env.TEMP, TMP: process.env.TMP, TMPDIR: process.env.TMPDIR };
-  let sandbox = "";
-  beforeAll(() => {
-    sandbox = mkdtempSync(join(tmpdir(), "ccpm-update-test-"));
-    process.env.TEMP = process.env.TMP = process.env.TMPDIR = sandbox;
-  });
-  afterAll(() => {
-    for (const [k, v] of Object.entries(saved)) {
-      if (v === undefined) delete process.env[k];
-      else process.env[k] = v;
-    }
-    rmSync(sandbox, { recursive: true, force: true });
-  });
+  useTempSandbox();
 
   const payload = Buffer.alloc(3 * 1024 * 1024, 0).map((_, i) => (i * 31) & 0xff);
   const sha = createHash("sha256").update(payload).digest("hex");
@@ -249,5 +280,100 @@ describe("downloadUpdate — overlapping downloads never clobber each other", ()
     const r = await downloadUpdate(u);
     expect(r).toMatchObject({ ok: false });
     expect(r.error).toMatch(/incomplete/);
+  });
+});
+
+// Regression: in the app the progress callback sends to the window, and in Electron's main process
+// that send lets Node run queued stream work before it returns. Progress used to be counted by a
+// 'data' listener beside pipeline(), so the next chunk was handed out inside the current one and the
+// file writer got the pair swapped — right size, wrong bytes, "Checksum mismatch" on every download
+// through the app, and never in a plain-Node run, which is how it survived. process._tickCallback()
+// is that same "run queued work now" in plain Node; on the old code it reproduces the swap.
+describe("downloadUpdate — progress sent to the window never reorders the file", () => {
+  const realFetch = globalThis.fetch;
+  afterEach(() => {
+    globalThis.fetch = realFetch;
+    damage.next = false;
+  });
+  useTempSandbox();
+
+  // Random, so every chunk differs. With a repeating pattern two swapped chunks are identical and
+  // the hash still matches, so the very bug this guards would pass.
+  const payload = randomBytes(8 * 1024 * 1024);
+  const sha = createHash("sha256").update(payload).digest("hex");
+  const name = "Clearcote-Profile-Manager-9.9.9-setup.exe";
+  /** The whole body already queued, in network-sized chunks, as on a fast connection. */
+  const eagerBody = () =>
+    new ReadableStream<Uint8Array>({
+      start(c) {
+        for (let o = 0; o < payload.length; o += 16 * 1024) c.enqueue(new Uint8Array(payload.subarray(o, o + 16 * 1024)));
+        c.close();
+      },
+    });
+  const mock = () => {
+    globalThis.fetch = (async (url: string) =>
+      String(url).includes("SHA256SUMS")
+        ? new Response(`${sha}  ${name}\n`)
+        : new Response(eagerBody(), { headers: { "content-length": String(payload.length) } })) as unknown as typeof fetch;
+  };
+  const info = (): UpdateInfo => ({
+    available: true,
+    latest: "9.9.9",
+    current: "0.0.1",
+    releaseUrl: "https://example.test/r",
+    asset: { name, url: `https://example.test/p-${Math.random()}`, size: payload.length },
+    sumsUrl: "https://example.test/SHA256SUMS.txt",
+  });
+  const runQueuedWork = (process as unknown as { _tickCallback?: () => void })._tickCallback;
+  const onDisk = (p: string) => createHash("sha256").update(readFileSync(p)).digest("hex");
+
+  it("a progress callback that runs Node's queued work (what the window send does) still lands the published file", async () => {
+    expect(typeof runQueuedWork).toBe("function"); // without it this test would prove nothing
+    mock();
+    let calls = 0;
+    const r = await downloadUpdate(info(), () => {
+      calls++;
+      runQueuedWork!();
+    });
+    expect(calls).toBeGreaterThan(0);
+    expect(r).toMatchObject({ ok: true, verified: true });
+    expect(onDisk(r.path!)).toBe(sha);
+  });
+
+  it("reports each whole percent once, in order, ending at 100 — not one message per network chunk", async () => {
+    mock();
+    const pcts: number[] = [];
+    const seen: number[] = [];
+    const totals = new Set<number>();
+    const r = await downloadUpdate(info(), (pct, seenMB, totalMB) => {
+      pcts.push(pct);
+      seen.push(seenMB);
+      totals.add(totalMB);
+    });
+    expect(r.ok).toBe(true);
+    expect(pcts.at(-1)).toBe(100);
+    expect(pcts.length).toBeLessThanOrEqual(101); // 512 network chunks in this download
+    expect(pcts).toEqual([...new Set(pcts)].sort((a, b) => a - b));
+    expect(seen.at(-1)).toBe(8);
+    expect([...totals]).toEqual([8]);
+  });
+
+  it("a progress callback that throws (the window closed mid-download) does not fail the download", async () => {
+    mock();
+    const r = await downloadUpdate(info(), () => {
+      throw new Error("Object has been destroyed");
+    });
+    expect(r).toMatchObject({ ok: true, verified: true });
+    expect(onDisk(r.path!)).toBe(sha);
+  });
+
+  it("bytes that arrive intact but change on the way to disk are named as that, not as a bad download", async () => {
+    mock();
+    damage.next = true;
+    const r = await downloadUpdate(info());
+    expect(r.ok).toBe(false);
+    expect(r.error).toMatch(/^The download matched the published SHA-256, but the file saved to disk does not/);
+    expect(r.error).not.toMatch(/Checksum mismatch/);
+    expect(r.path).toBeUndefined();
   });
 });
