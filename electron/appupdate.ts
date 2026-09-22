@@ -23,9 +23,16 @@ import { pipeline } from "node:stream/promises";
 
 export const REPO = "clearcotelabs/clearcote-profile-manager";
 const API = `https://api.github.com/repos/${REPO}/releases/latest`;
-/** Once a day is plenty for a desktop app, and keeps well inside GitHub's unauthenticated
- *  rate limit even when someone restarts the app all morning. */
-export const CHECK_INTERVAL_MS = 24 * 60 * 60 * 1000;
+/**
+ * Whether the app asks GitHub for a newer release when it starts. On unless the person turned it
+ * off in Settings — the only remembered way to stop the suggestion. It runs on EVERY start: a
+ * once-a-day throttle meant someone who restarted after a fix shipped could go a day without
+ * hearing of it, and one request per start is far inside GitHub's unauthenticated limit
+ * (60 an hour per address).
+ */
+export function startupCheckEnabled(s: { updateCheck?: boolean }): boolean {
+  return s.updateCheck !== false;
+}
 
 export interface UpdateAsset {
   name: string;

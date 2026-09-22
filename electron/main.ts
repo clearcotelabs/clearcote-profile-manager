@@ -4,17 +4,17 @@ import fs from "node:fs";
 import * as profiles from "./profiles";
 import * as launcher from "./launcher";
 import * as geo from "./geo";
-import { readSettings, writeSettings, ensureDirs, FINGERPRINTS_DIR } from "./store";
+import { readSettings, writeSettings, ensureDirs, FINGERPRINTS_DIR, PROFILES_DIR } from "./store";
 import { checkLicense, resolveLicenseKey } from "./license";
 import { fetchCatalog, listVersions, fetchProRevisions } from "./catalog";
 import { screenWarningFromLabel } from "./fpargs";
 import { summarizeFingerprint } from "./fpmeta";
 import { listCached, removeCached } from "./cache";
 import { redactProxyString } from "./proxy";
-import { checkForUpdate, downloadUpdate, CHECK_INTERVAL_MS, type UpdateInfo } from "./appupdate";
+import { checkForUpdate, downloadUpdate, startupCheckEnabled, type UpdateInfo } from "./appupdate";
+import { launchTarget, resetLaunchTargetCache } from "./launchTarget";
+import { mergeRendererSettings } from "./settingsmerge";
 import type { Profile, Settings, FingerprintMeta } from "./types";
-
-const slug = (s: string) => s.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-+|-+$/g, "").slice(0, 40);
 
 const CLEARCOTE_PROFILES_REPO = "clearcotelabs/clearcote-profiles";
 
@@ -46,6 +46,21 @@ function createWindow(): void {
     },
   });
 
+  // The renderer arms `beforeunload` while the profile editor holds unsaved changes. Electron never
+  // shows a prompt for it on its own — the close would just silently not happen — so ask here.
+  win.webContents.on("will-prevent-unload", (e) => {
+    const choice = dialog.showMessageBoxSync(win, {
+      type: "question",
+      buttons: ["Keep editing", "Discard and close"],
+      defaultId: 0,
+      cancelId: 0,
+      title: "Unsaved changes",
+      message: "A profile has unsaved changes.",
+      detail: "Close anyway and lose them?",
+    });
+    if (choice === 1) e.preventDefault(); // preventDefault here means: ignore beforeunload, close
+  });
+
   if (isDev) {
     win.loadURL("http://localhost:3000");
   } else {
@@ -57,7 +72,30 @@ function registerIpc(): void {
   ipcMain.handle("profiles:list", () => profiles.listProfiles());
   ipcMain.handle("profiles:get", (_e, id: string) => profiles.getProfile(id));
   ipcMain.handle("profiles:save", (_e, p: Profile) => profiles.saveProfile(p));
-  ipcMain.handle("profiles:delete", (_e, id: string) => profiles.deleteProfile(id));
+
+  // Delete is recoverable: the profile and its browser data move to a trash folder, the UI offers
+  // Undo, and the trash is purged after profiles.TRASH_TTL_MS. A running profile is refused — its
+  // browser holds the data folder open, and deleting a live identity from under it is never meant.
+  ipcMain.handle("profiles:delete", (_e, id: string) => {
+    if (launcher.listRunning().includes(id)) {
+      return { ok: false, error: "Stop this profile's browser before deleting it." };
+    }
+    profiles.purgeTrash();
+    return profiles.trashProfile(id);
+  });
+  ipcMain.handle("profiles:restore", (_e, trashId: string) => profiles.restoreProfile(trashId));
+  // Open the profile's saved browser data (cookies, storage…) in Explorer / the file manager.
+  ipcMain.handle("profiles:openData", async (_e, id: string) => {
+    if (!profiles.isSafeId(id)) return { ok: false, error: "Invalid profile id." };
+    const p = profiles.getProfile(id);
+    const dir = p?.userDataDir || path.join(PROFILES_DIR, id, "userdata");
+    if (!fs.existsSync(dir)) return { ok: false, error: "No browser data yet — it is created on the first launch." };
+    const err = await shell.openPath(dir);
+    return err ? { ok: false, error: err } : { ok: true };
+  });
+
+  // What a profile on "Latest" launches right now — the header pill.
+  ipcMain.handle("launchTarget", () => launchTarget(readSettings()));
 
   // Launch, streaming browser-download progress back to the renderer (first use of a version
   // downloads 100–250 MB — the UI shows a live bar so it never looks frozen).
@@ -93,13 +131,21 @@ function registerIpc(): void {
 
   ipcMain.handle("settings:get", () => readSettings());
   ipcMain.handle("settings:set", (_e, s: Settings) => {
-    writeSettings(s);
+    // lastPlan belongs to the main process, never to the renderer's copy — see settingsmerge.ts.
+    const { next, licenceChanged } = mergeRendererSettings(readSettings(), s);
+    if (licenceChanged) resetLaunchTargetCache();
+    writeSettings(next);
     return readSettings();
   });
 
-  ipcMain.handle("license:check", (_e, key?: string) => {
+  ipcMain.handle("license:check", async (_e, key?: string) => {
     const s = readSettings();
-    return checkLicense(key ?? s.licenseKey, s.licenseApiBase);
+    const status = await checkLicense(key ?? s.licenseKey, s.licenseApiBase);
+    // Only when the checked key IS the saved one — a key typed but not saved says nothing about it.
+    if (status.ok && status.plan && (key ?? s.licenseKey) === readSettings().licenseKey) {
+      writeSettings({ ...readSettings(), lastPlan: status.plan });
+    }
+    return status;
   });
 
   ipcMain.handle("resolveBinary", () => launcher.resolveBinary());
@@ -127,20 +173,14 @@ function registerIpc(): void {
   // ── App updates ────────────────────────────────────────────────────────────
   // Check, tell, download-and-verify — the person runs the installer. See electron/appupdate.ts
   // for why this is not electron-updater.
+  // Asked once per app start by the renderer, unless the person turned it off in Settings; the
+  // Settings "Check now" button forces it. There is deliberately no remembered per-version skip any
+  // more: the suggestion comes back on every start, and the Settings switch is the one remembered
+  // way to stop it (see appupdate.ts startupCheckEnabled).
   ipcMain.handle("update:check", async (_e, force?: boolean) => {
-    const s = readSettings();
-    // Default ON: a user on an old build has no other way to learn a fix shipped.
-    if (s.updateCheck === false && !force) return null;
-    if (!force && s.lastUpdateCheck) {
-      const age = Date.now() - Date.parse(s.lastUpdateCheck);
-      if (Number.isFinite(age) && age >= 0 && age < CHECK_INTERVAL_MS) return null;
-    }
+    if (!force && !startupCheckEnabled(readSettings())) return null;
     const info = await checkForUpdate(app.getVersion());
-    // Record the attempt either way, so an unreachable GitHub is not retried on every launch.
     writeSettings({ ...readSettings(), lastUpdateCheck: new Date().toISOString() });
-    if (!info) return null;
-    // A version the user dismissed stays dismissed until something newer ships.
-    if (info.available && readSettings().skippedVersion === info.latest && !force) return null;
     return info;
   });
 
@@ -156,16 +196,17 @@ function registerIpc(): void {
     await shell.openPath(file);
   });
   ipcMain.handle("update:reveal", (_e, file: string) => shell.showItemInFolder(file));
-  ipcMain.handle("update:skip", (_e, version: string) => {
-    writeSettings({ ...readSettings(), skippedVersion: version });
-  });
   ipcMain.handle("update:openReleases", (_e, url: string) => shell.openExternal(url));
 
 
-  ipcMain.handle("profiles:export", async (_e, opts?: { redact?: boolean }) => {
+  ipcMain.handle("profiles:export", async (_e, opts?: { redact?: boolean; ids?: string[] }) => {
+    // `ids` exports just those profiles (a card's "Export…"); omitted, everything.
+    const only = opts?.ids?.length ? new Set(opts.ids) : null;
+    const chosen = profiles.listProfiles().filter((p) => !only || only.has(p.id));
+    if (chosen.length === 0) return { ok: false };
     const r = await dialog.showSaveDialog({
-      title: "Export profiles",
-      defaultPath: "clearcote-profiles.json",
+      title: chosen.length === 1 && only ? `Export “${chosen[0].name || chosen[0].id}”` : "Export profiles",
+      defaultPath: chosen.length === 1 && only ? `${chosen[0].id}.json` : "clearcote-profiles.json",
       filters: [{ name: "JSON", extensions: ["json"] }],
     });
     if (r.canceled || !r.filePath) return { ok: false };
@@ -173,7 +214,7 @@ function registerIpc(): void {
     // ticket or share with a colleague. Proxy passwords AND the cookie encryption key — that key
     // decrypts the exported profile's whole cookie jar, so it is at least as sensitive.
     const redact = opts?.redact !== false;
-    const list = profiles.listProfiles().map((p) => {
+    const list = chosen.map((p) => {
       if (!redact) return p;
       const out = { ...p };
       if (out.proxy) out.proxy = redactProxyString(out.proxy);
@@ -193,18 +234,9 @@ function registerIpc(): void {
     if (r.canceled || !r.filePaths[0]) return { ok: false };
     try {
       const data = JSON.parse(fs.readFileSync(r.filePaths[0], "utf8"));
-      const arr: Profile[] = Array.isArray(data) ? data : [data];
-      let count = 0;
-      for (const p of arr) {
-        if (p && p.fingerprint) {
-          profiles.saveProfile({
-            ...p,
-            id: p.id || `${slug(p.name || "profile") || "profile"}-${Math.random().toString(36).slice(2, 6)}`,
-          });
-          count++;
-        }
-      }
-      return { ok: true, count };
+      // Never overwrites: a taken or unsafe id gets a fresh one (profiles.ts importProfiles).
+      const { count, renamed } = profiles.importProfiles(Array.isArray(data) ? data : [data]);
+      return { ok: true, count, renamed };
     } catch (e) {
       return { ok: false, error: String(e) };
     }
@@ -306,6 +338,7 @@ if (!app.requestSingleInstanceLock()) {
 app.whenReady().then(() => {
   if (!app.hasSingleInstanceLock()) return;
   ensureDirs();
+  profiles.purgeTrash(); // deletes past their undo window, from this run or an earlier one
   registerIpc();
   createWindow();
   app.on("activate", () => {

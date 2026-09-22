@@ -21,6 +21,11 @@
   --scrollthumb: #1b2030;
   --sheen-a: rgba(56, 224, 214, 0.1);
   --sheen-b: rgba(167, 139, 250, 0.06);
+  /* Status colours. Light tints on dark, deep shades on light — a -300/-400 tint on white paper
+     fails contrast, which is what the fixed Tailwind shades did. */
+  --c-ok: 52 211 153; /* emerald-400 */
+  --c-warn: 251 191 36; /* amber-400 */
+  --c-danger: 251 113 133; /* rose-400 */
 }
 
 html.light {
@@ -37,6 +42,9 @@ html.light {
   --scrollthumb: #d8dbe2;
   --sheen-a: rgba(56, 224, 214, 0.16);
   --sheen-b: rgba(167, 139, 250, 0.12);
+  --c-ok: 4 120 87; /* emerald-700 */
+  --c-warn: 180 83 9; /* amber-700 */
+  --c-danger: 190 18 60; /* rose-700 */
 }
 
 html,

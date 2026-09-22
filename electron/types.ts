@@ -182,21 +182,28 @@ export interface Settings {
   licenseKey?: string;
   /** Override the license backend base URL (default clearcotelabs.com). */
   licenseApiBase?: string;
-  /** Check GitHub once a day for a newer release of THIS app. On unless turned off: a user sitting
-   *  on an old build has no other way to learn a fix shipped, and the engine already updates itself
-   *  while the app that drives it cannot. It contacts api.github.com, which the Settings copy says
-   *  out loud rather than leaving it as invisible behaviour. */
+  /** Check GitHub for a newer release of THIS app every time it starts, and suggest upgrading. On
+   *  unless turned off: a user sitting on an old build has no other way to learn a fix shipped, and
+   *  the engine already updates itself while the app that drives it cannot. It contacts
+   *  api.github.com, which the Settings copy says out loud rather than leaving it invisible. */
   updateCheck?: boolean;
   /** ISO timestamp of the last check, so a restart does not re-check. */
   lastUpdateCheck?: string;
-  /** A version the user dismissed, so the banner stays gone until a newer one ships. */
+  /** No longer read: a per-version skip was replaced by suggesting on every start, with the
+   *  Settings switch (updateCheck) as the remembered opt-out. Kept so older settings files parse. */
   skippedVersion?: string;
+  /** The plan the licence service last reported for licenseKey ("free", "pro"…). Owned by the main
+   *  process — written on a lease or a licence check, cleared when the key changes — so the header
+   *  can name the plan without a network round-trip. */
+  lastPlan?: string;
 }
 
 export interface LaunchResult {
   ok: boolean;
   pid?: number;
   error?: string;
+  /** Machine-readable reason, when the failing layer gave one (e.g. CONCURRENCY_LIMIT_EXCEEDED). */
+  code?: string;
   /** True when this launch used the PRO (license-gated) binary + a leased run-token. */
   pro?: boolean;
   /** Non-fatal problems with an otherwise successful launch — an option that will silently do
@@ -244,5 +251,7 @@ export interface ExportResult {
 export interface ImportResult {
   ok: boolean;
   count?: number;
+  /** Imported under a new id because theirs was unusable or already taken (never overwritten). */
+  renamed?: number;
   error?: string;
 }

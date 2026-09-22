@@ -6,6 +6,8 @@ import type {
 import type { VersionOption } from "./catalog";
 import type { CachedBuild } from "./cache";
 import type { UpdateInfo, DownloadResult } from "./appupdate";
+import type { LaunchTarget } from "./launchTarget";
+import type { TrashResult, RestoreResult } from "./profiles";
 
 // The narrow, typed surface the renderer is allowed to call. No fs / child_process
 // in the renderer — everything goes through these IPC channels.
@@ -14,8 +16,13 @@ const api = {
     list: (): Promise<Profile[]> => ipcRenderer.invoke("profiles:list"),
     get: (id: string): Promise<Profile | null> => ipcRenderer.invoke("profiles:get", id),
     save: (p: Profile): Promise<Profile> => ipcRenderer.invoke("profiles:save", p),
-    remove: (id: string): Promise<void> => ipcRenderer.invoke("profiles:delete", id),
+    /** Moves the profile + its data to the trash; undo with restore(trashId). */
+    remove: (id: string): Promise<TrashResult> => ipcRenderer.invoke("profiles:delete", id),
+    restore: (trashId: string): Promise<RestoreResult> => ipcRenderer.invoke("profiles:restore", trashId),
+    openData: (id: string): Promise<{ ok: boolean; error?: string }> => ipcRenderer.invoke("profiles:openData", id),
   },
+  /** What a profile on "Latest" launches right now (drives the header pill). */
+  launchTarget: (): Promise<LaunchTarget> => ipcRenderer.invoke("launchTarget"),
   launch: (p: Profile): Promise<LaunchResult> => ipcRenderer.invoke("launch", p),
   stop: (id: string): Promise<void> => ipcRenderer.invoke("stop", id),
   running: (): Promise<string[]> => ipcRenderer.invoke("running"),
@@ -40,16 +47,14 @@ const api = {
     remove: (tag: string): Promise<boolean> => ipcRenderer.invoke("cache:remove", tag),
   },
   update: {
-    /** Newest release vs this build. `force` ignores the once-a-day throttle (the Settings button).
-     *  Resolves null when the check is off, throttled, or GitHub is unreachable. */
+    /** Newest release vs this build — asked on every app start. `force` asks even when update
+     *  checks are turned off (the Settings button). Null when off or GitHub is unreachable. */
     check: (force?: boolean): Promise<UpdateInfo | null> => ipcRenderer.invoke("update:check", force),
     /** Download the matching asset and verify it against the release's SHA256SUMS. */
     download: (info: UpdateInfo): Promise<DownloadResult> => ipcRenderer.invoke("update:download", info),
     /** Open the verified installer, or reveal it in Explorer. The user does the installing. */
     run: (file: string): Promise<void> => ipcRenderer.invoke("update:run", file),
     reveal: (file: string): Promise<void> => ipcRenderer.invoke("update:reveal", file),
-    /** Stop offering this version until a newer one ships. */
-    skip: (version: string): Promise<void> => ipcRenderer.invoke("update:skip", version),
     openReleases: (url: string): Promise<void> => ipcRenderer.invoke("update:openReleases", url),
   },
   onUpdateProgress: (cb: (p: { pct: number; seenMB: number; totalMB: number }) => void): (() => void) => {
@@ -60,7 +65,7 @@ const api = {
   resolveBinary: (): Promise<string | null> => ipcRenderer.invoke("resolveBinary"),
   pickBinary: (): Promise<string | null> => ipcRenderer.invoke("pickBinary"),
   geoCheck: (p: Profile): Promise<GeoResult> => ipcRenderer.invoke("geo:check", p),
-  exportProfiles: (opts?: { redact?: boolean }): Promise<ExportResult> =>
+  exportProfiles: (opts?: { redact?: boolean; ids?: string[] }): Promise<ExportResult> =>
     ipcRenderer.invoke("profiles:export", opts),
   importProfiles: (): Promise<ImportResult> => ipcRenderer.invoke("profiles:import"),
   fp: {

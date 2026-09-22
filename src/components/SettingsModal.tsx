@@ -3,13 +3,15 @@
 // Settings, laid out like the profile editor: a pinned header, a section rail, ONE scrolling panel
 // and a pinned footer. The previous modal was a single box centred in a `fixed inset-0 flex` overlay
 // with no height cap and no overflow, so once its content outgrew the window both its top and its
-// Done button were pushed off-screen with nothing able to scroll them back. Here the frame is capped
-// to the viewport (h-full inside a padded fixed overlay) and only the panel scrolls.
+// Done button were pushed off-screen with nothing able to scroll them back. The frame (and Esc,
+// focus, scroll locking) now comes from the shared Dialog, and only the panel scrolls.
 
-import { useEffect, useState } from "react";
+import { useEffect, useId, useState } from "react";
 import { api, type Settings, type LicenseStatus, type CachedBuild } from "@/lib/ipc";
+import Dialog, { DialogFooter, DialogHeader } from "./Dialog";
+import { useConfirm } from "./Confirm";
 
-type Section = "browser" | "license" | "updates" | "storage";
+export type Section = "browser" | "license" | "updates" | "storage";
 
 const SECTIONS: { id: Section; label: string; title: string; blurb: string }[] = [
   {
@@ -104,31 +106,20 @@ export default function SettingsModal({
   onPick,
   onSaveSettings,
   onClose,
+  initialSection = "browser",
 }: {
   binary: string | null;
   settings: Settings;
   onPick: () => void;
   onSaveSettings: (patch: Partial<Settings>) => Promise<void> | void;
   onClose: () => void;
+  /** Open on this section — the header pill and a launch error's action point at the right one. */
+  initialSection?: Section;
 }) {
-  const [section, setSection] = useState<Section>("browser");
+  const [section, setSection] = useState<Section>(initialSection);
   const current = SECTIONS.find((s) => s.id === section)!;
-
-  // Esc closes, like every other dialog on the desktop.
-  useEffect(() => {
-    const onKey = (e: KeyboardEvent) => e.key === "Escape" && onClose();
-    window.addEventListener("keydown", onKey);
-    return () => window.removeEventListener("keydown", onKey);
-  }, [onClose]);
-
-  // The page behind stays put while the dialog is open, so the wheel only ever scrolls the panel.
-  useEffect(() => {
-    const prev = document.body.style.overflow;
-    document.body.style.overflow = "hidden";
-    return () => {
-      document.body.style.overflow = prev;
-    };
-  }, []);
+  const titleId = useId();
+  const confirm = useConfirm();
 
   // ── Licence ──────────────────────────────────────────────────────────────
   const [key, setKey] = useState(settings.licenseKey || "");
@@ -177,7 +168,13 @@ export default function SettingsModal({
   }, []);
   const total = (cached || []).reduce((s, b) => s + b.sizeBytes, 0);
   async function removeCached(b: CachedBuild) {
-    if (!confirm(`Remove the downloaded ${b.version} browser (${fmtSize(b.sizeBytes)})?\nIt will download again on the next launch that needs it.`)) return;
+    const ok = await confirm({
+      title: `Remove build ${b.version}?`,
+      body: `This frees ${fmtSize(b.sizeBytes)}. It downloads again, and is verified again, on the next launch that needs it.`,
+      confirmLabel: "Remove",
+      tone: "danger",
+    });
+    if (!ok) return;
     setBusyTag(b.tag);
     try {
       await api.cache.remove(b.tag);
@@ -191,26 +188,8 @@ export default function SettingsModal({
   const custom = settings.binaryPath;
 
   return (
-    <div
-      className="fixed inset-0 z-40 flex items-center justify-center bg-black/60 p-3 backdrop-blur-sm sm:p-6"
-      onMouseDown={(e) => e.target === e.currentTarget && onClose()}
-    >
-      <div
-        role="dialog"
-        aria-modal="true"
-        aria-labelledby="settings-title"
-        className="flex h-full max-h-[620px] w-full max-w-3xl flex-col overflow-hidden rounded-2xl border border-line bg-surface shadow-2xl"
-      >
-        {/* Header */}
-        <div className="flex flex-none items-center gap-3 border-b border-line px-5 py-3">
-          <h2 id="settings-title" className="text-base font-semibold">
-            Settings
-          </h2>
-          <span className="flex-1" />
-          <button className="text-fog/40 hover:text-fog" onClick={onClose} aria-label="Close">
-            ✕
-          </button>
-        </div>
+    <Dialog onClose={onClose} labelledBy={titleId} className="max-h-[620px] max-w-3xl">
+      <DialogHeader id={titleId} title="Settings" onClose={onClose} />
 
         <div className="grid min-h-0 flex-1 grid-cols-[160px_1fr] max-sm:grid-cols-1 max-sm:grid-rows-[auto_1fr]">
           {/* Rail — a row of tabs on a narrow window */}
@@ -262,7 +241,7 @@ export default function SettingsModal({
                   <span
                     className={
                       "rounded-full px-2 py-0.5 text-[11px] font-medium " +
-                      (custom ? "bg-amber-500/10 text-amber-400" : "bg-accent/10 text-accent")
+                      (custom ? "bg-warn/10 text-warn" : "bg-accent/10 text-accent")
                     }
                   >
                     {custom ? "Override" : "Managed"}
@@ -332,11 +311,11 @@ export default function SettingsModal({
                         {checking ? "Checking…" : "Check"}
                       </button>
                     </div>
-                    {dirty && <p className="mt-2 text-[11px] text-amber-400">Unsaved change.</p>}
+                    {dirty && <p className="mt-2 text-[11px] text-warn">Not saved yet — press Save or Enter.</p>}
                     {status && (
                       <div
                         className={`mt-3 rounded-lg px-3 py-2 text-xs ${
-                          status.ok ? "bg-emerald-500/10 text-emerald-300" : "bg-rose-500/10 text-rose-300"
+                          status.ok ? "bg-ok/10 text-ok" : "bg-danger/10 text-danger"
                         }`}
                       >
                         {status.ok ? (
@@ -373,17 +352,17 @@ export default function SettingsModal({
             {section === "updates" && (
               <Card>
                 <Row
-                  title="Check for updates automatically"
+                  title="Check for updates when the app starts"
                   hint={
                     <>
-                      Once a day, asks <span className="font-mono">api.github.com</span> whether a newer release exists.
-                      This build is unsigned, so updates are never installed behind your back — you download and run the
-                      installer yourself, and its checksum is verified first.
+                      Each time the app starts, it asks <span className="font-mono">api.github.com</span> whether a newer
+                      release exists and suggests upgrading. This build is unsigned, so nothing is installed behind your
+                      back — you download and run the installer yourself, and its checksum is verified first.
                     </>
                   }
                 >
                   <Toggle
-                    label="Check for updates automatically"
+                    label="Check for updates when the app starts"
                     checked={settings.updateCheck !== false}
                     onChange={(v) => onSaveSettings({ updateCheck: v })}
                   />
@@ -402,7 +381,7 @@ export default function SettingsModal({
                   </button>
                 </Row>
                 {settings.updateCheck === false && (
-                  <div className="px-4 py-3 text-[11px] text-amber-400/80">
+                  <div className="px-4 py-3 text-[11px] text-warn">
                     The browser engine updates itself, but with this off the app can sit on already-fixed bugs.
                   </div>
                 )}
@@ -440,7 +419,7 @@ export default function SettingsModal({
                           </span>
                           <span className="shrink-0 text-[11px] tabular-nums text-fog/45">{fmtSize(b.sizeBytes)}</span>
                           <button
-                            className="shrink-0 rounded-md px-2 py-1 text-[11px] text-rose-300/80 hover:bg-rose-500/10 hover:text-rose-300 disabled:opacity-40"
+                            className="shrink-0 rounded-md px-2 py-1 text-[11px] text-danger/80 hover:bg-danger/10 hover:text-danger disabled:opacity-40"
                             onClick={() => removeCached(b)}
                             disabled={busyTag === b.tag}
                           >
@@ -456,14 +435,12 @@ export default function SettingsModal({
           </div>
         </div>
 
-        {/* Footer */}
-        <div className="flex flex-none items-center justify-end gap-2 border-t border-line bg-ink/40 px-5 py-2.5">
+        <DialogFooter className="justify-end">
           <span className="mr-auto text-[11px] text-fog/35">Changes save as you make them — the licence key saves with Save.</span>
           <button className="rounded-lg bg-sheen px-4 py-1.5 text-sm font-semibold text-[#07080a]" onClick={onClose}>
             Done
           </button>
-        </div>
-      </div>
-    </div>
+        </DialogFooter>
+    </Dialog>
   );
 }

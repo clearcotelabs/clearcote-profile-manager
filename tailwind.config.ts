@@ -14,6 +14,10 @@ const config: Config = {
         accent: "rgb(var(--c-accent) / <alpha-value>)", // Clear Cyan (teal on light)
         sky: "rgb(var(--c-sky) / <alpha-value>)", // gradient midpoint / highlights
         iris: "rgb(var(--c-iris) / <alpha-value>)", // iridescent sheen
+        // status — theme-aware (see app/globals.css), so they stay legible on the light theme
+        ok: "rgb(var(--c-ok) / <alpha-value>)",
+        warn: "rgb(var(--c-warn) / <alpha-value>)",
+        danger: "rgb(var(--c-danger) / <alpha-value>)",
         // theme-aware overlays (alpha baked in; do NOT use /alpha modifiers on these)
         line: "var(--line)",
         "line-strong": "var(--line-strong)",

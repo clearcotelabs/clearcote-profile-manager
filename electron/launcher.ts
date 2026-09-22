@@ -2,10 +2,11 @@ import { type ChildProcess } from "node:child_process";
 import fs from "node:fs";
 import path from "node:path";
 import zlib from "node:zlib";
-import { PROFILES_DIR, FINGERPRINTS_DIR, readSettings } from "./store";
+import { PROFILES_DIR, FINGERPRINTS_DIR, readSettings, writeSettings } from "./store";
+import { markLaunched } from "./profiles";
 import { parseProxy, startRelay, needsRelay, proxyArgs, socks5AuthSupportWarning, socks5UdpSupportWarning, type Relay } from "./proxy";
 import { geoCheck } from "./geo";
-import { resolveLicenseKey, acquireLease, withRunToken, type LeaseSession } from "./license";
+import { resolveLicenseKey, acquireLease, withRunToken, planFromToken, type LeaseSession } from "./license";
 import { proEnsureBinary, freeEnsureBinary } from "./proBinary";
 import { fetchCatalog, resolveVersion } from "./catalog";
 import { fingerprintArgs, type FpInput } from "./fpargs";
@@ -59,6 +60,19 @@ async function resolveBrowserBinary(
       if (sibling) return { path: sibling, tier: "explicit" };
     }
     throw e;
+  }
+}
+
+/** Keep the plan the lease reported, so the header can name it without asking the server. */
+function rememberPlan(lease: LeaseSession | null): void {
+  // An offline-grace lease carries a cached token, which says nothing new about the plan.
+  const plan = lease && lease.leaseId !== "cached" ? planFromToken(lease.token) : undefined;
+  if (!plan) return;
+  try {
+    const cur = readSettings();
+    if (cur.lastPlan !== plan) writeSettings({ ...cur, lastPlan: plan });
+  } catch {
+    /* bookkeeping only — never fail a launch over it */
   }
 }
 
@@ -257,8 +271,11 @@ export async function launch(
     try {
       lease = await acquireLease({ licenseKey, licenseApiBase: s.licenseApiBase });
     } catch (e) {
-      return { ok: false, error: String((e as Error)?.message || e) };
+      // The code (CONCURRENCY_LIMIT_EXCEEDED, LICENSE_REVOKED…) is what lets the UI say what to do
+      // about it, rather than showing the sentence and leaving the reader to guess.
+      return { ok: false, error: String((e as Error)?.message || e), code: (e as { code?: string })?.code };
     }
+    rememberPlan(lease);
   }
 
   const userDataDir = p.userDataDir || path.join(PROFILES_DIR, p.id, "userdata");
@@ -304,6 +321,7 @@ export async function launch(
     // freshly-extracted chrome.exe: warm + back off + retry, then recover from a fresh copy.
     const child = await spawnBrowser(bin, args, { detached: false, env });
     running.set(p.id, child);
+    markLaunched(p.id); // lastLaunchedAt only, on the profile as saved now — see profiles.ts
     if (lease) leases.set(p.id, lease);
     const cleanup = () => {
       running.delete(p.id);

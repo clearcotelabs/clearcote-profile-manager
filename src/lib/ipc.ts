@@ -4,6 +4,10 @@
 // so the UI is fully usable for design + testing without Electron.
 
 import { redactProxyString, screenWarningFromLabel, type Profile } from "@/types/profile";
+import type { LaunchTarget } from "@/lib/launchTarget";
+
+export type TrashResult = { ok: true; trashId: string } | { ok: false; error: string };
+export type RestoreResult = { ok: true; profile: Profile } | { ok: false; error: string };
 
 export interface Settings {
   binaryPath?: string;
@@ -12,16 +16,20 @@ export interface Settings {
    *  + a floating-concurrency slot. Empty = free mode (no backend contact). */
   licenseKey?: string;
   licenseApiBase?: string;
-  /** Check GitHub once a day for a newer release of this app. On unless turned off. */
+  /** Check GitHub for a newer release every time the app starts. On unless turned off. */
   updateCheck?: boolean;
   lastUpdateCheck?: string;
-  /** A version the user dismissed; the banner stays gone until something newer ships. */
+  /** No longer read — see electron/types.ts. */
   skippedVersion?: string;
+  /** Plan last reported for licenseKey — written by the main process, read-only here. */
+  lastPlan?: string;
 }
 export interface LaunchResult {
   ok: boolean;
   pid?: number;
   error?: string;
+  /** Machine-readable reason, when the failing layer gave one (e.g. CONCURRENCY_LIMIT_EXCEEDED). */
+  code?: string;
   /** True when the launch used the PRO (license-gated) binary + a leased run-token. */
   pro?: boolean;
   /** Non-fatal problems with an otherwise successful launch — an option that will silently do
@@ -55,6 +63,8 @@ export interface ExportResult {
 export interface ImportResult {
   ok: boolean;
   count?: number;
+  /** Imported under a new id because theirs was unusable or already taken (never overwritten). */
+  renamed?: number;
   error?: string;
 }
 
@@ -144,8 +154,14 @@ export interface ClearcoteApi {
     list: () => Promise<Profile[]>;
     get: (id: string) => Promise<Profile | null>;
     save: (p: Profile) => Promise<Profile>;
-    remove: (id: string) => Promise<void>;
+    /** Moves the profile and its browser data to the trash; undo with restore(). */
+    remove: (id: string) => Promise<TrashResult>;
+    restore: (trashId: string) => Promise<RestoreResult>;
+    /** Open the profile's saved browser data folder. */
+    openData: (id: string) => Promise<{ ok: boolean; error?: string }>;
   };
+  /** What a profile on "Latest" launches right now — drives the header pill. */
+  launchTarget: () => Promise<LaunchTarget>;
   launch: (p: Profile) => Promise<LaunchResult>;
   stop: (id: string) => Promise<void>;
   running: () => Promise<string[]>;
@@ -173,14 +189,13 @@ export interface ClearcoteApi {
     download: (info: UpdateInfo) => Promise<UpdateDownloadResult>;
     run: (file: string) => Promise<void>;
     reveal: (file: string) => Promise<void>;
-    skip: (version: string) => Promise<void>;
     openReleases: (url: string) => Promise<void>;
   };
   onUpdateProgress: (cb: (p: { pct: number; seenMB: number; totalMB: number }) => void) => () => void;
   resolveBinary: () => Promise<string | null>;
   pickBinary: () => Promise<string | null>;
   geoCheck: (p: Profile) => Promise<GeoResult>;
-  exportProfiles: (opts?: { redact?: boolean }) => Promise<ExportResult>;
+  exportProfiles: (opts?: { redact?: boolean; ids?: string[] }) => Promise<ExportResult>;
   importProfiles: () => Promise<ImportResult>;
   fp: {
     import: () => Promise<FpImportResult>;
@@ -207,6 +222,7 @@ function buildMock(): ClearcoteApi {
     }
   };
   const write = (ps: Profile[]) => localStorage.setItem(PROFILES_KEY, JSON.stringify(ps));
+  const mockTrash = new Map<string, Profile>();
 
   return {
     profiles: {
@@ -219,8 +235,26 @@ function buildMock(): ClearcoteApi {
         write([...read().filter((x) => x.id !== out.id), out]);
         return out;
       },
-      remove: async (id) => write(read().filter((p) => p.id !== id)),
+      // Same trash semantics as the desktop app, so Undo works in the browser preview too.
+      remove: async (id) => {
+        const p = read().find((x) => x.id === id);
+        if (!p) return { ok: false, error: "That profile no longer exists." };
+        const trashId = `${id}__${Date.now()}`;
+        mockTrash.set(trashId, p);
+        write(read().filter((x) => x.id !== id));
+        return { ok: true, trashId };
+      },
+      restore: async (trashId) => {
+        const p = mockTrash.get(trashId);
+        if (!p) return { ok: false, error: "It can no longer be restored." };
+        if (read().some((x) => x.id === p.id)) return { ok: false, error: `A profile named “${p.id}” exists again.` };
+        mockTrash.delete(trashId);
+        write([...read(), p]);
+        return { ok: true, profile: p };
+      },
+      openData: async () => ({ ok: false, error: "Browser data lives in the desktop app." }),
     },
+    launchTarget: async () => ({ mode: "preview" }),
     launch: async () => ({
       ok: false,
       error: "Launching only works in the desktop app (this is the browser preview).",
@@ -230,14 +264,30 @@ function buildMock(): ClearcoteApi {
     listVersions: async () => [], // browser preview has no catalog access; UI falls back to "latest"
     listRevisions: async () => [], // revisions need an authenticated PRO call — desktop app only
     onDownloadProgress: () => () => {}, // no downloads in the browser preview
-    // The browser preview never offers an update: there is no installed app to replace, and
-    // pretending otherwise would put a dead button in the design preview.
+    // The browser preview never offers a real update: there is no installed app to replace. A fake
+    // release placed in localStorage["clearcote.mock.update"] stands in for GitHub, so the UI tests
+    // can drive the banner — and it honours the Settings switch exactly like the main process does.
     update: {
-      check: async () => null,
+      check: async (force?: boolean) => {
+        let fake: UpdateInfo | null = null;
+        try {
+          fake = JSON.parse(localStorage.getItem("clearcote.mock.update") || "null") as UpdateInfo | null;
+        } catch {
+          fake = null;
+        }
+        if (!fake) return null;
+        let s: Settings = {};
+        try {
+          s = JSON.parse(localStorage.getItem(SETTINGS_KEY) || "{}") as Settings;
+        } catch {
+          /* defaults */
+        }
+        if (!force && s.updateCheck === false) return null;
+        return fake;
+      },
       download: async () => ({ ok: false, error: "Updating only works in the desktop app." }),
       run: async () => {},
       reveal: async () => {},
-      skip: async () => {},
       openReleases: async (url: string) => {
         window.open(url, "_blank", "noopener");
       },
@@ -266,8 +316,9 @@ function buildMock(): ClearcoteApi {
     resolveBinary: async () => null,
     pickBinary: async () => null,
     geoCheck: async () => ({ ok: false, error: "IP / geo check runs in the desktop app." }),
-    exportProfiles: async () => {
-      const list = read().map((p) =>
+    exportProfiles: async (opts) => {
+      const only = opts?.ids?.length ? new Set(opts.ids) : null;
+      const list = read().filter((p) => !only || only.has(p.id)).map((p) =>
         p.proxy ? { ...p, proxy: redactProxyString(p.proxy) } : p,
       );
       const blob = new Blob([JSON.stringify(list, null, 2)], { type: "application/json" });

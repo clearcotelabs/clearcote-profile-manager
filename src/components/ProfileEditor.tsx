@@ -15,7 +15,8 @@
 //   - coherence issues that DEEP-LINK to the field that caused them, which is what makes splitting
 //     settings across six panels safe rather than a hiding place.
 
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useId, useMemo, useRef, useState } from "react";
+import Dialog, { DialogHeader } from "./Dialog";
 import {
   CATEGORIES,
   FIELDS,
@@ -72,12 +73,26 @@ export interface ProfileEditorProps {
   profile: Profile;
   onChange: (p: Profile) => void;
   onSave: (p: Profile) => void;
+  /** Close request (✕, Esc, backdrop, Cancel). The page asks first when there are unsaved changes. */
   onCancel: () => void;
+  /** Differs from what is saved — shown in the footer. */
+  dirty?: boolean;
+  /** Open on this field (a launch error's "Change version" lands on the version picker). */
+  initialField?: string;
   /** Rendered above the panel when the library picker is open. */
   renderLibrary?: (onApply: (file: string, meta?: FingerprintMeta) => void, onClose: () => void) => React.ReactNode;
 }
 
-export default function ProfileEditor({ profile, onChange, onSave, onCancel, renderLibrary }: ProfileEditorProps) {
+export default function ProfileEditor({
+  profile,
+  onChange,
+  onSave,
+  onCancel,
+  dirty,
+  initialField,
+  renderLibrary,
+}: ProfileEditorProps) {
+  const titleId = useId();
   const [cat, setCat] = useState<CategoryId>("identity");
   const [query, setQuery] = useState("");
   const [cohOpen, setCohOpen] = useState(false);
@@ -138,6 +153,24 @@ export default function ProfileEditor({ profile, onChange, onSave, onCancel, ren
     }, 0);
     window.setTimeout(() => setFlash(null), 1800);
   }, []);
+
+  useEffect(() => {
+    if (initialField) goTo(initialField);
+    // Once, on open.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  const canSave = !!profile.fingerprint;
+  useEffect(() => {
+    const onKey = (e: KeyboardEvent) => {
+      if ((e.ctrlKey || e.metaKey) && !e.altKey && e.key.toLowerCase() === "s") {
+        e.preventDefault(); // never the browser's "save page as"
+        if (canSave && !libOpen) onSave(profile);
+      }
+    };
+    window.addEventListener("keydown", onKey);
+    return () => window.removeEventListener("keydown", onKey);
+  }, [profile, canSave, libOpen, onSave]);
 
   async function importFp() {
     setFpMsg(null);
@@ -596,12 +629,10 @@ export default function ProfileEditor({ profile, onChange, onSave, onCancel, ren
 
   return (
     <>
-      <div className="fixed inset-0 z-40 flex items-center justify-center bg-black/60 p-4 backdrop-blur-sm sm:p-6">
-        <div className="flex h-full max-h-[720px] w-full max-w-4xl flex-col overflow-hidden rounded-2xl border border-line bg-surface shadow-2xl">
+      <Dialog onClose={onCancel} labelledBy={titleId} className="max-h-[720px] max-w-4xl">
           {/* Header — pinned, so Save is never a scroll away. */}
-          <div className="flex flex-none items-center gap-3 border-b border-line px-5 py-3">
-            <h2 className="text-base font-semibold">{profile.id ? "Edit profile" : "New profile"}</h2>
-            <span className="truncate text-sm text-fog/40">{profile.name || "Untitled"}</span>
+          <DialogHeader id={titleId} title={profile.id ? "Edit profile" : "New profile"} onClose={onCancel}>
+            <span className="min-w-0 truncate text-sm text-fog/40">{profile.name || "Untitled"}</span>
             <span className="flex-1" />
             <button
               onClick={() => setCohOpen((v) => !v)}
@@ -619,10 +650,7 @@ export default function ProfileEditor({ profile, onChange, onSave, onCancel, ren
                 ? "✓ coherent"
                 : `▲ ${issues.length} ${issues.length === 1 ? "issue" : "issues"}`}
             </button>
-            <button className="text-fog/40 hover:text-fog" onClick={onCancel} aria-label="Close">
-              ✕
-            </button>
-          </div>
+          </DialogHeader>
 
           {/* Coherence drawer — every contradiction in one place, each one a link to its cause. */}
           {cohOpen && (
@@ -665,6 +693,12 @@ export default function ProfileEditor({ profile, onChange, onSave, onCancel, ren
                   aria-label="Find a setting"
                   value={query}
                   onChange={(e) => setQuery(e.target.value)}
+                  onKeyDown={(e) => {
+                    if (e.key === "Escape" && query) {
+                      e.preventDefault(); // the dialog leaves a used Esc alone
+                      setQuery("");
+                    }
+                  }}
                 />
               </div>
               <ul className="flex min-h-0 flex-col gap-0.5 overflow-y-auto px-2 pb-2.5 max-sm:flex-row max-sm:overflow-x-auto">
@@ -741,13 +775,19 @@ export default function ProfileEditor({ profile, onChange, onSave, onCancel, ren
                 <span className={"transition-transform " + (prevOpen ? "rotate-90" : "")}>›</span> Launch command
               </button>
               <span className="flex-1" />
+              {dirty && (
+                <span className="flex items-center gap-1.5 whitespace-nowrap text-[11px] text-fog/45" role="status">
+                  <span className="h-1.5 w-1.5 rounded-full bg-iris" /> Unsaved changes
+                </span>
+              )}
               <button className={btnGhost} onClick={onCancel}>
                 Cancel
               </button>
               <button
                 className="whitespace-nowrap rounded-lg bg-sheen px-4 py-1.5 text-sm font-semibold text-[#07080a] disabled:opacity-40"
-                disabled={!profile.fingerprint}
+                disabled={!canSave}
                 onClick={() => onSave(profile)}
+                title="Save (Ctrl+S)"
               >
                 Save profile
               </button>
@@ -758,8 +798,7 @@ export default function ProfileEditor({ profile, onChange, onSave, onCancel, ren
               </pre>
             )}
           </div>
-        </div>
-      </div>
+      </Dialog>
       {libOpen && renderLibrary?.(applyLibrary, () => setLibOpen(false))}
     </>
   );
