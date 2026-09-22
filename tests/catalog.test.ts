@@ -114,6 +114,19 @@ describe("resolveVersion — PRO revision pinning", () => {
     expect(r.selector).toBe("150.0.7871.114");
     expect(r.revision).toBeUndefined();
   });
+  // Regression: "latest" used to send ?version=<catalog version>, which the route treats as a pin and
+  // refuses for a free licence (403 FREE_LATEST_ONLY) — every free launch of a default profile failed.
+  it("latest / auto / empty / undefined send NO selector, so the route serves its own current build", () => {
+    for (const w of ["latest", "LATEST", "auto", "", "  ", undefined]) {
+      const r = resolveVersion(CAT, w, true);
+      expect(r.selector, String(w)).toBe("");
+      expect(r.version).toBe("150.0.7871.114"); // still resolved, for the tier + progress label
+    }
+  });
+  it("an explicit major or version is still sent as a pin", () => {
+    expect(resolveVersion(CAT, "150", true).selector).toBe("150.0.7871.114");
+    expect(resolveVersion(CAT, "r9", true).selector).toBe("150.0.7871.114-r9");
+  });
   it("a plain version is unaffected by the revision parsing", () => {
     expect(resolveVersion(CAT, "150.0.7871.114", true).selector).toBe("150.0.7871.114");
     expect(resolveVersion(CAT, "latest", true).revision).toBeUndefined();

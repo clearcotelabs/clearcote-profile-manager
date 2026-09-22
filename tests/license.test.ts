@@ -113,6 +113,22 @@ describe("proEnsureBinary (license-gated download)", () => {
     await expect(proEnsureBinary("cc_lic_ok", "https://example.test")).rejects.toThrow(/No PRO build/);
   });
 
+  it("an empty selector (\"latest\") sends no version parameter at all", async () => {
+    const spy = vi.fn(async () => new Response(JSON.stringify({}), { status: 200 }));
+    globalThis.fetch = spy as unknown as typeof fetch;
+    await expect(proEnsureBinary("cc_lic_probe", "https://example.test", "")).rejects.toThrow();
+    expect(String(spy.mock.calls[0][0])).not.toContain("version=");
+  });
+
+  it("a free licence hitting a pinned profile gets an actionable message, not raw JSON", async () => {
+    globalThis.fetch = vi.fn(async () =>
+      new Response(JSON.stringify({ error: "The free tier always uses the latest build.", code: "FREE_LATEST_ONLY" }), { status: 403 }),
+    ) as unknown as typeof fetch;
+    await expect(proEnsureBinary("cc_lic_free", "https://example.test", "151.0.7922.108-r18")).rejects.toThrow(
+      /pinned to Clearcote 151\.0\.7922\.108-r18.*set Browser version to "Latest"/,
+    );
+  });
+
   it("requests the authenticated /api/v1/download/pro route with a Bearer token", async () => {
     const spy = vi.fn(async () => new Response(JSON.stringify({}), { status: 200 }));
     globalThis.fetch = spy as unknown as typeof fetch;

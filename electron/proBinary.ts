@@ -224,6 +224,14 @@ export async function proEnsureBinary(
   });
   if (!res.ok) {
     const body = await res.text().catch(() => "");
+    // A free licence always runs the latest build. The route only refuses an explicit pin, so this
+    // means the profile itself names a version: say which setting to change, not just the HTTP code.
+    if (res.status === 403 && /"FREE_LATEST_ONLY"/.test(body)) {
+      throw new Error(
+        `This profile is pinned to Clearcote ${version}, but the free plan always runs the latest build. ` +
+          `Edit the profile and set Browser version to "Latest" (pinning a version is a Pro feature).`,
+      );
+    }
     throw new Error(`PRO download not authorized (HTTP ${res.status}): ${body.slice(0, 200)}`);
   }
   const meta = (await res.json()) as ProMeta;

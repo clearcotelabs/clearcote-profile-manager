@@ -45,7 +45,10 @@ export interface ResolvedBuild {
   /** What to send as /api/v1/download/pro?version= — the revision-qualified selector when one was
    *  pinned, else the plain version. The public /versions catalog lists only ONE entry per major
    *  (no revisions), so the revision must be carried separately or it is silently dropped and the
-   *  caller gets the current pin instead of the build they asked for. */
+   *  caller gets the current pin instead of the build they asked for.
+   *  EMPTY when the caller asked for "latest": the route then serves its own current build. Sending
+   *  the catalog's version instead turns "latest" into an explicit pin, which the free tier refuses
+   *  (403 FREE_LATEST_ONLY) and which can lag the platform's build during a staggered release. */
   selector: string;
 }
 
@@ -94,7 +97,7 @@ export function resolveVersion(cat: Catalog, wanted: string | undefined, hasLice
   const freeLatest = byMajorDesc.find((b) => b.tier === "free");
   const proLatest = byMajorDesc.find((b) => b.tier === "pro");
 
-  const pick = (b: CatalogBuild, revision?: string): ResolvedBuild => {
+  const pick = (b: CatalogBuild, revision?: string, latest = false): ResolvedBuild => {
     if (b.tier === "pro" && !hasLicense) {
       const free = freeLatest ? ` (the free build is ${freeLatest.version})` : "";
       throw new Error(
@@ -113,7 +116,7 @@ export function resolveVersion(cat: Catalog, wanted: string | undefined, hasLice
       tag: revision ? `${b.tag}-${revision}` : b.tag,
       platform: b.platforms[plat]!,
       revision,
-      selector: revision ? `${b.version}-${revision}` : b.version,
+      selector: revision ? `${b.version}-${revision}` : latest ? "" : b.version,
     };
   };
 
@@ -136,7 +139,7 @@ export function resolveVersion(cat: Catalog, wanted: string | undefined, hasLice
     // an unlicensed user gets the newest FREE build.
     const cand = hasLicense ? byMajorDesc[0] : freeLatest;
     if (!cand) throw new Error("No browser build is available for this OS.");
-    return pick(cand);
+    return pick(cand, undefined, true);
   }
 
   const isMajor = /^\d+$/.test(w);
