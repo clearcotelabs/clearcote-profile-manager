@@ -734,7 +734,7 @@ export default function ProfileEditor({ profile, onChange, onSave, onCancel, ren
           <div className="flex-none border-t border-line bg-ink/40">
             <div className="flex items-center gap-2 px-5 py-2.5">
               <button
-                className="flex items-center gap-1.5 rounded-md px-1.5 py-1 text-xs text-fog/50 hover:text-fog"
+                className="flex items-center gap-1.5 whitespace-nowrap rounded-md px-1.5 py-1 text-xs text-fog/50 hover:text-fog"
                 onClick={() => setPrevOpen((v) => !v)}
                 aria-expanded={prevOpen}
               >
@@ -745,7 +745,7 @@ export default function ProfileEditor({ profile, onChange, onSave, onCancel, ren
                 Cancel
               </button>
               <button
-                className="rounded-lg bg-sheen px-4 py-1.5 text-sm font-semibold text-[#07080a] disabled:opacity-40"
+                className="whitespace-nowrap rounded-lg bg-sheen px-4 py-1.5 text-sm font-semibold text-[#07080a] disabled:opacity-40"
                 disabled={!profile.fingerprint}
                 onClick={() => onSave(profile)}
               >

@@ -5,6 +5,7 @@ import type { Profile } from "@/types/profile";
 import { MIN_PROFILE_SCREEN_WIDTH, MIN_PROFILE_SCREEN_HEIGHT } from "@/types/profile";
 import { api, isElectron, type Settings, type LibraryProfile, type FingerprintMeta, type LicenseStatus, type DownloadProgress, type CachedBuild, type UpdateInfo } from "@/lib/ipc";
 import ProfileEditor from "@/components/ProfileEditor";
+import SettingsModal from "@/components/SettingsModal";
 import { LogoMark } from "@/components/LogoMark";
 import { Mascot } from "@/components/Mascot";
 
@@ -555,9 +556,11 @@ function LibraryModal({
   const byVendor = (list || []).filter((p) => vendor === "all" || p.gpuVendor === vendor);
   const smallCount = byVendor.filter((p) => p.screenWarning).length;
   const shown = hideSmall ? byVendor.filter((p) => !p.screenWarning) : byVendor;
+  // Capped to the viewport; the list keeps a usable minimum and, on a very short window, the whole
+  // frame scrolls instead of the list collapsing to a sliver.
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 p-6 backdrop-blur-sm">
-      <div className="flex max-h-[80vh] w-full max-w-lg flex-col rounded-2xl border border-line bg-surface p-6 shadow-2xl">
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 p-3 backdrop-blur-sm sm:p-6">
+      <div className="flex max-h-full w-full max-w-lg flex-col overflow-y-auto rounded-2xl border border-line bg-surface p-4 shadow-2xl sm:max-h-[80vh] sm:p-6">
         <div className="flex items-center justify-between">
           <h2 className="text-base font-semibold">clearcote-profiles library</h2>
           <button className="text-fog/40 hover:text-fog" onClick={onClose}>
@@ -582,7 +585,7 @@ function LibraryModal({
             ))}
           </div>
         )}
-        <div className="mt-3 flex-1 overflow-y-auto rounded-lg border border-line">
+        <div className="mt-3 min-h-[160px] flex-1 overflow-y-auto rounded-lg border border-line">
           {!list && !err && <div className="p-4 text-sm text-fog/40">Loading…</div>}
           {shown.map((p) => (
             <button
@@ -619,235 +622,6 @@ function LibraryModal({
           <span className="font-mono">github.com/clearcotelabs/clearcote-profiles</span> · or use{" "}
           <span className="font-mono">Import from file…</span> for your own capture.
         </p>
-      </div>
-    </div>
-  );
-}
-
-function SettingsModal({
-  binary,
-  settings,
-  onPick,
-  onSaveSettings,
-  onClose,
-}: {
-  binary: string | null;
-  settings: Settings;
-  onPick: () => void;
-  onSaveSettings: (patch: Partial<Settings>) => Promise<void> | void;
-  onClose: () => void;
-}) {
-  const [key, setKey] = useState(settings.licenseKey || "");
-  const [status, setStatus] = useState<LicenseStatus | null>(null);
-  const [checking, setChecking] = useState(false);
-  const dirty = (key.trim() || undefined) !== (settings.licenseKey || undefined);
-
-  // Downloaded-browser cache (view + remove to force a re-download).
-  const [updMsg, setUpdMsg] = useState<string | null>(null);
-  const [cached, setCached] = useState<CachedBuild[] | null>(null);
-  const [busyTag, setBusyTag] = useState<string | null>(null);
-  const loadCache = () => api.cache.list().then(setCached).catch(() => setCached([]));
-  useEffect(() => {
-    void loadCache();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
-  const fmtSize = (b: number) => (b >= 1e9 ? `${(b / 1e9).toFixed(1)} GB` : `${Math.round(b / 1e6)} MB`);
-  async function removeCached(b: CachedBuild) {
-    if (!confirm(`Remove the downloaded ${b.version} browser (${fmtSize(b.sizeBytes)})?\nIt will re-download automatically on the next launch that needs it.`)) return;
-    setBusyTag(b.tag);
-    try {
-      await api.cache.remove(b.tag);
-      await loadCache();
-    } finally {
-      setBusyTag(null);
-    }
-  }
-
-  async function saveKey() {
-    await onSaveSettings({ licenseKey: key.trim() || undefined });
-    setStatus(null);
-  }
-  async function checkKey() {
-    setChecking(true);
-    setStatus(null);
-    try {
-      if (dirty) await onSaveSettings({ licenseKey: key.trim() || undefined });
-      setStatus(await api.license.check(key.trim() || undefined));
-    } finally {
-      setChecking(false);
-    }
-  }
-
-  return (
-    <div className="fixed inset-0 z-40 flex items-center justify-center bg-black/60 p-6 backdrop-blur-sm">
-      <div className="w-full max-w-lg rounded-2xl border border-line bg-surface p-6 shadow-2xl">
-        <div className="flex items-center justify-between">
-          <h2 className="text-base font-semibold">Settings</h2>
-          <button className="text-fog/40 hover:text-fog" onClick={onClose}>
-            ✕
-          </button>
-        </div>
-        <div className="mt-5">
-          <div className={label}>Clearcote browser binary</div>
-          <p className="mb-2 text-xs text-fog/45">
-            Path to <span className="font-mono">{hostIsWindows() ? "chrome.exe" : "chrome"}</span>. Auto-detected from a sibling{" "}
-            <span className="font-mono">{hostIsWindows() ? "win-x64" : "linux-x64"}</span> build or <span className="font-mono">CLEARCOTE_BINARY</span>; override here.
-          </p>
-          <div className="rounded-lg bg-ink/70 px-3 py-2 font-mono text-[11px] text-fog/60 break-all">
-            {settings.binaryPath || binary || "(not set)"}
-          </div>
-          <button className="mt-3 rounded-lg border border-line-strong px-3 py-1.5 text-xs hover:bg-elevate" onClick={onPick}>
-            Choose binary…
-          </button>
-        </div>
-
-        <div className="mt-6 border-t border-line pt-5">
-          <div className={label}>PRO license key</div>
-          <p className="mb-2 text-xs text-fog/45">
-            With a key, profiles launch the <span className="font-medium text-fog/70">license-gated PRO browser</span> (auto-downloaded + SHA-256 verified) and claim one floating-concurrency slot. Leave blank for the free build — no key means no contact with the license backend.
-          </p>
-          <div className="flex gap-2">
-            <input
-              className={`${input} font-mono`}
-              type="password"
-              autoComplete="off"
-              spellCheck={false}
-              value={key}
-              onChange={(e) => setKey(e.target.value)}
-              placeholder="cc_lic_…"
-            />
-            <button
-              className="shrink-0 rounded-lg border border-line-strong px-3 py-1.5 text-xs hover:bg-elevate disabled:opacity-40"
-              onClick={saveKey}
-              disabled={!dirty}
-            >
-              Save
-            </button>
-            <button
-              className="shrink-0 rounded-lg border border-line-strong px-3 py-1.5 text-xs hover:bg-elevate disabled:opacity-40"
-              onClick={checkKey}
-              disabled={checking || !key.trim()}
-            >
-              {checking ? "Checking…" : "Check"}
-            </button>
-          </div>
-          {status && (
-            <div
-              className={`mt-2 rounded-lg px-3 py-2 text-xs ${
-                status.ok
-                  ? "bg-emerald-500/10 text-emerald-300"
-                  : "bg-rose-500/10 text-rose-300"
-              }`}
-            >
-              {status.ok ? (
-                <>
-                  ✓ Valid{status.plan ? ` — ${status.plan} plan` : ""}
-                  {typeof status.limit === "number"
-                    ? ` · ${status.used ?? 0}/${status.limit === 0 ? "unlimited" : status.limit} slots in use`
-                    : ""}
-                </>
-              ) : (
-                <>✕ {status.error || "Invalid license."}</>
-              )}
-            </div>
-          )}
-        </div>
-
-        <div className="mt-6 border-t border-line pt-5">
-          <div className="flex items-center justify-between">
-            {/* Update checking. A toggle rather than invisible behaviour: this audience is exactly
-                the one that cares whether an app phones home, and the copy says where it goes. */}
-            <div className="rounded-lg border border-line p-3">
-              <label className="flex items-start gap-2.5 text-sm text-fog/80">
-                <input
-                  type="checkbox"
-                  className="mt-0.5 accent-[#38e0d6]"
-                  checked={settings.updateCheck !== false}
-                  onChange={(e) => onSaveSettings({ updateCheck: e.target.checked })}
-                />
-                <span>
-                  <span className="font-medium text-fog">Check for app updates</span> — once a day, ask
-                  <span className="font-mono text-[11px]"> api.github.com</span> whether a newer release exists. Nothing
-                  is downloaded or installed without you clicking: this build is unsigned, so an unattended install
-                  would be a code path nobody verified.
-                  <span className="mt-1 block text-[11px] text-fog/40">
-                    The browser engine already updates itself, so with this off an old app can sit on fixed bugs
-                    indefinitely.
-                  </span>
-                </span>
-              </label>
-              <div className="mt-2 flex items-center gap-2">
-                <button
-                  className={btnGhost + " py-1 text-xs"}
-                  onClick={async () => {
-                    setUpdMsg("Checking…");
-                    const u = await api.update.check(true);
-                    setUpdMsg(
-                      !u
-                        ? "Could not reach GitHub."
-                        : u.available
-                          ? `Version ${u.latest} is available — see the banner.`
-                          : `Up to date (${u.current}).`,
-                    );
-                  }}
-                >
-                  Check now
-                </button>
-                {settings.lastUpdateCheck && (
-                  <span className="text-[11px] text-fog/35">
-                    last checked {new Date(settings.lastUpdateCheck).toLocaleString()}
-                  </span>
-                )}
-              </div>
-              {updMsg && <p className="mt-1.5 text-[11px] text-fog/50">{updMsg}</p>}
-            </div>
-
-            <div className={label}>Downloaded browsers</div>
-            {cached && cached.length > 0 && (
-              <span className="text-[11px] text-fog/45">
-                {cached.length} · {fmtSize(cached.reduce((s, b) => s + b.sizeBytes, 0))}
-              </span>
-            )}
-          </div>
-          <p className="mb-2 text-xs text-fog/45">
-            Verified browser builds cached on disk. Remove one to reclaim space or force a fresh
-            re-download on the next launch that needs it.
-          </p>
-          {cached === null ? (
-            <div className="text-xs text-fog/45">Loading…</div>
-          ) : cached.length === 0 ? (
-            <div className="rounded-lg bg-ink/70 px-3 py-2 text-xs text-fog/45">Nothing downloaded yet.</div>
-          ) : (
-            <div className="space-y-1.5">
-              {cached.map((b) => (
-                <div key={b.tag} className="flex items-center gap-3 rounded-lg bg-ink/70 px-3 py-2">
-                  <span
-                    className={`rounded px-1.5 py-0.5 text-[10px] font-semibold ${
-                      b.tier === "pro" ? "bg-sheen/20 text-sheen" : "bg-elevate text-fog/60"
-                    }`}
-                  >
-                    {b.tier === "pro" ? "PRO" : "FREE"}
-                  </span>
-                  <span className="font-mono text-xs text-fog/80 break-all">{b.version}</span>
-                  <span className="ml-auto shrink-0 text-[11px] text-fog/45">{fmtSize(b.sizeBytes)}</span>
-                  <button
-                    className="shrink-0 rounded-md border border-line-strong px-2 py-1 text-[11px] text-rose-300 hover:bg-rose-500/10 disabled:opacity-40"
-                    onClick={() => removeCached(b)}
-                    disabled={busyTag === b.tag}
-                  >
-                    {busyTag === b.tag ? "Removing…" : "Remove"}
-                  </button>
-                </div>
-              ))}
-            </div>
-          )}
-        </div>
-
-        <div className="mt-6 flex justify-end">
-          <button className="rounded-lg bg-sheen px-4 py-1.5 text-sm font-semibold text-[#07080a]" onClick={onClose}>
-            Done
-          </button>
-        </div>
       </div>
     </div>
   );
