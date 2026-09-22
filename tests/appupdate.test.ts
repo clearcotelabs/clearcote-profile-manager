@@ -1,8 +1,10 @@
 // The update check. Three things here are load-bearing and easy to get subtly wrong: comparing
 // versions, picking the asset that matches how the app was installed, and reading the checksums.
 
-import { describe, it, expect } from "vitest";
-import { compareVersions, pickAsset, parseSums, type UpdateAsset } from "../electron/appupdate";
+import { describe, it, expect, vi, afterEach } from "vitest";
+import { createHash } from "node:crypto";
+import { existsSync, readFileSync } from "node:fs";
+import { compareVersions, pickAsset, parseSums, downloadUpdate, type UpdateAsset, type UpdateInfo } from "../electron/appupdate";
 
 describe("compareVersions", () => {
   it("orders by numeric component, not lexically", () => {
@@ -142,5 +144,91 @@ describe("parseSums", () => {
 
   it("returns nothing for an empty file, so a missing entry reads as unverifiable", () => {
     expect(parseSums("")).toEqual({});
+  });
+});
+
+// Regression: two overlapping downloads (two app windows, or a repeated click) shared one directory
+// and one filename. The second wiped the directory and truncated the file mid-write, so the first
+// failed "Checksum mismatch … has been deleted" and the second found an empty file.
+describe("downloadUpdate — overlapping downloads never clobber each other", () => {
+  const realFetch = globalThis.fetch;
+  afterEach(() => {
+    globalThis.fetch = realFetch;
+  });
+
+  const payload = Buffer.alloc(3 * 1024 * 1024, 0).map((_, i) => (i * 31) & 0xff);
+  const sha = createHash("sha256").update(payload).digest("hex");
+  const name = "Clearcote-Profile-Manager-9.9.9-setup.exe";
+
+  /** A body that trickles out in chunks, so two downloads really do overlap in time. */
+  const slowBody = () =>
+    new ReadableStream<Uint8Array>({
+      async start(c) {
+        for (let o = 0; o < payload.length; o += 256 * 1024) {
+          c.enqueue(new Uint8Array(payload.subarray(o, o + 256 * 1024)));
+          await new Promise((r) => setTimeout(r, 5));
+        }
+        c.close();
+      },
+    });
+
+  function mockGitHub(sums = `${sha}  ${name}\n`) {
+    const fetchSpy = vi.fn(async (url: string) =>
+      String(url).includes("SHA256SUMS")
+        ? new Response(sums)
+        : new Response(slowBody(), { headers: { "content-length": String(payload.length) } }),
+    );
+    globalThis.fetch = fetchSpy as unknown as typeof fetch;
+    return fetchSpy;
+  }
+
+  const info = (url: string): UpdateInfo => ({
+    available: true,
+    latest: "9.9.9",
+    current: "0.0.1",
+    releaseUrl: "https://example.test/r",
+    asset: { name, url, size: payload.length },
+    sumsUrl: "https://example.test/SHA256SUMS.txt",
+  });
+
+  it("a repeated request for the same asset joins the one in flight (one download, both verified)", async () => {
+    const spy = mockGitHub();
+    const u = info(`https://example.test/a-${Math.random()}`);
+    const [a, b] = await Promise.all([downloadUpdate(u), downloadUpdate(u)]);
+    expect(a).toMatchObject({ ok: true, verified: true });
+    expect(b).toEqual(a);
+    expect(spy.mock.calls.filter((c) => !String(c[0]).includes("SHA256SUMS"))).toHaveLength(1);
+  });
+
+  it("two independent downloads (e.g. two app copies) each land intact in their own directory", async () => {
+    mockGitHub();
+    const A = downloadUpdate(info(`https://example.test/b1-${Math.random()}`));
+    await new Promise((r) => setTimeout(r, 20)); // B starts while A is mid-transfer
+    const B = downloadUpdate(info(`https://example.test/b2-${Math.random()}`));
+    const [a, b] = await Promise.all([A, B]);
+    expect(a).toMatchObject({ ok: true, verified: true });
+    expect(b).toMatchObject({ ok: true, verified: true });
+    expect(a.path).not.toBe(b.path);
+    for (const p of [a.path!, b.path!]) {
+      expect(existsSync(p)).toBe(true);
+      expect(createHash("sha256").update(readFileSync(p)).digest("hex")).toBe(sha);
+    }
+  });
+
+  it("a genuine mismatch still fails and leaves nothing runnable behind", async () => {
+    mockGitHub(`${"0".repeat(64)}  ${name}\n`);
+    const r = await downloadUpdate(info(`https://example.test/c-${Math.random()}`));
+    expect(r.ok).toBe(false);
+    expect(r.error).toMatch(/Checksum mismatch/);
+    expect(r.path).toBeUndefined();
+  });
+
+  it("a truncated transfer is reported as incomplete, not as tampering", async () => {
+    mockGitHub();
+    const u = info(`https://example.test/d-${Math.random()}`);
+    u.asset!.size = payload.length + 10;
+    const r = await downloadUpdate(u);
+    expect(r).toMatchObject({ ok: false });
+    expect(r.error).toMatch(/incomplete/);
   });
 });

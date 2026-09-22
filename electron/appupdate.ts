@@ -15,7 +15,7 @@
 // improvement over an unchecked download and is not a substitute for signing; the UI says so.
 
 import { createHash } from "node:crypto";
-import { createWriteStream, existsSync, mkdirSync, rmSync, statSync } from "node:fs";
+import { createWriteStream, existsSync, mkdirSync, mkdtempSync, readdirSync, renameSync, rmSync, statSync } from "node:fs";
 import { tmpdir } from "node:os";
 import path from "node:path";
 import { Readable } from "node:stream";
@@ -193,26 +193,85 @@ export interface DownloadResult {
   verified?: boolean;
 }
 
+/** Downloads in flight in this process, by asset URL — a second request joins the first. */
+const inFlight = new Map<string, Promise<DownloadResult>>();
+
+/** Leftover per-download dirs older than this are pruned; younger ones may belong to a download
+ *  still running in another copy of the app, so they are left alone. */
+const STALE_DOWNLOAD_MS = 24 * 60 * 60 * 1000;
+
+function pruneStaleDownloads(root: string): void {
+  try {
+    for (const name of readdirSync(root)) {
+      const p = path.join(root, name);
+      try {
+        if (Date.now() - statSync(p).mtimeMs > STALE_DOWNLOAD_MS) rmSync(p, { recursive: true, force: true });
+      } catch {
+        /* in use or already gone */
+      }
+    }
+  } catch {
+    /* no root yet */
+  }
+}
+
 /**
  * Download an update asset and check it against the release's SHA256SUMS.
  *
  * A mismatch deletes the file and fails — a half-trusted installer must never be left sitting on
  * disk where somebody might run it anyway.
+ *
+ * Every download writes into its OWN directory. It used to wipe one shared %TEMP%\clearcote-update
+ * and write a fixed filename, so two overlapping downloads (a second app window — there was no
+ * single-instance lock — or a repeated click) truncated and deleted each other's file: the first
+ * then failed the checksum and was deleted, the second found an empty file. Reproduced 1:1.
  */
-export async function downloadUpdate(
-  info: UpdateInfo,
+export function downloadUpdate(info: UpdateInfo, onProgress?: UpdateProgress): Promise<DownloadResult> {
+  if (!info.asset) return Promise.resolve({ ok: false, error: "No downloadable asset for this installation." });
+  const key = info.asset.url;
+  const running = inFlight.get(key);
+  if (running) return running;
+  const p = downloadUpdateOnce(info, onProgress).finally(() => inFlight.delete(key));
+  inFlight.set(key, p);
+  return p;
+}
+
+async function downloadUpdateOnce(info: UpdateInfo, onProgress?: UpdateProgress): Promise<DownloadResult> {
+  const asset = info.asset!;
+  const root = updateDir();
+  pruneStaleDownloads(root);
+  mkdirSync(root, { recursive: true });
+  const dir = mkdtempSync(path.join(root, "dl-"));
+  const dest = path.join(dir, asset.name);
+  const part = dest + ".part";
+  const info_ = { ...info, asset };
+  const discard = () => {
+    try {
+      rmSync(dir, { recursive: true, force: true });
+    } catch {
+      /* best effort */
+    }
+  };
+
+  const r = await fetchAndVerify(info_, part, onProgress);
+  if (!r.ok) {
+    discard();
+    return r;
+  }
+  try {
+    renameSync(part, dest);
+  } catch (e) {
+    discard();
+    return { ok: false, error: `Could not finalise the download: ${String((e as Error)?.message || e)}` };
+  }
+  return { ...r, path: dest };
+}
+
+async function fetchAndVerify(
+  info: UpdateInfo & { asset: UpdateAsset },
+  dest: string,
   onProgress?: UpdateProgress,
 ): Promise<DownloadResult> {
-  if (!info.asset) return { ok: false, error: "No downloadable asset for this installation." };
-  const dir = updateDir();
-  try {
-    rmSync(dir, { recursive: true, force: true });
-  } catch {
-    /* a leftover from a previous run; not fatal */
-  }
-  mkdirSync(dir, { recursive: true });
-  const dest = path.join(dir, info.asset.name);
-
   try {
     const res = await fetch(info.asset.url, {
       headers: { "user-agent": "clearcote-profile-manager" },
@@ -232,6 +291,11 @@ export async function downloadUpdate(
     if (!existsSync(dest) || statSync(dest).size === 0) {
       return { ok: false, error: "Download produced an empty file." };
     }
+    // A short transfer is a network problem, not tampering — say so rather than "checksum mismatch".
+    const got = statSync(dest).size;
+    if (info.asset.size && got !== info.asset.size) {
+      return { ok: false, error: `Download incomplete (${got} of ${info.asset.size} bytes) — please try again.` };
+    }
 
     // Verify, when the release published sums. Absence is reported, not silently treated as a pass.
     if (!info.sumsUrl) return { ok: true, path: dest, verified: false };
@@ -243,7 +307,7 @@ export async function downloadUpdate(
 
     const actual = await sha256File(dest);
     if (actual !== expected) {
-      try { rmSync(dest, { force: true }); } catch { /* best effort */ }
+      // The caller deletes the whole per-download directory on any failure.
       return {
         ok: false,
         error: `Checksum mismatch — the download does not match the published SHA-256 and has been deleted. Expected ${expected.slice(0, 16)}…, got ${actual.slice(0, 16)}….`,

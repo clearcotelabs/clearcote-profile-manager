@@ -289,7 +289,22 @@ function registerIpc(): void {
   });
 }
 
+// One copy of the app at a time. Two copies each showed the update banner and raced the same
+// download, and each keeps its own running-browser / lease bookkeeping, so a profile could be
+// launched twice. A second start just brings the existing window forward.
+if (!app.requestSingleInstanceLock()) {
+  app.quit();
+} else {
+  app.on("second-instance", () => {
+    const win = BrowserWindow.getAllWindows()[0];
+    if (!win) return;
+    if (win.isMinimized()) win.restore();
+    win.focus();
+  });
+}
+
 app.whenReady().then(() => {
+  if (!app.hasSingleInstanceLock()) return;
   ensureDirs();
   registerIpc();
   createWindow();
