@@ -348,3 +348,161 @@ describe("per-launch run-token files (engine online enforcement)", () => {
     expect(existsSync(a.path) || existsSync(b.path)).toBe(false);
   });
 });
+
+// ── heartbeat 409: reclaimed/expired -> re-checkout ─────────────────────────────────────────────────
+// The backend answers a heartbeat for a lease it no longer holds with 409 (LEASE_NOT_FOUND / LEASE_EXPIRED);
+// the app must re-checkout, as the SAME launch, to keep the browser's slot. Mirrors the SDKs' tests.
+describe("lease heartbeat 409 recovery", () => {
+  const OLD = { home: process.env.HOME, prof: process.env.USERPROFILE };
+  afterEach(() => {
+    vi.useRealTimers();
+    vi.restoreAllMocks();
+    for (const [k, v] of Object.entries({ HOME: OLD.home, USERPROFILE: OLD.prof })) {
+      if (v === undefined) delete process.env[k];
+      else process.env[k] = v;
+    }
+  });
+
+  async function isolatedHome() {
+    const { mkdtempSync } = await import("node:fs");
+    const { tmpdir } = await import("node:os");
+    const { join } = await import("node:path");
+    const home = mkdtempSync(join(tmpdir(), "pm-hb409-"));
+    HOMES.push(home);
+    process.env.HOME = home;
+    process.env.USERPROFILE = home;
+  }
+
+  type Step = [endpoint: string, status: number, answer: unknown];
+  /** The first checkout gets L1 (30 s beats); after that, heartbeat/checkout answers come from `script` in order. */
+  function scripted(script: Step[]) {
+    const calls: { ep: string; body: Record<string, unknown> }[] = [];
+    vi.spyOn(globalThis, "fetch").mockImplementation(async (url: unknown, init?: RequestInit) => {
+      const ep = String(url).split("/").pop()!;
+      calls.push({ ep, body: init?.body ? JSON.parse(String(init.body)) : {} });
+      const now = Math.floor(Date.now() / 1000);
+      if (ep === "checkout" && calls.filter((c) => c.ep === "checkout").length === 1)
+        return new Response(JSON.stringify({ lease_id: "L1", token: "TOK-1", exp: now + 800, lease_ttl_sec: 360, heartbeat_interval_sec: 30, concurrency: { used: 1, limit: 5 } }), { status: 200 });
+      if (script.length && script[0][0] === ep) {
+        const [, status, answer] = script.shift()!;
+        if (answer instanceof Error) throw answer;
+        return new Response(JSON.stringify(answer), { status });
+      }
+      return new Response("{}", { status: 200 });
+    });
+    return calls;
+  }
+  const beat = () => vi.advanceTimersByTimeAsync(30_000);
+
+  it("re-checks out as the same launch, heartbeats the new lease, and checks THAT lease in", async () => {
+    await isolatedHome();
+    vi.useFakeTimers();
+    const now = Math.floor(Date.now() / 1000);
+    const calls = scripted([
+      ["heartbeat", 409, { code: "LEASE_EXPIRED" }],
+      ["checkout", 200, { lease_id: "L2", token: "TOK-2", exp: now + 900 }],
+      ["heartbeat", 200, { token: "TOK-3", exp: now + 1000 }],
+    ]);
+    const s = await acquireLease({ licenseKey: "cc_lic_pm_hb409_ok", licenseApiBase: "http://test.local", quiet: true });
+    await beat();
+    await beat();
+    expect(calls.map((c) => c.ep)).toEqual(["checkout", "heartbeat", "checkout", "heartbeat"]);
+    expect(calls[2].body.launch_id).toBe(calls[0].body.launch_id); // the same browser takes its slot back
+    expect(calls[1].body.lease_id).toBe("L1");
+    expect(calls[3].body.lease_id).toBe("L2");
+    expect(s!.token).toBe("TOK-3");
+    await s!.stop();
+    expect(calls.at(-1)).toMatchObject({ ep: "checkin", body: { lease_id: "L2" } });
+  });
+
+  it("a refused re-checkout is reported as the refusal and retried on the next beat", async () => {
+    await isolatedHome();
+    vi.useFakeTimers();
+    const now = Math.floor(Date.now() / 1000);
+    const calls = scripted([
+      ["heartbeat", 409, { code: "LEASE_EXPIRED" }],
+      ["checkout", 429, { code: "CONCURRENCY_LIMIT_EXCEEDED", error: "Another browser holds the slot." }],
+      ["heartbeat", 409, { code: "LEASE_EXPIRED" }],
+      ["checkout", 200, { lease_id: "L9", token: "TOK-9", exp: now + 900 }],
+    ]);
+    const s = await acquireLease({ licenseKey: "cc_lic_pm_hb409_retry", licenseApiBase: "http://test.local", quiet: true });
+    await beat();
+    expect(s!.refusal).toMatchObject({ status: 429, code: "CONCURRENCY_LIMIT_EXCEEDED" });
+    expect(s!.token).toBe("TOK-1");
+    await beat();
+    expect(calls.map((c) => c.ep)).toEqual(["checkout", "heartbeat", "checkout", "heartbeat", "checkout"]);
+    expect(s!.token).toBe("TOK-9");
+    expect(s!.refusal).toBeUndefined();
+    await s!.stop();
+  });
+
+  it("a network error on the re-checkout is retried on the next beat", async () => {
+    await isolatedHome();
+    vi.useFakeTimers();
+    const now = Math.floor(Date.now() / 1000);
+    const calls = scripted([
+      ["heartbeat", 409, { code: "LEASE_NOT_FOUND" }],
+      ["checkout", 0, new Error("ECONNRESET")],
+      ["heartbeat", 409, { code: "LEASE_NOT_FOUND" }],
+      ["checkout", 200, { lease_id: "L5", token: "TOK-5", exp: now + 900 }],
+    ]);
+    const s = await acquireLease({ licenseKey: "cc_lic_pm_hb409_net", licenseApiBase: "http://test.local", quiet: true });
+    await beat();
+    await beat();
+    expect(calls.map((c) => c.ep)).toEqual(["checkout", "heartbeat", "checkout", "heartbeat", "checkout"]);
+    expect(s!.token).toBe("TOK-5");
+    await s!.stop();
+  });
+});
+
+// ── User-Agent: every licence call names the app and its version ────────────────────────────────────
+// Electron's fetch would say just "node", like the Node SDK. Checked on the wire with a real local server,
+// so fetch's own default or a duplicate header would show.
+describe("licence calls — User-Agent on the wire", () => {
+  const OLD = { home: process.env.HOME, prof: process.env.USERPROFILE };
+  afterEach(() => {
+    for (const [k, v] of Object.entries({ HOME: OLD.home, USERPROFILE: OLD.prof })) {
+      if (v === undefined) delete process.env[k];
+      else process.env[k] = v;
+    }
+  });
+
+  it("checkout and check-in each carry exactly one User-Agent naming the app version", async () => {
+    const { mkdtempSync, readFileSync } = await import("node:fs");
+    const { tmpdir } = await import("node:os");
+    const { join } = await import("node:path");
+    const { createServer } = await import("node:http");
+    const home = mkdtempSync(join(tmpdir(), "pm-ua-"));
+    HOMES.push(home);
+    process.env.HOME = home;
+    process.env.USERPROFILE = home;
+    const want = `clearcote-profile-manager/${JSON.parse(readFileSync(join(__dirname, "..", "package.json"), "utf8")).version}`;
+
+    const seen: { path: string; uas: string[] }[] = [];
+    const server = createServer((req, res) => {
+      const uas: string[] = [];
+      for (let i = 0; i < req.rawHeaders.length; i += 2) if (req.rawHeaders[i].toLowerCase() === "user-agent") uas.push(req.rawHeaders[i + 1]);
+      seen.push({ path: req.url ?? "", uas });
+      req.resume();
+      req.on("end", () => {
+        const now = Math.floor(Date.now() / 1000);
+        const body = req.url!.endsWith("/checkout")
+          ? { lease_id: "L1", token: "TOK", exp: now + 800, lease_ttl_sec: 360, heartbeat_interval_sec: 3600, concurrency: { used: 1, limit: 5 } }
+          : {};
+        res.writeHead(200, { "content-type": "application/json", connection: "close" }).end(JSON.stringify(body));
+      });
+    });
+    await new Promise<void>((r) => server.listen(0, "127.0.0.1", () => r()));
+    try {
+      const port = (server.address() as { port: number }).port;
+      const s = await acquireLease({ licenseKey: "cc_lic_pm_ua", licenseApiBase: `http://127.0.0.1:${port}`, quiet: true });
+      await s!.stop();
+      expect(seen).toEqual([
+        { path: "/api/v1/lease/checkout", uas: [want] },
+        { path: "/api/v1/lease/checkin", uas: [want] },
+      ]);
+    } finally {
+      await new Promise<void>((r) => server.close(() => r()));
+    }
+  });
+});

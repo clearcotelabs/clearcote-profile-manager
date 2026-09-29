@@ -107,10 +107,23 @@ interface CheckoutResponse {
   concurrency: { used: number; limit: number };
 }
 
+/**
+ * Names the app and its version on every licence call (Electron's fetch would say just "node", the same as
+ * the Node SDK), so the licence server's logs can tell the two apart. The version comes from the app's own
+ * package.json, one level up from both electron/ (tests) and dist-electron/ (the built app).
+ */
+const LICENSE_USER_AGENT = `clearcote-profile-manager/${(() => {
+  try {
+    return JSON.parse(readFileSync(join(__dirname, "..", "package.json"), "utf8")).version as string;
+  } catch {
+    return "unknown";
+  }
+})()}`;
+
 async function postJson(url: string, licenseKey: string, body: unknown): Promise<Response> {
   return fetch(url, {
     method: "POST",
-    headers: { authorization: `Bearer ${licenseKey}`, "content-type": "application/json" },
+    headers: { authorization: `Bearer ${licenseKey}`, "content-type": "application/json", "User-Agent": LICENSE_USER_AGENT },
     body: JSON.stringify(body),
   });
 }
