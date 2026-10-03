@@ -15,7 +15,7 @@
 // `custom: <id>` and the editor renders a bespoke control for them; they still live here so they
 // keep their category, their search text and their position.
 
-export type CategoryId = "identity" | "browser" | "hardware" | "network" | "rendering" | "session";
+export type CategoryId = "identity" | "browser" | "hardware" | "network" | "rendering" | "session" | "cloud";
 
 export interface Category {
   id: CategoryId;
@@ -66,6 +66,12 @@ export const CATEGORIES: Category[] = [
     title: "Session & data",
     blurb: "What survives a restart, and what moves between machines.",
   },
+  {
+    id: "cloud",
+    label: "Cloud",
+    title: "Cloud",
+    blurb: "Running this profile on Clearcote's servers instead of this PC: where its traffic leaves, and what it keeps.",
+  },
 ];
 
 export type FieldType = "text" | "textarea" | "number" | "password" | "select" | "check" | "custom";
@@ -112,6 +118,7 @@ export interface FieldDef {
   showWhen?: (p: Record<string, unknown>) => boolean;
   /** Bespoke control id, for the settings that are not plain inputs. */
   custom?:
+    | "cloud"
     | "fingerprintProfile"
     | "browserVersion"
     | "proxy"
@@ -538,6 +545,15 @@ export const FIELDS: FieldDef[] = [
     keywords: "raw chrome switches append",
     why: "Appended verbatim, after everything else — so a switch here wins where Chromium takes the last occurrence.",
   },
+  {
+    key: "cloud",
+    cat: "cloud",
+    label: "Running in the cloud",
+    type: "custom",
+    custom: "cloud",
+    full: true,
+    keywords: "hosted server servers remote residential ip exit country cookies traffic cap gb adblock record video api key",
+  },
 ];
 
 /** Fields belonging to a category, in schema order. */
@@ -562,6 +578,8 @@ export function fieldByKey(key: string): FieldDef | undefined {
  */
 export function isFieldSet(profile: Record<string, unknown>, f: FieldDef): boolean {
   const v = profile[f.key];
+  // The cloud block is an object of options: set when any of them is.
+  if (f.key === "cloud") return !!v && typeof v === "object" && Object.values(v as object).some((x) => x !== undefined);
   if (f.defaultOn) return v === false;
   if (v === undefined || v === null || v === "" || v === false) return false;
   if (Array.isArray(v)) return v.length > 0;

@@ -51,6 +51,20 @@ Four layers:
     memory and shared check-in, "valid but busy", and one download per build.
   - `listfeatures.test.ts` — the proxy-list import (including host:port:user:pass), filters, group
     order, the exit-place label, exit notices, the one-browser swap, and Shift+click ranges.
+  - Cloud sessions:
+    - `cloudbody.test.ts` — the session a profile becomes (`electron/cloudbody.ts`): identity, persona,
+      proxy or included IP, cookies, caps, and every refusal (proxy schemes, http on port 80, ids,
+      versions, locales), plus the settings that stay on this PC. Its bodies were also run through
+      the service's own validator: none it would send is refused there.
+    - `cloudapi.test.ts` — the hosted API client: where the key may go (https only, plain http only
+      to this machine), each call, and every failure shape the API returns.
+    - `wsclient.test.ts`, `cdpattach.test.ts` — the small WebSocket client and the one-time CDP
+      attach that starts a cloud browser, against `helpers/fakews.ts`, a server written separately.
+    - `cloud.test.ts` — the session manager: start, retrying while the service has no free browser,
+      a failed attach, a stop that stays "stopping" until the service ends the session, polls,
+      sessions the service ended, the restart that finds them again, and the file it keeps.
+    - `cloudtext.test.ts`, `liveinput.test.ts` — end reasons and usage in words; what the live window
+      sends for clicks, keys, wheel, paste and navigation (the shapes the worker accepts).
 - **UI end-to-end (opt-in, real browser)** — `editor.e2e.test.ts` and `ui.e2e.test.ts` drive the
   renderer in Chrome against `next dev`, using its in-browser mock of the Electron bridge. They cover
   what only a browser shows: dialogs (Esc on the top one only, focus trap and return, scroll lock,
@@ -62,8 +76,13 @@ Four layers:
   and Settings → General, Storage and Licence. It drives the mock's opt-in hooks
   (`clearcote.mock.launch`/`limit`/`storage`/`target`/`license`/`prefetch` in localStorage, and
   `window.__clearcoteMock.exit()`), which play the desktop app's side.
+  `cloud.e2e.test.ts` covers cloud sessions in the UI: Cloud with and without a key, usage on the
+  card, Stop and "Stopping…", the service ending a session, the notice for each refusal, the
+  editor's Cloud section, and the live window against a local live-view server (frames in, input
+  out, reconnect, stop). Its mock hooks are `clearcote.mock.cloud`/`.sessions`/`.view`/`.account`/
+  `.stopMs` and `window.__clearcoteMock.cloudUsage()`/`.cloudEnd()`.
   Run: `npm run next:dev -- -p 3100`, then
-  `CLEARCOTE_UI_E2E=1 CLEARCOTE_UI_BROWSER=<chrome.exe> npx vitest run tests/ui.e2e.test.ts tests/editor.e2e.test.ts tests/qol.e2e.test.ts`.
+  `CLEARCOTE_UI_E2E=1 CLEARCOTE_UI_BROWSER=<chrome.exe> npx vitest run tests/ui.e2e.test.ts tests/editor.e2e.test.ts tests/qol.e2e.test.ts tests/cloud.e2e.test.ts`.
 - **App end-to-end (opt-in, the real Electron app)** — `app.e2e.test.ts` starts the built app with a
   throwaway `--user-data-dir` (never your real profiles) and checks the IPC behind trash/undo, the
   real launch target, `lastLaunchedAt` written by the main process, the plan learned from a lease,
@@ -77,6 +96,20 @@ Four layers:
   Run: `npm run build`, then `CLEARCOTE_APP_E2E=1 CLEARCOTE_LICENSE_KEY=cc_lic_... npx vitest run tests/app.e2e.test.ts`.
   Set `E2E_OUTCOMES=<file>` to record which of the two accepted outcomes the licence-dependent
   tests took.
+
+  `cloud.app.e2e.test.ts` runs the built app against a hosted API and worker on 127.0.0.1
+  (`helpers/fakecloud.ts`, which follows the service's rules): the key saved and checked, the
+  session the main process builds, one attach and let go, the live window with frames and input,
+  polls, a profile refused locally while it runs in the cloud, Stop, the service ending a session,
+  the capacity retry, a low balance, a crash and the restart that finds the session again, and
+  quitting stopping it. It is also what caught the live window loading no scripts in the packaged
+  app: pages are exported flat (`out/cloud.html`) so the relative asset paths resolve.
+  Run: `npm run build`, then `CLEARCOTE_APP_E2E=1 npx vitest run tests/cloud.app.e2e.test.ts`.
+
+  `cloud.live.e2e.test.ts` does the same against the real service with your API key (a few
+  hundredths of a cent): a real browser, real frames, a page opened from the live window, and a stop
+  the service confirms.
+  Run: `npm run build`, then `CLEARCOTE_APP_E2E=1 CLEARCOTE_LIVE_API_KEY=cc_live_... npx vitest run tests/cloud.live.e2e.test.ts`.
 
   > Every suite cleans up after itself: a full run leaves nothing in `%TEMP%`. Create temp folders
   > in hooks, not at module level — a skipped suite's module and describe body still run.

@@ -39,6 +39,7 @@ import {
   type Profile,
 } from "@/types/profile";
 import { api, type GeoResult, type VersionOption } from "@/lib/ipc";
+import CloudFields from "./CloudFields";
 
 const input =
   "w-full rounded-lg border border-line bg-ink/60 px-3 py-1.5 text-sm text-fog outline-none placeholder:text-fog/25 focus:border-accent/60";
@@ -367,6 +368,8 @@ export default function ProfileEditor({
 
   function renderCustom(f: FieldDef) {
     switch (f.custom) {
+      case "cloud":
+        return <CloudFields profile={profile} onChange={onChange} />;
       case "seed":
         return (
           <>

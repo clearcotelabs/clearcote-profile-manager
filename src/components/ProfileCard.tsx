@@ -8,7 +8,8 @@
 // go wrong. A launch error stays ON THE CARD until dismissed, with the one action that fixes it;
 // it used to be a 3.5-second toast of raw JSON at the bottom of the window.
 
-import type { DownloadProgress } from "@/lib/ipc";
+import type { CloudSession, DownloadProgress } from "@/lib/ipc";
+import { formatBytes, formatDuration, formatEur } from "../../electron/cloudtext";
 import type { Profile } from "@/types/profile";
 import { actionLabel, type LaunchNotice, type NoticeAction } from "@/lib/launchError";
 import { displayName, geoLabel, pinRefusedOnFree, proxySummary, relativeTime, versionInfo } from "@/lib/profileList";
@@ -25,6 +26,14 @@ export interface CardProps {
   current?: { version?: string; major?: number; plan?: string };
   onLaunch: () => void;
   onStop: () => void;
+  /** This profile's browser on Clearcote's servers, while it runs there. */
+  cloud?: CloudSession;
+  /** A cloud start is on its way (before the session exists). */
+  cloudStarting: boolean;
+  onCloudStart: () => void;
+  onCloudStop: () => void;
+  /** Bring its viewer window forward. */
+  onCloudOpen: () => void;
   onEdit: (field?: string) => void;
   onDuplicate: () => void;
   onDelete: () => void;
@@ -66,8 +75,20 @@ function Chip({ children, tone = "plain", title }: { children: React.ReactNode; 
 const btnGhost =
   "rounded-lg border border-line px-3 py-1.5 text-xs font-medium text-fog/80 hover:bg-elevate transition";
 
+/** A small cloud, for the button and the badge. */
+function CloudGlyph({ className = "h-3.5 w-3.5" }: { className?: string }) {
+  return (
+    <svg viewBox="0 0 20 20" fill="none" stroke="currentColor" strokeWidth="1.7" aria-hidden className={className}>
+      <path d="M6 15.5h8.25a3.25 3.25 0 0 0 .52-6.46A4.75 4.75 0 0 0 5.6 8.3 3.6 3.6 0 0 0 6 15.5Z" strokeLinejoin="round" />
+    </svg>
+  );
+}
+
 export default function ProfileCard(props: CardProps) {
-  const { profile: p, running, launching, download, notice, current } = props;
+  const { profile: p, running, launching, download, notice, current, cloud, cloudStarting } = props;
+  const inCloud = !!cloud;
+  /** Busy anywhere: on this PC or in the cloud. Deleting waits for both. */
+  const busy = running || inCloud || cloudStarting;
   const name = displayName(p);
   const launched = relativeTime(p.lastLaunchedAt);
   const version = versionInfo(p.browserVersion);
@@ -80,13 +101,14 @@ export default function ProfileCard(props: CardProps) {
     if (e.target !== e.currentTarget || e.ctrlKey || e.metaKey || e.altKey) return;
     if (e.key === "Enter") {
       e.preventDefault();
-      if (!running && !launching) props.onLaunch();
+      if (inCloud) props.onCloudOpen();
+      else if (!running && !launching && !cloudStarting) props.onLaunch();
     } else if (e.key === "e" || e.key === "E") {
       e.preventDefault();
       props.onEdit();
     } else if (e.key === "Delete") {
       e.preventDefault();
-      if (!running) props.onDelete();
+      if (!busy) props.onDelete();
     } else if (e.key.startsWith("Arrow")) {
       e.preventDefault();
       props.onArrow(e.key);
@@ -100,7 +122,7 @@ export default function ProfileCard(props: CardProps) {
     <article
       data-card={p.id}
       tabIndex={0}
-      aria-label={`${name}${running ? " (running)" : ""}${props.selected ? " (selected)" : ""}`}
+      aria-label={`${name}${running ? " (running)" : inCloud ? " (running in the cloud)" : ""}${props.selected ? " (selected)" : ""}`}
       onKeyDown={onKeyDown}
       className={
         // focus-within:z-20 — an open ⋯ menu holds focus, and without raising its card the NEXT card
@@ -109,7 +131,7 @@ export default function ProfileCard(props: CardProps) {
         "focus-visible:border-accent/60 focus-visible:ring-2 focus-visible:ring-accent/40 " +
         (props.selected
           ? "border-accent/70 bg-accent/5"
-          : running
+          : running || inCloud
             ? "border-accent/40"
             : "border-line hover:-translate-y-0.5 hover:border-accent/40 hover:shadow-[0_10px_30px_-14px_rgba(56,224,214,0.35)]")
       }
@@ -148,6 +170,15 @@ export default function ProfileCard(props: CardProps) {
         {running && (
           <span className="inline-flex shrink-0 items-center gap-1 rounded-full border border-accent/30 bg-accent/10 px-2 py-0.5 text-[10px] text-accent">
             <span className="h-1.5 w-1.5 animate-pulse rounded-full bg-accent" /> running
+          </span>
+        )}
+        {inCloud && (
+          <span
+            data-cloud-badge
+            className="inline-flex shrink-0 items-center gap-1 rounded-full border border-iris/30 bg-iris/10 px-2 py-0.5 text-[10px] text-iris"
+            title="Running on Clearcote's servers"
+          >
+            <CloudGlyph className="h-3 w-3" /> {cloud!.status === "running" ? "cloud" : cloud!.status}
           </span>
         )}
       </div>
@@ -207,8 +238,39 @@ export default function ProfileCard(props: CardProps) {
         </p>
       )}
 
+      {inCloud && (
+        <p data-cloud-usage className="mt-3 truncate text-[11px] text-fog/55" title={`Cloud session ${cloud!.sid}`}>
+          <span className="text-iris">●</span> {cloud!.exit ?? "cloud"} · {formatBytes(cloud!.bytes)} · {formatEur(cloud!.costEur)}
+          {cloud!.seconds ? ` · ${formatDuration(cloud!.seconds)}` : ""}
+        </p>
+      )}
+
       <div className="mt-auto flex items-center gap-1.5 pt-4">
-        {running ? (
+        {inCloud ? (
+          <>
+            <button
+              className="flex-1 rounded-lg bg-sheen px-3 py-1.5 text-xs font-semibold text-[#07080a] hover:opacity-95 disabled:opacity-50"
+              onClick={props.onCloudOpen}
+              disabled={cloud!.status !== "running"}
+            >
+              Open window
+            </button>
+            <button
+              className="rounded-lg border border-line-strong px-3 py-1.5 text-xs font-semibold text-fog hover:bg-elevate disabled:opacity-50"
+              onClick={props.onCloudStop}
+              disabled={cloud!.status === "stopping"}
+            >
+              {cloud!.status === "stopping" ? "Stopping…" : "Stop"}
+            </button>
+          </>
+        ) : cloudStarting ? (
+          <div className="min-w-0 flex-1" role="status" aria-live="polite">
+            <div className="rounded-lg bg-elevate px-3 py-1.5 text-center text-xs font-semibold text-fog/70">
+              <span className="mr-1.5 inline-block h-1.5 w-1.5 animate-pulse rounded-full bg-iris align-middle" />
+              Starting in the cloud…
+            </div>
+          </div>
+        ) : running ? (
           <button
             className="flex-1 rounded-lg border border-line-strong px-3 py-1.5 text-xs font-semibold text-fog hover:bg-elevate"
             onClick={props.onStop}
@@ -240,19 +302,41 @@ export default function ProfileCard(props: CardProps) {
             )}
           </div>
         ) : (
-          <button
-            className="flex-1 rounded-lg bg-sheen px-3 py-1.5 text-xs font-semibold text-[#07080a] hover:opacity-95"
-            onClick={props.onLaunch}
-          >
-            Launch
+          <>
+            <button
+              className="flex-1 rounded-lg bg-sheen px-3 py-1.5 text-xs font-semibold text-[#07080a] hover:opacity-95"
+              onClick={props.onLaunch}
+            >
+              Launch
+            </button>
+            <button
+              className={`${btnGhost} inline-flex items-center gap-1.5`}
+              onClick={props.onCloudStart}
+              title="Run this profile on Clearcote's servers instead of this PC. Billed per GB of traffic."
+              aria-label={`Run ${name} in the cloud`}
+            >
+              <CloudGlyph /> Cloud
+            </button>
+          </>
+        )}
+        {!inCloud && (
+          <button className={btnGhost} onClick={() => props.onEdit()}>
+            Edit
           </button>
         )}
-        <button className={btnGhost} onClick={() => props.onEdit()}>
-          Edit
-        </button>
         <Menu
           label={`More actions for ${name}`}
           items={[
+            ...(inCloud
+              ? [
+                  { label: "Open cloud window", onSelect: props.onCloudOpen },
+                  { label: "Stop in the cloud", onSelect: props.onCloudStop },
+                  { label: "Edit", onSelect: () => props.onEdit() },
+                  "separator" as const,
+                ]
+              : !running && !launching && !cloudStarting
+                ? [{ label: "Run in the cloud", onSelect: props.onCloudStart }, "separator" as const]
+                : []),
             { label: "Duplicate", onSelect: props.onDuplicate },
             { label: "Export…", onSelect: props.onExport },
             { label: "Open data folder", onSelect: props.onOpenData },
@@ -268,8 +352,8 @@ export default function ProfileCard(props: CardProps) {
               label: "Delete…",
               onSelect: props.onDelete,
               danger: true,
-              disabled: running,
-              hint: running ? "Stop it first — its browser has the data open." : undefined,
+              disabled: busy,
+              hint: running ? "Stop it first — its browser has the data open." : busy ? "Stop its cloud browser first." : undefined,
               shortcut: "Del",
             },
           ]}

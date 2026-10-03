@@ -188,3 +188,22 @@ describe("search", () => {
     expect(searchFields("zzzzz-nothing")).toEqual([]);
   });
 });
+
+describe("the Cloud section", () => {
+  it("exists, holds the one cloud block, and is found by searching", () => {
+    expect(CATEGORIES.map((c) => c.id)).toContain("cloud");
+    expect(fieldsIn("cloud").map((f) => f.key)).toEqual(["cloud"]);
+    expect(fieldByKey("cloud")).toMatchObject({ type: "custom", custom: "cloud", full: true });
+    for (const q of ["cloud", "hosted"]) expect(searchFields(q).map((f) => f.key), q).toContain("cloud");
+  });
+
+  it("counts as set only when one of its options is", () => {
+    const f = fieldByKey("cloud")!;
+    expect(isFieldSet({}, f)).toBe(false);
+    expect(isFieldSet({ cloud: {} }, f)).toBe(false);
+    expect(isFieldSet({ cloud: { country: undefined } }, f)).toBe(false);
+    expect(isFieldSet({ cloud: { country: "us" } }, f)).toBe(true);
+    expect(isFieldSet({ cloud: { keepCookies: false } }, f)).toBe(true);
+    expect(countSet({ cloud: { exit: "managed", adblock: true } }, "cloud")).toBe(1);
+  });
+});

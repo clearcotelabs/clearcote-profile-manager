@@ -75,7 +75,7 @@ describe.skipIf(!READY)("editor UI — the category rail in a real browser", () 
     await browser?.close();
   }, 20000);
 
-  it("opens on Identity with all six categories in the rail", async () => {
+  it("opens on Identity with all seven categories in the rail", async () => {
     const labels = await page.locator("nav button").allTextContents();
     expect(labels.map((l) => l.replace(/[0-9▲]/g, "").trim())).toEqual([
       "Identity",
@@ -84,6 +84,7 @@ describe.skipIf(!READY)("editor UI — the category rail in a real browser", () 
       "Network",
       "Rendering",
       "Session",
+      "Cloud",
     ]);
     expect(await textOf("h3")).toBe("Identity");
   }, 20000);

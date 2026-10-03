@@ -2,6 +2,8 @@
 // src/types/profile.ts) so the electron build has no cross-rootDir imports.
 // The two shapes are intentionally identical — see PLAN.md.
 
+import type { CloudOptions } from "./cloudbody";
+
 export interface Profile {
   id: string;
   name: string;
@@ -134,6 +136,8 @@ export interface Profile {
    *  measured for (scheme host:port, no credentials): a changed proxy makes it stale. */
   lastGeo?: LastGeo;
   userDataDir?: string;
+  /** Running this profile on Clearcote's servers instead of this PC (electron/cloudbody.ts). */
+  cloud?: CloudOptions;
 }
 
 export interface FingerprintMeta {
@@ -219,6 +223,12 @@ export interface Settings {
   autoPruneBuilds?: boolean;
   /** Window size/position at last close, restored on start when it is still on a screen. */
   window?: { x: number; y: number; width: number; height: number; maximized?: boolean };
+  /** The account's API key (`cc_live_...`) for running profiles in the cloud. Separate from the licence
+   *  key: the licence runs browsers on this PC, the API key pays for browsers on Clearcote's servers.
+   *  Sent only to the cloud API, only when a cloud session is started, checked or followed. */
+  cloudApiKey?: string;
+  /** Override the cloud API address (default https://www.clearcotelabs.com; CLEARCOTE_API_URL wins). */
+  cloudApiBase?: string;
 }
 
 export interface LaunchResult {

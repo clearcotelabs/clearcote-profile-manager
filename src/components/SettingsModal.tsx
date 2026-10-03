@@ -7,14 +7,17 @@
 // focus, scroll locking) now comes from the shared Dialog, and only the panel scrolls.
 
 import { useId, useState } from "react";
-import { api, type Settings, type LicenseStatus } from "@/lib/ipc";
+import { api, type Settings, type LicenseStatus, type CloudAccount } from "@/lib/ipc";
 import Dialog, { DialogFooter, DialogHeader } from "./Dialog";
 import StorageSection from "./StorageSection";
 
-export type Section = "general" | "browser" | "license" | "updates" | "storage";
+export type Section = "general" | "browser" | "license" | "cloud" | "updates" | "storage";
 
 /** Where a free key comes from: sign in with GitHub, Licenses, "Get it free" (the site's own FAQ). */
 export const FREE_KEY_URL = "https://www.clearcotelabs.com/dashboard/licenses";
+/** Where a cloud API key is created, and where the cloud balance is topped up. */
+export const API_KEYS_URL = "https://www.clearcotelabs.com/dashboard/api-keys";
+export const TOPUP_URL = "https://www.clearcotelabs.com/dashboard/browsers";
 
 const SECTIONS: { id: Section; label: string; title: string; blurb: string }[] = [
   {
@@ -34,6 +37,12 @@ const SECTIONS: { id: Section; label: string; title: string; blurb: string }[] =
     label: "Licence",
     title: "Licence",
     blurb: "A key unlocks the licence-gated browser. It is only sent to the licence service, and only when a key is set.",
+  },
+  {
+    id: "cloud",
+    label: "Cloud",
+    title: "Cloud",
+    blurb: "Run profiles on Clearcote's servers instead of this PC, paid from your Clearcote balance.",
   },
   {
     id: "updates",
@@ -152,6 +161,31 @@ export default function SettingsModal({
     }
   }
 
+  // ── Cloud ────────────────────────────────────────────────────────────────
+  const [apiKey, setApiKey] = useState(settings.cloudApiKey || "");
+  const [revealApi, setRevealApi] = useState(false);
+  const [account, setAccount] = useState<CloudAccount | null>(null);
+  const [checkingApi, setCheckingApi] = useState(false);
+  const apiDirty = (apiKey.trim() || undefined) !== (settings.cloudApiKey || undefined);
+  const apiKeyLooksWrong = !!apiKey.trim() && !apiKey.trim().startsWith("cc_live_");
+
+  async function saveApiKey() {
+    const next = apiKey.trim() || undefined;
+    await onSaveSettings({ cloudApiKey: next });
+    setAccount(null);
+    // Checked at once, like the licence key, so a typo shows up here and not at the first start.
+    if (next) await checkApiKey(next);
+  }
+  async function checkApiKey(saved?: string) {
+    setCheckingApi(true);
+    setAccount(null);
+    try {
+      setAccount(await api.cloud.account(saved ?? (apiKey.trim() || undefined)));
+    } finally {
+      setCheckingApi(false);
+    }
+  }
+
   // ── Updates ──────────────────────────────────────────────────────────────
   const [updMsg, setUpdMsg] = useState<string | null>(null);
   const [updChecking, setUpdChecking] = useState(false);
@@ -194,6 +228,9 @@ export default function SettingsModal({
                       {s.label}
                       {s.id === "license" && settings.licenseKey && (
                         <span className="ml-auto h-1.5 w-1.5 rounded-full bg-accent" title="Key set" />
+                      )}
+                      {s.id === "cloud" && settings.cloudApiKey && (
+                        <span className="ml-auto h-1.5 w-1.5 rounded-full bg-accent" title="API key set" />
                       )}
                     </button>
                   </li>
@@ -371,6 +408,96 @@ export default function SettingsModal({
                 <p className="text-[11px] text-fog/35">
                   A saved key is checked straight away. The check briefly takes one browser slot, so while every slot is in
                   use it can only confirm the key is valid.
+                </p>
+              </div>
+            )}
+
+            {section === "cloud" && (
+              <div className="space-y-4">
+                <Card>
+                  <div className="px-4 py-3.5">
+                    <label htmlFor="cloud-key" className="text-[13px] font-medium text-fog">
+                      API key
+                    </label>
+                    <div className="mt-2 flex flex-wrap gap-2">
+                      <div className="relative min-w-[220px] flex-1">
+                        <input
+                          id="cloud-key"
+                          className={`${input} pr-14 font-mono`}
+                          type={revealApi ? "text" : "password"}
+                          autoComplete="off"
+                          spellCheck={false}
+                          value={apiKey}
+                          onChange={(e) => {
+                            setApiKey(e.target.value);
+                            setAccount(null);
+                          }}
+                          onKeyDown={(e) => e.key === "Enter" && apiDirty && void saveApiKey()}
+                          placeholder="cc_live_…"
+                        />
+                        <button
+                          type="button"
+                          className="absolute inset-y-0 right-2 my-auto h-6 rounded px-1.5 text-[11px] text-fog/45 hover:text-fog"
+                          onClick={() => setRevealApi((v) => !v)}
+                          aria-label={revealApi ? "Hide API key" : "Show API key"}
+                        >
+                          {revealApi ? "Hide" : "Show"}
+                        </button>
+                      </div>
+                      <button className={btn} onClick={saveApiKey} disabled={!apiDirty}>
+                        Save
+                      </button>
+                      <button className={btn} onClick={() => checkApiKey()} disabled={checkingApi || !apiKey.trim()}>
+                        {checkingApi ? "Checking…" : "Check"}
+                      </button>
+                    </div>
+                    {apiDirty && <p className="mt-2 text-[11px] text-warn">Not saved yet — press Save or Enter.</p>}
+                    {apiKeyLooksWrong && (
+                      <p className="mt-2 text-[11px] text-warn">
+                        API keys start with cc_live_. A licence key (cc_lic_…) belongs under Licence.
+                      </p>
+                    )}
+                    {account && (
+                      <div
+                        role="status"
+                        className={`mt-3 rounded-lg px-3 py-2 text-xs ${account.ok ? "bg-ok/10 text-ok" : "bg-danger/10 text-danger"}`}
+                      >
+                        {account.ok ? (
+                          <>✓ Accepted · balance €{(account.balanceEur ?? 0).toFixed(2)}</>
+                        ) : (
+                          <>✕ {account.error || "The key could not be checked."}</>
+                        )}
+                      </div>
+                    )}
+                  </div>
+                </Card>
+                <Card>
+                  <Row
+                    title="No key yet?"
+                    hint="Create one on the dashboard's API keys page. It is not the licence key: the licence runs browsers on this PC, the API key pays for browsers on Clearcote's servers."
+                  >
+                    <button className={btn} onClick={() => void api.openExternal(API_KEYS_URL)}>
+                      Create an API key ↗
+                    </button>
+                  </Row>
+                  <Row title="Balance" hint="Cloud browsers are billed per GB of traffic from your Clearcote balance. Prices are on the dashboard.">
+                    <button className={btn} onClick={() => void api.openExternal(TOPUP_URL)}>
+                      Top up ↗
+                    </button>
+                  </Row>
+                </Card>
+                <Card>
+                  <Row
+                    title="Running a profile in the cloud"
+                    hint="Its card's Cloud button starts it on Clearcote's servers and opens a window here where you watch and drive it. Its seed gives it the same device every time, the included IP stays the same for up to a day, and its cookies are kept between cloud sessions. Change where its traffic leaves, or set a traffic cap, under Cloud in the profile's editor."
+                  />
+                  <Row
+                    title="When it stops"
+                    hint="When you press Stop, when you quit the app, or after 30 minutes with nobody watching or typing. Closing its window, or keeping the app in the tray, does not stop it."
+                  />
+                </Card>
+                <p className="text-[11px] text-fog/35">
+                  The key is sent only to clearcotelabs.com, and only when a cloud browser is started, checked or followed.
                 </p>
               </div>
             )}

@@ -6,6 +6,8 @@
 import { describe, it, expect } from "vitest";
 import {
   actionLabel,
+  describeCloudEnd,
+  describeCloudError,
   describeLaunchError,
   describeLaunchWarnings,
   extractServerBody,
@@ -186,5 +188,114 @@ describe("actionLabel", () => {
     expect(actionLabel({ kind: "settings", section: "browser" })).toBe("Browser settings");
     expect(actionLabel({ kind: "edit", field: "browserVersion" })).toBe("Change version");
     expect(actionLabel({ kind: "edit", field: "shaderDialect" })).toBe("Edit profile");
+  });
+});
+
+// Cloud sessions: the codes the main process (electron/cloud.ts, cloudapi.ts) and the hosted API
+// (clearcote-site lib/hosted/service.ts) actually return, with their real messages.
+describe("describeCloudError", () => {
+  const d = (f: Parameters<typeof describeCloudError>[0]) => describeCloudError(f)!;
+
+  it("sends a missing or refused key to Settings → Cloud", () => {
+    const noKey = d({ error: "Add your Clearcote API key in Settings → Cloud to run profiles in the cloud.", code: "NO_KEY" });
+    expect(noKey.tone).toBe("warning");
+    expect(noKey.title).toBe("Add your API key to run in the cloud");
+    expect(noKey.lines.join(" ")).toMatch(/cc_live_.*not the licence key/);
+    expect(noKey.action).toEqual({ kind: "settings", section: "cloud" });
+    expect(actionLabel(noKey.action!)).toBe("Cloud settings");
+    for (const f of [{ error: "x", code: "UNAUTHORIZED", status: 401 }, { error: "Missing or invalid API key.", status: 401 }]) {
+      expect(d(f)).toMatchObject({ title: "Your API key wasn't accepted", action: { kind: "settings", section: "cloud" } });
+    }
+  });
+
+  it("offers a top-up for a low balance", () => {
+    const n = d({ error: "Your hosted-browser balance is EUR 0.12; at least EUR 0.50 is needed to start a browser.", code: "INSUFFICIENT_BALANCE", status: 402 });
+    expect(n.title).toBe("Your cloud balance is too low");
+    expect(n.lines).toEqual(["Your hosted-browser balance is EUR 0.12; at least EUR 0.50 is needed to start a browser."]);
+    expect(n.action).toEqual({ kind: "topup" });
+    expect(actionLabel(n.action!)).toBe("Top up ↗");
+  });
+
+  it("tells the concurrency limit from a plain rate limit", () => {
+    const limit = d({ error: "You already have 3 browsers running or starting (limit 3). Close one first.", code: "CONCURRENCY_LIMIT", status: 429 });
+    expect(limit.title).toBe("Too many cloud browsers at once");
+    const rate = d({ error: "Rate limit exceeded.", status: 429 });
+    expect(rate.title).toBe("Too many requests");
+    expect(rate.lines).toContain("Wait a minute, then try again.");
+  });
+
+  it("says a busy service passes, and that a missing feature is the service's", () => {
+    const busy = d({ error: "No hosted browser capacity right now. Retry in a few seconds.", code: "NO_CAPACITY", status: 503 });
+    expect(busy.title).toBe("No cloud browser is free right now");
+    expect(busy.action).toEqual({ kind: "retry-cloud" });
+    expect(actionLabel(busy.action!)).toBe("Start in the cloud again");
+    const off = d({ error: "Session notes and profiles are not available on this server yet.", code: "NOT_AVAILABLE", status: 503 });
+    expect(off.title).toBe("The cloud can't run this right now");
+    expect(off.lines).toEqual(["Session notes and profiles are not available on this server yet."]);
+  });
+
+  it("explains a profile another cloud browser is still saving", () => {
+    const n = d({ error: 'Session bs_x is already saving to profile "pm-acct-1". Stop it first, or open the profile read-only (persist: false).', code: "PROFILE_IN_USE", status: 409 });
+    expect(n.title).toBe("This profile is still saving in the cloud");
+    expect(n.lines.join(" ")).toMatch(/another PC or from the dashboard/);
+    expect(n.action).toEqual({ kind: "retry-cloud" });
+  });
+
+  it("opens the field to fix: the setting the cloud refused, or the version it lacks", () => {
+    expect(d({ error: "The cloud reaches a proxy over http, socks5 or socks5h. “https” is not one of them.", code: "PROFILE", field: "proxy" }).action).toEqual({ kind: "edit", field: "proxy" });
+    expect(d({ error: "x", code: "PROFILE" }).action).toEqual({ kind: "edit", field: "cloud" });
+    const v = d({ error: "No hosted build for version '149'. Available: 153.0.8010.53-r29, 152.0.7977.82-r21.", code: "UNKNOWN_VERSION", status: 400 });
+    expect(v.title).toBe("The cloud doesn't have this browser version");
+    expect(v.action).toEqual({ kind: "edit", field: "browserVersion" });
+  });
+
+  it("covers the app's own refusals", () => {
+    expect(d({ error: "x", code: "RUNNING_LOCALLY" })).toMatchObject({ tone: "warning", title: "This profile is open on this PC" });
+    expect(d({ error: "x", code: "ALREADY_RUNNING" })).toMatchObject({ tone: "warning", title: "This profile is already running in the cloud" });
+    expect(d({ error: "This profile is still stopping in the cloud. Start it again once it has stopped.", code: "STOPPING" })).toMatchObject({
+      tone: "warning",
+      title: "This profile is still stopping in the cloud",
+    });
+    expect(d({ error: "The cloud browser did not start: 409: This connect URL was already used.", code: "ATTACH" }).title).toBe("The cloud browser didn't start");
+    expect(d({ error: "Cloud sessions run in the desktop app (this is the browser preview).", code: "PREVIEW" }).title).toBe("Cloud sessions run in the desktop app.");
+    expect(describeCloudError({ error: "It was stopped before it finished starting.", code: "STOPPED" })).toBeNull();
+  });
+
+  it("words network trouble and keeps the raw message for the details", () => {
+    for (const f of [
+      { error: "Could not reach www.clearcotelabs.com. Check the connection and try again.", code: "NETWORK", status: 0 },
+      { error: "www.clearcotelabs.com did not answer in 20 s.", code: "TIMEOUT", status: 0 },
+    ]) {
+      const n = d(f);
+      expect(n.title).toBe("Couldn't reach Clearcote's servers");
+      expect(n.raw).toBe(f.error);
+    }
+    expect(d({ error: "", status: 500 })).toMatchObject({ title: "Couldn't start in the cloud", lines: ["No reason was given."] });
+  });
+});
+
+describe("describeCloudEnd", () => {
+  it("says nothing for the person's own stop", () => {
+    expect(describeCloudEnd({ reason: "stopped:user" })).toBeNull();
+  });
+
+  it("says why it ended, what it used, and offers the next step", () => {
+    const idle = describeCloudEnd({ reason: "idle_timeout", status: "ended", bytes: 5_000_000, costEur: 0.005 })!;
+    expect(idle).toEqual({
+      tone: "warning",
+      title: "The cloud browser ended",
+      lines: ["Nobody watched or typed for 30 minutes, so it closed.", "It used 5.0 MB and cost €0.0050."],
+      action: { kind: "retry-cloud" },
+    });
+    expect(describeCloudEnd({ reason: "stopped:balance", costEur: 4.9 })!.action).toEqual({ kind: "topup" });
+    expect(describeCloudEnd({ reason: null, status: "lost" })!.lines).toEqual(["Its server stopped answering."]);
+  });
+});
+
+describe("a local launch of a profile running in the cloud", () => {
+  it("is refused with a plain explanation", () => {
+    const n = describeLaunchError("This profile is running in the cloud. Stop it there first: a profile runs in one place at a time.", "RUNNING_IN_CLOUD");
+    expect(n.tone).toBe("warning");
+    expect(n.title).toMatch(/cloud/i);
   });
 });

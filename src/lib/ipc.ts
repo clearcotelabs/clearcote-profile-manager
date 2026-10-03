@@ -52,6 +52,41 @@ export interface PrefetchProgress {
   version: string;
 }
 
+/** A profile running on Clearcote's servers (electron/cloud.ts CloudSessionState). */
+export interface CloudSession {
+  profileId: string;
+  name: string;
+  sid: string;
+  startedAt: string;
+  status: "starting" | "running" | "stopping";
+  /** Where its traffic leaves: "US · included IP", or the profile's proxy without credentials. */
+  exit?: string;
+  bytes?: number;
+  seconds?: number;
+  costEur?: number;
+}
+export type CloudStartResult =
+  | { ok: true; sid: string; warnings: string[] }
+  | { ok: false; error: string; code?: string; status?: number; field?: string };
+/** A cloud session ended without this app stopping it (idle, a cap, the balance), or was stopped. */
+export interface CloudEnded {
+  profileId: string;
+  name: string;
+  sid: string;
+  reason: string | null;
+  status?: string;
+  bytes?: number;
+  costEur?: number;
+}
+export type CloudViewUrl = { ok: true; viewUrl: string; interactive: boolean } | { ok: false; error: string; ended?: boolean };
+export interface CloudAccount {
+  ok: boolean;
+  balanceEur?: number;
+  error?: string;
+  code?: string;
+  status?: number;
+}
+
 export interface Settings {
   binaryPath?: string;
   theme?: "dark" | "light";
@@ -72,6 +107,9 @@ export interface Settings {
   autoPruneBuilds?: boolean;
   /** Window size/position at last close, restored on start when it is still on a screen. */
   window?: { x: number; y: number; width: number; height: number; maximized?: boolean };
+  /** The account's API key (`cc_live_...`) for running profiles in the cloud. Not the licence key. */
+  cloudApiKey?: string;
+  cloudApiBase?: string;
 }
 export interface LaunchResult {
   ok: boolean;
@@ -236,6 +274,17 @@ export interface ClearcoteApi {
   launch: (p: Profile) => Promise<LaunchResult>;
   stop: (id: string) => Promise<StopOutcome>;
   running: () => Promise<string[]>;
+  /** Profiles running on Clearcote's servers, and the viewer window that shows one. */
+  cloud: {
+    list: () => Promise<CloudSession[]>;
+    start: (p: Profile) => Promise<CloudStartResult>;
+    stop: (id: string) => Promise<{ ok: boolean; error?: string }>;
+    open: (id: string) => Promise<boolean>;
+    viewUrl: (id: string, control?: boolean) => Promise<CloudViewUrl>;
+    account: (key?: string) => Promise<CloudAccount>;
+    onChanged: (cb: (list: CloudSession[]) => void) => () => void;
+    onEnded: (cb: (ev: CloudEnded) => void) => () => void;
+  };
   /** Public browser-build catalog for this OS (newest major first). Drives the version dropdown. */
   listVersions: () => Promise<VersionOption[]>;
   /** PRO rebuild revisions ("150.0.7871.114-r10", …), newest first — pin one for a reproducible
@@ -310,12 +359,48 @@ function buildMock(): ClearcoteApi {
       return fallback;
     }
   };
+  // Cloud. localStorage["clearcote.mock.cloud"] = "ok" lets a cloud start succeed (once an API key is
+  // saved in Settings, like the desktop app), or {"error","code"} fails it that way. The sessions live
+  // in localStorage so the viewer page (its own window, its own mock) sees them, and a change in one
+  // window reaches the others through the storage event. window.__clearcoteMock.cloudUsage(id, {...})
+  // and .cloudEnd(id, reason) play the service's side; ["clearcote.mock.cloud.view"] is the WebSocket
+  // the viewer connects to (a test server), and ["clearcote.mock.cloud.account"] the key check's answer.
+  const CLOUD_KEY = "clearcote.mock.cloud.sessions";
+  const cloudChanged = new Set<(l: CloudSession[]) => void>();
+  const cloudEndedListeners = new Set<(e: CloudEnded) => void>();
+  const cloudRead = (): CloudSession[] => readJson<CloudSession[]>(CLOUD_KEY, []);
+  const cloudWrite = (l: CloudSession[]) => {
+    localStorage.setItem(CLOUD_KEY, JSON.stringify(l));
+    cloudChanged.forEach((cb) => cb(l));
+  };
+  const cloudEnd = (id: string, reason: string | null) => {
+    const s = cloudRead().find((x) => x.profileId === id);
+    if (!s) return;
+    cloudWrite(cloudRead().filter((x) => x.profileId !== id));
+    const ev: CloudEnded = { profileId: id, name: s.name, sid: s.sid, reason, bytes: s.bytes, costEur: s.costEur };
+    localStorage.setItem("clearcote.mock.cloud.ended", JSON.stringify({ ...ev, at: Date.now() }));
+    cloudEndedListeners.forEach((cb) => cb(ev));
+  };
   if (typeof window !== "undefined") {
+    window.addEventListener("storage", (e) => {
+      if (e.key === CLOUD_KEY) cloudChanged.forEach((cb) => cb(cloudRead()));
+      if (e.key === "clearcote.mock.cloud.ended" && e.newValue) {
+        try {
+          const ev = JSON.parse(e.newValue) as CloudEnded;
+          cloudEndedListeners.forEach((cb) => cb(ev));
+        } catch {
+          /* ignore */
+        }
+      }
+    });
     (window as unknown as { __clearcoteMock: unknown }).__clearcoteMock = {
       exit: (ev: ExitEvent) => {
         mockRunning.delete(ev.id);
         exitListeners.forEach((l) => l(ev));
       },
+      cloudUsage: (id: string, u: { bytes?: number; seconds?: number; costEur?: number }) =>
+        cloudWrite(cloudRead().map((s) => (s.profileId === id ? { ...s, ...u } : s))),
+      cloudEnd,
     };
   }
   const STORAGE_KEY = "clearcote.mock.storage";
@@ -430,6 +515,75 @@ function buildMock(): ClearcoteApi {
     },
     stop: async (id) => (mockRunning.delete(id) ? "graceful" : "gone"),
     running: async () => [...mockRunning],
+    cloud: {
+      list: async () => cloudRead(),
+      start: async (p) => {
+        const mode = localStorage.getItem("clearcote.mock.cloud");
+        if (!mode) return { ok: false, error: "Cloud sessions run in the desktop app (this is the browser preview).", code: "PREVIEW" };
+        if (mode !== "ok") {
+          const e = readJson<{ error?: string; code?: string; status?: number }>("clearcote.mock.cloud", {});
+          return { ok: false, error: e.error ?? "Failed.", code: e.code, status: e.status };
+        }
+        let key: string | undefined;
+        try {
+          key = (JSON.parse(localStorage.getItem(SETTINGS_KEY) || "{}") as Settings).cloudApiKey;
+        } catch {
+          key = undefined;
+        }
+        if (!key) return { ok: false, error: "Add your Clearcote API key in Settings → Cloud to run profiles in the cloud.", code: "NO_KEY" };
+        if (cloudRead().some((s) => s.profileId === p.id)) return { ok: false, error: "This profile is already running in the cloud.", code: "ALREADY_RUNNING" };
+        if (mockRunning.has(p.id)) {
+          return { ok: false, error: "This profile's browser is open on this PC. Stop it first: a profile runs in one place at a time.", code: "RUNNING_LOCALLY" };
+        }
+        const country = p.cloud?.country?.toUpperCase();
+        const exit = p.cloud?.exit === "managed" || !p.proxy ? `${country ? `${country} · ` : ""}included IP` : redactProxyString(p.proxy);
+        const s: CloudSession = {
+          profileId: p.id,
+          name: p.name?.trim() || p.id,
+          sid: `bs_mock${Math.random().toString(36).slice(2).padEnd(16, "0")}`,
+          startedAt: new Date().toISOString(),
+          status: "running",
+          exit,
+          bytes: 0,
+          seconds: 0,
+          costEur: 0,
+        };
+        cloudWrite([...cloudRead(), s]);
+        write(read().map((x) => (x.id === p.id ? { ...x, lastLaunchedAt: new Date().toISOString() } : x)));
+        return { ok: true, sid: s.sid, warnings: [] };
+      },
+      // Like the service: a running browser is closed on its worker's next report.
+      // localStorage["clearcote.mock.cloud.stopMs"] is how long it stays "stopping" (default: none).
+      stop: async (id) => {
+        const ms = Number(localStorage.getItem("clearcote.mock.cloud.stopMs") || 0);
+        if (!ms) {
+          cloudEnd(id, "stopped:user");
+          return { ok: true };
+        }
+        cloudWrite(cloudRead().map((s) => (s.profileId === id ? { ...s, status: "stopping" as const } : s)));
+        setTimeout(() => cloudEnd(id, "stopped:user"), ms);
+        return { ok: true };
+      },
+      open: async (id) => {
+        if (!cloudRead().some((s) => s.profileId === id)) return false;
+        localStorage.setItem("clearcote.mock.cloud.opened", id);
+        return true;
+      },
+      viewUrl: async (id) => {
+        if (!cloudRead().some((s) => s.profileId === id)) return { ok: false, error: "This profile is not running in the cloud.", ended: true };
+        const url = localStorage.getItem("clearcote.mock.cloud.view");
+        return url ? { ok: true, viewUrl: url, interactive: true } : { ok: false, error: "The live view runs in the desktop app." };
+      },
+      account: async () => readJson<CloudAccount>("clearcote.mock.cloud.account", { ok: false, error: "The key check runs in the desktop app." }),
+      onChanged: (cb) => {
+        cloudChanged.add(cb);
+        return () => cloudChanged.delete(cb);
+      },
+      onEnded: (cb) => {
+        cloudEndedListeners.add(cb);
+        return () => cloudEndedListeners.delete(cb);
+      },
+    },
     listVersions: async () => [], // browser preview has no catalog access; UI falls back to "latest"
     listRevisions: async () => [], // revisions need an authenticated PRO call — desktop app only
     onDownloadProgress: () => () => {}, // no downloads in the browser preview

@@ -7,6 +7,9 @@ import { fingerprintArgs, resolveTls, startUrlArg, type FpInput } from "../../el
 // the renderer bundle. Same split, and same reason, as electron/fpargs.ts.
 import { parseProxy, proxyArgs } from "../../electron/proxyargs";
 import { SHADER_DIALECT_ENV } from "../../electron/shaderdialect";
+import type { CloudOptions } from "../../electron/cloudbody";
+
+export type { CloudOptions };
 
 export {
   screenGuardWarning,
@@ -225,6 +228,9 @@ export interface Profile {
   lastGeo?: LastGeo;
   /** Resolved persistent user-data-dir (default: profiles/<id>/userdata). */
   userDataDir?: string;
+  /** Running this profile on Clearcote's servers instead of this PC: where its traffic leaves, whether
+   *  its cookies are kept between cloud sessions, a traffic cap. See electron/cloudbody.ts. */
+  cloud?: CloudOptions;
 }
 
 /** Summary of a captured fingerprint profile, cached on the Profile for display. */

@@ -15,13 +15,32 @@ export function closeAction(runningCount: number, behavior: CloseBehavior | unde
   return "ask";
 }
 
-/** The question, worded for how many browsers are open. Button order matches ASK_BUTTONS. */
-export function askText(n: number): { message: string; detail: string } {
+/**
+ * The question, worded for how many browsers are open. Button order matches ASK_BUTTONS.
+ *
+ * `n` counts every browser, `cloud` how many of them run on Clearcote's servers. Kept in the tray,
+ * those go on costing traffic until stopped or idle for 30 minutes, and quitting stops them (main.ts
+ * stopAndQuit), so the text says that instead of the licence line.
+ */
+export function askText(n: number, cloud = 0): { message: string; detail: string } {
+  const local = n - cloud;
+  const parts: string[] = [];
+  if (local > 0) {
+    parts.push(
+      "In the tray, the app keeps their licences renewed and they keep running. If the app closes, " +
+        "a browser on the free plan stops by itself within a few minutes.",
+    );
+  }
+  if (cloud > 0) {
+    parts.push(
+      (cloud === 1 ? "1 runs in the cloud, on Clearcote's servers. In the tray it keeps" : `${cloud} run in the cloud, on Clearcote's servers. In the tray they keep`) +
+        " running, and costing traffic, until stopped or after 30 minutes with nobody watching. " +
+        "“Close browsers and quit” stops " + (cloud === 1 ? "it" : "them") + " too.",
+    );
+  }
   return {
     message: n === 1 ? "1 browser is still running." : `${n} browsers are still running.`,
-    detail:
-      "In the tray, the app keeps their licences renewed and they keep running. If the app closes, " +
-      "a browser on the free plan stops by itself within a few minutes.",
+    detail: parts.join("\n\n"),
   };
 }
 

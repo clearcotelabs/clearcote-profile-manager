@@ -17,6 +17,9 @@ import { redactProxyString } from "./proxy";
 import { checkForUpdate, downloadUpdate, startupCheckEnabled, type UpdateInfo } from "./appupdate";
 import { launchTarget, resetLaunchTargetCache } from "./launchTarget";
 import { mergeRendererSettings } from "./settingsmerge";
+import { CloudManager } from "./cloud";
+import { CloudApi, resolveApiBase, resolveApiKey } from "./cloudapi";
+import { attachOnce } from "./cdpattach";
 import type { Profile, Settings, FingerprintMeta } from "./types";
 
 const CLEARCOTE_PROFILES_REPO = "clearcotelabs/clearcote-profiles";
@@ -36,6 +39,10 @@ const isDev = process.env.ELECTRON_DEV === "1";
 let mainWin: BrowserWindow | null = null;
 let tray: Tray | null = null;
 let quittingApp = false;
+/** Cloud sessions (cloud.ts); created once the app is ready. */
+let cloud: CloudManager;
+/** One viewer window per profile running in the cloud. */
+const viewers = new Map<string, BrowserWindow>();
 
 const MIN_W = 900;
 const MIN_H = 600;
@@ -82,13 +89,14 @@ function createWindow(): void {
   // Closing with browsers open: ask, keep running in the tray, or close them and quit (closeguard.ts).
   win.on("close", (e) => {
     saveBounds();
-    const running = launcher.listRunning().length;
+    const cloudCount = cloud?.list().length ?? 0;
+    const running = launcher.listRunning().length + cloudCount;
     const action = closeAction(running, readSettings().closeBehavior, quittingApp);
     if (action === "close") return;
     e.preventDefault();
     if (action === "tray") return hideToTray(win);
     if (action === "stop-and-quit") return void stopAndQuit();
-    const q = askText(running);
+    const q = askText(running, cloudCount);
     void dialog
       .showMessageBox(win, {
         type: "question",
@@ -154,8 +162,10 @@ function refreshTrayMenu(): void {
   if (!tray) return;
   const byId = new Map(profiles.listProfiles().map((p) => [p.id, p.name?.trim() || p.id]));
   const runningIds = launcher.listRunning();
+  const inCloud = cloud?.list() ?? [];
+  const total = runningIds.length + inCloud.length;
   tray.setToolTip(
-    runningIds.length === 1 ? "Clearcote Profile Manager — 1 browser running" : `Clearcote Profile Manager — ${runningIds.length} browsers running`,
+    total === 1 ? "Clearcote Profile Manager — 1 browser running" : `Clearcote Profile Manager — ${total} browsers running`,
   );
   tray.setContextMenu(
     Menu.buildFromTemplate([
@@ -165,8 +175,12 @@ function refreshTrayMenu(): void {
         label: `Stop “${byId.get(id) ?? id}”`,
         click: () => void launcher.stop(id).then(refreshTrayMenu),
       })),
-      ...(runningIds.length ? [{ type: "separator" as const }] : []),
-      { label: runningIds.length ? "Close browsers and quit" : "Quit", click: () => void stopAndQuit() },
+      ...inCloud.map((c) => ({
+        label: `Stop “${byId.get(c.profileId) ?? c.name}” (cloud)`,
+        click: () => void cloud.stop(c.profileId).then(refreshTrayMenu),
+      })),
+      ...(total ? [{ type: "separator" as const }] : []),
+      { label: total ? "Close browsers and quit" : "Quit", click: () => void stopAndQuit() },
     ]),
   );
 }
@@ -188,12 +202,16 @@ function hideToTray(win: BrowserWindow): void {
   });
 }
 
-/** Close every browser gracefully (each licence slot checked back in), then quit. */
+/** Close every browser gracefully (each licence slot checked back in, each cloud browser stopped), then quit. */
 async function stopAndQuit(): Promise<void> {
   if (quittingApp) return;
   quittingApp = true;
   launcher.setQuitting(true);
-  await launcher.stopAll({ timeoutMs: 8000 });
+  await Promise.all([
+    launcher.stopAll({ timeoutMs: 8000 }),
+    // Bounded: an unreachable API must not keep the app from quitting.
+    Promise.race([cloud?.stopAll().catch(() => undefined), new Promise((r) => setTimeout(r, 8000))]),
+  ]);
   tray?.destroy();
   tray = null;
   app.quit();
@@ -204,6 +222,58 @@ function autoPruneSoon(): void {
   if (readSettings().autoPruneBuilds === false) return;
   // After the launch settles: the new build is running by then, so it is kept either way.
   setTimeout(() => void pruneBuilds(readSettings()).catch(() => {}), 3000);
+}
+
+/** A cloud API client for the saved settings (or a key typed into Settings), or why there is none. */
+function cloudClient(key?: string): CloudApi | { error: string; code: string } {
+  const s = readSettings();
+  const apiKey = resolveApiKey(key ?? s.cloudApiKey);
+  if (!apiKey) return { error: "Add your Clearcote API key in Settings → Cloud to run profiles in the cloud.", code: "NO_KEY" };
+  const base = resolveApiBase(s.cloudApiBase);
+  if (!base.ok) return { error: base.error, code: "BAD_BASE" };
+  return new CloudApi({ apiKey, base: base.base });
+}
+
+function sendAll(channel: string, data: unknown): void {
+  for (const w of BrowserWindow.getAllWindows()) if (!w.isDestroyed()) w.webContents.send(channel, data);
+}
+
+/**
+ * The window that shows a profile's cloud browser and takes its input: one per profile, brought
+ * forward when it is already open. It loads the app's own /cloud page with the same narrow preload;
+ * it may not navigate anywhere else or open windows of its own.
+ */
+function openViewer(profileId: string): boolean {
+  const s = cloud.get(profileId);
+  if (!s) return false;
+  const open = viewers.get(profileId);
+  if (open && !open.isDestroyed()) {
+    if (open.isMinimized()) open.restore();
+    open.show();
+    open.focus();
+    return true;
+  }
+  const win = new BrowserWindow({
+    width: 1280,
+    height: 860,
+    minWidth: 640,
+    minHeight: 480,
+    backgroundColor: "#07080a",
+    title: `${s.name} — Cloud`,
+    autoHideMenuBar: true,
+    webPreferences: { preload: path.join(__dirname, "preload.js"), contextIsolation: true, nodeIntegration: false },
+  });
+  viewers.set(profileId, win);
+  // The window keeps the profile's name; the page's own <title> is the app's.
+  win.on("page-title-updated", (e) => e.preventDefault());
+  win.on("closed", () => {
+    if (viewers.get(profileId) === win) viewers.delete(profileId);
+  });
+  win.webContents.setWindowOpenHandler(() => ({ action: "deny" }));
+  win.webContents.on("will-navigate", (e) => e.preventDefault());
+  if (isDev) void win.loadURL(`http://localhost:3000/cloud?id=${encodeURIComponent(profileId)}`);
+  else void win.loadFile(path.join(__dirname, "..", "out", "cloud.html"), { query: { id: profileId } });
+  return true;
 }
 
 const ALLOWED_EXTERNAL = [/^https:\/\/www\.clearcotelabs\.com\//, /^https:\/\/github\.com\/clearcotelabs\//];
@@ -220,6 +290,7 @@ function registerIpc(): void {
     if (launcher.listRunning().includes(id)) {
       return { ok: false, error: "Stop this profile's browser before deleting it." };
     }
+    if (cloud.has(id)) return { ok: false, error: "Stop this profile's cloud browser before deleting it." };
     profiles.purgeTrash();
     return profiles.trashProfile(id);
   });
@@ -240,6 +311,13 @@ function registerIpc(): void {
   // Launch, streaming browser-download progress back to the renderer (first use of a version
   // downloads 100–250 MB — the UI shows a live bar so it never looks frozen).
   ipcMain.handle("launch", async (e, p: Profile) => {
+    if (cloud.has(p.id)) {
+      return {
+        ok: false,
+        error: "This profile is running in the cloud. Stop it there first: a profile runs in one place at a time.",
+        code: "RUNNING_IN_CLOUD",
+      };
+    }
     let downloaded = false;
     const r = await launcher.launch(p, (prog) => {
       downloaded = true;
@@ -257,6 +335,34 @@ function registerIpc(): void {
     return outcome;
   });
   ipcMain.handle("running", () => launcher.listRunning());
+
+  // ── Cloud ──────────────────────────────────────────────────────────────────
+  // Run a profile on Clearcote's servers (cloud.ts), follow it, stop it, and show it in a viewer
+  // window. The API key stays in this process: the viewer only ever gets a 60-second view URL.
+  ipcMain.handle("cloud:list", () => cloud.list());
+  ipcMain.handle("cloud:start", async (_e, p: Profile) => {
+    const r = await cloud.start(p);
+    if (r.ok) {
+      profiles.markLaunched(p.id);
+      openViewer(p.id);
+    }
+    refreshTrayMenu();
+    return r;
+  });
+  ipcMain.handle("cloud:stop", async (_e, id: string) => {
+    const r = await cloud.stop(String(id));
+    refreshTrayMenu();
+    return r;
+  });
+  ipcMain.handle("cloud:open", (_e, id: string) => openViewer(String(id)));
+  ipcMain.handle("cloud:viewUrl", (_e, id: string, control?: boolean) => cloud.viewUrl(String(id), control !== false));
+  // Settings → Cloud: is this key accepted, and what is the balance. A typed key is checked as typed.
+  ipcMain.handle("cloud:account", async (_e, key?: string) => {
+    const c = cloudClient(typeof key === "string" && key.trim() ? key.trim() : undefined);
+    if ("error" in c) return { ok: false, error: c.error, code: c.code };
+    const r = await c.account();
+    return r.ok ? { ok: true, balanceEur: r.data.balanceEur } : { ok: false, error: r.error, code: r.code, status: r.status };
+  });
 
   // Public browser-build catalog (drives the per-profile version dropdown). Best-effort: an
   // unreachable catalog returns [] so the UI just falls back to "latest".
@@ -549,6 +655,18 @@ app.whenReady().then(() => {
   ensureDirs();
   profiles.purgeTrash(); // deletes past their undo window, from this run or an earlier one
   void purgeDeleting(); // a cache removal interrupted between rename and delete
+  cloud = new CloudManager({
+    api: () => cloudClient(),
+    attach: (url) => attachOnce(url),
+    file: path.join(app.getPath("userData"), "cloud-sessions.json"),
+    runningLocally: (id) => launcher.listRunning().includes(id),
+    pollMs: Number(process.env.CLEARCOTE_CLOUD_POLL_MS) || 15_000,
+  });
+  cloud.on("changed", (list) => {
+    sendAll("cloud:changed", list);
+    refreshTrayMenu();
+  });
+  cloud.on("ended", (ev) => sendAll("cloud:ended", ev));
   registerIpc();
   // A browser that stopped without being asked to: tell the window, so its card can say why.
   launcher.browserEvents.on("exited", (ev) => {
@@ -557,11 +675,13 @@ app.whenReady().then(() => {
   });
   // Quitting from anywhere else (the OS, a menu) closes the browsers properly first.
   app.on("before-quit", (e) => {
-    if (quittingApp || launcher.listRunning().length === 0) return;
+    if (quittingApp || (launcher.listRunning().length === 0 && cloud.list().length === 0)) return;
     e.preventDefault();
     void stopAndQuit();
   });
   createWindow();
+  // Cloud browsers this app started before a restart keep running on the servers: pick them back up.
+  void cloud.restore();
   app.on("activate", () => {
     if (BrowserWindow.getAllWindows().length === 0) createWindow();
   });

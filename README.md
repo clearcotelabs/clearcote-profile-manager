@@ -4,7 +4,7 @@ A desktop app to **create, save, organize, and launch [Clearcote](https://github
 
 ![Clearcote Profile Manager](docs/screenshots/profile-manager.png)
 
-> **Status:** built — profile create/edit/launch, proxy geo-resolve, import/export, a light/dark theme (dark by default), and packaged builds for **Windows and Linux** (both cut by CI on every release). Full design + phases in **[PLAN.md](PLAN.md)**.
+> **Status:** built — profile create/edit/launch, running a profile in the cloud with a live window, proxy geo-resolve, import/export, a light/dark theme (dark by default), and packaged builds for **Windows and Linux** (both cut by CI on every release). Full design + phases in **[PLAN.md](PLAN.md)**.
 
 <details>
 <summary>More screenshots — meet Clyde, light theme, editor</summary>
@@ -125,6 +125,31 @@ set no location) and the Geolocation API reports the host's real position — ge
 derived from the proxy on its own. The lookup speaks SOCKS5 with authentication directly, so it works
 through the same residential proxies the browser uses.
 
+## Cloud sessions
+
+A profile can also run on Clearcote's servers instead of this PC. Its card's **Cloud** button starts
+it as a [hosted browser](https://www.clearcotelabs.com/) and opens a window where you watch it live and
+drive it: click, type, scroll, paste, go back, or open an address.
+
+- **Paid from your Clearcote balance, per GB of traffic,** with an **API key** (`cc_live_…`) from the
+  dashboard's [API keys](https://www.clearcotelabs.com/dashboard/api-keys) page. It is not the licence
+  key: the licence runs browsers on this PC, the API key pays for browsers on the servers. Paste it
+  into **Settings → Cloud** (or set `CLEARCOTE_API_KEY`); **Check** shows your balance.
+- **What it carries:** the profile's seed, platform, brand, timezone, languages, browser version and
+  geoip. Its traffic leaves through the profile's own `http://` or `socks5://` proxy, or the included
+  residential IP in a country you pick, which stays the same for up to a day. The editor's **Cloud**
+  section shows the plan before you start, and lists the settings that only apply on this PC.
+- **Its cookies are kept** between cloud sessions, in your Clearcote account and separate from this
+  PC's browser data. Turn that off for an empty browser every time. You can also block ads and
+  trackers, record each session (watch it in the dashboard), or cap its traffic.
+- **When it stops:** Stop on its card or in its window, quitting the app, or 30 minutes with nobody
+  watching or typing. Closing its window, or keeping the app in the tray, does not stop it. If the
+  app crashes, it finds the session again when it restarts.
+- A profile runs in one place at a time: on this PC or in the cloud.
+
+The API key stays in the app's main process and is sent only to clearcotelabs.com. The live window
+gets a link that is valid for a minute, never the key.
+
 ## PRO tier (license key)
 
 By default the app launches the **free** Clearcote build. If you have a PRO license, paste your key
@@ -185,6 +210,7 @@ npm run dist       # package for whichever OS you are on
 |---|---|
 | `electron/` | main process — profile storage, binary resolution, browser launch, IPC |
 | `electron/fpargs.ts` | **the** profile → Chromium-switch builder, shared by the launcher and the UI preview so the command line you see is the one that runs |
+| `electron/cloud*.ts` | cloud sessions: the profile → session plan (`cloudbody.ts`), the hosted API client, the one-time CDP attach that starts a browser, and the session manager; `app/cloud/` is the live window |
 | `app/` | Next.js renderer (the UI) |
 | `src/types/` | shared data model (`Profile`) |
 | `tests/` | vitest unit suite (`npm test`) — see [tests/README.md](tests/README.md) |

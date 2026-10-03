@@ -134,4 +134,19 @@ describe("closeAction — closing the window with browsers open", () => {
     expect(askText(2).detail).toMatch(/free plan stops by itself within a few minutes/);
     expect(ASK_BUTTONS).toEqual(["Keep running in the tray", "Close browsers and quit", "Cancel"]);
   });
+  it("says cloud browsers keep running (and costing) in the tray, and that quitting stops them", () => {
+    // Only local browsers: the text is unchanged.
+    expect(askText(2, 0)).toEqual(askText(2));
+    const one = askText(1, 1);
+    expect(one.message).toBe("1 browser is still running.");
+    expect(one.detail).not.toMatch(/free plan/);
+    expect(one.detail).toBe(
+      "1 runs in the cloud, on Clearcote's servers. In the tray it keeps running, and costing traffic, until stopped or after 30 minutes with nobody watching. “Close browsers and quit” stops it too.",
+    );
+    const mixed = askText(3, 2);
+    expect(mixed.message).toBe("3 browsers are still running.");
+    const [local, cloud] = mixed.detail.split("\n\n");
+    expect(local).toMatch(/free plan stops by itself/);
+    expect(cloud).toMatch(/^2 run in the cloud, on Clearcote's servers\. In the tray they keep running.* stops them too\.$/);
+  });
 });

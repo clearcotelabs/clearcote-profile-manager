@@ -2,7 +2,15 @@
 
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import type { Profile } from "@/types/profile";
-import { api, isElectron, type Settings, type DownloadProgress, type UpdateInfo, type ExitEvent } from "@/lib/ipc";
+import {
+  api,
+  isElectron,
+  type Settings,
+  type DownloadProgress,
+  type UpdateInfo,
+  type ExitEvent,
+  type CloudSession,
+} from "@/lib/ipc";
 import ProfileEditor from "@/components/ProfileEditor";
 import SettingsModal, { type Section as SettingsSection } from "@/components/SettingsModal";
 import LibraryModal from "@/components/LibraryModal";
@@ -19,6 +27,8 @@ import { dialogOpen } from "@/components/Dialog";
 import { LogoMark } from "@/components/LogoMark";
 import { Mascot } from "@/components/Mascot";
 import {
+  describeCloudEnd,
+  describeCloudError,
   describeExit,
   describeLaunchError,
   describeLaunchWarnings,
@@ -114,10 +124,16 @@ export default function Page() {
   );
 }
 
+/** Where the cloud balance is topped up (dashboard → Browsers). */
+const CLOUD_TOPUP_URL = "https://www.clearcotelabs.com/dashboard/browsers";
+
 function Manager() {
   const confirm = useConfirm();
   const [profiles, setProfiles] = useState<Profile[]>([]);
   const [running, setRunning] = useState<string[]>([]);
+  // Profiles running on Clearcote's servers, as the main process follows them (electron/cloud.ts).
+  const [cloudSessions, setCloudSessions] = useState<CloudSession[]>([]);
+  const [cloudStartingId, setCloudStartingId] = useState<string | null>(null);
   const [launchingId, setLaunchingId] = useState<string | null>(null);
   const [dl, setDl] = useState<DownloadProgress | null>(null);
   // The editor works on a copy; `editingInitial` is what was opened, so closing can tell whether
@@ -222,6 +238,23 @@ function Manager() {
   useEffect(() => {
     const off = api.onDownloadProgress?.((prog) => setDl(prog));
     return () => off?.();
+  }, []);
+
+  // Cloud sessions: the list now, every change after (usage, cost, stopping), and a notice on the card
+  // when the service ends one on its own (idle, a cap, the balance).
+  useEffect(() => {
+    let alive = true;
+    void api.cloud.list().then((l) => alive && setCloudSessions(l));
+    const offChanged = api.cloud.onChanged((l) => setCloudSessions(l));
+    const offEnded = api.cloud.onEnded((ev) => {
+      const n = describeCloudEnd(ev);
+      if (n) setNotices((all) => ({ ...all, [ev.profileId]: n }));
+    });
+    return () => {
+      alive = false;
+      offChanged();
+      offEnded();
+    };
   }, []);
 
   // A browser that stopped without being asked: say why on its card (electron/exitreason.ts).
@@ -397,8 +430,40 @@ function Manager() {
     await refresh();
   }
 
+  // ── Cloud ─────────────────────────────────────────────────────────────────
+  /** Run a profile on Clearcote's servers; its viewer window opens when it is up. */
+  async function cloudStart(p: Profile) {
+    setCloudStartingId(p.id);
+    setNotices(({ [p.id]: _old, ...rest }) => rest);
+    try {
+      const r = await api.cloud.start(p);
+      setCloudSessions(await api.cloud.list());
+      if (r.ok) {
+        await refresh();
+        if (r.warnings.length) setNotices((n) => ({ ...n, [p.id]: describeLaunchWarnings(r.warnings) }));
+        notify(`“${displayName(p)}” is running in the cloud.`);
+      } else {
+        const n = describeCloudError(r);
+        if (n) setNotices((all) => ({ ...all, [p.id]: n }));
+      }
+    } finally {
+      setCloudStartingId(null);
+    }
+  }
+  async function cloudStop(p: Profile) {
+    const r = await api.cloud.stop(p.id);
+    setCloudSessions(await api.cloud.list());
+    if (r.ok) notify(`Stopping “${displayName(p)}” in the cloud.`);
+    else notify(r.error || "It could not be stopped. Try again.", { tone: "error" });
+  }
+  async function cloudOpen(p: Profile) {
+    if (!(await api.cloud.open(p.id))) notify("It is no longer running in the cloud.", { tone: "error" });
+  }
+
   async function noticeAction(p: Profile, a: NoticeAction) {
     if (a.kind === "retry") void launch(p);
+    else if (a.kind === "retry-cloud") void cloudStart(p);
+    else if (a.kind === "topup") void api.openExternal(CLOUD_TOPUP_URL);
     else if (a.kind === "settings") setSettingsOpen(a.section);
     else if (a.kind === "swap") {
       // Stop resolves once the slot is checked back in, so the launch right after gets it.
@@ -508,17 +573,20 @@ function Manager() {
   }
 
   // ── List ──────────────────────────────────────────────────────────────────
+  const cloudById = useMemo(() => new Map(cloudSessions.map((c) => [c.profileId, c])), [cloudSessions]);
+  // "Running" means open anywhere: on this PC or in the cloud.
+  const active = useMemo(() => [...running, ...cloudSessions.map((c) => c.profileId).filter((id) => !running.includes(id))], [running, cloudSessions]);
   const filtered = useMemo(
     () =>
       sortProfiles(
-        filterProfiles(profiles, { query, tag: tagFilter ?? undefined, group: groupFilter?.key, runningOnly }, running),
-        running,
+        filterProfiles(profiles, { query, tag: tagFilter ?? undefined, group: groupFilter?.key, runningOnly }, active),
+        active,
         sort,
       ),
-    [profiles, query, tagFilter, groupFilter, runningOnly, running, sort],
+    [profiles, query, tagFilter, groupFilter, runningOnly, active, sort],
   );
   const sections = useMemo(() => groupProfiles(filtered, groupOrder), [filtered, groupOrder]);
-  const runningCount = profiles.filter((p) => running.includes(p.id)).length;
+  const runningCount = profiles.filter((p) => active.includes(p.id)).length;
   const groupNames = useMemo(
     () => Array.from(new Map(profiles.filter((p) => p.group?.trim()).map((p) => [groupKey(p.group), p.group!.trim()])).values()).sort(),
     [profiles],
@@ -595,7 +663,7 @@ function Manager() {
   async function bulkLaunch() {
     let done = 0;
     for (const p of selectedProfiles) {
-      if (running.includes(p.id)) continue;
+      if (active.includes(p.id)) continue;
       const r = await launch(p);
       if (r.ok) done++;
       else if (r.code === "CONCURRENCY_LIMIT_EXCEEDED") {
@@ -607,12 +675,15 @@ function Manager() {
   }
   async function bulkStop() {
     const ids = selectedProfiles.map((p) => p.id).filter((id) => running.includes(id));
-    await Promise.all(ids.map((id) => api.stop(id)));
+    const inCloud = selectedProfiles.map((p) => p.id).filter((id) => cloudById.has(id));
+    await Promise.all([...ids.map((id) => api.stop(id)), ...inCloud.map((id) => api.cloud.stop(id))]);
     await refresh();
+    setCloudSessions(await api.cloud.list());
+    ids.push(...inCloud);
     notify(`Stopped ${ids.length} browser${ids.length === 1 ? "" : "s"}.`);
   }
   async function bulkDelete() {
-    const deletable = selectedProfiles.filter((p) => !running.includes(p.id));
+    const deletable = selectedProfiles.filter((p) => !active.includes(p.id));
     const skipped = selectedProfiles.length - deletable.length;
     if (!deletable.length) {
       notify("Stop their browsers first — running profiles can't be deleted.", { tone: "error" });
@@ -955,7 +1026,7 @@ function Manager() {
                   <GroupHeader
                     name={sec.group ?? "No group"}
                     count={sec.profiles.length}
-                    running={sec.profiles.filter((p) => running.includes(p.id)).length}
+                    running={sec.profiles.filter((p) => active.includes(p.id)).length}
                     collapsed={folded}
                     isGroup={sec.group !== null}
                     canMoveUp={ni > 0}
@@ -984,6 +1055,11 @@ function Manager() {
                         onFilterTag={(t) => setTagFilter(t)}
                         onLaunch={() => void launch(p)}
                         onStop={() => stop(p)}
+                        cloud={cloudById.get(p.id)}
+                        cloudStarting={cloudStartingId === p.id}
+                        onCloudStart={() => void cloudStart(p)}
+                        onCloudStop={() => void cloudStop(p)}
+                        onCloudOpen={() => void cloudOpen(p)}
                         onEdit={(field) => openEditor(p, field)}
                         onDuplicate={() => duplicate(p)}
                         onDelete={() => remove(p)}
@@ -1018,7 +1094,7 @@ function Manager() {
             <button className={btnGhost} onClick={bulkLaunch}>
               Launch
             </button>
-            <button className={btnGhost} onClick={bulkStop} disabled={!selectedProfiles.some((p) => running.includes(p.id))}>
+            <button className={btnGhost} onClick={bulkStop} disabled={!selectedProfiles.some((p) => active.includes(p.id))}>
               Stop
             </button>
             <button className={btnGhost} onClick={() => setPrompt({ kind: "set-group" })}>

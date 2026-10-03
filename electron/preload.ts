@@ -11,6 +11,7 @@ import type { TrashResult, RestoreResult } from "./profiles";
 import type { ExitEvent } from "./launcher";
 import type { StopOutcome } from "./procstop";
 import type { TempCopy } from "./cache";
+import type { CloudSessionState, CloudStartResult, CloudEnded } from "./cloud";
 
 /** Subscribe to a main-process event; returns the unsubscribe function. */
 function on<T>(channel: string, cb: (data: T) => void): () => void {
@@ -60,6 +61,24 @@ const api = {
   launch: (p: Profile): Promise<LaunchResult> => ipcRenderer.invoke("launch", p),
   stop: (id: string): Promise<StopOutcome> => ipcRenderer.invoke("stop", id),
   running: (): Promise<string[]> => ipcRenderer.invoke("running"),
+  /** Profiles running on Clearcote's servers. The API key never reaches the window: the viewer gets
+   *  a 60-second view URL, nothing else. */
+  cloud: {
+    list: (): Promise<CloudSessionState[]> => ipcRenderer.invoke("cloud:list"),
+    start: (p: Profile): Promise<CloudStartResult> => ipcRenderer.invoke("cloud:start", p),
+    stop: (id: string): Promise<{ ok: boolean; error?: string }> => ipcRenderer.invoke("cloud:stop", id),
+    /** Bring the profile's viewer window forward (opening it when closed). */
+    open: (id: string): Promise<boolean> => ipcRenderer.invoke("cloud:open", id),
+    viewUrl: (
+      id: string,
+      control?: boolean,
+    ): Promise<{ ok: true; viewUrl: string; interactive: boolean } | { ok: false; error: string; ended?: boolean }> =>
+      ipcRenderer.invoke("cloud:viewUrl", id, control),
+    account: (key?: string): Promise<{ ok: boolean; balanceEur?: number; error?: string; code?: string; status?: number }> =>
+      ipcRenderer.invoke("cloud:account", key),
+    onChanged: (cb: (list: CloudSessionState[]) => void) => on<CloudSessionState[]>("cloud:changed", cb),
+    onEnded: (cb: (ev: CloudEnded) => void) => on<CloudEnded>("cloud:ended", cb),
+  },
   listVersions: (): Promise<VersionOption[]> => ipcRenderer.invoke("versions:list"),
   /** PRO rebuild revisions ("150.0.7871.114-r10", …), newest first. [] when unlicensed. */
   listRevisions: (): Promise<string[]> => ipcRenderer.invoke("versions:revisions"),

@@ -368,6 +368,9 @@ describe.skipIf(!READY)("usability pass — in a real browser", () => {
     await btn.focus();
     await page.keyboard.press("ArrowDown");
     await page.getByRole("menu").waitFor();
+    expect(await page.evaluate(() => document.activeElement?.textContent)).toBe("Run in the cloud");
+    // The separator is skipped.
+    await page.keyboard.press("ArrowDown");
     expect(await page.evaluate(() => document.activeElement?.textContent)).toBe("Duplicate");
     await page.keyboard.press("ArrowDown");
     expect(await page.evaluate(() => document.activeElement?.textContent)).toBe("Export…");

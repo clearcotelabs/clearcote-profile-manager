@@ -7,11 +7,16 @@
 // it, and keeps the original text for "Copy details".
 
 import { classifyExit, type ExitFacts } from "../../electron/exitreason";
+import { endReasonText, formatBytes, formatEur } from "../../electron/cloudtext";
 
 export type NoticeAction =
   | { kind: "edit"; field: string }
-  | { kind: "settings"; section: "license" | "browser" }
+  | { kind: "settings"; section: "license" | "browser" | "cloud" }
   | { kind: "retry" }
+  /** Start the profile in the cloud again. */
+  | { kind: "retry-cloud" }
+  /** Open the dashboard page where the cloud balance is topped up. */
+  | { kind: "topup" }
   /** One-browser plan: stop the profile that holds the slot, then launch this one. */
   | { kind: "swap"; stopId: string; stopName: string };
 
@@ -135,6 +140,9 @@ export function describeLaunchError(error: string | undefined, code?: string): L
       action: { kind: "retry" },
     });
   }
+  if (c === "RUNNING_IN_CLOUD") {
+    return n({ tone: "warning", title: "This profile is running in the cloud", lines: ["Stop it there first: a profile runs in one place at a time."] });
+  }
   if (/already running/i.test(msg)) {
     return n({ title: "This profile is already running", lines: [] });
   }
@@ -170,7 +178,9 @@ export function describeLaunchWarnings(warnings: string[]): LaunchNotice {
 export function actionLabel(a: NoticeAction): string {
   if (a.kind === "retry") return "Try again";
   if (a.kind === "swap") return `Stop “${a.stopName}” and launch`;
-  if (a.kind === "settings") return a.section === "license" ? "Licence settings" : "Browser settings";
+  if (a.kind === "retry-cloud") return "Start in the cloud again";
+  if (a.kind === "topup") return "Top up ↗";
+  if (a.kind === "settings") return a.section === "license" ? "Licence settings" : a.section === "cloud" ? "Cloud settings" : "Browser settings";
   return a.field === "browserVersion" ? "Change version" : "Edit profile";
 }
 
@@ -258,4 +268,110 @@ export function describeExit(ev: ExitFacts): LaunchNotice | null {
       };
     }
   }
+}
+
+/** What a failed cloud start tells the person, with the one action that fixes it. */
+export interface CloudFailure {
+  error: string;
+  code?: string;
+  status?: number;
+  field?: string;
+}
+
+export function describeCloudError(f: CloudFailure): LaunchNotice | null {
+  const c = (f.code ?? "").toUpperCase();
+  const n = (x: Omit<LaunchNotice, "raw" | "tone"> & { tone?: LaunchNotice["tone"] }): LaunchNotice => ({
+    tone: "error",
+    raw: f.error || undefined,
+    ...x,
+  });
+  if (c === "STOPPED") return null;
+  if (c === "PREVIEW") return n({ tone: "warning", title: "Cloud sessions run in the desktop app.", lines: [] });
+  if (c === "NO_KEY") {
+    return n({
+      tone: "warning",
+      title: "Add your API key to run in the cloud",
+      lines: [
+        "Cloud browsers are paid from your Clearcote balance with an API key (cc_live_…), from the dashboard's API keys page. It is not the licence key.",
+      ],
+      action: { kind: "settings", section: "cloud" },
+    });
+  }
+  if (c === "UNAUTHORIZED" || f.status === 401) {
+    return n({
+      title: "Your API key wasn't accepted",
+      lines: ["It may have been revoked, or copied incompletely. Check it in Settings → Cloud."],
+      action: { kind: "settings", section: "cloud" },
+    });
+  }
+  if (c === "BAD_BASE") return n({ title: "The cloud API address is invalid", lines: [f.error], action: { kind: "settings", section: "cloud" } });
+  if (c === "UNKNOWN_VERSION") {
+    return n({
+      title: "The cloud doesn't have this browser version",
+      lines: [f.error, "Pick Latest, or one of the versions listed, for this profile's browser version."],
+      action: { kind: "edit", field: "browserVersion" },
+    });
+  }
+  if (c === "PROFILE_IN_USE") {
+    return n({
+      title: "This profile is still saving in the cloud",
+      lines: [
+        "Another cloud browser is saving this profile's cookies: one started from another PC or from the dashboard, or one that is still closing.",
+        "Stop it there, or wait for it to close, then start this one again.",
+      ],
+      action: { kind: "retry-cloud" },
+    });
+  }
+  if (c === "INSUFFICIENT_BALANCE" || f.status === 402) {
+    return n({ title: "Your cloud balance is too low", lines: [f.error], action: { kind: "topup" } });
+  }
+  if (f.status === 429 && c !== "CONCURRENCY_LIMIT") {
+    return n({ title: "Too many requests", lines: [f.error, "Wait a minute, then try again."], action: { kind: "retry-cloud" } });
+  }
+  if (c === "CONCURRENCY_LIMIT") {
+    return n({
+      title: "Too many cloud browsers at once",
+      lines: [f.error, "Stop one of them, then start this one again."],
+      action: { kind: "retry-cloud" },
+    });
+  }
+  if (c === "NOT_AVAILABLE" || c === "NOT_CONFIGURED") {
+    return n({ title: "The cloud can't run this right now", lines: [f.error], action: { kind: "retry-cloud" } });
+  }
+  if (c === "NO_CAPACITY" || f.status === 503) {
+    return n({ title: "No cloud browser is free right now", lines: [f.error, "This passes quickly: try again in a moment."], action: { kind: "retry-cloud" } });
+  }
+  if (c === "PROFILE") {
+    return n({
+      title: "This profile can't run in the cloud as set",
+      lines: [f.error],
+      action: { kind: "edit", field: f.field || "cloud" },
+    });
+  }
+  if (c === "RUNNING_LOCALLY") return n({ tone: "warning", title: "This profile is open on this PC", lines: [f.error] });
+  if (c === "ALREADY_RUNNING") return n({ tone: "warning", title: "This profile is already running in the cloud", lines: [] });
+  if (c === "STOPPING") return n({ tone: "warning", title: "This profile is still stopping in the cloud", lines: [f.error], action: { kind: "retry-cloud" } });
+  if (c === "ATTACH") return n({ title: "The cloud browser didn't start", lines: [f.error], action: { kind: "retry-cloud" } });
+  if (c === "NETWORK" || c === "TIMEOUT" || f.status === 0) {
+    return n({
+      title: "Couldn't reach Clearcote's servers",
+      lines: [f.error, "Check your internet connection, and any system proxy or firewall, then try again."],
+      action: { kind: "retry-cloud" },
+    });
+  }
+  return n({ title: "Couldn't start in the cloud", lines: [f.error || "No reason was given."], action: { kind: "retry-cloud" } });
+}
+
+/** A cloud session that ended without this app stopping it, as a card notice. Null for a stop. */
+export function describeCloudEnd(ev: { reason: string | null; status?: string; bytes?: number; costEur?: number }): LaunchNotice | null {
+  const r = (ev.reason ?? "").trim();
+  if (r === "stopped:user" || r === "user") return null;
+  const balance = r === "stopped:balance" || r === "balance";
+  const used = ev.bytes != null || ev.costEur != null ? [`It used ${formatBytes(ev.bytes)} and cost ${formatEur(ev.costEur)}.`] : [];
+  return {
+    tone: "warning",
+    title: "The cloud browser ended",
+    lines: [endReasonText(ev.reason, ev.status), ...used],
+    action: balance ? { kind: "topup" } : { kind: "retry-cloud" },
+  };
 }
