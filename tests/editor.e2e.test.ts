@@ -158,9 +158,22 @@ describe.skipIf(!READY)("editor UI — the category rail in a real browser", () 
     await untilHeading(/^Identity$/);
   }, 20000);
 
-  it("reports the Widevine contradiction on a brand-new profile", async () => {
+  it("a brand-new profile opens coherent, with Widevine already on", async () => {
+    // 0.16.0: new profiles default to Widevine, because brand unset means Chrome and Google's build
+    // always ships the CDM. Before that, every fresh profile opened with this one issue.
+    await untilChip(/coherent/);
+    await untilRail("Session", /Session\s*1$/);
+  }, 20000);
+
+  it("reports the Widevine contradiction once Widevine is switched off", async () => {
     // The audit row a real customer hit: brand unset means Chrome, and there is no CDM.
+    await rail("Session").click();
+    await untilHeading(/^Session & data$/);
+    await page.locator('[data-field="widevine"] input[type=checkbox]').uncheck();
     await untilChip(/1 issue/);
+    // Leave the section, so the deep-link below has to navigate back to it.
+    await rail("Identity").click();
+    await untilHeading(/^Identity$/);
     await chip().click();
     await settle();
     expect(await page.getByText(/reports the "Google Chrome" brand/).count()).toBeGreaterThan(0);
@@ -170,11 +183,19 @@ describe.skipIf(!READY)("editor UI — the category rail in a real browser", () 
     await page.getByRole("button", { name: /Fix/ }).first().click();
     await untilHeading(/^Session & data$/);
     expect(await isVisible('[data-field="widevine"] input[type=checkbox]')).toBe(true);
-    const focused = await page.evaluate(() => {
-      const el = document.querySelector('[data-field="widevine"]');
-      return !!el && el.contains(document.activeElement);
-    });
-    expect(focused, "the blamed field should be focused").toBe(true);
+    // The editor focuses the field from a timer after the section switch, so poll rather than read
+    // once: the heading can change a frame before focus moves.
+    await until(
+      async () =>
+        String(
+          await page.evaluate(() => {
+            const el = document.querySelector('[data-field="widevine"]');
+            return !!el && el.contains(document.activeElement);
+          }),
+        ),
+      /^true$/,
+      "the blamed field should be focused",
+    );
   }, 20000);
 
   it("fixing it clears the issue and updates the badge", async () => {
