@@ -240,15 +240,15 @@ export const FIELDS: FieldDef[] = [
       "Keeps the TLS ClientHello coherent with the Chrome version the persona claims, instead of always emitting the build's native one.",
   },
   {
-    key: "allowThirdPartyCookies",
+    key: "blockThirdPartyCookies",
     cat: "browser",
-    label: "Third-party cookies",
+    label: "Block third-party cookies",
     type: "check",
-    desc: "Allow third-party cookies, as stock Chrome does.",
-    hint: "Off by default: this build blocks them. Needs build 152 r22 or newer.",
-    keywords: "--allow-third-party-cookies 3pc cross-site iframe embedded login sso payment",
+    desc: "Block cookies from other sites embedded in a page.",
+    hint: "Off by default: third-party cookies are allowed, as in Chrome.",
+    keywords: "--block-third-party-cookies --allow-third-party-cookies 3pc cross-site iframe embedded login sso payment",
     why:
-      "The de-Googled base blocks third-party cookies by default, while Google's Chrome allows them. That breaks embedded sign-in, payment and challenge frames, and a site with two domains can see the difference.",
+      "Chrome allows third-party cookies, and embedded sign-in, payment and challenge frames rely on them. Block them only for a site that should not see them. Builds before 154 r36 block them unless told otherwise, so an unticked profile tells them to allow; set a choice here rather than on the browser's own settings page, which this overrides.",
   },
 
   // ── Hardware ──────────────────────────────────────────────────────────────

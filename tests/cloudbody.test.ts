@@ -271,7 +271,7 @@ describe("settings that stay on this PC", () => {
       shaderDialect: "hlsl",
       socks5Udp: true,
       transparentProxy: true,
-      allowThirdPartyCookies: true,
+      blockThirdPartyCookies: true,
       extraArgs: ["--foo"],
     });
     expect(all).toEqual([
@@ -299,7 +299,7 @@ describe("settings that stay on this PC", () => {
       "Shader dialect",
       "SOCKS5 UDP",
       "Transparent proxy",
-      "Third-party cookies",
+      "Third-party cookies blocked",
       "Extra switches",
     ]);
   });

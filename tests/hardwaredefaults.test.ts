@@ -84,26 +84,45 @@ describe("a typed screen size next to an identity that has its own screen", () =
   });
 });
 
-describe("third-party cookies", () => {
-  it("emits --allow-third-party-cookies exactly once when on", () => {
-    const a = fingerprintArgs({ fingerprint: "s", allowThirdPartyCookies: true });
-    expect(a.filter((x) => x === "--allow-third-party-cookies")).toHaveLength(1);
+describe("third-party cookies (allowed by default, as in Chrome)", () => {
+  // User decision 2026-10-09: allowed unless the profile blocks them. r35 and older block by
+  // default, so an unblocked profile must tell them to allow; r36 allows on its own.
+  const count = (a: string[], s: string) => a.filter((x) => x === s).length;
+
+  it("a profile that does not block sends --allow-third-party-cookies, exactly once", () => {
+    const a = fingerprintArgs({ fingerprint: "s" });
+    expect(count(a, "--allow-third-party-cookies")).toBe(1);
+    expect(a).not.toContain("--block-third-party-cookies");
   });
 
-  it("emits nothing when off, the build's own default", () => {
-    expect(fingerprintArgs({ fingerprint: "s" })).not.toContain("--allow-third-party-cookies");
-    expect(fingerprintArgs({ fingerprint: "s", allowThirdPartyCookies: false })).not.toContain(
-      "--allow-third-party-cookies",
-    );
+  it("a new profile does not block", () => {
+    const p = newProfile("s", "2026-10-09T00:00:00.000Z");
+    expect(fingerprintArgs(p)).toContain("--allow-third-party-cookies");
   });
 
-  it("is a checkbox in the editor", () => {
-    expect(fieldByKey("allowThirdPartyCookies")?.type).toBe("check");
+  it("blocking sends --block-third-party-cookies and never the allow switch", () => {
+    const a = fingerprintArgs({ fingerprint: "s", blockThirdPartyCookies: true });
+    expect(count(a, "--block-third-party-cookies")).toBe(1);
+    expect(a).not.toContain("--allow-third-party-cookies");
   });
 
-  it("warns on a build older than 152", () => {
-    expect(ids({ ...CLEAN, allowThirdPartyCookies: true }, { major: 151 })).toContain("third-party-cookies-needs-152");
-    expect(ids({ ...CLEAN, allowThirdPartyCookies: true }, { major: 154 })).not.toContain("third-party-cookies-needs-152");
+  it("holds under Light stealth too", () => {
+    expect(fingerprintArgs({ fingerprint: "s", lightStealth: true })).toContain("--allow-third-party-cookies");
+  });
+
+  it("is a 'Block' checkbox, off by default", () => {
+    const f = fieldByKey("blockThirdPartyCookies")!;
+    expect(f.type).toBe("check");
+    expect(f.defaultOn).toBeFalsy();
+    expect(f.label).toMatch(/^Block/);
+    expect(fieldByKey("allowThirdPartyCookies")).toBeUndefined();
+  });
+
+  it("raises no warning on any build, blocked or not", () => {
+    for (const major of [151, 154]) {
+      expect(ids({ ...CLEAN }, { major }).some((i) => i.includes("third-party"))).toBe(false);
+      expect(ids({ ...CLEAN, blockThirdPartyCookies: true }, { major }).some((i) => i.includes("third-party"))).toBe(false);
+    }
   });
 });
 
@@ -142,10 +161,10 @@ describe("transparent proxy", () => {
     expect(ids(p, { major: 154 })).not.toContain("transparent-proxy-needs-152");
   });
 
-  it("is listed as staying on this PC for a cloud run, as is the cookie switch", () => {
-    expect(localOnlySettings({ id: "x", fingerprint: "s", transparentProxy: true, allowThirdPartyCookies: true })).toEqual([
+  it("is listed as staying on this PC for a cloud run, as is blocking cookies", () => {
+    expect(localOnlySettings({ id: "x", fingerprint: "s", transparentProxy: true, blockThirdPartyCookies: true })).toEqual([
       "Transparent proxy",
-      "Third-party cookies",
+      "Third-party cookies blocked",
     ]);
   });
 });

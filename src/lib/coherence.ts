@@ -43,7 +43,8 @@ export interface CoherenceContext {
  *  dialect (r15). Kept here so the rules read declaratively; mirrors electron/proxyargs.ts. */
 export const MIN_MAJOR_151 = 151;
 
-/** Engine major that carries --allow-third-party-cookies and --transparent-proxy (152 r22, patch 989). */
+/** Engine major that carries --allow-third-party-cookies and --transparent-proxy (152 r22, patch 989).
+ *  --block-third-party-cookies arrived in 154 r36, where allowing became the default. */
 export const MIN_MAJOR_152 = 152;
 
 /** MEASURED on 151 r16, so no rule guards it: the engine enforces Chromium's own deviceMemory
@@ -164,20 +165,12 @@ export function coherenceIssues(
     });
   }
 
-  // ── Two switches the engine gained in 152 r22 ─────────────────────────────
-  // Older builds ignore them, so the profile would claim a behaviour it does not get. The revision
+  // ── A switch the engine gained in 152 r22 ─────────────────────────────────
+  // Older builds ignore it, so the profile would claim a behaviour it does not get. The revision
   // inside 152 cannot be told from the major alone; this catches the wrong-major case, as the other
-  // version rules here do.
+  // version rules here do. (Third-party cookies have no rule: allowing them is not something the
+  // profile asks for any more, and a build that cannot allow them blocks, as it always did.)
   if (ctx.major !== undefined && ctx.major < MIN_MAJOR_152) {
-    if (profile.allowThirdPartyCookies) {
-      out.push({
-        id: "third-party-cookies-needs-152",
-        severity: "warn",
-        field: "allowThirdPartyCookies",
-        message: `Allowing third-party cookies needs Clearcote ${MIN_MAJOR_152} (r22+); build ${ctx.major} ignores it and keeps blocking them.`,
-        fix: `Set the browser version to ${MIN_MAJOR_152} or newer.`,
-      });
-    }
     if (profile.transparentProxy && proxy) {
       out.push({
         id: "transparent-proxy-needs-152",

@@ -73,7 +73,7 @@ export interface CloudInput {
   shaderDialect?: string;
   socks5Udp?: boolean;
   transparentProxy?: boolean;
-  allowThirdPartyCookies?: boolean;
+  blockThirdPartyCookies?: boolean;
   proxy?: unknown;
   extraArgs?: string[];
   startUrl?: string;
@@ -167,7 +167,7 @@ export function localOnlySettings(p: CloudInput): string[] {
   add(p.shaderDialect, "Shader dialect");
   add(p.socks5Udp, "SOCKS5 UDP");
   add(p.transparentProxy, "Transparent proxy");
-  add(p.allowThirdPartyCookies, "Third-party cookies");
+  add(p.blockThirdPartyCookies, "Third-party cookies blocked");
   add(p.extraArgs?.length, "Extra switches");
   // With nothing set, the service follows the exit IP's timezone and language (options.ts); "off"
   // here would mean the server's own, so it is not carried over.

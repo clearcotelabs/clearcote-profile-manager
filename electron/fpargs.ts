@@ -289,7 +289,7 @@ export interface FpInput {
   fingerprintProfile?: string;
   portableProfile?: boolean;
   encryptionKey?: string;
-  allowThirdPartyCookies?: boolean;
+  blockThirdPartyCookies?: boolean;
   extraArgs?: string[];
 }
 
@@ -399,10 +399,11 @@ export function fingerprintArgs(input: FpInput, opts: FpArgsOptions = {}): strin
   if (p.gpuStringSpoof === false) args.push("--disable-gpu-string-spoof");
   if (p.canvasNoise === false) args.push("--disable-canvas-noise");
 
-  // The de-Googled base defaults Chromium's cookie controls to "block third-party cookies"; stock
-  // Chrome allows them. Engine 152 r22+ (patch 989) restores Chrome's behaviour on request. Opt-in,
-  // exactly as the SDK's allowThirdPartyCookies.
-  if (p.allowThirdPartyCookies) args.push("--allow-third-party-cookies");
+  // Third-party cookies are allowed, as in stock Chrome, unless the profile blocks them. The engine
+  // made allowing its own default in 154 r36; 152 r22 to r35 blocked by default (the de-Googled
+  // base) and allow only with --allow-third-party-cookies, so that switch is sent whenever the
+  // profile does not block, which gives every build the same behaviour. Exactly one of the two.
+  args.push(p.blockThirdPartyCookies ? "--block-third-party-cookies" : "--allow-third-party-cookies");
 
   if (p.fingerprintProfile && opts.encodeProfile) {
     const encoded = opts.encodeProfile(p.fingerprintProfile);

@@ -211,10 +211,11 @@ export interface Profile {
    *  `Proxy-Connection` on plain-HTTP requests and report proxied connection timing like a reused
    *  connection. Only meaningful with a proxy, so it is emitted only when one is set. */
   transparentProxy?: boolean;
-  /** --allow-third-party-cookies (engine 152 r22+): the de-Googled base blocks third-party cookies
-   *  by default while stock Chrome allows them, which breaks embedded sign-in, payment and challenge
-   *  frames. Off by default, like the SDK's `allowThirdPartyCookies`. */
-  allowThirdPartyCookies?: boolean;
+  /** Block third-party cookies. Off by default: third-party cookies are allowed, as stock Chrome
+   *  allows them. On emits --block-third-party-cookies (engine 154 r36+, where allowing is also the
+   *  engine's own default); off emits --allow-third-party-cookies, which 152 r22 to r35 need because
+   *  their de-Googled base blocked by default. */
+  blockThirdPartyCookies?: boolean;
   /** Proxy as a single string: "scheme://user:pass@host:port" (auth optional), e.g.
    *  "http://user:pass@host:8080" or "socks5://user:pass@host:1080". Authenticated http/https go
    *  through a local auth-injecting relay; authenticated SOCKS5 is authenticated by the engine
