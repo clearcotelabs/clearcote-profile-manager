@@ -123,7 +123,7 @@ describe("selecting a model writes BOTH strings in the persona platform's form",
   it("a Linux persona takes the OpenGL form", () => {
     const p = applyModel({ platform: "linux" }, RX6700);
     expect(p.gpuVendor).toBe("Google Inc. (AMD)");
-    expect(p.gpuRenderer).toBe("ANGLE (AMD, AMD Radeon RX 6700 XT (radeonsi, navi22, LLVM 15.0.7, DRM 3.54, 6.5.0-generic), OpenGL 4.6)");
+    expect(p.gpuRenderer).toBe("ANGLE (AMD, AMD Radeon RX 6700 XT (radeonsi navi22 ACO), OpenGL 4.6)");
   });
 
   it("through the select: the default clears, a model writes, Custom keeps the strings and holds", () => {

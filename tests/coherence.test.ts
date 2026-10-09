@@ -272,7 +272,7 @@ describe("a GPU claim from another maker than the real card", () => {
   };
   const AMD_LINUX = {
     gpuVendor: "Google Inc. (AMD)",
-    gpuRenderer: "ANGLE (AMD, AMD Radeon RX 6700 XT (radeonsi, navi22, LLVM 15.0.7, DRM 3.54, 6.5.0-generic), OpenGL 4.6)",
+    gpuRenderer: "ANGLE (AMD, AMD Radeon RX 6700 XT (radeonsi navi22 ACO), OpenGL 4.6)",
   };
 
   it("fires when a table model's maker differs from the host's, in either platform form", () => {

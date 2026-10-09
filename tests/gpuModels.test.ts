@@ -29,7 +29,8 @@ const LINUX = {
   },
   amd: {
     vendor: /^Google Inc\. \(AMD\)$/,
-    renderer: /^ANGLE \(AMD, AMD (.+) \(radeonsi, (navi\d+), LLVM 15\.0\.7, DRM 3\.54, 6\.5\.0-generic\), OpenGL 4\.6\)$/,
+    // Mesa >= 24's radeonsi form, as the audit corpus shows it: chip codename, then ACO or LLVM <ver>.
+    renderer: /^ANGLE \(AMD, AMD (.+) \(radeonsi ([a-z0-9_]+) (ACO|LLVM [0-9.]+)\), OpenGL 4\.6\)$/,
   },
 } as const;
 const TOKEN: Record<GpuVendor, string> = { nvidia: "NVIDIA", intel: "Intel", amd: "AMD" };
@@ -81,19 +82,27 @@ describe("every entry's strings match the engine's format", () => {
         expect(tok).toBe(TOKEN[m.vendor]);
         expect(id).toMatch(HEX8);
         expect(id).toBe("0x" + m.deviceId.toString(16).toUpperCase().padStart(8, "0"));
-        // The description carries the model name, prefixed by the maker as the driver spells it.
-        expect(desc).toContain(m.name);
-        expect(desc.startsWith({ nvidia: "NVIDIA ", intel: "Intel(R) ", amd: "AMD " }[m.vendor]), desc).toBe(true);
+        // The description is the model as the driver names it, prefixed by the maker as the driver spells
+        // it. The label is that model, plus at most the chip generation in parentheses where several
+        // real parts share one name (four "UHD Graphics", three "Iris(R) Xe Graphics", two RTX 3070 dies).
+        const prefix = { nvidia: "NVIDIA ", intel: "Intel(R) ", amd: "AMD " }[m.vendor];
+        expect(desc.startsWith(prefix), desc).toBe(true);
+        const model = desc.slice(prefix.length);
+        expect(m.name === model || m.name.startsWith(model + " ("), `${m.name} vs ${model}`).toBe(true);
       });
 
       it("Linux strings take the driver family's form and name the same model", () => {
         expect(m.linux.vendor).toMatch(LINUX[m.vendor].vendor);
         const match = LINUX[m.vendor].renderer.exec(m.linux.renderer);
         expect(match, m.linux.renderer).not.toBeNull();
-        // Intel's Mesa name may differ from the Windows one (Iris(R) Xe vs Xe), but it must still be
-        // the same part — the model name's distinguishing tail is in both.
-        const tail = m.name.replace(/^Iris\(R\) /, "");
-        expect(match![1], `${m.linux.renderer} should name ${tail}`).toContain(tail);
+        // The driver names the same part. NVIDIA's own driver prints the marketing name; Mesa's radeonsi
+        // drops AMD's "(TM)"; Mesa's Intel driver prints the marketing name or, for newer parts, its
+        // generic "Graphics" / "Arc(tm) Graphics" (the corpus shows both), with the chip in the codename.
+        const base = m.name.replace(/ \([A-Za-z ]+\)$/, "");
+        const drv = match![1];
+        if (m.vendor === "nvidia") expect(drv).toBe(base);
+        else if (m.vendor === "amd") expect(drv).toBe(base.replace("(TM)", ""));
+        else expect([base, "Graphics", "Arc(tm) Graphics"], `${m.linux.renderer} for ${m.name}`).toContain(drv);
       });
 
       it("the Linux form carries no Direct3D and the Windows form no OpenGL", () => {
@@ -117,7 +126,7 @@ describe("every entry's strings match the engine's format", () => {
     });
   }
 
-  it("pins the exact provisional strings, so a data refresh cannot drift the format unnoticed", () => {
+  it("pins the exact strings the r36 engine serves, so a data refresh cannot drift unnoticed", () => {
     expect(byName("GeForce RTX 4070").windows).toEqual({
       vendor: "Google Inc. (NVIDIA)",
       renderer: "ANGLE (NVIDIA, NVIDIA GeForce RTX 4070 (0x00002786) Direct3D11 vs_5_0 ps_5_0, D3D11)",
@@ -134,7 +143,8 @@ describe("every entry's strings match the engine's format", () => {
       vendor: "Google Inc. (Intel)",
       renderer: "ANGLE (Intel, Mesa Intel(R) UHD Graphics 770 (RPL-S), OpenGL 4.6)",
     });
-    expect(byName("Iris(R) Xe Graphics").linux.renderer).toBe("ANGLE (Intel, Mesa Intel(R) Xe Graphics (TGL GT2), OpenGL 4.6)");
+    // Mesa prints "Iris(R) Xe Graphics" for Tiger Lake (audit corpus), not the provisional "Xe Graphics".
+    expect(byName("Iris(R) Xe Graphics (Tiger Lake)").linux.renderer).toBe("ANGLE (Intel, Mesa Intel(R) Iris(R) Xe Graphics (TGL GT2), OpenGL 4.6)");
     expect(byName("UHD Graphics 730").linux.renderer).toBe("ANGLE (Intel, Mesa Intel(R) UHD Graphics 730 (ADL-S GT1), OpenGL 4.6)");
     expect(byName("Radeon RX 6700 XT").windows).toEqual({
       vendor: "Google Inc. (AMD)",
@@ -142,13 +152,14 @@ describe("every entry's strings match the engine's format", () => {
     });
     expect(byName("Radeon RX 6700 XT").linux).toEqual({
       vendor: "Google Inc. (AMD)",
-      renderer: "ANGLE (AMD, AMD Radeon RX 6700 XT (radeonsi, navi22, LLVM 15.0.7, DRM 3.54, 6.5.0-generic), OpenGL 4.6)",
+      renderer: "ANGLE (AMD, AMD Radeon RX 6700 XT (radeonsi navi22 ACO), OpenGL 4.6)",
     });
-    expect(byName("Radeon RX 7800 XT").linux.renderer).toContain("navi32");
+    expect(byName("Radeon RX 7900 GRE").linux.renderer).toContain("navi31");
     expect(byName("GeForce RTX 3070").deviceId).toBe(0x2484);
     expect(byName("GeForce RTX 3070").architecture).toBe("ampere");
     expect(byName("GeForce RTX 4060").architecture).toBe("lovelace");
-    expect(byName("Radeon RX 7800 XT").architecture).toBe("rdna-3");
+    expect(byName("Radeon RX 7900 GRE").architecture).toBe("rdna-3");
+    expect(byName("GeForce RTX 3070 (LHR)").deviceId).toBe(0x2488);
   });
 });
 
@@ -166,9 +177,24 @@ describe("findModel round-trips both platform forms", () => {
       const w = stringsFor(m, "windows");
       const l = stringsFor(m, "linux");
       expect(findModel(w.gpuVendor, w.gpuRenderer)).toBe(m);
-      expect(findModel(l.gpuVendor, l.gpuRenderer)).toBe(m);
+      // Linux strings carry no device id (the drivers print a name, not ANGLE's id), so two dies sold
+      // under one name -- the RTX 3070 and its LHR revision -- are ONE Linux claim. A Linux pair must
+      // still find a model that serves exactly those strings.
+      const back = findModel(l.gpuVendor, l.gpuRenderer);
+      expect(back).not.toBeNull();
+      expect(back!.linux).toEqual(m.linux);
     });
   }
+
+  it("only the two RTX 3070 dies share a Linux claim; every Windows pair is unique", () => {
+    const key = (s: { vendor: string; renderer: string }) => `${s.vendor}|${s.renderer}`;
+    const win = new Set(GPU_MODELS.map((m) => key(m.windows)));
+    expect(win.size).toBe(GPU_MODELS.length);
+    const byLinux = new Map<string, string[]>();
+    for (const m of GPU_MODELS) byLinux.set(key(m.linux), [...(byLinux.get(key(m.linux)) ?? []), m.name]);
+    const shared = [...byLinux.values()].filter((names) => names.length > 1);
+    expect(shared).toEqual([["GeForce RTX 3070", "GeForce RTX 3070 (LHR)"]]);
+  });
 
   it("forgives whitespace at the ends — the strings travel through text inputs", () => {
     const m = byName("GeForce RTX 4060");
