@@ -37,6 +37,7 @@ import {
   type NoticeAction,
 } from "@/lib/launchError";
 import { describeTarget, type LaunchTarget } from "@/lib/launchTarget";
+import { newProfile } from "@/lib/newProfile";
 import {
   SORT_LABELS,
   displayName,
@@ -62,14 +63,7 @@ const randomSeed = () =>
 const slugify = (s: string) =>
   s.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-+|-+$/g, "").slice(0, 40);
 
-function newProfile(): Profile {
-  const now = new Date().toISOString();
-  // geoip ON by default. It only does anything once a proxy is set, and when one IS set, matching
-  // the persona's timezone/language/position to the proxy's exit region is what everyone wants —
-  // the off-by-default version shipped a profile that looked configured while the Geolocation API
-  // quietly kept reporting the real position, which is exactly how a customer found it.
-  return { id: "", name: "", fingerprint: randomSeed(), platform: "windows", geoip: true, createdAt: now, updatedAt: now };
-}
+const freshProfile = (): Profile => newProfile(randomSeed(), new Date().toISOString());
 
 const input =
   "w-full rounded-lg bg-ink/70 border border-line px-3 py-2 text-sm text-fog placeholder-fog/30 outline-none focus:border-accent/60 focus:ring-1 focus:ring-accent/40";
@@ -764,7 +758,7 @@ function Manager() {
       const typing = isTyping(e.target);
       if (mod && !e.altKey && k === "n") {
         e.preventDefault();
-        openEditor(newProfile());
+        openEditor(freshProfile());
       } else if (mod && !e.altKey && k === "f") {
         e.preventDefault();
         searchRef.current?.focus();
@@ -854,7 +848,7 @@ function Manager() {
             </button>
             <button
               className="rounded-lg bg-sheen px-3.5 py-1.5 text-xs font-semibold text-[#07080a] shadow-[0_0_20px_-6px_rgba(56,224,214,0.6)] hover:opacity-95 transition"
-              onClick={() => openEditor(newProfile())}
+              onClick={() => openEditor(freshProfile())}
               title="New profile (Ctrl+N)"
             >
               + New profile
@@ -999,7 +993,7 @@ function Manager() {
               <div className="mt-6 flex flex-wrap justify-center gap-2">
                 <button
                   className="rounded-lg bg-sheen px-5 py-2.5 text-sm font-semibold text-[#07080a] shadow-[0_0_26px_-6px_rgba(56,224,214,0.55)] transition hover:opacity-95 active:scale-[0.98]"
-                  onClick={() => openEditor(newProfile())}
+                  onClick={() => openEditor(freshProfile())}
                 >
                   + Create your first profile
                 </button>

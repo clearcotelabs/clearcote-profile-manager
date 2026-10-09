@@ -289,6 +289,7 @@ export interface FpInput {
   fingerprintProfile?: string;
   portableProfile?: boolean;
   encryptionKey?: string;
+  allowThirdPartyCookies?: boolean;
   extraArgs?: string[];
 }
 
@@ -397,6 +398,11 @@ export function fingerprintArgs(input: FpInput, opts: FpArgsOptions = {}): strin
   //   canvasNoise:false     unfarbles 2D canvas readback only, leaving WebGL and audio noised.
   if (p.gpuStringSpoof === false) args.push("--disable-gpu-string-spoof");
   if (p.canvasNoise === false) args.push("--disable-canvas-noise");
+
+  // The de-Googled base defaults Chromium's cookie controls to "block third-party cookies"; stock
+  // Chrome allows them. Engine 152 r22+ (patch 989) restores Chrome's behaviour on request. Opt-in,
+  // exactly as the SDK's allowThirdPartyCookies.
+  if (p.allowThirdPartyCookies) args.push("--allow-third-party-cookies");
 
   if (p.fingerprintProfile && opts.encodeProfile) {
     const encoded = opts.encodeProfile(p.fingerprintProfile);

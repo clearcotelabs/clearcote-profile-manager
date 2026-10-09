@@ -270,6 +270,8 @@ describe("settings that stay on this PC", () => {
       widevine: true,
       shaderDialect: "hlsl",
       socks5Udp: true,
+      transparentProxy: true,
+      allowThirdPartyCookies: true,
       extraArgs: ["--foo"],
     });
     expect(all).toEqual([
@@ -294,11 +296,16 @@ describe("settings that stay on this PC", () => {
       "Storage quota",
       "Canvas bridge",
       "Portable profile",
-      "Widevine",
       "Shader dialect",
       "SOCKS5 UDP",
+      "Transparent proxy",
+      "Third-party cookies",
       "Extra switches",
     ]);
+  });
+
+  it("does not list Widevine: new profiles have it on and the cloud loads the CDM itself", () => {
+    expect(localOnlySettings(base({ widevine: true }))).toEqual([]);
   });
 
   it("lists GeoIP off only when the cloud would follow the exit IP anyway", () => {

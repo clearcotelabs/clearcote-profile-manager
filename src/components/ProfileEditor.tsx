@@ -25,6 +25,7 @@ import {
   fieldsIn,
   isFieldSet,
   searchFields,
+  selectOptions,
   type CategoryId,
   type FieldDef,
 } from "@/lib/fields";
@@ -291,20 +292,22 @@ export default function ProfileEditor({
 
     if (f.type === "select") {
       const cur = textValue(f);
+      const options = selectOptions(f, profile as unknown as Record<string, unknown>, cur);
       return (
         <>
           {labelFor(f)}
           <select
             className={cls}
-            value={cur || f.defaultOption || (f.options?.[0]?.value ?? "")}
+            value={cur || f.defaultOption || (options[0]?.value ?? "")}
             disabled={disabled}
             onChange={(e) => {
               const v = e.target.value;
-              const store = f.defaultOption !== undefined && v === f.defaultOption ? undefined : v;
+              const unset = f.defaultOption !== undefined && v === f.defaultOption;
+              const store = unset ? undefined : f.numeric ? Number(v) : v;
               set(f.key as keyof Profile, store as never);
             }}
           >
-            {f.options?.map((o) => (
+            {options.map((o) => (
               <option key={o.value} value={o.value}>
                 {o.label}
               </option>

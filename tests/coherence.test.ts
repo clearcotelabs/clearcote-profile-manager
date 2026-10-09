@@ -101,8 +101,10 @@ describe("hand-spoofed screen", () => {
     expect(ids({ ...CLEAN, screenWidth: 1920 })).toContain("screen-spoofed-by-hand"));
   it("fires on height alone", () =>
     expect(ids({ ...CLEAN, screenHeight: 1080 })).toContain("screen-spoofed-by-hand"));
-  it("is silent when a capture carries the screen", () =>
-    expect(ids({ ...CLEAN, screenWidth: 1920, fingerprintProfile: "cap.json" })).not.toContain("screen-spoofed-by-hand"));
+  // Measured on r35: CSS device-width keeps the capture's screen while screen.width takes the typed
+  // one, so a capture no longer excuses a typed screen (CR-RBBFHS / CR-KUDD3V).
+  it("fires when a capture is set as well", () =>
+    expect(ids({ ...CLEAN, screenWidth: 1920, fingerprintProfile: "cap.json" })).toContain("screen-spoofed-by-hand"));
   it("is silent when untouched", () => expect(ids(CLEAN)).not.toContain("screen-spoofed-by-hand"));
 });
 

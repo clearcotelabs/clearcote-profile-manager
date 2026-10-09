@@ -72,6 +72,8 @@ export interface CloudInput {
   widevine?: boolean;
   shaderDialect?: string;
   socks5Udp?: boolean;
+  transparentProxy?: boolean;
+  allowThirdPartyCookies?: boolean;
   proxy?: unknown;
   extraArgs?: string[];
   startUrl?: string;
@@ -159,9 +161,13 @@ export function localOnlySettings(p: CloudInput): string[] {
   add(p.storageQuota != null, "Storage quota");
   add(p.canvasBridgeUrl, "Canvas bridge");
   add(p.portableProfile || p.encryptionKey, "Portable profile");
-  add(p.widevine, "Widevine");
+  // Widevine is not listed: new profiles turn it on by default, and the hosted gateway (0.9.0+)
+  // loads the CDM into every cloud browser itself, so it would be a line on every cloud run that
+  // tells nobody anything.
   add(p.shaderDialect, "Shader dialect");
   add(p.socks5Udp, "SOCKS5 UDP");
+  add(p.transparentProxy, "Transparent proxy");
+  add(p.allowThirdPartyCookies, "Third-party cookies");
   add(p.extraArgs?.length, "Extra switches");
   // With nothing set, the service follows the exit IP's timezone and language (options.ts); "off"
   // here would mean the server's own, so it is not carried over.

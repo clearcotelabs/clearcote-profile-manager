@@ -87,8 +87,13 @@ export interface FieldDef {
   /** Render the value in the mono face (seeds, proxies, paths, raw flags). */
   mono?: boolean;
   placeholder?: string;
-  /** Static options. A runtime-populated dropdown uses `custom` instead. */
-  options?: { value: string; label: string }[];
+  /** Static options. A runtime-populated dropdown uses `custom` instead. `when` hides an option the
+   *  profile cannot use (a 1 GB phone value on a desktop platform); a value already saved on the
+   *  profile is always shown, so hiding an option never silently changes a profile. */
+  options?: { value: string; label: string; when?: (p: Record<string, unknown>) => boolean }[];
+  /** A select whose values are numbers: the editor stores the chosen option as a number, the same
+   *  shape the number inputs store, rather than the option's string. */
+  numeric?: boolean;
   /** For checkboxes: the sentence beside the label. */
   desc?: string;
   /** Always-visible one-liner under the control. Keep it to a line — anything longer belongs in
@@ -234,6 +239,17 @@ export const FIELDS: FieldDef[] = [
     why:
       "Keeps the TLS ClientHello coherent with the Chrome version the persona claims, instead of always emitting the build's native one.",
   },
+  {
+    key: "allowThirdPartyCookies",
+    cat: "browser",
+    label: "Third-party cookies",
+    type: "check",
+    desc: "Allow third-party cookies, as stock Chrome does.",
+    hint: "Off by default: this build blocks them. Needs build 152 r22 or newer.",
+    keywords: "--allow-third-party-cookies 3pc cross-site iframe embedded login sso payment",
+    why:
+      "The de-Googled base blocks third-party cookies by default, while Google's Chrome allows them. That breaks embedded sign-in, payment and challenge frames, and a site with two domains can see the difference.",
+  },
 
   // ── Hardware ──────────────────────────────────────────────────────────────
   {
@@ -247,12 +263,37 @@ export const FIELDS: FieldDef[] = [
     why:
       "Not strictly better than the default: it trades a broad persona for a much narrower surface. In our own lab runs it scored worse on an audit suite. Test it against your target.",
   },
-  { key: "hardwareConcurrency", cat: "hardware", label: "CPU cores", type: "number", placeholder: "persona default", keywords: "--fingerprint-hardware-concurrency navigator" },
+  {
+    key: "hardwareConcurrency",
+    cat: "hardware",
+    label: "CPU cores",
+    type: "select",
+    numeric: true,
+    defaultOption: "",
+    // A list, not a free number: real desktops report an even thread count, and a typed 2 or 5 next
+    // to a modern GPU is a contradiction nobody meant to make. Unset keeps the persona's own value.
+    options: [
+      { value: "", label: "(persona default)" },
+      { value: "4", label: "4" },
+      { value: "6", label: "6" },
+      { value: "8", label: "8" },
+      { value: "12", label: "12" },
+      { value: "16", label: "16" },
+      { value: "20", label: "20" },
+      { value: "24", label: "24" },
+      { value: "28", label: "28" },
+      { value: "32", label: "32" },
+    ],
+    keywords: "--fingerprint-hardware-concurrency navigator hardwareconcurrency threads cpu",
+    why:
+      "navigator.hardwareConcurrency: logical threads. Pick what the machine you claim would have; with Use real GPU on a fast card, 16 or more is typical. A count below this PC's also limits the browser to that many CPUs.",
+  },
   {
     key: "deviceMemory",
     cat: "hardware",
     label: "Memory (GB)",
     type: "select",
+    numeric: true,
     defaultOption: "",
     // A CLOSED set, not a free number. Chromium reports RAM rounded to the nearest power of two and
     // then clamped — desktop to [2, 32], Android to [1, 8] (see
@@ -263,7 +304,7 @@ export const FIELDS: FieldDef[] = [
     // invited a 64 that no browser can report, so the choice is constrained here instead.
     options: [
       { value: "", label: "(persona default)" },
-      { value: "1", label: "1 — Android only" },
+      { value: "1", label: "1 — Android only", when: (p) => String(p.platform) === "android" },
       { value: "2", label: "2" },
       { value: "4", label: "4" },
       { value: "8", label: "8" },
@@ -300,9 +341,11 @@ export const FIELDS: FieldDef[] = [
     cat: "hardware",
     label: "Storage quota (MB)",
     type: "number",
-    placeholder: "e.g. 250000",
+    placeholder: "real (about 10 GB)",
+    hint: "Leave empty. Real Chrome reports what the site uses plus 10 GB.",
     keywords: "--fingerprint-storage-quota navigator.storage estimate",
-    why: "navigator.storage.estimate().quota. A tiny value reads as incognito or a throwaway test machine.",
+    why:
+      "navigator.storage.estimate().quota. Chrome reports a fixed quota: the site's own usage plus 10 GB, in normal and incognito windows alike, so an empty field already matches it. A number here replaces that, and a large one describes a value real Chrome never reports.",
   },
 
   // ── Network ───────────────────────────────────────────────────────────────
@@ -328,6 +371,17 @@ export const FIELDS: FieldDef[] = [
     keywords: "--socks5-udp webrtc voice video associate rfc1928 datagram",
     why:
       "Ordinary browsers cannot proxy UDP at all, so WebRTC normally bypasses the proxy. This routes it through the same SOCKS5 endpoint that already carries TCP. It needs a proxy that permits the UDP command — a self-hosted one usually does, a residential vendor usually does not.",
+  },
+  {
+    key: "transparentProxy",
+    cat: "network",
+    label: "Transparent proxy",
+    type: "check",
+    desc: "Hide the proxy from request headers and connection timing.",
+    hint: "Only does something with a proxy set. Needs build 152 r22 or newer.",
+    keywords: "--transparent-proxy proxy-connection header timing hide proxy detection",
+    why:
+      "Through an HTTP proxy a browser sends a Proxy-Connection header on plain-HTTP requests, and every proxied connection shows proxy-shaped connect and TLS timing. This sends Connection instead and reports the timing like a reused connection.",
   },
   {
     onValue: true,
@@ -493,7 +547,7 @@ export const FIELDS: FieldDef[] = [
     label: "Widevine (DRM)",
     type: "check",
     desc: "Fetch Google's Widevine CDM and seed it into this profile, so DRM video plays and the Chrome brand holds up.",
-    hint: "Downloaded once from Google's own component server, SHA-256 verified, then shared by every profile that opts in.",
+    hint: "On for new profiles. Downloaded once from Google's own component server, SHA-256 verified, then shared by every profile that uses it.",
     keywords: "eme drm cdm com.widevine.alpha media keys",
     why:
       "This build compiles the EME plumbing but cannot bundle Google's proprietary CDM. A browser claiming the Google Chrome brand and then rejecting com.widevine.alpha describes a browser Google does not ship.",
@@ -555,6 +609,23 @@ export const FIELDS: FieldDef[] = [
     keywords: "hosted server servers remote residential ip exit country cookies traffic cap gb adblock record video api key",
   },
 ];
+
+/**
+ * The options a select shows for this profile: the ones whose `when` passes, plus the value the
+ * profile already holds even when no option names it (an option hidden for this platform, or a
+ * number saved before the field was a list). Showing it keeps the select honest: a dropdown that
+ * cannot display the stored value would render the first option and look as if it applied.
+ */
+export function selectOptions(
+  f: FieldDef,
+  profile: Record<string, unknown>,
+  current: string,
+): { value: string; label: string }[] {
+  const all = f.options ?? [];
+  const shown = all.filter((o) => !o.when || o.when(profile) || o.value === current);
+  if (current !== "" && !shown.some((o) => o.value === current)) shown.push({ value: current, label: `${current} (set before)` });
+  return shown.map(({ value, label }) => ({ value, label }));
+}
 
 /** Fields belonging to a category, in schema order. */
 export function fieldsIn(cat: CategoryId): FieldDef[] {

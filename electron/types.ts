@@ -121,6 +121,12 @@ export interface Profile {
    *  vendors REFUSE the UDP command, in which case the browser falls back silently — so this is
    *  worth enabling only against a proxy you know relays UDP. */
   socks5Udp?: boolean;
+  /** --transparent-proxy (152 r22+): hide the proxy from request headers and connection timing.
+   *  Emitted only when the profile has a proxy. */
+  transparentProxy?: boolean;
+  /** --allow-third-party-cookies (152 r22+): allow third-party cookies as stock Chrome does; the
+   *  de-Googled base blocks them by default. */
+  allowThirdPartyCookies?: boolean;
   /** Proxy as a single string: "scheme://user:pass@host:port" (auth optional), e.g.
    *  "http://user:pass@host:8080" or "socks5://user:pass@host:1080". Authenticated http/https
    *  proxies are served to the browser via a local auth-injecting relay; authenticated SOCKS5 goes

@@ -351,9 +351,9 @@ export async function launch(
     if (proxy && needsRelay(proxy)) {
       relay = await startRelay(proxy);
       relays.set(p.id, relay);
-      args.push(...proxyArgs(proxy, { relayUrl: relay.url }));
+      args.push(...proxyArgs(proxy, { relayUrl: relay.url, transparentProxy: p.transparentProxy }));
     } else {
-      args.push(...proxyArgs(proxy, { socks5Udp: p.socks5Udp }));
+      args.push(...proxyArgs(proxy, { socks5Udp: p.socks5Udp, transparentProxy: p.transparentProxy }));
     }
     // Inject the leased run-token so the PRO engine gate admits the launch, preserving any
     // shader-dialect variable already folded in above. The token is also mirrored into a file this

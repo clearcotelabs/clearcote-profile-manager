@@ -207,6 +207,14 @@ export interface Profile {
    *  Off by default. Only meaningful for a socks5:// proxy, and most residential vendors refuse
    *  the UDP command — when they do, the browser falls back to its normal behaviour. */
   socks5Udp?: boolean;
+  /** --transparent-proxy (engine 152 r22+): through a proxy, send `Connection` instead of
+   *  `Proxy-Connection` on plain-HTTP requests and report proxied connection timing like a reused
+   *  connection. Only meaningful with a proxy, so it is emitted only when one is set. */
+  transparentProxy?: boolean;
+  /** --allow-third-party-cookies (engine 152 r22+): the de-Googled base blocks third-party cookies
+   *  by default while stock Chrome allows them, which breaks embedded sign-in, payment and challenge
+   *  frames. Off by default, like the SDK's `allowThirdPartyCookies`. */
+  allowThirdPartyCookies?: boolean;
   /** Proxy as a single string: "scheme://user:pass@host:port" (auth optional), e.g.
    *  "http://user:pass@host:8080" or "socks5://user:pass@host:1080". Authenticated http/https go
    *  through a local auth-injecting relay; authenticated SOCKS5 is authenticated by the engine
@@ -306,7 +314,7 @@ export function profileToArgs(p: Profile): string[] {
   // Same builder the launcher uses, so the preview shows the real credential handling: an
   // authenticated SOCKS5 proxy gets its --socks5-credentials switch here too (password masked),
   // instead of the preview quietly implying the credentials go nowhere.
-  args.push(...proxyArgs(parseProxy(p.proxy), { redactSecrets: true, socks5Udp: p.socks5Udp }));
+  args.push(...proxyArgs(parseProxy(p.proxy), { redactSecrets: true, socks5Udp: p.socks5Udp, transparentProxy: p.transparentProxy }));
   if (p.userDataDir) args.push(`--user-data-dir=${p.userDataDir}`);
   if (p.extraArgs?.length) args.push(...p.extraArgs);
   // Last, exactly as the launcher does (electron/launcher.ts buildArgs).

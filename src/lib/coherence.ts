@@ -43,6 +43,9 @@ export interface CoherenceContext {
  *  dialect (r15). Kept here so the rules read declaratively; mirrors electron/proxyargs.ts. */
 export const MIN_MAJOR_151 = 151;
 
+/** Engine major that carries --allow-third-party-cookies and --transparent-proxy (152 r22, patch 989). */
+export const MIN_MAJOR_152 = 152;
+
 /** MEASURED on 151 r16, so no rule guards it: the engine enforces Chromium's own deviceMemory
  *  rules itself. Asked for 1 it reports 2, for 6 it reports 4, and for 64 or 128 it reports 32 --
  *  power-of-two quantization plus the desktop [2, 32] clamp (Android [1, 8]). A value outside the
@@ -113,17 +116,77 @@ export function coherenceIssues(
     });
   }
 
-  // ── A hand-spoofed screen cannot be reconciled with the real window ───────
+  // ── A hand-typed screen next to an identity that already has one ──────────
+  // Measured on r35 (CR-RBBFHS, CR-KUDD3V): with a seed or a captured fingerprint, screen.width takes
+  // the typed value but the CSS media queries (device-width/height) keep the persona's screen, so a
+  // page reads two different screens whenever the typed size differs from the one the seed drew.
+  // Matching this PC's monitor does not help, which is exactly what the old advice told people to
+  // do. Light stealth fails the same way through its pixel ratio, which rescales the CSS screen.
+  // With none of the three the CSS screen is the real display, and the old advice still holds.
   const screenSpoofed = isSet(profile.screenWidth) || isSet(profile.screenHeight);
-  if (screenSpoofed && !isSet(profile.fingerprintProfile)) {
+  const screenSource = profile.lightStealth
+    ? "Light stealth"
+    : isSet(profile.fingerprintProfile)
+      ? "the captured fingerprint"
+      : isSet(profile.fingerprint)
+        ? "the seed"
+        : null;
+  if (screenSpoofed && screenSource) {
+    out.push({
+      id: "screen-spoofed-by-hand",
+      severity: "warn",
+      field: "screenWidth",
+      message: `A typed screen size can disagree with the screen CSS media queries report while ${screenSource} is active, so a page reads two different screens. Typing your own monitor's size does not avoid it.`,
+      fix:
+        screenSource === "Light stealth"
+          ? "Leave the four screen fields empty: Light stealth keeps the real screen, which is coherent."
+          : "Leave the four screen fields empty: the seed or capture supplies a screen that agrees with itself. For a particular size, try other seeds.",
+    });
+  } else if (screenSpoofed) {
     out.push({
       id: "screen-spoofed-by-hand",
       severity: "warn",
       field: "screenWidth",
       message:
         "Screen dimensions are spoofed by hand. A faked screen cannot be reconciled with the real window and render surface, which strict anti-bots check.",
-      fix: "Set it only when it matches this host's real display, or adopt a captured fingerprint and let it carry the screen.",
+      fix: "Set it only when it matches this host's real display, or leave it empty so the real screen is reported.",
     });
+  }
+
+  // ── Transparent proxy describes how the browser talks to a proxy ──────────
+  if (profile.transparentProxy && !proxy) {
+    out.push({
+      id: "transparent-proxy-without-proxy",
+      severity: "warn",
+      field: "transparentProxy",
+      message: "Transparent proxy is on but this profile has no proxy, so the setting does nothing.",
+      fix: "Add a proxy, or turn Transparent proxy off.",
+    });
+  }
+
+  // ── Two switches the engine gained in 152 r22 ─────────────────────────────
+  // Older builds ignore them, so the profile would claim a behaviour it does not get. The revision
+  // inside 152 cannot be told from the major alone; this catches the wrong-major case, as the other
+  // version rules here do.
+  if (ctx.major !== undefined && ctx.major < MIN_MAJOR_152) {
+    if (profile.allowThirdPartyCookies) {
+      out.push({
+        id: "third-party-cookies-needs-152",
+        severity: "warn",
+        field: "allowThirdPartyCookies",
+        message: `Allowing third-party cookies needs Clearcote ${MIN_MAJOR_152} (r22+); build ${ctx.major} ignores it and keeps blocking them.`,
+        fix: `Set the browser version to ${MIN_MAJOR_152} or newer.`,
+      });
+    }
+    if (profile.transparentProxy && proxy) {
+      out.push({
+        id: "transparent-proxy-needs-152",
+        severity: "warn",
+        field: "transparentProxy",
+        message: `Transparent proxy needs Clearcote ${MIN_MAJOR_152} (r22+); build ${ctx.major} ignores it.`,
+        fix: `Set the browser version to ${MIN_MAJOR_152} or newer.`,
+      });
+    }
   }
 
   // ── A capture taken on a display too small to hold a browser window ───────

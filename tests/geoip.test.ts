@@ -142,13 +142,15 @@ describe("applyGeoip — failure is not fatal", () => {
 // ---------------------------------------------------------------------------
 describe("geoip default", () => {
   it("a new profile has geoip on", async () => {
-    // Mirrors newProfile() in app/page.tsx. Kept as an explicit assertion because the default is the
-    // whole fix: flipping it back to false would restore the reported bug with every test still green.
+    // newProfile() is what app/page.tsx opens the editor with. Kept as an explicit assertion because
+    // the default is the whole fix: flipping it back to false would restore the reported bug with
+    // every other test still green.
+    const { newProfile } = await import("../src/lib/newProfile");
+    expect(newProfile("s", "2026-01-01T00:00:00.000Z").geoip).toBe(true);
+    // And the page really uses it, rather than building its own object again.
     const { readFileSync } = await import("node:fs");
     const page = readFileSync(new URL("../app/page.tsx", import.meta.url), "utf8");
-    const line = page.split("\n").find((l) => l.includes("function newProfile") || l.includes("geoip:"));
-    expect(page).toMatch(/geoip:\s*true/);
-    expect(line).toBeDefined();
+    expect(page).toMatch(/newProfile\(randomSeed\(\)/);
   });
 
   it("still fills only what the user left blank", async () => {

@@ -112,11 +112,15 @@ export function socks5CredentialsArg(p: ParsedProxy): string | null {
  */
 export function proxyArgs(
   p: ParsedProxy | null,
-  opts: { relayUrl?: string; redactSecrets?: boolean; socks5Udp?: boolean } = {},
+  opts: { relayUrl?: string; redactSecrets?: boolean; socks5Udp?: boolean; transparentProxy?: boolean } = {},
 ): string[] {
   if (!p) return [];
-  if (opts.relayUrl) return [`--proxy-server=${opts.relayUrl}`];
-  const args = [`--proxy-server=${proxyServerArg(p)}`];
+  // --transparent-proxy (engine 152 r22+) sends `Connection` instead of `Proxy-Connection` on
+  // plain-HTTP requests and reports proxied connection timing like a reused connection. It only
+  // describes how the browser talks to a proxy, so it rides along with one and never appears alone.
+  const transparent = opts.transparentProxy ? ["--transparent-proxy"] : [];
+  if (opts.relayUrl) return [`--proxy-server=${opts.relayUrl}`, ...transparent];
+  const args = [`--proxy-server=${proxyServerArg(p)}`, ...transparent];
   const creds = socks5CredentialsArg(p);
   if (creds) args.push(`--socks5-credentials=${opts.redactSecrets ? `${p.username ?? ""}:********` : creds}`);
   // UDP relaying is opt-in and only means anything for a SOCKS5 proxy. UDP ASSOCIATE is a SOCKS5
