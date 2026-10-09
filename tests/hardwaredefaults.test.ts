@@ -72,6 +72,16 @@ describe("a typed screen size next to an identity that has its own screen", () =
   it("is silent when the screen fields are empty", () => {
     expect(ids({ ...CLEAN, fingerprint: "abc" })).not.toContain("screen-spoofed-by-hand");
   });
+
+  it("the editor's own screen copy no longer tells people to match their display", () => {
+    const w = fieldByKey("screenWidth")!;
+    expect(`${w.groupNote} ${w.why}`).not.toMatch(/only when (it|they) match/);
+    expect(w.groupNote).toMatch(/Best left empty/);
+    // Empty is the persona's screen under a seed, not the real display.
+    for (const k of ["screenWidth", "screenHeight", "availWidth", "availHeight"]) {
+      expect(fieldByKey(k)?.placeholder, k).toBe("persona default");
+    }
+  });
 });
 
 describe("third-party cookies", () => {
