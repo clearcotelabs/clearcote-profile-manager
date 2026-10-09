@@ -12,6 +12,7 @@ import type { ExitEvent } from "./launcher";
 import type { StopOutcome } from "./procstop";
 import type { TempCopy } from "./cache";
 import type { CloudSessionState, CloudStartResult, CloudEnded } from "./cloud";
+import type { HostGpu } from "./hostgpu";
 
 /** Subscribe to a main-process event; returns the unsubscribe function. */
 function on<T>(channel: string, cb: (data: T) => void): () => void {
@@ -79,6 +80,9 @@ const api = {
     onChanged: (cb: (list: CloudSessionState[]) => void) => on<CloudSessionState[]>("cloud:changed", cb),
     onEnded: (cb: (ev: CloudEnded) => void) => on<CloudEnded>("cloud:ended", cb),
   },
+  /** The GPU driving this machine's display — its maker orders the editor's GPU model picker and
+   *  backs the cross-vendor coherence warning. Detected once per app run. */
+  hostGpu: (): Promise<HostGpu> => ipcRenderer.invoke("host:gpu"),
   listVersions: (): Promise<VersionOption[]> => ipcRenderer.invoke("versions:list"),
   /** PRO rebuild revisions ("150.0.7871.114-r10", …), newest first. [] when unlicensed. */
   listRevisions: (): Promise<string[]> => ipcRenderer.invoke("versions:revisions"),

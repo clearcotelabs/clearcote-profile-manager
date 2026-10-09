@@ -23,6 +23,7 @@ import {
   countSet,
   fieldByKey,
   fieldsIn,
+  hostFieldFor,
   isFieldSet,
   searchFields,
   selectOptions,
@@ -30,6 +31,18 @@ import {
   type FieldDef,
 } from "@/lib/fields";
 import { coherenceIssues, coherenceSummary, shouldAutoEnableGeoip, type Issue } from "@/lib/coherence";
+import {
+  PICKER_CUSTOM,
+  PICKER_DEFAULT,
+  VENDOR_LABEL,
+  isCustom,
+  modelOptionValue,
+  pickerGroups,
+  pickerValue,
+  randomGpu,
+  selectGpuOption,
+  withPlatform,
+} from "@/lib/gpuPicker";
 import {
   profileToArgs,
   profileToEnv,
@@ -39,7 +52,7 @@ import {
   type FingerprintMeta,
   type Profile,
 } from "@/types/profile";
-import { api, type GeoResult, type VersionOption } from "@/lib/ipc";
+import { api, type GeoResult, type HostGpu, type VersionOption } from "@/lib/ipc";
 import CloudFields from "./CloudFields";
 
 const input =
@@ -114,6 +127,13 @@ export default function ProfileEditor({
   /** Set when we turned geoip on for the user, so the editor can say so rather than
    *  silently changing a setting they did not touch. */
   const [autoGeoip, setAutoGeoip] = useState(false);
+  /** The GPU driving this machine's display; null until the main process answers (or when an
+   *  older preload cannot). Its maker orders the GPU model picker and backs the cross-vendor rule. */
+  const [hostGpu, setHostGpu] = useState<HostGpu | null>(null);
+  /** The user chose Custom… over a model and has not picked anything since. Without this the
+   *  select would snap back to the model the moment Custom… was chosen, because the strings
+   *  (deliberately left as the starting point for editing) still match it. */
+  const [gpuCustom, setGpuCustom] = useState(false);
 
   const panelRef = useRef<HTMLDivElement>(null);
 
@@ -123,10 +143,15 @@ export default function ProfileEditor({
     let alive = true;
     api.listVersions?.().then((v) => alive && setVersions(v || [])).catch(() => {});
     api.listRevisions?.().then((r) => alive && setRevisions(r || [])).catch(() => {});
+    api.hostGpu?.().then((g) => alive && g && setHostGpu(g)).catch(() => {});
     return () => {
       alive = false;
     };
   }, []);
+
+  // A different profile in the same editor starts from its own stored strings, not from the
+  // Custom… the previous one was left on.
+  useEffect(() => setGpuCustom(false), [profile.id]);
 
   const set = useCallback(
     <K extends keyof Profile>(k: K, v: Profile[K]) => onChange({ ...profile, [k]: v }),
@@ -139,20 +164,23 @@ export default function ProfileEditor({
         major: selectedMajor(profile.browserVersion),
         hostPlatform: hostPlatform(),
         capturedScreenWarning: profile.fingerprintProfileMeta?.screenWarning,
+        hostGpuVendor: hostGpu?.vendor,
       }),
-    [profile],
+    [profile, hostGpu],
   );
   const summary = coherenceSummary(issues);
 
-  /** Jump to the field an issue blames: switch category, clear the search, scroll and flash it. */
+  /** Jump to the field an issue blames: switch category, clear the search, scroll and flash it.
+   *  A field hosted inside another's control (the GPU strings inside the model picker) lands on
+   *  the host, which is what the panel lays out. */
   const goTo = useCallback((key: string) => {
-    const f = fieldByKey(key);
+    const f = hostFieldFor(key);
     if (!f) return;
     setQuery("");
     setCat(f.cat);
-    setFlash(key);
+    setFlash(f.key);
     window.setTimeout(() => {
-      const el = panelRef.current?.querySelector<HTMLElement>(`[data-field="${key}"]`);
+      const el = panelRef.current?.querySelector<HTMLElement>(`[data-field="${f.key}"]`);
       el?.scrollIntoView({ block: "center", behavior: "smooth" });
       el?.querySelector<HTMLElement>("input,select,textarea,button")?.focus({ preventScroll: true });
     }, 0);
@@ -304,6 +332,12 @@ export default function ProfileEditor({
               const v = e.target.value;
               const unset = f.defaultOption !== undefined && v === f.defaultOption;
               const store = unset ? undefined : f.numeric ? Number(v) : v;
+              // The persona platform decides which form a GPU model's strings take, so a model
+              // chosen on Windows is rewritten in Linux's form when the platform moves (and back).
+              if (f.key === "platform") {
+                onChange(withPlatform(profile, store));
+                return;
+              }
               set(f.key as keyof Profile, store as never);
             }}
           >
@@ -373,6 +407,75 @@ export default function ProfileEditor({
     switch (f.custom) {
       case "cloud":
         return <CloudFields profile={profile} onChange={onChange} />;
+
+      case "gpuModel": {
+        // A select over the model table, writing BOTH stored strings in the persona platform's
+        // form; Custom… shows the two raw string fields (hosted here, see fields.ts) prefilled
+        // with whatever is stored, so a legacy profile's hand-typed strings come through intact.
+        const disabled = !!(f.disabledBy && (profile as unknown as Record<string, unknown>)[f.disabledBy]);
+        const hostVendor = hostGpu?.vendor ?? "unknown";
+        const value = pickerValue(profile, gpuCustom);
+        const custom = isCustom(profile, gpuCustom);
+        const hostLine =
+          hostGpu && hostGpu.vendor !== "unknown"
+            ? `This machine: ${hostGpu.name || VENDOR_LABEL[hostGpu.vendor]} — its maker's models are listed first.`
+            : hostGpu
+              ? "This machine's GPU maker could not be detected, so every vendor is listed."
+              : null;
+        return (
+          <>
+            <div className="flex items-center justify-between">
+              {labelFor(f)}
+              <button
+                type="button"
+                className={btnGhost + " -mt-1 py-1 text-xs disabled:opacity-40"}
+                disabled={disabled}
+                title="A random model of this machine's GPU maker, never the one already chosen"
+                onClick={() => {
+                  onChange(randomGpu(profile, hostVendor));
+                  setGpuCustom(false);
+                }}
+              >
+                Pick one at random
+              </button>
+            </div>
+            <select
+              aria-label={f.label}
+              className={input + (disabled ? " opacity-40" : "")}
+              value={value}
+              disabled={disabled}
+              onChange={(e) => {
+                const r = selectGpuOption(profile, e.target.value);
+                onChange(r.profile);
+                setGpuCustom(r.forceCustom);
+              }}
+            >
+              <option value={PICKER_DEFAULT}>Persona default (engine chooses)</option>
+              {pickerGroups(hostVendor).map((g) => (
+                <optgroup key={g.vendor} label={g.label}>
+                  {g.models.map((m) => (
+                    <option key={modelOptionValue(m)} value={modelOptionValue(m)}>
+                      {m.name}
+                    </option>
+                  ))}
+                </optgroup>
+              ))}
+              <option value={PICKER_CUSTOM}>Custom…</option>
+            </select>
+            {f.hint ? <p className="mt-1 text-[11px] text-fog/40">{f.hint}</p> : null}
+            {hostLine ? (
+              <p className="mt-0.5 text-[11px] text-fog/40" data-gpu-host={hostVendor}>
+                {hostLine}
+              </p>
+            ) : null}
+            {custom && (
+              <div className="mt-3 grid grid-cols-1 gap-3 sm:grid-cols-2" data-gpu-custom="1">
+                {(f.reads ?? []).map((k) => fieldByKey(k)).map((h) => (h ? renderField(h) : null))}
+              </div>
+            )}
+          </>
+        );
+      }
       case "seed":
         return (
           <>
@@ -618,6 +721,8 @@ export default function ProfileEditor({
     const out: React.ReactNode[] = [];
     for (let i = 0; i < list.length; i++) {
       const f = list[i];
+      // Laid out by the control that hosts it, not here.
+      if (f.hostedBy) continue;
       if (!f.group) {
         out.push(renderField(f));
         continue;

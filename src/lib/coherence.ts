@@ -13,6 +13,7 @@
 // PURE: no React, no `node:` imports. The editor renders these live; tests exercise them directly.
 
 import { isAuthenticatedSocks, parseProxy } from "../../electron/proxyargs";
+import { claimedVendor, VENDOR_LABEL, type HostGpuVendor } from "./gpuPicker";
 
 export type Severity = "error" | "warn";
 
@@ -37,6 +38,9 @@ export interface CoherenceContext {
   hostPlatform?: "windows" | "linux" | "macos";
   /** Warning text from the captured profile's screen guard, when the import flagged one. */
   capturedScreenWarning?: string;
+  /** The maker of the GPU driving this machine's display (electron/hostgpu.ts). "unknown" or
+   *  absent keeps the cross-vendor rule quiet rather than guessing. */
+  hostGpuVendor?: HostGpuVendor;
 }
 
 /** Engine major that implements --socks5-credentials and --portable-profile (r14) and the shader
@@ -203,6 +207,24 @@ export function coherenceIssues(
       message:
         "The canvas bridge and the real-GPU switch are both on: pixels come from the remote host while the GPU strings come from this one, so they describe different machines.",
       fix: "Turn off the real GPU when bridging, so the reported GPU and the rendered pixels agree.",
+    });
+  }
+
+  // ── A GPU claim from another maker than the real card ────────────────────
+  // The strings say which card; the driver says what it can do (limits, extensions, precision),
+  // and the driver is the real one. A claim from another maker is falsifiable in a few WebGL
+  // calls. Quiet when the host is unknown, when nothing is claimed, and under "use real GPU",
+  // where the strings are not applied at all.
+  const host = ctx.hostGpuVendor;
+  const claimed = profile.disableGpuFingerprint ? null : claimedVendor(profile);
+  if (claimed && host && host !== "unknown" && claimed !== host) {
+    out.push({
+      id: "gpu-claim-cross-vendor",
+      severity: "warn",
+      field: "gpuModel",
+      message:
+        "GPU claim does not match this machine's GPU maker; driver limits follow the real GPU, so a cross-vendor claim is falsifiable.",
+      fix: `Pick a model from the ${VENDOR_LABEL[host]} group — this machine's GPU maker — or leave the GPU model on the persona default.`,
     });
   }
 

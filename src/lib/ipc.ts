@@ -194,6 +194,13 @@ export interface FpListResult {
   error?: string;
 }
 
+/** The GPU driving this machine's display (electron/hostgpu.ts). "unknown" when it cannot be told. */
+export interface HostGpu {
+  vendor: "nvidia" | "intel" | "amd" | "unknown";
+  name: string;
+  deviceId: number | null;
+}
+
 /** One available browser build (from GET /api/v1/versions), for the version dropdown. */
 export interface VersionOption {
   version: string;
@@ -285,6 +292,9 @@ export interface ClearcoteApi {
     onChanged: (cb: (list: CloudSession[]) => void) => () => void;
     onEnded: (cb: (ev: CloudEnded) => void) => () => void;
   };
+  /** The GPU driving this display: its maker orders the GPU model picker and backs the cross-vendor
+   *  coherence warning. Detected once per app run. Optional so an older preload still works. */
+  hostGpu?: () => Promise<HostGpu>;
   /** Public browser-build catalog for this OS (newest major first). Drives the version dropdown. */
   listVersions: () => Promise<VersionOption[]>;
   /** PRO rebuild revisions ("150.0.7871.114-r10", …), newest first — pin one for a reproducible
@@ -584,6 +594,9 @@ function buildMock(): ClearcoteApi {
         return () => cloudEndedListeners.delete(cb);
       },
     },
+    // localStorage["clearcote.mock.gpu"] plays this machine's GPU ({vendor,name,deviceId}); without
+    // it the preview reports "unknown", and the GPU model picker lists every vendor.
+    hostGpu: async () => readJson<HostGpu>("clearcote.mock.gpu", { vendor: "unknown", name: "", deviceId: null }),
     listVersions: async () => [], // browser preview has no catalog access; UI falls back to "latest"
     listRevisions: async () => [], // revisions need an authenticated PRO call — desktop app only
     onDownloadProgress: () => () => {}, // no downloads in the browser preview

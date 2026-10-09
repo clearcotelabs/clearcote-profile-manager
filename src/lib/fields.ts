@@ -131,7 +131,17 @@ export interface FieldDef {
     | "tags"
     | "extraArgs"
     | "canvasBridgeAllow"
-    | "canvasBridgeDeny";
+    | "canvasBridgeDeny"
+    | "gpuModel";
+  /** Rendered INSIDE the named field's bespoke control rather than on its own — the GPU vendor and
+   *  renderer strings, which the model picker shows only in its Custom mode. The panel skips such
+   *  a field; a search hit or a coherence deep-link lands on the host instead. The field stays in
+   *  the schema so it keeps its key, its search text and its place in the badge count. */
+  hostedBy?: string;
+  /** A control that PRESENTS other keys and stores nothing under its own (the model picker over
+   *  `gpuVendor` + `gpuRenderer`). It shows the "you set this" dot when any of them is set, and is
+   *  left out of the badge count so the keys are not counted twice. */
+  reads?: string[];
   /** Extra words the search box should match (synonyms, switch names). */
   keywords?: string;
   /** Select option whose value means "unset" and is stored as undefined, so a profile keeps only
@@ -334,8 +344,26 @@ export const FIELDS: FieldDef[] = [
   { stepAny: true, key: "colorDepth", cat: "hardware", label: "Colour depth", type: "number", placeholder: "24", keywords: "--fingerprint-color-depth" },
   { stepAny: true, key: "devicePixelRatio", cat: "hardware", label: "Pixel ratio", type: "number", placeholder: "1", keywords: "--fingerprint-device-pixel-ratio dpr scaling" },
   { stepAny: true, key: "maxTouchPoints", cat: "hardware", label: "Touch points", type: "number", placeholder: "0", keywords: "--fingerprint-max-touch-points touchscreen", why: "0 is a real value — a mouse-only desktop — not an empty one." },
-  { disabledBy: "disableGpuFingerprint", key: "gpuVendor", cat: "hardware", label: "GPU vendor", type: "text", placeholder: "persona default", keywords: "--fingerprint-gpu-vendor webgl unmasked" },
-  { disabledBy: "disableGpuFingerprint", key: "gpuRenderer", cat: "hardware", label: "GPU renderer", type: "text", placeholder: "persona default", keywords: "--fingerprint-gpu-renderer webgl angle unmasked" },
+  {
+    // A view over the two stored strings below, not a key of its own: picking a model writes both
+    // of them in the form the persona's platform prints, so no profile schema changed and every
+    // saved profile reads back as it was (a pair that matches no table entry shows as Custom).
+    disabledBy: "disableGpuFingerprint",
+    showWhen: (p) => p.platform !== "android",
+    reads: ["gpuVendor", "gpuRenderer"],
+    key: "gpuModel",
+    cat: "hardware",
+    label: "GPU model",
+    type: "custom",
+    custom: "gpuModel",
+    full: true,
+    keywords: "--fingerprint-gpu-vendor --fingerprint-gpu-renderer webgl unmasked angle graphics card nvidia intel amd geforce radeon random",
+    hint: "Which graphics card this profile reports to WebGL. Leave it on the persona default unless you need a particular card.",
+    why:
+      "The persona already varies the model with the seed, so profiles no longer all report the same card. If you pick one, the strongest coherence comes from a model of this machine's own GPU maker: driver limits follow the real card, so a claim from another maker can be checked against them. Custom… exposes the raw vendor and renderer strings for a card the list does not have.",
+  },
+  { hostedBy: "gpuModel", disabledBy: "disableGpuFingerprint", key: "gpuVendor", cat: "hardware", label: "GPU vendor", type: "text", placeholder: "persona default", keywords: "--fingerprint-gpu-vendor webgl unmasked" },
+  { hostedBy: "gpuModel", disabledBy: "disableGpuFingerprint", key: "gpuRenderer", cat: "hardware", label: "GPU renderer", type: "text", placeholder: "persona default", keywords: "--fingerprint-gpu-renderer webgl angle unmasked" },
   {
     key: "storageQuota",
     cat: "hardware",
@@ -648,6 +676,8 @@ export function fieldByKey(key: string): FieldDef | undefined {
  * `defaultOn` fields invert the test: farbling noise is on unless turned off, so only `false` counts.
  */
 export function isFieldSet(profile: Record<string, unknown>, f: FieldDef): boolean {
+  // A view over other keys is set when any of them is.
+  if (f.reads) return f.reads.some((k) => fieldByKey(k) ? isFieldSet(profile, fieldByKey(k)!) : false);
   const v = profile[f.key];
   // The cloud block is an object of options: set when any of them is.
   if (f.key === "cloud") return !!v && typeof v === "object" && Object.values(v as object).some((x) => x !== undefined);
@@ -657,9 +687,16 @@ export function isFieldSet(profile: Record<string, unknown>, f: FieldDef): boole
   return true;
 }
 
-/** Count of explicitly-set fields in a category — the rail badge. */
+/** Count of explicitly-set fields in a category — the rail badge. A view over other keys (`reads`)
+ *  is skipped, so the keys it presents are counted once, under their own names. */
 export function countSet(profile: Record<string, unknown>, cat: CategoryId): number {
-  return fieldsIn(cat).reduce((n, f) => n + (isFieldSet(profile, f) ? 1 : 0), 0);
+  return fieldsIn(cat).reduce((n, f) => n + (!f.reads && isFieldSet(profile, f) ? 1 : 0), 0);
+}
+
+/** The field a panel lays out for `key`: the field itself, or the control that hosts it. */
+export function hostFieldFor(key: string): FieldDef | undefined {
+  const f = fieldByKey(key);
+  return f?.hostedBy ? (fieldByKey(f.hostedBy) ?? f) : f;
 }
 
 /** Search across every category: label, hint, description, why-text and keywords. */

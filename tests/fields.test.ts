@@ -115,6 +115,42 @@ describe("coverage of the Profile type", () => {
   it("does not expose bookkeeping fields", () => {
     for (const k of NOT_EDITABLE) expect(keys, `${k} should not be editable`).not.toContain(k);
   });
+
+  it("the GPU model picker is a view over the two stored strings — no new profile key", () => {
+    // The picker binds to no key of its own: it reads and writes gpuVendor + gpuRenderer, which
+    // must still be there (a legacy profile's hand-typed strings are shown through it as Custom).
+    expect(keys).toContain("gpuModel");
+    expect(fieldByKey("gpuModel")?.reads).toEqual(["gpuVendor", "gpuRenderer"]);
+    expect(fieldByKey("gpuVendor")?.hostedBy).toBe("gpuModel");
+    expect(fieldByKey("gpuRenderer")?.hostedBy).toBe("gpuModel");
+  });
+});
+
+describe("hosted fields and views", () => {
+  it("every hostedBy names a custom field in the same category", () => {
+    for (const f of FIELDS.filter((x) => x.hostedBy)) {
+      const host = fieldByKey(f.hostedBy!);
+      expect(host, `${f.key} is hosted by unknown ${f.hostedBy}`).toBeDefined();
+      expect(host!.type, `${f.key}'s host must be a bespoke control`).toBe("custom");
+      expect(host!.cat, `${f.key} must share its host's category`).toBe(f.cat);
+      expect(host!.hostedBy, "a host cannot itself be hosted").toBeUndefined();
+    }
+  });
+
+  it("every `reads` names fields that exist and that are hosted by the reader", () => {
+    for (const f of FIELDS.filter((x) => x.reads)) {
+      for (const k of f.reads!) {
+        expect(fieldByKey(k), `${f.key} reads unknown ${k}`).toBeDefined();
+        expect(fieldByKey(k)!.hostedBy, `${k} should be hosted by ${f.key}`).toBe(f.key);
+      }
+    }
+  });
+
+  it("a view never adds to the badge; the keys it presents count under their own names", () => {
+    const p = { gpuVendor: "v", gpuRenderer: "r" };
+    expect(isFieldSet(p, fieldByKey("gpuModel")!)).toBe(true);
+    expect(countSet(p, "hardware")).toBe(2);
+  });
 });
 
 describe("isFieldSet — 'what did I set', not 'what differs from default'", () => {

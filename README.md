@@ -83,7 +83,18 @@ Beyond the basics, each profile exposes Clearcote's full identity surface (all u
 - **Farbling noise** (on by default) — toggle off (`--disable-fingerprint-noise`) so canvas / WebGL / audio return natural, unperturbed values that read as untampered to strict detectors. Best paired with a captured profile; identity spoofs (UA / screen / GPU / persona) stay on.
 - **Use real GPU** (`--disable-gpu-fingerprint`) — report the host's actual GPU instead of a spoofed one; the most coherent option when no matching captured profile is available.
 - **Storage quota** (`--fingerprint-storage-quota`, MB) — overrides `navigator.storage.estimate().quota`. Best left empty: Chrome reports a fixed quota (what the site uses plus 10 GB, in normal and incognito windows alike), and an empty field already matches it.
-- **GPU vendor / renderer, platform & brand version** — fine-grained persona overrides.
+- **GPU model** — which graphics card the profile reports to WebGL. The persona already varies the
+  model with the seed, so profiles no longer all report the same card; the picker under **Hardware**
+  is for when you need a particular one. It lists pre-checked models with this machine's GPU maker's
+  group first (the app asks the OS which adapter drives the display), **Pick one at random** draws
+  another model of that maker, and choosing a model writes both `--fingerprint-gpu-vendor` and
+  `--fingerprint-gpu-renderer` in the form the persona's **platform** prints (Direct3D11 for a Windows
+  persona, OpenGL for Linux — switching the platform rewrites them). The strongest coherence is a
+  model of this machine's own maker: driver limits follow the real card, so a claim from another
+  maker is flagged by the coherence check. **Custom…** exposes the two raw strings for a card the
+  list does not have; a profile saved with hand-typed strings opens as Custom with them intact. An
+  Android persona hides the picker (the engine has its own phone device table).
+- **Platform & brand version** — fine-grained persona overrides.
 - **CPU cores and memory** — chosen from lists of values real machines report. The 1 GB memory value only appears for the Android platform. A core count below this PC's also limits the browser to that many CPUs.
 - **Light stealth** — spoof only a coherent, seed-derived bundle of the metadata axes that survive strict checks (cores, memory, colour depth, pixel ratio, touch points), applied through the native override switches and emitting **no** `--fingerprint`, so the persona machinery and farbling never engage. Rendering, TLS and the real Chrome version are left untouched. Screen size is deliberately not spoofed. Any field you set explicitly wins over the preset. *Not strictly better than the default* — it trades a broad persona for a much narrower surface, so test it against your target.
 - **Native metadata overrides** — `deviceMemory`, `colorDepth`, `devicePixelRatio`, `maxTouchPoints` and the screen / avail dimensions, each settable on its own. These are read directly by the getters (flag > persona > real) with no persona machinery behind them. The screen row is the risky one: with a seed, a captured fingerprint or Light stealth active, a typed screen size can disagree with the screen CSS media queries report, even when it matches your own monitor. Leave the screen fields empty and let the seed or capture supply the screen; the editor warns when they are set.

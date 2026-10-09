@@ -262,6 +262,72 @@ describe("shouldAutoEnableGeoip", () => {
   });
 });
 
+describe("a GPU claim from another maker than the real card", () => {
+  // Driver limits follow the real GPU, so a claim from another maker is falsifiable. The rule reads
+  // the maker off the stored strings (a table model's vendor, or the maker a custom string names)
+  // and compares it with the host's, which the main process detects.
+  const NVIDIA = {
+    gpuVendor: "Google Inc. (NVIDIA)",
+    gpuRenderer: "ANGLE (NVIDIA, NVIDIA GeForce RTX 4070 (0x00002786) Direct3D11 vs_5_0 ps_5_0, D3D11)",
+  };
+  const AMD_LINUX = {
+    gpuVendor: "Google Inc. (AMD)",
+    gpuRenderer: "ANGLE (AMD, AMD Radeon RX 6700 XT (radeonsi, navi22, LLVM 15.0.7, DRM 3.54, 6.5.0-generic), OpenGL 4.6)",
+  };
+
+  it("fires when a table model's maker differs from the host's, in either platform form", () => {
+    expect(ids({ ...CLEAN, ...AMD_LINUX }, { hostGpuVendor: "nvidia" })).toContain("gpu-claim-cross-vendor");
+    expect(ids({ ...CLEAN, ...NVIDIA }, { hostGpuVendor: "intel" })).toContain("gpu-claim-cross-vendor");
+    expect(ids({ ...CLEAN, ...NVIDIA }, { hostGpuVendor: "amd" })).toContain("gpu-claim-cross-vendor");
+  });
+
+  it("uses the agreed wording, and points at the picker", () => {
+    const issue = coherenceIssues({ ...CLEAN, ...AMD_LINUX }, { hostGpuVendor: "nvidia" }).find((i) => i.id === "gpu-claim-cross-vendor")!;
+    expect(issue.severity).toBe("warn");
+    expect(issue.field).toBe("gpuModel");
+    expect(fieldByKey(issue.field)).toBeDefined();
+    expect(issue.message).toBe(
+      "GPU claim does not match this machine's GPU maker; driver limits follow the real GPU, so a cross-vendor claim is falsifiable.",
+    );
+    expect(issue.fix).toContain("NVIDIA");
+  });
+
+  it("fires for hand-typed strings that name another maker", () => {
+    const legacy = { gpuVendor: "Google Inc. (Intel)", gpuRenderer: "ANGLE (Intel, Intel(R) HD Graphics 630 Direct3D11 vs_5_0 ps_5_0, D3D11)" };
+    expect(ids({ ...CLEAN, ...legacy }, { hostGpuVendor: "nvidia" })).toContain("gpu-claim-cross-vendor");
+    expect(ids({ ...CLEAN, ...legacy }, { hostGpuVendor: "intel" })).not.toContain("gpu-claim-cross-vendor");
+  });
+
+  it("is silent for a model of this machine's own maker", () => {
+    expect(ids({ ...CLEAN, ...NVIDIA }, { hostGpuVendor: "nvidia" })).not.toContain("gpu-claim-cross-vendor");
+    expect(ids({ ...CLEAN, ...AMD_LINUX }, { hostGpuVendor: "amd" })).not.toContain("gpu-claim-cross-vendor");
+  });
+
+  it("is silent on the persona default — nothing is claimed", () => {
+    expect(ids({ ...CLEAN }, { hostGpuVendor: "nvidia" })).not.toContain("gpu-claim-cross-vendor");
+    expect(ids({ ...CLEAN, gpuVendor: "", gpuRenderer: "" }, { hostGpuVendor: "intel" })).not.toContain("gpu-claim-cross-vendor");
+  });
+
+  it("is silent when the host is unknown or not given, rather than guessing", () => {
+    expect(ids({ ...CLEAN, ...AMD_LINUX }, { hostGpuVendor: "unknown" })).not.toContain("gpu-claim-cross-vendor");
+    expect(ids({ ...CLEAN, ...AMD_LINUX }, {})).not.toContain("gpu-claim-cross-vendor");
+  });
+
+  it("is silent for strings that name no maker it knows", () => {
+    expect(ids({ ...CLEAN, gpuVendor: "Apple", gpuRenderer: "Apple M2" }, { hostGpuVendor: "nvidia" })).not.toContain("gpu-claim-cross-vendor");
+  });
+
+  it("is silent under 'use real GPU', where the strings are not applied at all", () => {
+    expect(ids({ ...CLEAN, ...AMD_LINUX, disableGpuFingerprint: true }, { hostGpuVendor: "nvidia" })).not.toContain("gpu-claim-cross-vendor");
+  });
+
+  it("is a warning, so it sorts after errors", () => {
+    const list = coherenceIssues({ brand: "Chrome", ...AMD_LINUX }, { hostGpuVendor: "nvidia" });
+    expect(list[0].id).toBe("chrome-brand-without-widevine");
+    expect(list.map((i) => i.id)).toContain("gpu-claim-cross-vendor");
+  });
+});
+
 describe("UDP relaying only applies to SOCKS5", () => {
   it("fires when requested with an http proxy", () =>
     expect(ids({ ...CLEAN, socks5Udp: true, proxy: "http://u:p@h:8080" })).toContain(

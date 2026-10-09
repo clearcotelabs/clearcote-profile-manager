@@ -92,13 +92,13 @@ describe.skipIf(!READY)("editor UI — the category rail in a real browser", () 
   it("shows one panel at a time — a Hardware field is not in the DOM while Identity is open", async () => {
     // The whole point of the rail: the other 40 fields are not there to be scrolled past.
     expect(await isVisible('[data-field="name"]')).toBe(true);
-    expect(await count('[data-field="gpuVendor"]')).toBe(0);
+    expect(await count('[data-field="gpuModel"]')).toBe(0);
   }, 20000);
 
   it("navigates to another category", async () => {
     await rail("Hardware").click();
     await untilHeading(/^Hardware$/);
-    expect(await isVisible('[data-field="gpuVendor"]')).toBe(true);
+    expect(await isVisible('[data-field="gpuModel"]')).toBe(true);
     expect(await count('[data-field="name"]')).toBe(0);
     await rail("Identity").click();
     await untilHeading(/^Identity$/);

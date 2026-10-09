@@ -15,6 +15,17 @@ Four layers:
   - `catalog.test.ts` — version + PRO **revision** resolution (`150.0.7871.114-r9`, bare `r9`) and
     the selector carried to `/download/pro`.
   - `args.test.ts` — the renderer's preview builder. `proxy.test.ts` — proxy parse / redact / relay.
+  - GPU model picker: `gpuModels.test.ts` — the model table (`src/lib/gpuModels.ts`): every entry's
+    Windows and Linux strings match the engine's exact format (device id as `0x` + 8 upper hex),
+    vendor and renderer name the same maker, a stored pair round-trips to its model in either form,
+    and random never returns the excluded model. `gpuPicker.test.ts` — what the select shows for a
+    stored pair (default / model / Custom for legacy strings, never rewritten on read), what a
+    choice, a random pick and a platform switch write, Android hiding it, and its place in the
+    schema (`reads` / `hostedBy`, the badge counting the two strings once). `hostgpu.test.ts` —
+    `electron/hostgpu.ts`, on real `ConvertTo-Json` shapes (one controller as a bare object, several
+    as an array, `&`-escaped ids, null resolution, Microsoft's software renderer) and
+    `/sys/class/drm` fixtures; the detector runs with its command runner injected, which pins the
+    exact PowerShell command without spawning it. The cross-vendor rule is in `coherence.test.ts`.
 
   > Note: `args.test.ts` used to be the only arg coverage, and it tests the **preview** builder.
   > The launcher was a separate hand-maintained copy and had silently drifted from it. Both now
@@ -76,17 +87,24 @@ Four layers:
   and Settings → General, Storage and Licence. It drives the mock's opt-in hooks
   (`clearcote.mock.launch`/`limit`/`storage`/`target`/`license`/`prefetch` in localStorage, and
   `window.__clearcoteMock.exit()`), which play the desktop app's side.
+  `gpu.e2e.test.ts` covers the GPU model picker: this machine's maker listed first, a model writing
+  both strings, random staying with the maker and never repeating, Custom… revealing the raw fields,
+  a legacy profile opening as Custom with its strings intact, the platform switch rewriting the
+  form, Android hiding it, the cross-vendor warning and its deep-link, and "Use real GPU" disabling
+  it. Its mock hook is `clearcote.mock.gpu` (`{vendor,name,deviceId}`; absent = unknown host).
   `cloud.e2e.test.ts` covers cloud sessions in the UI: Cloud with and without a key, usage on the
   card, Stop and "Stopping…", the service ending a session, the notice for each refusal, the
   editor's Cloud section, and the live window against a local live-view server (frames in, input
   out, reconnect, stop). Its mock hooks are `clearcote.mock.cloud`/`.sessions`/`.view`/`.account`/
   `.stopMs` and `window.__clearcoteMock.cloudUsage()`/`.cloudEnd()`.
   Run: `npm run next:dev -- -p 3100`, then
-  `CLEARCOTE_UI_E2E=1 CLEARCOTE_UI_BROWSER=<chrome.exe> npx vitest run tests/ui.e2e.test.ts tests/editor.e2e.test.ts tests/qol.e2e.test.ts tests/cloud.e2e.test.ts`.
+  `CLEARCOTE_UI_E2E=1 CLEARCOTE_UI_BROWSER=<chrome.exe> npx vitest run tests/ui.e2e.test.ts tests/editor.e2e.test.ts tests/qol.e2e.test.ts tests/cloud.e2e.test.ts tests/gpu.e2e.test.ts`.
 - **App end-to-end (opt-in, the real Electron app)** — `app.e2e.test.ts` starts the built app with a
   throwaway `--user-data-dir` (never your real profiles) and checks the IPC behind trash/undo, the
-  real launch target, `lastLaunchedAt` written by the main process, the plan learned from a lease,
-  and the update check on every start. An update downloaded through the window, from a local
+  real launch target, the host GPU over `host:gpu` (the one place the real PowerShell / `/sys`
+  detection runs; `CLEARCOTE_HOST_GPU_VENDOR=nvidia` pins what the machine is known to have),
+  `lastLaunchedAt` written by the main process, the plan learned from a lease, and the update check
+  on every start. An update downloaded through the window, from a local
   release of random bytes, must land byte-for-byte; plain-Node runs never showed the reordering
   that broke this, only the real window does. With a key it also launches real browsers: Stop must leave
   Chromium's `exit_type` at "Normal" (a hard kill leaves "Crashed"), a browser killed from outside

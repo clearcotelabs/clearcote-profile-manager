@@ -111,6 +111,21 @@ describe.skipIf(!READY)("the desktop app, end to end", () => {
     expect(path.resolve(ud)).toBe(path.resolve(UDD));
   }, T);
 
+  it("reports the GPU driving this display over IPC, the same answer every time", async () => {
+    // host:gpu (electron/hostgpu.ts) backs the editor's GPU model picker. On Windows it asks WMI
+    // through PowerShell, so this is the one place the real command runs against the real machine.
+    type Gpu = { vendor: string; name: string; deviceId: number | null };
+    const ask = () => win.evaluate(() => (window as unknown as { clearcote: { hostGpu: () => Promise<Gpu> } }).clearcote.hostGpu());
+    const g = await ask();
+    expect(["nvidia", "intel", "amd", "unknown"]).toContain(g.vendor);
+    expect(typeof g.name).toBe("string");
+    expect(g.deviceId === null || Number.isInteger(g.deviceId)).toBe(true);
+    if (process.platform === "win32") expect(g.name, "every Windows machine has a video controller").not.toBe("");
+    // CLEARCOTE_HOST_GPU_VENDOR=nvidia pins what this machine is known to have.
+    if (process.env.CLEARCOTE_HOST_GPU_VENDOR) expect(g.vendor).toBe(process.env.CLEARCOTE_HOST_GPU_VENDOR);
+    expect(await ask()).toEqual(g); // cached per run
+  }, T);
+
   it("the header names the real launch target", async () => {
     const t = await until(pillText, (v) => v !== "Checking…", "pill resolved");
     expect(t).not.toMatch(/Browser not set/);

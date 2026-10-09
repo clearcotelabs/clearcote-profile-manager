@@ -20,6 +20,7 @@ import { mergeRendererSettings } from "./settingsmerge";
 import { CloudManager } from "./cloud";
 import { CloudApi, resolveApiBase, resolveApiKey } from "./cloudapi";
 import { attachOnce } from "./cdpattach";
+import { hostGpuCached } from "./hostgpu";
 import type { Profile, Settings, FingerprintMeta } from "./types";
 
 const CLEARCOTE_PROFILES_REPO = "clearcotelabs/clearcote-profiles";
@@ -363,6 +364,10 @@ function registerIpc(): void {
     const r = await c.account();
     return r.ok ? { ok: true, balanceEur: r.data.balanceEur } : { ok: false, error: r.error, code: r.code, status: r.status };
   });
+
+  // The GPU driving this display (hostgpu.ts) — asked once per run, then cached; "unknown" when it
+  // cannot be told, in which case the editor's GPU model picker lists every vendor.
+  ipcMain.handle("host:gpu", () => hostGpuCached());
 
   // Public browser-build catalog (drives the per-profile version dropdown). Best-effort: an
   // unreachable catalog returns [] so the UI just falls back to "latest".
