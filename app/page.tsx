@@ -1124,6 +1124,7 @@ function Manager() {
           initialField={editingField}
           takenNames={takenNames}
           renderLibrary={(onApply, onClose) => <LibraryModal onApply={onApply} onClose={onClose} />}
+          launchTarget={target}
         />
       )}
       {settingsOpen && (

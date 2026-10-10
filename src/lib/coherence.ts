@@ -41,6 +41,13 @@ export interface CoherenceContext {
   /** The maker of the GPU driving this machine's display (electron/hostgpu.ts). "unknown" or
    *  absent keeps the cross-vendor rule quiet rather than guessing. */
   hostGpuVendor?: HostGpuVendor;
+  /** PRO rebuild the profile launches ("r36" -> 36), when known (src/lib/engineBuild.ts). The
+   *  major cannot tell 154 r35 from 154 r36. */
+  revision?: number;
+  /** Tier of the build the profile launches, when known: "free" is the open build. */
+  tier?: "free" | "pro";
+  /** This machine's display in CSS pixels, as a browser with no screen override reports it. */
+  hostScreen?: { width: number; height: number; availWidth?: number; availHeight?: number };
 }
 
 /** Engine major that implements --socks5-credentials and --portable-profile (r14) and the shader
@@ -50,6 +57,45 @@ export const MIN_MAJOR_151 = 151;
 /** Engine major that carries --allow-third-party-cookies and --transparent-proxy (152 r22, patch 989).
  *  --block-third-party-cookies arrived in 154 r36, where allowing became the default. */
 export const MIN_MAJOR_152 = 152;
+
+/** PRO rebuild from which a typed screen reaches the CSS media queries as well as screen.*: 154 r36
+ *  resolves both from one place (pro-r36-screen-flag-css-device) and stops Windows headless from
+ *  rescaling the screen by the pixel ratio a second time (pro-r36-win-headless-dpr-screen-info).
+ *  The open build never got either. */
+export const MIN_REVISION_SCREEN_CSS = 36;
+/** The major r36 shipped on. Every build of an older major predates the fix. */
+export const MIN_MAJOR_SCREEN_CSS = 154;
+
+/** True when the build this profile launches reports a typed screen to the CSS media queries too,
+ *  false when it reports it to screen.* only, undefined when the build cannot be told. */
+export function typedScreenReachesCss(ctx: CoherenceContext): boolean | undefined {
+  if (ctx.tier === "free") return false;
+  if (ctx.revision !== undefined) return ctx.revision >= MIN_REVISION_SCREEN_CSS;
+  if (ctx.major !== undefined && ctx.major < MIN_MAJOR_SCREEN_CSS) return false;
+  return undefined;
+}
+
+const SCREEN_FIELDS = [
+  ["screenWidth", "width"],
+  ["screenHeight", "height"],
+  ["availWidth", "availWidth"],
+  ["availHeight", "availHeight"],
+] as const;
+
+/** True when the typed screen fields are this machine's display. A field left empty takes the
+ *  real display only with nothing else supplying a screen: a seed or capture fills it from the
+ *  persona, and Light stealth rescales the real one by its own pixel ratio, so with either of
+ *  those all four have to be typed. */
+function typedScreenIsHost(
+  profile: Record<string, unknown>,
+  host: CoherenceContext["hostScreen"],
+  emptyIsHost: boolean,
+): boolean {
+  if (!host) return false;
+  return SCREEN_FIELDS.every(([key, hostKey]) =>
+    isSet(profile[key]) ? Number(profile[key]) === host[hostKey] : emptyIsHost,
+  );
+}
 
 /** MEASURED on 151 r16, so no rule guards it: the engine enforces Chromium's own deviceMemory
  *  rules itself. Asked for 1 it reports 2, for 6 it reports 4, and for 64 or 128 it reports 32 --
@@ -121,13 +167,16 @@ export function coherenceIssues(
     });
   }
 
-  // ── A hand-typed screen next to an identity that already has one ──────────
-  // Measured on r35 (CR-RBBFHS, CR-KUDD3V): with a seed or a captured fingerprint, screen.width takes
-  // the typed value but the CSS media queries (device-width/height) keep the persona's screen, so a
-  // page reads two different screens whenever the typed size differs from the one the seed drew.
-  // Matching this PC's monitor does not help, which is exactly what the old advice told people to
-  // do. Light stealth fails the same way through its pixel ratio, which rescales the CSS screen.
-  // With none of the three the CSS screen is the real display, and the old advice still holds.
+  // ── A hand-typed screen ───────────────────────────────────────────────────
+  // Before 154 r36 (measured on r35, CR-RBBFHS, CR-KUDD3V): with a seed or a captured fingerprint,
+  // screen.width takes the typed value but the CSS media queries (device-width/height) keep the
+  // persona's screen, so a page reads two different screens whenever the typed size differs from
+  // the one the seed drew. Matching this PC's monitor does not help. Light stealth fails the same
+  // way through its pixel ratio, which rescales the CSS screen. r36 reports the typed size to both
+  // (SESSION-CONTEXT/186: those cases FAIL on r35, PASS on r36), so there, as with none of the three
+  // on any build, the remaining risk is a screen that is not this machine's, and typing this
+  // machine's own display is fine. With the build unknown the pre-r36 warning stays, said as one:
+  // its advice, leave the fields empty, is right on both sides.
   const screenSpoofed = isSet(profile.screenWidth) || isSet(profile.screenHeight);
   const screenSource = profile.lightStealth
     ? "Light stealth"
@@ -136,25 +185,39 @@ export function coherenceIssues(
       : isSet(profile.fingerprint)
         ? "the seed"
         : null;
-  if (screenSpoofed && screenSource) {
+  const reachesCss = typedScreenReachesCss(ctx);
+  if (screenSpoofed && screenSource && reachesCss !== true) {
+    const gap = `a typed screen size can disagree with the screen CSS media queries report while ${screenSource} is active, so a page reads two different screens. Typing your own monitor's size does not avoid it.`;
+    const fix =
+      screenSource === "Light stealth"
+        ? "Leave the four screen fields empty: Light stealth keeps the real screen, which is coherent."
+        : "Leave the four screen fields empty: the seed or capture supplies a screen that agrees with itself. For a particular size, try other seeds.";
     out.push({
       id: "screen-spoofed-by-hand",
       severity: "warn",
       field: "screenWidth",
-      message: `A typed screen size can disagree with the screen CSS media queries report while ${screenSource} is active, so a page reads two different screens. Typing your own monitor's size does not avoid it.`,
+      message:
+        reachesCss === false
+          ? gap.charAt(0).toUpperCase() + gap.slice(1)
+          : `On builds before ${MIN_MAJOR_SCREEN_CSS} r${MIN_REVISION_SCREEN_CSS}, ${gap}`,
       fix:
-        screenSource === "Light stealth"
-          ? "Leave the four screen fields empty: Light stealth keeps the real screen, which is coherent."
-          : "Leave the four screen fields empty: the seed or capture supplies a screen that agrees with itself. For a particular size, try other seeds.",
+        reachesCss === false && ctx.tier !== "free"
+          ? `${fix} ${MIN_MAJOR_SCREEN_CSS} r${MIN_REVISION_SCREEN_CSS} and newer report the typed size to both.`
+          : fix,
     });
-  } else if (screenSpoofed) {
+  } else if (screenSpoofed && !typedScreenIsHost(profile, ctx.hostScreen, screenSource === null)) {
     out.push({
       id: "screen-spoofed-by-hand",
       severity: "warn",
       field: "screenWidth",
       message:
         "Screen dimensions are spoofed by hand. A faked screen cannot be reconciled with the real window and render surface, which strict anti-bots check.",
-      fix: "Set it only when it matches this host's real display, or leave it empty so the real screen is reported.",
+      fix:
+        screenSource === null
+          ? "Set it only when it matches this host's real display, or leave it empty so the real screen is reported."
+          : `Type all four to match this host's real display, or leave them empty so ${
+              screenSource === "Light stealth" ? "Light stealth reports the real screen" : `${screenSource} supplies the screen`
+            }.`,
     });
   }
 

@@ -31,6 +31,8 @@ import {
   type FieldDef,
 } from "@/lib/fields";
 import { coherenceIssues, coherenceSummary, shouldAutoEnableGeoip, type Issue } from "@/lib/coherence";
+import { engineBuild } from "@/lib/engineBuild";
+import type { LaunchTarget } from "@/lib/launchTarget";
 import {
   PICKER_CUSTOM,
   PICKER_DEFAULT,
@@ -84,6 +86,15 @@ function selectedMajor(v: string | undefined): number | undefined {
   return m ? Number(m[1]) : undefined;
 }
 
+/** This display as a browser without a screen override reports it: CSS pixels and the work area.
+ *  The renderer's own screen is the monitor this window is on, which is where a launch lands on a
+ *  single-display machine. */
+function hostScreen() {
+  if (typeof window === "undefined" || !window.screen) return undefined;
+  const s = window.screen;
+  return { width: s.width, height: s.height, availWidth: s.availWidth, availHeight: s.availHeight };
+}
+
 export interface ProfileEditorProps {
   profile: Profile;
   onChange: (p: Profile) => void;
@@ -98,6 +109,9 @@ export interface ProfileEditorProps {
   takenNames?: string[];
   /** Rendered above the panel when the library picker is open. */
   renderLibrary?: (onApply: (file: string, meta?: FingerprintMeta) => void, onClose: () => void) => React.ReactNode;
+  /** What "Latest" launches for this licence, and whether an explicit binary overrides every
+   *  version (the header pill's target). Tells the revision-gated rules which build runs. */
+  launchTarget?: LaunchTarget | null;
 }
 
 export default function ProfileEditor({
@@ -109,6 +123,7 @@ export default function ProfileEditor({
   initialField,
   takenNames = [],
   renderLibrary,
+  launchTarget,
 }: ProfileEditorProps) {
   const titleId = useId();
   const [cat, setCat] = useState<CategoryId>("identity");
@@ -158,16 +173,18 @@ export default function ProfileEditor({
     [profile, onChange],
   );
 
-  const issues = useMemo(
-    () =>
-      coherenceIssues(profile as unknown as Record<string, unknown>, {
-        major: selectedMajor(profile.browserVersion),
-        hostPlatform: hostPlatform(),
-        capturedScreenWarning: profile.fingerprintProfileMeta?.screenWarning,
-        hostGpuVendor: hostGpu?.vendor,
-      }),
-    [profile, hostGpu],
-  );
+  const issues = useMemo(() => {
+    const build = engineBuild(profile.browserVersion, { revisions, versions, target: launchTarget });
+    return coherenceIssues(profile as unknown as Record<string, unknown>, {
+      major: selectedMajor(profile.browserVersion),
+      revision: build.revision,
+      tier: build.tier,
+      hostPlatform: hostPlatform(),
+      hostScreen: hostScreen(),
+      capturedScreenWarning: profile.fingerprintProfileMeta?.screenWarning,
+      hostGpuVendor: hostGpu?.vendor,
+    });
+  }, [profile, hostGpu, revisions, versions, launchTarget]);
   const summary = coherenceSummary(issues);
 
   /** Jump to the field an issue blames: switch category, clear the search, scroll and flash it.

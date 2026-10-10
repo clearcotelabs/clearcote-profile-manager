@@ -5,7 +5,8 @@
 // Every issue also has to name a field that actually exists, or the "Fix →" deep-link goes nowhere.
 
 import { describe, it, expect } from "vitest";
-import { coherenceIssues, coherenceSummary, shouldAutoEnableGeoip } from "../src/lib/coherence";
+import { coherenceIssues, coherenceSummary, shouldAutoEnableGeoip, type CoherenceContext } from "../src/lib/coherence";
+import { engineBuild } from "../src/lib/engineBuild";
 import { fieldByKey } from "../src/lib/fields";
 
 const ids = (p: Record<string, unknown>, ctx = {}) => coherenceIssues(p, ctx).map((i) => i.id);
@@ -106,6 +107,167 @@ describe("hand-spoofed screen", () => {
   it("fires when a capture is set as well", () =>
     expect(ids({ ...CLEAN, screenWidth: 1920, fingerprintProfile: "cap.json" })).toContain("screen-spoofed-by-hand"));
   it("is silent when untouched", () => expect(ids(CLEAN)).not.toContain("screen-spoofed-by-hand"));
+});
+
+describe("a typed screen, by the engine build the profile launches", () => {
+  // CR-RBBFHS / CR-KUDD3V: r35 gave the typed size to screen.* but not to the CSS media queries
+  // under a seed, a capture or Light stealth; 154 r36 gives it to both (SESSION-CONTEXT/186: P2, P3
+  // and P5 FAIL on r35, PASS on r36). The reporter: a seed, and their own 1920x1080 monitor typed in.
+  const HOST = { width: 1920, height: 1080, availWidth: 1920, availHeight: 1032 };
+  const OWN = { screenWidth: 1920, screenHeight: 1080, availWidth: 1920, availHeight: 1032 };
+  const OTHER = { screenWidth: 2560, screenHeight: 1440, availWidth: 2560, availHeight: 1400 };
+  const SEEDED = { ...CLEAN, fingerprint: "abc" };
+  const screenIssue = (p: Record<string, unknown>, ctx: CoherenceContext) =>
+    coherenceIssues(p, ctx).find((i) => i.id === "screen-spoofed-by-hand");
+
+  describe("r35 and older", () => {
+    const R35: CoherenceContext = { major: 154, revision: 35, hostScreen: HOST };
+
+    it("keeps the seed wording, even at this machine's own size", () => {
+      const i = screenIssue({ ...SEEDED, ...OWN }, R35);
+      expect(i?.message).toBe(
+        "A typed screen size can disagree with the screen CSS media queries report while the seed is active, so a page reads two different screens. Typing your own monitor's size does not avoid it.",
+      );
+      expect(i?.fix).toMatch(/^Leave the four screen fields empty/);
+      expect(i?.fix).toMatch(/154 r36 and newer report the typed size to both\.$/);
+    });
+
+    it("names the capture and Light stealth the same way", () => {
+      expect(screenIssue({ ...SEEDED, fingerprintProfile: "cap.json", ...OWN }, R35)?.message).toContain(
+        "while the captured fingerprint is active",
+      );
+      const ls = screenIssue({ ...SEEDED, lightStealth: true, ...OWN }, R35);
+      expect(ls?.message).toContain("while Light stealth is active");
+      expect(ls?.fix).toMatch(/^Leave the four screen fields empty: Light stealth keeps the real screen/);
+    });
+
+    it("holds for every build of an older major, revision or not", () => {
+      expect(screenIssue({ ...SEEDED, ...OWN }, { major: 153, hostScreen: HOST })?.message).toMatch(
+        /^A typed screen size can disagree with the screen CSS media queries/,
+      );
+    });
+
+    it("holds on the open build, without pointing it at a PRO revision", () => {
+      const i = screenIssue({ ...SEEDED, ...OWN }, { tier: "free", hostScreen: HOST });
+      expect(i?.message).toMatch(/^A typed screen size can disagree/);
+      expect(i?.fix).not.toMatch(/r36/);
+    });
+
+    it("with no seed, capture or Light stealth, this machine's display needs no warning", () => {
+      expect(screenIssue({ ...CLEAN, ...OWN }, R35)).toBeUndefined();
+      expect(screenIssue({ ...CLEAN, ...OTHER }, R35)?.fix).toMatch(/matches this host's real display/);
+    });
+  });
+
+  describe("r36 and newer", () => {
+    const R36: CoherenceContext = { major: 154, revision: 36, hostScreen: HOST };
+
+    it("says nothing when the typed screen is this machine's display", () => {
+      expect(screenIssue({ ...SEEDED, ...OWN }, R36)).toBeUndefined();
+      expect(screenIssue({ ...SEEDED, ...OWN }, { ...R36, revision: 37 })).toBeUndefined();
+      expect(screenIssue({ ...SEEDED, fingerprintProfile: "cap.json", ...OWN }, R36)).toBeUndefined();
+      expect(screenIssue({ ...SEEDED, lightStealth: true, ...OWN }, R36)).toBeUndefined();
+    });
+
+    it("falls back to the generic advice for a screen that is not this machine's", () => {
+      const i = screenIssue({ ...SEEDED, ...OTHER }, R36);
+      expect(i?.message).toMatch(/^Screen dimensions are spoofed by hand/);
+      expect(i?.message).not.toMatch(/CSS media queries/);
+      expect(i?.fix).toBe(
+        "Type all four to match this host's real display, or leave them empty so the seed supplies the screen.",
+      );
+      expect(screenIssue({ ...SEEDED, lightStealth: true, ...OTHER }, R36)?.fix).toMatch(
+        /leave them empty so Light stealth reports the real screen\.$/,
+      );
+    });
+
+    it("still warns when only the size is typed: the seed fills the work area from its own screen", () => {
+      expect(screenIssue({ ...SEEDED, screenWidth: 1920, screenHeight: 1080 }, R36)?.message).toMatch(
+        /^Screen dimensions are spoofed by hand/,
+      );
+    });
+
+    it("without a seed, an empty work area is the real one", () => {
+      expect(screenIssue({ ...CLEAN, screenWidth: 1920, screenHeight: 1080 }, R36)).toBeUndefined();
+    });
+
+    it("warns when this machine's display is not known", () => {
+      expect(screenIssue({ ...SEEDED, ...OWN }, { major: 154, revision: 36 })?.message).toMatch(
+        /^Screen dimensions are spoofed by hand/,
+      );
+    });
+  });
+
+  describe("an unknown build", () => {
+    it("keeps the warning, said as a pre-r36 one, with advice that is right either way", () => {
+      for (const ctx of [{ hostScreen: HOST }, { major: 154, hostScreen: HOST }] as CoherenceContext[]) {
+        const i = screenIssue({ ...SEEDED, ...OWN }, ctx);
+        expect(i?.message).toMatch(/^On builds before 154 r36, a typed screen size can disagree/);
+        expect(i?.fix).toMatch(/^Leave the four screen fields empty/);
+        expect(i?.fix).not.toMatch(/and newer report/);
+      }
+    });
+  });
+
+  describe("which build the editor resolves", () => {
+    // The download route lists the current build first; "(preview)" never answers a stable selection.
+    const revisions = [
+      "154.0.8037.57-r38 (preview)",
+      "154.0.8037.57-r37",
+      "154.0.8037.57-r36",
+      "154.0.8037.57-r35",
+      "153.0.8010.36-r27",
+    ];
+    const versions = [
+      { major: 154, version: "154.0.8037.57", tier: "pro" as const },
+      { major: 149, version: "149.0.7827.114", tier: "free" as const },
+    ];
+    const licensed = { mode: "managed", licensed: true };
+
+    it("reads a revision pin, with or without its version", () => {
+      expect(engineBuild("154.0.8037.57-r35", { revisions, versions, target: licensed })).toEqual({
+        revision: 35,
+        tier: "pro",
+      });
+      expect(engineBuild("r36", {})).toEqual({ revision: 36, tier: "pro" });
+    });
+
+    it("follows the current stable build for Latest, a major and a version", () => {
+      for (const v of [undefined, "", "latest", "154", "154.0.8037.57"]) {
+        expect(engineBuild(v, { revisions, versions, target: licensed }), String(v)).toEqual({
+          revision: 37,
+          tier: "pro",
+        });
+      }
+      expect(engineBuild("153", { revisions, versions })).toEqual({ revision: 27, tier: "pro" });
+    });
+
+    it("knows the open build, and admits when it cannot tell", () => {
+      expect(engineBuild("latest", { versions, target: { mode: "managed", licensed: false } })).toEqual({
+        tier: "free",
+      });
+      expect(engineBuild("149", { versions })).toEqual({ tier: "free" });
+      // Licensed but no list (the free plan, or offline): Latest is a PRO build of unknown revision.
+      expect(engineBuild("latest", { versions, target: licensed })).toEqual({});
+      expect(engineBuild("154", { versions })).toEqual({ tier: "pro" });
+    });
+
+    it("knows nothing under an explicit binary, whatever the profile pins", () => {
+      expect(engineBuild("r36", { revisions, target: { mode: "custom" } })).toEqual({});
+    });
+
+    it("end to end: the reporter's profile warns pinned to r35 and not on Latest", () => {
+      const p = { ...SEEDED, ...OWN };
+      const ctx = (browserVersion: string): CoherenceContext => ({
+        ...engineBuild(browserVersion, { revisions, versions, target: licensed }),
+        hostScreen: HOST,
+      });
+      expect(screenIssue({ ...p, browserVersion: "154.0.8037.57-r35" }, ctx("154.0.8037.57-r35"))?.message).toMatch(
+        /^A typed screen size can disagree/,
+      );
+      expect(screenIssue({ ...p, browserVersion: "latest" }, ctx("latest"))).toBeUndefined();
+    });
+  });
 });
 
 describe("a capture from a display too small to hold a window", () => {
