@@ -153,7 +153,8 @@ describe.skipIf(!READY)("GPU model picker — in a real browser", () => {
     }
     const saved = await saveAndRead(page, "random");
     expect(String(saved.gpuVendor)).toBe("Google Inc. (NVIDIA)");
-    expect(String(saved.gpuRenderer)).toMatch(/^ANGLE \(NVIDIA, NVIDIA GeForce RTX \d+ \(0x[0-9A-F]{8}\) Direct3D11 vs_5_0 ps_5_0, D3D11\)$/);
+    // the r37 table (persona schema 4) holds GTX, Ti, SUPER and Laptop GPU cards too: any NVIDIA GeForce row is a right pick
+    expect(String(saved.gpuRenderer)).toMatch(/^ANGLE \(NVIDIA, NVIDIA GeForce (RTX|GTX) [0-9A-Za-z ]+ \(0x[0-9A-F]{8}\) Direct3D11 vs_5_0 ps_5_0, D3D11\)$/);
   }, T);
 
   it("Custom… reveals the raw fields prefilled with the chosen model's strings, and an edit is what gets saved", async () => {
