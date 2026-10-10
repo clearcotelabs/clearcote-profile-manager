@@ -64,7 +64,7 @@ export const GPU_MODELS: readonly GpuModel[] = Object.freeze([
   },
   {
     vendor: "intel",
-    name: "UHD Graphics (Comet Lake) (0x9B41)",
+    name: "UHD Graphics (Comet Lake)",
     deviceId: 0x9b41,
     architecture: "gen-9",
     integrated: true,
@@ -73,7 +73,7 @@ export const GPU_MODELS: readonly GpuModel[] = Object.freeze([
   },
   {
     vendor: "intel",
-    name: "Iris(R) Xe Graphics (Alder Lake) (0x46A6)",
+    name: "Iris(R) Xe Graphics (Alder Lake)",
     deviceId: 0x46a6,
     architecture: "gen-12lp",
     integrated: true,
@@ -82,7 +82,7 @@ export const GPU_MODELS: readonly GpuModel[] = Object.freeze([
   },
   {
     vendor: "intel",
-    name: "Iris(R) Xe Graphics (Alder Lake) (0x46A8)",
+    name: "Iris(R) Xe Graphics (Alder Lake, 0x46A8)",
     deviceId: 0x46a8,
     architecture: "gen-12lp",
     integrated: true,
@@ -100,7 +100,7 @@ export const GPU_MODELS: readonly GpuModel[] = Object.freeze([
   },
   {
     vendor: "intel",
-    name: "Iris(R) Xe Graphics (Raptor Lake) (0xA7A1)",
+    name: "Iris(R) Xe Graphics (Raptor Lake)",
     deviceId: 0xa7a1,
     architecture: "gen-12lp",
     integrated: true,
@@ -109,7 +109,7 @@ export const GPU_MODELS: readonly GpuModel[] = Object.freeze([
   },
   {
     vendor: "intel",
-    name: "UHD Graphics 630 (Coffee Lake) (0x3E9B)",
+    name: "UHD Graphics 630 (Coffee Lake)",
     deviceId: 0x3e9b,
     architecture: "gen-9",
     integrated: true,
@@ -145,7 +145,7 @@ export const GPU_MODELS: readonly GpuModel[] = Object.freeze([
   },
   {
     vendor: "intel",
-    name: "UHD Graphics (Alder Lake) (0x46A3)",
+    name: "UHD Graphics (Alder Lake)",
     deviceId: 0x46a3,
     architecture: "gen-12lp",
     integrated: true,
@@ -154,7 +154,7 @@ export const GPU_MODELS: readonly GpuModel[] = Object.freeze([
   },
   {
     vendor: "intel",
-    name: "UHD Graphics (Tiger Lake) (0x9A78)",
+    name: "UHD Graphics (Tiger Lake)",
     deviceId: 0x9a78,
     architecture: "gen-12lp",
     integrated: true,
@@ -163,7 +163,7 @@ export const GPU_MODELS: readonly GpuModel[] = Object.freeze([
   },
   {
     vendor: "intel",
-    name: "UHD Graphics (Comet Lake) (0x9BC4)",
+    name: "UHD Graphics (Comet Lake, 0x9BC4)",
     deviceId: 0x9bc4,
     architecture: "gen-9",
     integrated: true,
@@ -172,7 +172,7 @@ export const GPU_MODELS: readonly GpuModel[] = Object.freeze([
   },
   {
     vendor: "intel",
-    name: "Iris(R) Xe Graphics (Raptor Lake) (0xA7A0)",
+    name: "Iris(R) Xe Graphics (Raptor Lake, 0xA7A0)",
     deviceId: 0xa7a0,
     architecture: "gen-12lp",
     integrated: true,
@@ -181,7 +181,7 @@ export const GPU_MODELS: readonly GpuModel[] = Object.freeze([
   },
   {
     vendor: "intel",
-    name: "UHD Graphics (Alder Lake) (0x4628)",
+    name: "UHD Graphics (Alder Lake, 0x4628)",
     deviceId: 0x4628,
     architecture: "gen-12lp",
     integrated: true,
@@ -190,7 +190,7 @@ export const GPU_MODELS: readonly GpuModel[] = Object.freeze([
   },
   {
     vendor: "intel",
-    name: "HD Graphics 530 (Skylake) (0x1912)",
+    name: "HD Graphics 530 (Skylake)",
     deviceId: 0x1912,
     architecture: "gen-9",
     integrated: true,
@@ -208,7 +208,7 @@ export const GPU_MODELS: readonly GpuModel[] = Object.freeze([
   },
   {
     vendor: "intel",
-    name: "UHD Graphics (Tiger Lake) (0x9A60)",
+    name: "UHD Graphics (Tiger Lake, 0x9A60)",
     deviceId: 0x9a60,
     architecture: "gen-12lp",
     integrated: true,
@@ -217,7 +217,7 @@ export const GPU_MODELS: readonly GpuModel[] = Object.freeze([
   },
   {
     vendor: "intel",
-    name: "UHD Graphics (Raptor Lake) (0xA78B)",
+    name: "UHD Graphics (Raptor Lake)",
     deviceId: 0xa78b,
     architecture: "gen-12lp",
     integrated: true,
@@ -244,7 +244,7 @@ export const GPU_MODELS: readonly GpuModel[] = Object.freeze([
   },
   {
     vendor: "intel",
-    name: "UHD Graphics (Raptor Lake) (0xA788)",
+    name: "UHD Graphics (Raptor Lake, 0xA788)",
     deviceId: 0xa788,
     architecture: "gen-12lp",
     integrated: true,
@@ -253,7 +253,7 @@ export const GPU_MODELS: readonly GpuModel[] = Object.freeze([
   },
   {
     vendor: "intel",
-    name: "UHD Graphics (Tiger Lake) (0x9A68)",
+    name: "UHD Graphics (Tiger Lake, 0x9A68)",
     deviceId: 0x9a68,
     architecture: "gen-12lp",
     integrated: true,
@@ -262,7 +262,7 @@ export const GPU_MODELS: readonly GpuModel[] = Object.freeze([
   },
   {
     vendor: "intel",
-    name: "HD Graphics 630 (Kaby Lake) (0x5912)",
+    name: "HD Graphics 630 (Kaby Lake)",
     deviceId: 0x5912,
     architecture: "gen-9",
     integrated: true,
@@ -280,7 +280,7 @@ export const GPU_MODELS: readonly GpuModel[] = Object.freeze([
   },
   {
     vendor: "intel",
-    name: "UHD Graphics (Raptor Lake) (0xA721)",
+    name: "UHD Graphics (Raptor Lake, 0xA721)",
     deviceId: 0xa721,
     architecture: "gen-12lp",
     integrated: true,
@@ -289,7 +289,7 @@ export const GPU_MODELS: readonly GpuModel[] = Object.freeze([
   },
   {
     vendor: "intel",
-    name: "HD Graphics 630 (Kaby Lake) (0x591B)",
+    name: "HD Graphics 630 (Kaby Lake, 0x591B)",
     deviceId: 0x591b,
     architecture: "gen-9",
     integrated: true,
@@ -316,7 +316,7 @@ export const GPU_MODELS: readonly GpuModel[] = Object.freeze([
   },
   {
     vendor: "intel",
-    name: "HD Graphics 530 (Skylake) (0x191B)",
+    name: "HD Graphics 530 (Skylake, 0x191B)",
     deviceId: 0x191b,
     architecture: "gen-9",
     integrated: true,
@@ -325,7 +325,7 @@ export const GPU_MODELS: readonly GpuModel[] = Object.freeze([
   },
   {
     vendor: "intel",
-    name: "UHD Graphics 630 (Coffee Lake) (0x3E92)",
+    name: "UHD Graphics 630 (Coffee Lake, 0x3E92)",
     deviceId: 0x3e92,
     architecture: "gen-9",
     integrated: true,
@@ -343,7 +343,7 @@ export const GPU_MODELS: readonly GpuModel[] = Object.freeze([
   },
   {
     vendor: "intel",
-    name: "UHD Graphics (Alder Lake) (0x4626)",
+    name: "UHD Graphics (Alder Lake, 0x4626)",
     deviceId: 0x4626,
     architecture: "gen-12lp",
     integrated: true,
@@ -397,7 +397,7 @@ export const GPU_MODELS: readonly GpuModel[] = Object.freeze([
   },
   {
     vendor: "nvidia",
-    name: "GeForce GTX 1650 (0x1F82)",
+    name: "GeForce GTX 1650",
     deviceId: 0x1f82,
     architecture: "turing",
     integrated: false,
@@ -451,7 +451,7 @@ export const GPU_MODELS: readonly GpuModel[] = Object.freeze([
   },
   {
     vendor: "nvidia",
-    name: "GeForce RTX 4060 Laptop GPU (0x28E0)",
+    name: "GeForce RTX 4060 Laptop GPU",
     deviceId: 0x28e0,
     architecture: "lovelace",
     integrated: false,
@@ -649,7 +649,7 @@ export const GPU_MODELS: readonly GpuModel[] = Object.freeze([
   },
   {
     vendor: "amd",
-    name: "Radeon(TM) Graphics (Renoir) (0x1638)",
+    name: "Radeon(TM) Graphics (Renoir)",
     deviceId: 0x1638,
     architecture: "gcn-5",
     integrated: true,
@@ -658,7 +658,7 @@ export const GPU_MODELS: readonly GpuModel[] = Object.freeze([
   },
   {
     vendor: "amd",
-    name: "Radeon(TM) Vega 8 Graphics (Raven) (0x15D8)",
+    name: "Radeon(TM) Vega 8 Graphics (Raven)",
     deviceId: 0x15d8,
     architecture: "gcn-5",
     integrated: true,
@@ -667,7 +667,7 @@ export const GPU_MODELS: readonly GpuModel[] = Object.freeze([
   },
   {
     vendor: "amd",
-    name: "Radeon(TM) Graphics (Rembrandt) (0x164C)",
+    name: "Radeon(TM) Graphics (Rembrandt)",
     deviceId: 0x164c,
     architecture: "rdna-2",
     integrated: true,
@@ -676,7 +676,7 @@ export const GPU_MODELS: readonly GpuModel[] = Object.freeze([
   },
   {
     vendor: "amd",
-    name: "Radeon(TM) Graphics (Renoir) (0x1636)",
+    name: "Radeon(TM) Graphics (Renoir, 0x1636)",
     deviceId: 0x1636,
     architecture: "gcn-5",
     integrated: true,
@@ -694,7 +694,7 @@ export const GPU_MODELS: readonly GpuModel[] = Object.freeze([
   },
   {
     vendor: "amd",
-    name: "Radeon(TM) Graphics (Rembrandt) (0x1681)",
+    name: "Radeon(TM) Graphics (Rembrandt, 0x1681)",
     deviceId: 0x1681,
     architecture: "rdna-2",
     integrated: true,
@@ -766,7 +766,7 @@ export const GPU_MODELS: readonly GpuModel[] = Object.freeze([
   },
   {
     vendor: "amd",
-    name: "Radeon(TM) Vega 8 Graphics (Raven) (0x15DD)",
+    name: "Radeon(TM) Vega 8 Graphics (Raven, 0x15DD)",
     deviceId: 0x15dd,
     architecture: "gcn-5",
     integrated: true,

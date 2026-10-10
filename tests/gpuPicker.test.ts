@@ -28,7 +28,7 @@ import { countSet, fieldByKey, fieldsIn, hostFieldFor, isFieldSet, searchFields 
 const model = (name: string) => GPU_MODELS.find((m) => m.name === name)!;
 const RTX4070 = model("GeForce RTX 4070");
 const RX6700 = model("Radeon RX 6700 XT");
-const UHD770 = model("UHD Graphics 770");
+const UHD770 = model("UHD Graphics 770 (Raptor Lake)");
 
 /** The strings a user typed by hand before the picker existed. */
 const LEGACY = {

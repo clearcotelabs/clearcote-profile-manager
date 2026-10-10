@@ -25,7 +25,7 @@ const LINUX = {
   },
   intel: {
     vendor: /^Google Inc\. \(Intel\)$/,
-    renderer: /^ANGLE \(Intel, Mesa Intel\(R\) (.+) \(([A-Z0-9 -]+)\), OpenGL 4\.6\)$/,
+    renderer: /^ANGLE \(Intel, Mesa Intel\(R\) (.+) \(([A-Za-z0-9 -]+)\), OpenGL 4\.6\)$/,
   },
   amd: {
     vendor: /^Google Inc\. \(AMD\)$/,
@@ -83,11 +83,12 @@ describe("every entry's strings match the engine's format", () => {
         expect(id).toMatch(HEX8);
         expect(id).toBe("0x" + m.deviceId.toString(16).toUpperCase().padStart(8, "0"));
         // The description is the model as the driver names it, prefixed by the maker as the driver spells
-        // it. The label is that model, plus at most the chip generation in parentheses where several
-        // real parts share one name (four "UHD Graphics", three "Iris(R) Xe Graphics", two RTX 3070 dies).
+        // it (AMD's older Polaris driver prints "Radeon RX 570 Series" with no maker in front). The label
+        // is that model, plus at most one suffix in parentheses where several real parts share one name:
+        // the chip codename, or "codename, 0x<id>" when they share the codename too (see the generator).
         const prefix = { nvidia: "NVIDIA ", intel: "Intel(R) ", amd: "AMD " }[m.vendor];
-        expect(desc.startsWith(prefix), desc).toBe(true);
-        const model = desc.slice(prefix.length);
+        if (m.vendor !== "amd") expect(desc.startsWith(prefix), desc).toBe(true);
+        const model = desc.startsWith(prefix) ? desc.slice(prefix.length) : desc;
         expect(m.name === model || m.name.startsWith(model + " ("), `${m.name} vs ${model}`).toBe(true);
       });
 
@@ -95,14 +96,21 @@ describe("every entry's strings match the engine's format", () => {
         expect(m.linux.vendor).toMatch(LINUX[m.vendor].vendor);
         const match = LINUX[m.vendor].renderer.exec(m.linux.renderer);
         expect(match, m.linux.renderer).not.toBeNull();
-        // The driver names the same part. NVIDIA's own driver prints the marketing name; Mesa's radeonsi
-        // drops AMD's "(TM)"; Mesa's Intel driver prints the marketing name or, for newer parts, its
-        // generic "Graphics" / "Arc(tm) Graphics" (the corpus shows both), with the chip in the codename.
-        const base = m.name.replace(/ \([A-Za-z ]+\)$/, "");
+        // The driver names the same part. NVIDIA's own driver prints the marketing name. Mesa's radeonsi
+        // drops AMD's "(TM)" and takes the name from libdrm's id table: a laptop chip reads "Radeon 860M"
+        // or "Radeon 860M Graphics" by libdrm version, and "Radeon Graphics" where the table has no entry
+        // yet (Apify's Linux traffic shows all three; a card always has its entry). Mesa's Intel driver
+        // prints the marketing name or, for newer parts, its generic "Graphics" / "Arc(tm) Graphics" (the
+        // corpus shows both), with the chip in the codename.
+        // One suffix at most: the chip codename, or "codename, 0x<id>" when real parts share the codename too.
+        const base = m.name.replace(/ \([A-Za-z0-9 ,/]+\)$/, "");
         const drv = match![1];
         if (m.vendor === "nvidia") expect(drv).toBe(base);
-        else if (m.vendor === "amd") expect(drv).toBe(base.replace("(TM)", ""));
-        else expect([base, "Graphics", "Arc(tm) Graphics"], `${m.linux.renderer} for ${m.name}`).toContain(drv);
+        else if (m.vendor === "amd") {
+          const noTm = base.replace(/\s*\(TM\)/, "");
+          const forms = m.integrated ? [noTm, noTm.replace(/ Graphics$/, ""), "Radeon Graphics"] : [noTm];
+          expect(forms, `${m.linux.renderer} for ${m.name}`).toContain(drv);
+        } else expect([base, "Graphics", "Arc(tm) Graphics"], `${m.linux.renderer} for ${m.name}`).toContain(drv);
       });
 
       it("the Linux form carries no Direct3D and the Windows form no OpenGL", () => {
@@ -126,7 +134,7 @@ describe("every entry's strings match the engine's format", () => {
     });
   }
 
-  it("pins the exact strings the r36 engine serves, so a data refresh cannot drift unnoticed", () => {
+  it("pins the exact strings the r37 engine serves (schema 4), so a data refresh cannot drift unnoticed", () => {
     expect(byName("GeForce RTX 4070").windows).toEqual({
       vendor: "Google Inc. (NVIDIA)",
       renderer: "ANGLE (NVIDIA, NVIDIA GeForce RTX 4070 (0x00002786) Direct3D11 vs_5_0 ps_5_0, D3D11)",
@@ -135,11 +143,11 @@ describe("every entry's strings match the engine's format", () => {
       vendor: "Google Inc. (NVIDIA Corporation)",
       renderer: "ANGLE (NVIDIA Corporation, NVIDIA GeForce RTX 4070/PCIe/SSE2, OpenGL 4.5.0)",
     });
-    expect(byName("UHD Graphics 770").windows).toEqual({
+    expect(byName("UHD Graphics 770 (Raptor Lake)").windows).toEqual({
       vendor: "Google Inc. (Intel)",
       renderer: "ANGLE (Intel, Intel(R) UHD Graphics 770 (0x0000A780) Direct3D11 vs_5_0 ps_5_0, D3D11)",
     });
-    expect(byName("UHD Graphics 770").linux).toEqual({
+    expect(byName("UHD Graphics 770 (Raptor Lake)").linux).toEqual({
       vendor: "Google Inc. (Intel)",
       renderer: "ANGLE (Intel, Mesa Intel(R) UHD Graphics 770 (RPL-S), OpenGL 4.6)",
     });
@@ -154,12 +162,24 @@ describe("every entry's strings match the engine's format", () => {
       vendor: "Google Inc. (AMD)",
       renderer: "ANGLE (AMD, AMD Radeon RX 6700 XT (radeonsi navi22 ACO), OpenGL 4.6)",
     });
-    expect(byName("Radeon RX 7900 GRE").linux.renderer).toContain("navi31");
+    expect(byName("Radeon RX 9070 XT").linux.renderer).toContain("gfx1201");
     expect(byName("GeForce RTX 3070").deviceId).toBe(0x2484);
     expect(byName("GeForce RTX 3070").architecture).toBe("ampere");
     expect(byName("GeForce RTX 4060").architecture).toBe("lovelace");
-    expect(byName("Radeon RX 7900 GRE").architecture).toBe("rdna-3");
-    expect(byName("GeForce RTX 3070 (LHR)").deviceId).toBe(0x2488);
+    expect(byName("Radeon RX 9070 XT").architecture).toBe("rdna-4");
+    // schema 4: 0x7D55 is the common "Arc(TM) Graphics" string (Apify data: 253 of 259), not "Arc(TM) Pro";
+    // AMD APUs are in the pool; the Alder Lake Iris Xe pair shares a name and a codename, so one carries its id;
+    // the RTX 3070 LHR die (0x2488) is below the traffic threshold and gone.
+    expect(byName("Arc(TM) Graphics").windows.renderer).toBe("ANGLE (Intel, Intel(R) Arc(TM) Graphics (0x00007D55) Direct3D11 vs_5_0 ps_5_0, D3D11)");
+    expect(byName("Arc(TM) Graphics").architecture).toBe("xe-lpg");
+    expect(byName("Radeon(TM) Vega 8 Graphics (Raven)").deviceId).toBe(0x15D8);
+    expect(byName("Radeon(TM) Vega 8 Graphics (Raven)").integrated).toBe(true);
+    expect(byName("Radeon RX 6700 XT").integrated).toBe(false);
+    expect(byName("Iris(R) Xe Graphics (Alder Lake)").deviceId).toBe(0x46A6);
+    expect(byName("Iris(R) Xe Graphics (Alder Lake, 0x46A8)").deviceId).toBe(0x46A8);
+    expect(GPU_MODELS.some((m) => m.deviceId === 0x2488)).toBe(false);
+    expect(GPU_MODELS.filter((m) => m.vendor === "intel").every((m) => m.integrated)).toBe(true);
+    expect(GPU_MODELS.filter((m) => m.vendor === "nvidia").every((m) => !m.integrated)).toBe(true);
   });
 });
 
@@ -186,14 +206,25 @@ describe("findModel round-trips both platform forms", () => {
     });
   }
 
-  it("only the two RTX 3070 dies share a Linux claim; every Windows pair is unique", () => {
+  it("every Windows pair is unique; a Linux claim is shared only where the driver prints one name", () => {
+    // Linux drivers print a name, not ANGLE's device id, so the several real parts behind one marketing
+    // name (the Alder Lake Iris Xe pair, two Vega 8 dies, ...) are ONE Linux claim. So are the parts a
+    // driver does not tell apart at all: Mesa prints "Intel(R) Graphics (ADL GT2)" for every Alder Lake-P
+    // chip, Iris Xe or UHD, and "AMD Radeon Graphics" for every APU libdrm has no entry for.
     const key = (s: { vendor: string; renderer: string }) => `${s.vendor}|${s.renderer}`;
     const win = new Set(GPU_MODELS.map((m) => key(m.windows)));
     expect(win.size).toBe(GPU_MODELS.length);
-    const byLinux = new Map<string, string[]>();
-    for (const m of GPU_MODELS) byLinux.set(key(m.linux), [...(byLinux.get(key(m.linux)) ?? []), m.name]);
-    const shared = [...byLinux.values()].filter((names) => names.length > 1);
-    expect(shared).toEqual([["GeForce RTX 3070", "GeForce RTX 3070 (LHR)"]]);
+    const base = (name: string) => name.replace(/ \([A-Za-z0-9 ,/]+\)$/, "");
+    const generic = /Mesa Intel\(R\) Graphics \(|AMD Radeon Graphics \(/;
+    const byLinux = new Map<string, GpuModel[]>();
+    for (const m of GPU_MODELS) byLinux.set(key(m.linux), [...(byLinux.get(key(m.linux)) ?? []), m]);
+    for (const group of byLinux.values()) {
+      if (group.length < 2) continue;
+      const names = new Set(group.map((m) => `${m.vendor}:${base(m.name)}`));
+      const label = group.map((m) => m.name).join(", ");
+      if (generic.test(group[0].linux.renderer)) expect(group.every((m) => m.integrated), label).toBe(true);
+      else expect([...names], label).toHaveLength(1);
+    }
   });
 
   it("forgives whitespace at the ends — the strings travel through text inputs", () => {
@@ -217,14 +248,14 @@ describe("findModel round-trips both platform forms", () => {
     expect(m.windows.vendor).not.toBe(m.linux.vendor);
     expect(findModel(m.windows.vendor, m.linux.renderer)).toBeNull();
     expect(findModel(m.linux.vendor, m.windows.renderer)).toBeNull();
-    for (const name of ["Radeon RX 6700 XT", "UHD Graphics 770"]) {
+    for (const name of ["Radeon RX 6700 XT", "UHD Graphics 770 (Raptor Lake)"]) {
       const same = byName(name);
       expect(same.windows.vendor, name).toBe(same.linux.vendor);
     }
   });
 
   it("is null when one character differs — a different claim", () => {
-    const m = byName("UHD Graphics 770");
+    const m = byName("UHD Graphics 770 (Raptor Lake)");
     expect(findModel(m.windows.vendor, m.windows.renderer.replace("0x0000A780", "0x0000A781"))).toBeNull();
     expect(findModel(m.windows.vendor.toLowerCase(), m.windows.renderer)).toBeNull();
   });
