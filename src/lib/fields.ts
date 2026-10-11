@@ -154,6 +154,11 @@ export interface FieldDef {
   offValue?: unknown;
 }
 
+/** Both avail fields. The full screen size typed as avail is a screen with no taskbar: not a lie,
+ *  but a rare shape that stands out, so the copy points at the real work area instead. */
+const AVAIL_WHY =
+  "The work area: the screen minus the taskbar, e.g. 1920 × 1032 on a 1920 × 1080 Windows 11 screen at 100 %. The full screen size here describes a screen with no taskbar, which is rare and stands out. Left empty under a seed, capture or Light stealth, it is not this display's own value, so matching this display means typing all four fields.";
+
 export const FIELDS: FieldDef[] = [
   // ── Identity ──────────────────────────────────────────────────────────────
   { key: "name", cat: "identity", label: "Name", type: "text", full: true, placeholder: "e.g. Acme — US East" },
@@ -332,15 +337,18 @@ export const FIELDS: FieldDef[] = [
     type: "number",
     placeholder: "persona default",
     group: "Screen dimensions",
+    // Static copy, so it has to hold on both sides of 154 r36 (src/lib/coherence.ts,
+    // typedScreenReachesCss): before it a typed size under a seed, capture or Light stealth reaches
+    // screen.* but not the CSS media queries; from it on both take the typed size.
     groupNote:
-      "Best left empty. The seed or a captured fingerprint supplies a screen that agrees with itself; a typed size can disagree with what CSS media queries report, even when it matches your own monitor.",
+      "Best left empty: the seed or capture supplies a screen that agrees with itself. Before 154 r36, a typed size under a seed, capture or Light stealth can disagree with what CSS media queries report; from r36 on, typing this display's own four values is fine.",
     keywords: "--fingerprint-screen-width display",
     why:
-      "A typed screen size is a common reason a profile gets flagged: with a seed, a captured fingerprint or Light stealth active, pages can read two different screens. Empty uses the persona's screen, or this display when there is no persona.",
+      "Empty uses the persona's screen, or this display when there is no persona. On builds before 154 r36, with a seed, a captured fingerprint or Light stealth active, a typed size reaches screen.* but not the CSS media queries, so pages read two different screens, even when the size matches your own monitor. From 154 r36 on both report the typed size: typing all four of this display's values is fine, while any other size is still a faked screen the real window cannot match.",
   },
   { group: "Screen dimensions", key: "screenHeight", cat: "hardware", label: "Screen height", type: "number", placeholder: "persona default", keywords: "--fingerprint-screen-height display" },
-  { group: "Screen dimensions", key: "availWidth", cat: "hardware", label: "Avail width", type: "number", placeholder: "persona default", keywords: "--fingerprint-avail-width taskbar" },
-  { group: "Screen dimensions", key: "availHeight", cat: "hardware", label: "Avail height", type: "number", placeholder: "persona default", keywords: "--fingerprint-avail-height taskbar" },
+  { group: "Screen dimensions", key: "availWidth", cat: "hardware", label: "Avail width", type: "number", placeholder: "persona default", keywords: "--fingerprint-avail-width taskbar", why: AVAIL_WHY },
+  { group: "Screen dimensions", key: "availHeight", cat: "hardware", label: "Avail height", type: "number", placeholder: "persona default", keywords: "--fingerprint-avail-height taskbar", why: AVAIL_WHY },
   { stepAny: true, key: "colorDepth", cat: "hardware", label: "Colour depth", type: "number", placeholder: "24", keywords: "--fingerprint-color-depth" },
   { stepAny: true, key: "devicePixelRatio", cat: "hardware", label: "Pixel ratio", type: "number", placeholder: "1", keywords: "--fingerprint-device-pixel-ratio dpr scaling" },
   { stepAny: true, key: "maxTouchPoints", cat: "hardware", label: "Touch points", type: "number", placeholder: "0", keywords: "--fingerprint-max-touch-points touchscreen", why: "0 is a real value — a mouse-only desktop — not an empty one." },

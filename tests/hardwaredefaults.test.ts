@@ -2,7 +2,7 @@
 // Each block names what was measured on the shipped r35 build (SESSION-CONTEXT/187).
 
 import { describe, it, expect } from "vitest";
-import { coherenceIssues } from "../src/lib/coherence";
+import { coherenceIssues, MIN_MAJOR_SCREEN_CSS, MIN_REVISION_SCREEN_CSS } from "../src/lib/coherence";
 import { FIELDS, fieldByKey, selectOptions } from "../src/lib/fields";
 import { newProfile } from "../src/lib/newProfile";
 import { profilesFromProxyList } from "../src/lib/bulkCreate";
@@ -80,6 +80,34 @@ describe("a typed screen size next to an identity that has its own screen", () =
     // Empty is the persona's screen under a seed, not the real display.
     for (const k of ["screenWidth", "screenHeight", "availWidth", "availHeight"]) {
       expect(fieldByKey(k)?.placeholder, k).toBe("persona default");
+    }
+  });
+
+  it("the editor's screen copy is right on both sides of 154 r36, the boundary coherence uses", () => {
+    // Static text cannot follow the build, so it has to say both: before r36 a typed size under a
+    // seed, capture or Light stealth disagrees with the CSS screen; from r36 typing this display's
+    // own four values is fine. The r35 wording said the first part unconditionally.
+    const w = fieldByKey("screenWidth")!;
+    const build = `${MIN_MAJOR_SCREEN_CSS} r${MIN_REVISION_SCREEN_CSS}`;
+    for (const [name, text] of [["groupNote", w.groupNote], ["why", w.why]] as const) {
+      expect(text, name).toMatch(new RegExp(`before ${build}`, "i"));
+      expect(text, name).toMatch(new RegExp(`r${MIN_REVISION_SCREEN_CSS} on`));
+      expect(text, name).toMatch(/four/);
+      expect(text, name).toMatch(/seed/);
+      expect(text, name).toMatch(/Light stealth/);
+    }
+    expect(w.groupNote).not.toMatch(/even when it matches your own monitor/);
+    expect(w.why).not.toMatch(/common reason a profile gets flagged/);
+  });
+
+  it("the avail fields point at the real work area, not the full screen", () => {
+    // A typed avail equal to the screen is a no-taskbar shape: not a lie, but rare enough to stand out.
+    for (const k of ["availWidth", "availHeight"]) {
+      const why = fieldByKey(k)?.why ?? "";
+      expect(why, k).toMatch(/work area/);
+      expect(why, k).toMatch(/minus the taskbar/);
+      expect(why, k).toMatch(/1920 × 1032 on a 1920 × 1080/);
+      expect(why, k).toMatch(/all four/);
     }
   });
 });
