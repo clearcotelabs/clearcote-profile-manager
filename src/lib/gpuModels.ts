@@ -303,7 +303,7 @@ export const GPU_MODELS: readonly GpuModel[] = Object.freeze([
     architecture: "gen-9",
     integrated: true,
     windows: { vendor: "Google Inc. (Intel)", renderer: "ANGLE (Intel, Intel(R) UHD Graphics 600 (0x00003185) Direct3D11 vs_5_0 ps_5_0, D3D11)" },
-    linux: { vendor: "Google Inc. (Intel)", renderer: "ANGLE (Intel, Mesa Intel(R) UHD Graphics 600 (GLK 2x6), OpenGL 4.6)" },
+    linux: { vendor: "Google Inc. (Intel)", renderer: "ANGLE (Intel, Mesa Intel(R) UHD Graphics 600 (GLK 2), OpenGL 4.6)" },
   },
   {
     vendor: "intel",
@@ -667,12 +667,12 @@ export const GPU_MODELS: readonly GpuModel[] = Object.freeze([
   },
   {
     vendor: "amd",
-    name: "Radeon(TM) Graphics (Rembrandt)",
+    name: "Radeon(TM) Graphics (Renoir, 0x164C)",
     deviceId: 0x164c,
     architecture: "rdna-2",
     integrated: true,
     windows: { vendor: "Google Inc. (AMD)", renderer: "ANGLE (AMD, AMD Radeon(TM) Graphics (0x0000164C) Direct3D11 vs_5_0 ps_5_0, D3D11)" },
-    linux: { vendor: "Google Inc. (AMD)", renderer: "ANGLE (AMD, AMD Radeon Graphics (radeonsi rembrandt ACO), OpenGL 4.6)" },
+    linux: { vendor: "Google Inc. (AMD)", renderer: "ANGLE (AMD, AMD Radeon Graphics (radeonsi renoir ACO), OpenGL 4.6)" },
   },
   {
     vendor: "amd",
@@ -694,7 +694,7 @@ export const GPU_MODELS: readonly GpuModel[] = Object.freeze([
   },
   {
     vendor: "amd",
-    name: "Radeon(TM) Graphics (Rembrandt, 0x1681)",
+    name: "Radeon(TM) Graphics (Rembrandt)",
     deviceId: 0x1681,
     architecture: "rdna-2",
     integrated: true,
@@ -708,7 +708,7 @@ export const GPU_MODELS: readonly GpuModel[] = Object.freeze([
     architecture: "rdna-3",
     integrated: true,
     windows: { vendor: "Google Inc. (AMD)", renderer: "ANGLE (AMD, AMD Radeon(TM) Graphics (0x00001506) Direct3D11 vs_5_0 ps_5_0, D3D11)" },
-    linux: { vendor: "Google Inc. (AMD)", renderer: "ANGLE (AMD, AMD Radeon Graphics (radeonsi raphael_mendocino ACO), OpenGL 4.6)" },
+    linux: { vendor: "Google Inc. (AMD)", renderer: "ANGLE (AMD, AMD Radeon 610M (radeonsi raphael_mendocino LLVM 20.1.2), OpenGL 4.6)" },
   },
   {
     vendor: "amd",
@@ -780,7 +780,7 @@ export const GPU_MODELS: readonly GpuModel[] = Object.freeze([
     architecture: "rdna-3",
     integrated: true,
     windows: { vendor: "Google Inc. (AMD)", renderer: "ANGLE (AMD, AMD Radeon(TM) 890M Graphics (0x0000150E) Direct3D11 vs_5_0 ps_5_0, D3D11)" },
-    linux: { vendor: "Google Inc. (AMD)", renderer: "ANGLE (AMD, AMD Radeon 890M (radeonsi gfx1150 LLVM 20.1.2), OpenGL 4.6)" },
+    linux: { vendor: "Google Inc. (AMD)", renderer: "ANGLE (AMD, AMD Radeon Graphics (radeonsi gfx1150 LLVM 20.1.2), OpenGL 4.6)" },
   },
   {
     vendor: "amd",

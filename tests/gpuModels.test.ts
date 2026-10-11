@@ -34,6 +34,8 @@ const LINUX = {
   },
 } as const;
 const TOKEN: Record<GpuVendor, string> = { nvidia: "NVIDIA", intel: "Intel", amd: "AMD" };
+/** libdrm amdgpu.ids product names that differ from the Windows driver's (device id -> name without "AMD "). */
+const LIBDRM_NAME: Record<number, string> = { 0x1506: "Radeon 610M" };
 
 const byName = (name: string): GpuModel => {
   const m = GPU_MODELS.find((x) => x.name === name);
@@ -108,7 +110,12 @@ describe("every entry's strings match the engine's format", () => {
         if (m.vendor === "nvidia") expect(drv).toBe(base);
         else if (m.vendor === "amd") {
           const noTm = base.replace(/\s*\(TM\)/, "");
-          const forms = m.integrated ? [noTm, noTm.replace(/ Graphics$/, ""), "Radeon Graphics"] : [noTm];
+          // libdrm names a few APUs that Windows' driver calls plain "Radeon(TM) Graphics": Mendocino (0x1506) is
+          // "AMD Radeon 610M" in amdgpu.ids, and Apify's Linux traffic shows that name with raphael_mendocino.
+          const libdrm = LIBDRM_NAME[m.deviceId];
+          const forms = m.integrated
+            ? [noTm, noTm.replace(/ Graphics$/, ""), "Radeon Graphics", ...(libdrm ? [libdrm] : [])]
+            : [noTm];
           expect(forms, `${m.linux.renderer} for ${m.name}`).toContain(drv);
         } else expect([base, "Graphics", "Arc(tm) Graphics"], `${m.linux.renderer} for ${m.name}`).toContain(drv);
       });
