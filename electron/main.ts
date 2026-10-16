@@ -660,6 +660,9 @@ app.whenReady().then(() => {
   ensureDirs();
   profiles.purgeTrash(); // deletes past their undo window, from this run or an earlier one
   void purgeDeleting(); // a cache removal interrupted between rename and delete
+  // A profile that resolves its region from the proxy needs the offline geoip database: fetch it now
+  // (once, ~52 MB, shared with the SDKs) rather than inside that profile's first launch.
+  if (profiles.listProfiles().some((p) => p.geoip && p.proxy)) geo.prefetchGeoDb();
   cloud = new CloudManager({
     api: () => cloudClient(),
     attach: (url) => attachOnce(url),

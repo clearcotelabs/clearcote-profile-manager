@@ -12,6 +12,7 @@ import net from "node:net";
 import tls from "node:tls";
 import { parseProxy, type ParsedProxy } from "./proxy";
 import { socks5Connect } from "./socks";
+import { ensureMmdb, geoFromRecord, ipBits, lookupFile, mmdbDownloading, type DbGeo } from "./geodb";
 import type { Profile } from "./types";
 
 export interface GeoResult {
@@ -46,9 +47,51 @@ export function languageForCountry(cc?: string): string {
   return (cc && LANG_BY_CC[cc.toUpperCase()]) || "en-US,en";
 }
 
-const GEO_HOST = "ip-api.com";
-const GEO_PATH = "/json/?fields=status,message,query,country,countryCode,city,timezone,lat,lon";
-const GEO_PORT = 80;
+// Where the exit IP and its region come from — the SDK's sources since 0.47:
+//   1. the exit IP from a plain IP echo THROUGH the proxy: api.ipify.org, then icanhazip.com, or your
+//      own endpoint(s) in CLEARCOTE_GEOIP_ECHO_URL (comma-separated) so no third party learns the
+//      proxy exists. Plain text, or JSON with an `ip` / `query` field.
+//   2. the region from the offline geoip-all-in-one database (./geodb), shared with the SDKs' cache.
+//   3. ip-api.com only with CLEARCOTE_GEOIP_IPAPI=1, when the database has no answer (for example
+//      while it is still downloading on first use). Off by default: its free endpoint is for
+//      non-commercial use only and bans an IP that asks more than 45 times a minute.
+// This used to ask ip-api.com for everything, on every check and every geoip launch.
+export const IPECHO_URLS = ["http://api.ipify.org", "http://icanhazip.com"];
+export const ECHO_URL_ENV = "CLEARCOTE_GEOIP_ECHO_URL";
+export const IPAPI_ENV = "CLEARCOTE_GEOIP_IPAPI";
+const IPAPI_URL = "http://ip-api.com/json/?fields=status,message,query,country,countryCode,city,timezone,lat,lon";
+
+/** The IP-echo endpoints, in order: CLEARCOTE_GEOIP_ECHO_URL when set, else the public defaults. */
+export function echoUrls(env: NodeJS.ProcessEnv = process.env): string[] {
+  const custom = (env[ECHO_URL_ENV] ?? "").split(",").map((u) => u.trim()).filter(Boolean);
+  return custom.length ? custom : [...IPECHO_URLS];
+}
+
+/** Whether CLEARCOTE_GEOIP_IPAPI opts in to the ip-api.com fallback (1/true/yes/on). */
+export function ipapiEnabled(env: NodeJS.ProcessEnv = process.env): boolean {
+  return ["1", "true", "yes", "on"].includes((env[IPAPI_ENV] ?? "").trim().toLowerCase());
+}
+
+/** The IP an echo answered: plain text (first word), or JSON with an `ip` or `query` field. */
+export function ipFromEcho(text: string): string {
+  let t = (text ?? "").trim();
+  if (t.startsWith("{")) {
+    try {
+      const j = JSON.parse(t) as { ip?: unknown; query?: unknown };
+      t = String(j?.ip ?? j?.query ?? "");
+    } catch {
+      return "";
+    }
+  }
+  return t ? t.split(/\s+/)[0] : "";
+}
+
+/** Plain http:// only: the echoes and ip-api are asked over HTTP, as the SDKs do. */
+function parseHttpUrl(url: string): { host: string; port: number; path: string } {
+  const u = new URL(url);
+  if (u.protocol !== "http:") throw new Error(`only http:// endpoints are supported (${url})`);
+  return { host: u.hostname, port: Number(u.port || 80), path: `${u.pathname}${u.search}` };
+}
 
 /** Open a byte pipe to `host:port` — directly, or through the profile's proxy. Returns the socket
  *  plus whether the request line must be absolute-form (an http proxy wants the full URL). */
@@ -97,16 +140,17 @@ function connectTcp(host: string, port: number, timeoutMs: number): Promise<net.
   });
 }
 
-/** GET the geo endpoint through `proxy` and return the decoded JSON body. */
-async function fetchGeoJson(proxy: ParsedProxy | null, timeoutMs: number): Promise<Record<string, unknown>> {
-  const { sock, absoluteForm } = await connectThrough(proxy, GEO_HOST, GEO_PORT, timeoutMs);
+/** GET an http:// URL through `proxy` and return the decoded body. */
+async function fetchText(url: string, proxy: ParsedProxy | null, timeoutMs: number): Promise<string> {
+  const { host, port, path } = parseHttpUrl(url);
+  const { sock, absoluteForm } = await connectThrough(proxy, host, port, timeoutMs);
   try {
-    const target = absoluteForm ? `http://${GEO_HOST}${GEO_PATH}` : GEO_PATH;
+    const target = absoluteForm ? `http://${host}${port === 80 ? "" : `:${port}`}${path}` : path;
     const headers = [
       `GET ${target} HTTP/1.1`,
-      `Host: ${GEO_HOST}`,
+      `Host: ${port === 80 ? host : `${host}:${port}`}`,
       "User-Agent: clearcote-profile-manager",
-      "Accept: application/json",
+      "Accept: */*",
       "Connection: close",
     ];
     // An authenticated http/https proxy still needs its header on this hop; SOCKS auth already
@@ -119,11 +163,10 @@ async function fetchGeoJson(proxy: ParsedProxy | null, timeoutMs: number): Promi
 
     const raw = await readResponse(sock, timeoutMs);
     const split = raw.indexOf("\r\n\r\n");
-    if (split === -1) throw new Error("malformed HTTP response from the geo service");
+    if (split === -1) throw new Error(`malformed HTTP response from ${host}`);
     const status = Number(/^HTTP\/1\.[01] (\d{3})/.exec(raw.slice(0, split))?.[1] ?? 0);
-    if (status !== 200) throw new Error(`geo service returned HTTP ${status || "?"}`);
-    const body = decodeBody(raw.slice(0, split), raw.slice(split + 4));
-    return JSON.parse(body) as Record<string, unknown>;
+    if (status !== 200) throw new Error(`${host} returned HTTP ${status || "?"}`);
+    return decodeBody(raw.slice(0, split), raw.slice(split + 4));
   } finally {
     sock.destroy();
   }
@@ -183,27 +226,111 @@ function decodeBody(head: string, body: string): string {
  * Resolve the egress IP + geo a profile would present (through its proxy if set).
  * Doubles as a proxy health check: a failure here means the proxy itself is unusable.
  */
-export async function geoCheck(profile: Profile, timeoutMs = 12000): Promise<GeoResult> {
-  const px = parseProxy(profile.proxy);
+export async function geoCheck(profile: Profile, timeoutMs = 20000): Promise<GeoResult> {
+  let px: ParsedProxy | null;
   try {
-    const j = await fetchGeoJson(px, timeoutMs);
-    if (j.status !== "success") {
-      return { ok: false, error: String(j.message || "Geo lookup failed.") };
-    }
-    const cc = j.countryCode as string | undefined;
-    return {
-      ok: true,
-      ip: j.query as string,
-      country: j.country as string,
-      countryCode: cc,
-      city: (j.city as string) || undefined,
-      timezone: j.timezone as string,
-      lat: j.lat as number,
-      lon: j.lon as number,
-      acceptLanguage: languageForCountry(cc),
-    };
+    px = parseProxy(profile.proxy);
   } catch (e) {
-    const msg = (e as Error)?.message || String(e);
+    return { ok: false, error: `invalid proxy (${(e as Error)?.message || e})` };
+  }
+  const deadline = Date.now() + timeoutMs;
+
+  // 1. The exit IP. Every echo failing means the proxy itself is unusable — this doubles as the
+  //    proxy health check, so the first echo's error is what the user sees.
+  let ip = "";
+  let echoError = "";
+  for (const url of echoUrls()) {
+    const left = deadline - Date.now();
+    if (left <= 0) break;
+    try {
+      const got = ipFromEcho(await fetchText(url, px, Math.min(left, 8000)));
+      if (ipBits(got)) {
+        ip = got;
+        break;
+      }
+      echoError ||= `${new URL(url).hostname} did not answer with an IP address`;
+    } catch (e) {
+      echoError ||= (e as Error)?.message || String(e);
+    }
+  }
+  if (!ip) {
+    const msg = echoError || "could not determine the exit IP";
     return { ok: false, error: px ? `${msg} (check the proxy)` : msg };
   }
+
+  // 2. Its region, from the offline database. The first-use download (~52 MB) may outlast the
+  //    budget; it keeps going in the background and serves the next check.
+  let db: DbGeo | null = null;
+  let dbState: "downloading" | "unavailable" | "ok" = "ok";
+  const left = deadline - Date.now();
+  let timer: NodeJS.Timeout | undefined;
+  const file = await Promise.race([
+    ensureMmdb((m) => console.log(`[clearcote] ${m}`)),
+    new Promise<null>((resolve) => {
+      timer = setTimeout(() => resolve(null), Math.max(0, left));
+    }),
+  ]);
+  clearTimeout(timer);
+  if (!file) dbState = mmdbDownloading() ? "downloading" : "unavailable";
+  else {
+    try {
+      db = geoFromRecord(lookupFile(file, ip));
+    } catch (e) {
+      console.warn(`[clearcote] geoip: database read failed (${(e as Error)?.message || e})`);
+    }
+  }
+  if (db?.timezone) {
+    return {
+      ok: true,
+      ip,
+      country: db.country,
+      countryCode: db.countryCode,
+      city: db.city,
+      timezone: db.timezone,
+      lat: db.lat,
+      lon: db.lon,
+      acceptLanguage: languageForCountry(db.countryCode),
+    };
+  }
+
+  // 3. Opt-in only: ip-api.com, through the same proxy.
+  if (ipapiEnabled()) {
+    const rest = deadline - Date.now();
+    if (rest > 0) {
+      try {
+        const j = JSON.parse(await fetchText(IPAPI_URL, px, Math.min(rest, 8000))) as Record<string, unknown>;
+        if (j.status === "success") {
+          const cc = j.countryCode as string | undefined;
+          return {
+            ok: true,
+            ip: (j.query as string) || ip,
+            country: j.country as string,
+            countryCode: cc,
+            city: (j.city as string) || undefined,
+            timezone: j.timezone as string,
+            lat: j.lat as number,
+            lon: j.lon as number,
+            acceptLanguage: languageForCountry(cc),
+          };
+        }
+      } catch {
+        /* fall through to the database's reason */
+      }
+    }
+  }
+
+  const optIn = ipapiEnabled() ? "" : ` (or set ${IPAPI_ENV}=1 to ask ip-api.com, non-commercial use only)`;
+  const error =
+    dbState === "downloading"
+      ? `exit IP ${ip}: the geoip database is still downloading (~52 MB, first use only) — check again in a moment${optIn}`
+      : dbState === "unavailable"
+        ? `exit IP ${ip}: the geoip database could not be downloaded${optIn}`
+        : `no region data for exit IP ${ip}`;
+  return { ok: false, ip, error };
+}
+
+/** Start the database download in the background, so the first geoip launch does not wait for it.
+ *  Never rejects. */
+export function prefetchGeoDb(): void {
+  void ensureMmdb((m) => console.log(`[clearcote] ${m}`));
 }
