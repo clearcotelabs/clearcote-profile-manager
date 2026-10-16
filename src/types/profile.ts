@@ -2,7 +2,7 @@
 // One profile is persisted as profiles/<id>.json; its browser storage lives in
 // profiles/<id>/userdata/. See PLAN.md and profiles/example.profile.json.
 
-import { fingerprintArgs, resolveTls, startUrlArg, type FpInput } from "../../electron/fpargs";
+import { fingerprintArgs, mergeFeatureFlags, proxyEgressArgs, resolveTls, startUrlArg, type FpInput } from "../../electron/fpargs";
 // The PURE proxy module, not ./proxy — that one pulls in node:net for the relay and would break
 // the renderer bundle. Same split, and same reason, as electron/fpargs.ts.
 import { parseProxy, proxyArgs } from "../../electron/proxyargs";
@@ -317,11 +317,12 @@ export function profileToArgs(p: Profile): string[] {
   // instead of the preview quietly implying the credentials go nowhere.
   args.push(...proxyArgs(parseProxy(p.proxy), { redactSecrets: true, socks5Udp: p.socks5Udp, transparentProxy: p.transparentProxy }));
   if (p.userDataDir) args.push(`--user-data-dir=${p.userDataDir}`);
+  args.push(...proxyEgressArgs(!!parseProxy(p.proxy), p.extraArgs));
   if (p.extraArgs?.length) args.push(...p.extraArgs);
   // Last, exactly as the launcher does (electron/launcher.ts buildArgs).
   const url = startUrlArg(p.startUrl);
   if (url) args.push(url);
-  return args;
+  return mergeFeatureFlags(args);
 }
 
 /** Environment variables the launch sets, for display beside the command line. Not switches: the

@@ -308,6 +308,58 @@ export interface FpArgsOptions {
   profileAcceptLanguage?: string;
 }
 
+/** Platforms whose stable Chrome ships Web Bluetooth (the SDK's WEB_BLUETOOTH_PLATFORMS). */
+export const WEB_BLUETOOTH_PLATFORMS = ["windows", "macos", "mac", "android", "chromeos"];
+
+/**
+ * Chromium honours only the LAST --enable-features / --disable-features on its command line — they
+ * do not add up — so the defaults here and a user's own extraArgs would silently cancel each other
+ * (an extra `--disable-features=X` dropped WebBluetooth's or mDNS's switch). Collapse each into one
+ * switch, de-duplicated, at the position of its first occurrence so a trailing start URL stays last.
+ * Mirrors the SDK's mergeFeatureFlags.
+ */
+export function mergeFeatureFlags(args: string[]): string[] {
+  const prefixes = ["--enable-features=", "--disable-features="];
+  const names = new Map<string, string[]>(); // prefix -> feature names, first occurrence order
+  const out: string[] = [];
+  for (const a of args) {
+    const prefix = prefixes.find((k) => a.startsWith(k));
+    if (!prefix) {
+      out.push(a);
+      continue;
+    }
+    if (!names.has(prefix)) {
+      names.set(prefix, []);
+      out.push(prefix); // the merged switch goes here, filled in below
+    }
+    names.get(prefix)!.push(...a.slice(prefix.length).split(",").map((s) => s.trim()).filter(Boolean));
+  }
+  return out.flatMap((a) => {
+    const list = names.get(a);
+    if (!list) return [a];
+    return list.length ? [`${a}${[...new Set(list)].join(",")}`] : [];
+  });
+}
+
+/**
+ * Switches that keep traffic from leaving AROUND a proxy, as the SDK sends them whenever one is set:
+ *   --disable-quic: a SOCKS5 / HTTP proxy carries only TCP, so real proxied Chrome never speaks
+ *     HTTP/3; without this the browser would try QUIC over UDP straight from the host.
+ *   --webrtc-ip-handling-policy=disable_non_proxied_udp: --webrtc-ip only rewrites the candidates a
+ *     page sees; a TURN relay with iceTransportPolicy "relay" still sends UDP from the host's own
+ *     address. --socks5-udp composes with it (the association is made under the policy).
+ * A policy the user set in extraArgs wins, and none is added twice.
+ */
+export function proxyEgressArgs(hasProxy: boolean, extraArgs: string[] = []): string[] {
+  if (!hasProxy) return [];
+  const out = ["--disable-quic"];
+  const own = extraArgs.some(
+    (a) => a.startsWith("--webrtc-ip-handling-policy") || a.startsWith("--force-webrtc-ip-handling-policy"),
+  );
+  if (!own) out.push("--webrtc-ip-handling-policy=disable_non_proxied_udp");
+  return out.filter((a) => !extraArgs.includes(a));
+}
+
 /**
  * Build the Clearcote fingerprint switches for a profile, mirroring the SDK's `fingerprintArgs`.
  * Does NOT emit --proxy-server, --user-data-dir, or extraArgs — those differ between the real
@@ -388,6 +440,15 @@ export function fingerprintArgs(input: FpInput, opts: FpArgsOptions = {}): strin
   // responder is created behind kWebRtcHideLocalIpsWithMdns, so disabling the feature means no
   // responder is built and host candidates are signalled as raw IPs.
   if (p.webrtcMdns === "off") args.push("--disable-features=WebRtcHideLocalIpsWithMdns");
+
+  // Web Bluetooth follows the CLAIMED platform, as the SDK does: stable Chrome ships
+  // navigator.bluetooth on Windows, macOS, Android and ChromeOS, never on Linux. Left to the build's
+  // own default, a Linux binary with a Windows persona lacks it and a Windows binary with a Linux
+  // persona has it — either way the real OS shows through.
+  const claimed = String(p.platform ?? opts.hostPlatform ?? "windows").toLowerCase();
+  args.push(
+    WEB_BLUETOOTH_PLATFORMS.includes(claimed) ? "--enable-features=WebBluetooth" : "--disable-features=WebBluetooth",
+  );
 
   if (p.disableGpuFingerprint) args.push("--disable-gpu-fingerprint");
   if (p.fingerprintNoise === false) args.push("--disable-fingerprint-noise");

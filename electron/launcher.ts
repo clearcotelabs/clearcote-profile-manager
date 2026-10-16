@@ -12,10 +12,11 @@ import { geoCheck } from "./geo";
 import { resolveLicenseKey, acquireLease, withRunToken, planFromToken, type LeaseSession } from "./license";
 import { proEnsureBinary, freeEnsureBinary } from "./proBinary";
 import { fetchCatalog, resolveVersion } from "./catalog";
-import { fingerprintArgs, startUrlArg, type FpInput } from "./fpargs";
+import { fingerprintArgs, mergeFeatureFlags, proxyEgressArgs, startUrlArg, type FpInput } from "./fpargs";
 import { withShaderDialect, shaderDialectWarning } from "./shaderdialect";
 import { seedWidevine, widevineArgs, claimsChromeBrand } from "./widevine";
 import { spawnBrowser } from "./winlaunch";
+import { linuxFontEnv, linuxLocaleEnv } from "./linuxfonts";
 import type { Settings, DownloadProgress } from "./types";
 import type { Profile, LaunchResult } from "./types";
 
@@ -355,6 +356,13 @@ export async function launch(
     } else {
       args.push(...proxyArgs(proxy, { socks5Udp: p.socks5Udp, transparentProxy: p.transparentProxy }));
     }
+    args.push(...proxyEgressArgs(!!proxy, p.extraArgs));
+    // One --enable-features and one --disable-features: Chromium keeps only the last of each.
+    const argv = mergeFeatureFlags(args);
+    // Linux: the browser's own font bundle (FONTCONFIG_FILE) and the UI locale from --lang (LANGUAGE),
+    // as the SDK sets them. Without the first, a Linux launch rendered with the host's fonts.
+    const linuxEnv = { ...linuxFontEnv(bin, (m) => warnings.push(m)), ...linuxLocaleEnv(argv) };
+    if (Object.keys(linuxEnv).length) env = { ...(env ?? process.env), ...linuxEnv };
     // Inject the leased run-token so the PRO engine gate admits the launch, preserving any
     // shader-dialect variable already folded in above. The token is also mirrored into a file this
     // launch owns: a supporting engine re-reads it and stops a running FREE browser once the token
@@ -372,7 +380,7 @@ export async function launch(
     // unread pipes (Node's default): a browser that logged enough filled the pipe and FROZE on its
     // next write. The tail is also how an exit is explained — the licence watchdog exits with
     // code 0, like a normal close, and only its stderr line tells them apart.
-    const child = await spawnBrowser(bin, args, { detached: false, env, stdio: ["ignore", "ignore", "pipe"] });
+    const child = await spawnBrowser(bin, argv, { detached: false, env, stdio: ["ignore", "ignore", "pipe"] });
     const tail = new Tail();
     child.stderr?.on("data", (d: Buffer) => tail.push(d));
     const startedAt = Date.now();
