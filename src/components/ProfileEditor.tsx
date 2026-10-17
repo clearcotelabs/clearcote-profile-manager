@@ -55,6 +55,7 @@ import {
   type Profile,
 } from "@/types/profile";
 import { api, type GeoResult, type HostGpu, type VersionOption } from "@/lib/ipc";
+import { browserCommandName, hostOs, shortcutLabel, type HostOs } from "@/lib/host";
 import CloudFields from "./CloudFields";
 
 const input =
@@ -64,15 +65,10 @@ const btnGhost = "rounded-lg border border-line px-3 py-1.5 text-sm text-fog/70 
 
 const randomSeed = () => Math.random().toString(36).slice(2, 14);
 
-/** The host OS, for the coherence rules that only fire off-Windows (the shader dialect). The
- *  renderer has a real navigator, so this needs no extra IPC. */
-function hostPlatform(): "windows" | "linux" | "macos" | undefined {
-  if (typeof navigator === "undefined") return undefined;
-  const p = `${navigator.platform} ${navigator.userAgent}`.toLowerCase();
-  if (p.includes("win")) return "windows";
-  if (p.includes("mac")) return "macos";
-  if (p.includes("linux") || p.includes("x11")) return "linux";
-  return undefined;
+/** The host OS, for the coherence rules that depend on it (the shader dialect off Windows, the
+ *  persona platform on a Mac). */
+function hostPlatform(): HostOs | undefined {
+  return hostOs();
 }
 
 /** The major a profile's version selection resolves to, or undefined when it cannot be known.
@@ -480,6 +476,11 @@ export default function ProfileEditor({
               <option value={PICKER_CUSTOM}>Custom…</option>
             </select>
             {f.hint ? <p className="mt-1 text-[11px] text-fog/40">{f.hint}</p> : null}
+            {profile.platform === "macos" ? (
+              <p className="mt-0.5 text-[11px] text-warn/80" data-gpu-macos="1">
+                The list has Windows and Linux strings only, so a macOS persona keeps Persona default.
+              </p>
+            ) : null}
             {hostLine ? (
               <p className="mt-0.5 text-[11px] text-fog/40" data-gpu-host={hostVendor}>
                 {hostLine}
@@ -924,14 +925,15 @@ export default function ProfileEditor({
                 className="whitespace-nowrap rounded-lg bg-sheen px-4 py-1.5 text-sm font-semibold text-[#07080a] disabled:opacity-40"
                 disabled={!canSave}
                 onClick={() => onSave(profile)}
-                title="Save (Ctrl+S)"
+                title={`Save (${shortcutLabel("S", hostPlatform())})`}
               >
                 Save profile
               </button>
             </div>
             {prevOpen && (
               <pre className="max-h-28 overflow-auto px-5 pb-3 font-mono text-[11px] leading-relaxed text-fog/60">
-                {envLines}chrome.exe {args.join(" \\\n  ")}
+                {envLines}
+                {browserCommandName(hostPlatform())} {args.join(" \\\n  ")}
               </pre>
             )}
           </div>

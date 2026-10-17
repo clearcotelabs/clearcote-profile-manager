@@ -21,6 +21,7 @@
     "dist": "npm run build && electron-builder --publish never",
     "dist:win": "npm run build && electron-builder --win --publish never",
     "dist:linux": "npm run build && electron-builder --linux --publish never",
+    "dist:mac": "npm run build && electron-builder --mac --publish never",
     "lint": "next lint",
     "typecheck": "tsc --noEmit && tsc -p electron --noEmit",
     "test": "vitest run"
@@ -59,6 +60,7 @@
       "buildResources": "build"
     },
     "artifactName": "Clearcote-Profile-Manager-${version}-${arch}.${ext}",
+    "afterPack": "./scripts/mac-adhoc-sign.cjs",
     "win": {
       "target": [
         "nsis",
@@ -71,6 +73,25 @@
       "perMachine": false,
       "allowToChangeInstallationDirectory": true,
       "artifactName": "Clearcote-Profile-Manager-${version}-setup.${ext}"
+    },
+    "mac": {
+      "target": [
+        {
+          "target": "dmg",
+          "arch": [
+            "arm64",
+            "x64"
+          ]
+        }
+      ],
+      "icon": "build/icon.png",
+      "category": "public.app-category.developer-tools",
+      "identity": null,
+      "hardenedRuntime": false,
+      "artifactName": "Clearcote-Profile-Manager-${version}-mac-${arch}.${ext}"
+    },
+    "dmg": {
+      "artifactName": "Clearcote-Profile-Manager-${version}-mac-${arch}.${ext}"
     },
     "linux": {
       "target": [

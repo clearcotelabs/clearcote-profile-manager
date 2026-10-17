@@ -360,6 +360,18 @@ export function proxyEgressArgs(hasProxy: boolean, extraArgs: string[] = []): st
   return out.filter((a) => !extraArgs.includes(a));
 }
 
+export const MOCK_KEYCHAIN_SWITCH = "--use-mock-keychain";
+
+/**
+ * `--use-mock-keychain` on macOS, as the SDK sends it: the macOS build is unsigned, so Chromium asks
+ * for the "Chromium Safe Storage" keychain item on every launch. Denying is harmless, but a prompt per
+ * launch is not something anyone wants. Nothing elsewhere, and nothing when extraArgs already has it.
+ */
+export function macosKeychainArgs(platform: NodeJS.Platform | string = process.platform, extraArgs: string[] = []): string[] {
+  if (platform !== "darwin" || extraArgs.includes(MOCK_KEYCHAIN_SWITCH)) return [];
+  return [MOCK_KEYCHAIN_SWITCH];
+}
+
 /**
  * Build the Clearcote fingerprint switches for a profile, mirroring the SDK's `fingerprintArgs`.
  * Does NOT emit --proxy-server, --user-data-dir, or extraArgs — those differ between the real

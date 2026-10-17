@@ -12,11 +12,12 @@ import { geoCheck } from "./geo";
 import { resolveLicenseKey, acquireLease, withRunToken, planFromToken, type LeaseSession } from "./license";
 import { proEnsureBinary, freeEnsureBinary } from "./proBinary";
 import { fetchCatalog, resolveVersion } from "./catalog";
-import { fingerprintArgs, mergeFeatureFlags, proxyEgressArgs, startUrlArg, type FpInput } from "./fpargs";
+import { fingerprintArgs, macosKeychainArgs, mergeFeatureFlags, proxyEgressArgs, startUrlArg, type FpInput } from "./fpargs";
 import { withShaderDialect, shaderDialectWarning } from "./shaderdialect";
 import { seedWidevine, widevineArgs, claimsChromeBrand } from "./widevine";
 import { spawnBrowser } from "./winlaunch";
 import { linuxFontEnv, linuxLocaleEnv } from "./linuxfonts";
+import { bundleExecutable } from "./macos";
 import type { Settings, DownloadProgress } from "./types";
 import type { Profile, LaunchResult } from "./types";
 
@@ -32,9 +33,7 @@ async function resolveBrowserBinary(
   s: Settings,
   onProgress?: (pct: number, seenMB: number, totalMB: number, version: string) => void,
 ): Promise<{ path: string; tier: "free" | "pro" | "explicit"; major?: number }> {
-  const explicit = [s.binaryPath, process.env.CLEARCOTE_BINARY].find(
-    (c): c is string => !!c && fs.existsSync(c),
-  );
+  const explicit = explicitBinary(s);
   // An explicit binary's version is unknowable from the path, so `major` stays undefined and the
   // version-gated warnings below stay quiet rather than guessing.
   if (explicit) return { path: explicit, tier: "explicit" };
@@ -52,6 +51,15 @@ async function resolveBrowserBinary(
     }
     throw e;
   }
+}
+
+/**
+ * The binary named in Settings or CLEARCOTE_BINARY, when it exists — a macOS `.app` bundle resolved
+ * to the executable inside it, since a bundle folder cannot be spawned.
+ */
+export function explicitBinary(s: Pick<Settings, "binaryPath">, env: NodeJS.ProcessEnv = process.env): string | undefined {
+  const found = [s.binaryPath, env.CLEARCOTE_BINARY].find((c): c is string => !!c && fs.existsSync(c));
+  return found ? bundleExecutable(found) : undefined;
 }
 
 /**
@@ -123,17 +131,26 @@ export function runningBinaries(): string[] {
   return [...runningBins.values()];
 }
 
+/** The sibling dev-build layout for a host: `win-x64/chrome.exe`, `linux-x64/chrome`, or the macOS
+ *  bundle `macos-arm64/Chromium.app/Contents/MacOS/Chromium`. */
+export function devBuildLayout(platform: NodeJS.Platform | string = process.platform): [string, string] {
+  if (platform === "win32") return ["win-x64", "chrome.exe"];
+  if (platform === "darwin") return ["macos-arm64", path.join("Chromium.app", "Contents", "MacOS", "Chromium")];
+  return ["linux-x64", "chrome"];
+}
+
 /**
  * Resolve the Clearcote browser path (Phase 1: explicit/env/sibling-dev-build).
  * Order: Settings.binaryPath → CLEARCOTE_BINARY → a sibling dev build for THIS host
- * (`../win-x64/chrome.exe` on Windows, `../linux-x64/chrome` on Linux).
+ * (`../win-x64/chrome.exe` on Windows, `../linux-x64/chrome` on Linux, `../macos-arm64/Chromium.app`
+ * on macOS). A macOS `.app` resolves to the executable inside it.
  * TODO Phase 3: fall back to the clearcote SDK's executablePath() (auto-download + SHA-256 verify).
  */
 export function resolveBinary(): string | null {
   const s = readSettings();
   // Only the host's own layout is probed: a Windows chrome.exe sitting next to a Linux checkout is
   // not runnable here, and silently "finding" it would fail later as a confusing spawn error.
-  const [dir, exe] = process.platform === "win32" ? ["win-x64", "chrome.exe"] : ["linux-x64", "chrome"];
+  const [dir, exe] = devBuildLayout();
   const candidates = [
     s.binaryPath,
     process.env.CLEARCOTE_BINARY,
@@ -142,7 +159,7 @@ export function resolveBinary(): string | null {
   ].filter((c): c is string => !!c);
   for (const c of candidates) {
     try {
-      if (fs.existsSync(c)) return c;
+      if (fs.existsSync(c)) return bundleExecutable(c);
     } catch {
       /* ignore */
     }
@@ -235,6 +252,8 @@ export function buildArgs(p: Profile, userDataDir: string): string[] {
     },
   });
   a.push(`--user-data-dir=${userDataDir}`);
+  // macOS: no "Chromium Safe Storage" keychain prompt on every launch of the unsigned build.
+  a.push(...macosKeychainArgs(process.platform, p.extraArgs));
   if (p.extraArgs?.length) a.push(...p.extraArgs);
   // The start page goes LAST: Chromium opens every non-switch argument as a URL. startUrlArg only
   // ever returns an http(s) URL, so a value can never smuggle in a switch.

@@ -26,9 +26,10 @@ describe("omahaRequestBody", () => {
     expect(body.request.app[0].version).toBe("0.0.0.0");
   });
 
-  it("requests a crx3 package for x64", () => {
+  it("requests a crx3 package for this machine's CPU (x64 on Windows and Linux)", () => {
     expect(body.request.acceptformat).toBe("crx3");
-    expect(body.request.arch).toBe("x64");
+    expect(body.request.arch).toBe(cdmPlatform().arch);
+    if (process.platform !== "darwin") expect(body.request.arch).toBe("x64");
     expect(body.request.protocol).toBe("3.1");
   });
 
@@ -41,12 +42,12 @@ describe("omahaRequestBody", () => {
 
 describe("cdmPlatform", () => {
   it("pairs the library name with its platform directory", () => {
-    const p = cdmPlatform();
-    if (process.platform === "linux") {
-      expect(p).toMatchObject({ subdir: "linux_x64", filename: "libwidevinecdm.so" });
-    } else {
-      expect(p).toMatchObject({ subdir: "win_x64", filename: "widevinecdm.dll" });
-    }
+    expect(cdmPlatform("linux")).toMatchObject({ subdir: "linux_x64", filename: "libwidevinecdm.so" });
+    expect(cdmPlatform("win32")).toMatchObject({ subdir: "win_x64", filename: "widevinecdm.dll" });
+    expect(cdmPlatform("darwin", "arm64")).toMatchObject({ subdir: "mac_arm64", filename: "libwidevinecdm.dylib" });
+  });
+  it("defaults to the OS it is running on", () => {
+    expect(cdmPlatform()).toEqual(cdmPlatform(process.platform, process.arch));
   });
 });
 
@@ -144,14 +145,11 @@ describe("crx3ToZip", () => {
 });
 
 describe("widevineArgs", () => {
-  it("forces the component scan on Windows, and adds nothing on Linux", () => {
-    const out = widevineArgs([]);
-    if (process.platform === "linux") {
-      // The hint file IS the registration there; it is read at startup regardless.
-      expect(out).toEqual([]);
-    } else {
-      expect(out).toEqual(["--component-updater=fast-update"]);
-    }
+  it("forces the component scan on Windows and macOS, and adds nothing on Linux", () => {
+    // The hint file IS the registration on Linux; it is read at startup regardless.
+    expect(widevineArgs([], "linux")).toEqual([]);
+    expect(widevineArgs([], "win32")).toEqual(["--component-updater=fast-update"]);
+    expect(widevineArgs([], "darwin")).toEqual(["--component-updater=fast-update"]);
   });
 
   it("never emits a second component-updater switch", () => {

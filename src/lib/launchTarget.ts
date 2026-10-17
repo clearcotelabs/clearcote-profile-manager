@@ -7,8 +7,11 @@
 
 export interface LaunchTarget {
   /** custom: an explicit binary wins for every profile. managed: builds resolve from the catalog.
-   *  offline: managed, but the catalog could not be reached. preview: the browser-only design mock. */
-  mode: "custom" | "managed" | "offline" | "preview";
+   *  offline: managed, but the catalog could not be reached. preview: the browser-only design mock.
+   *  unavailable: a Mac with no build to launch (no licence key, or not Apple Silicon). */
+  mode: "custom" | "managed" | "offline" | "preview" | "unavailable";
+  /** Why, for "unavailable". */
+  reason?: string;
   path?: string;
   licensed?: boolean;
   /** Last plan the licence service reported ("free", "pro"…), when known. */
@@ -48,6 +51,15 @@ export function describeTarget(t: LaunchTarget | null): TargetView {
       tone: "warn",
       title: `Every profile launches ${t.path ?? "a custom binary"}, whatever version it asks for. Settings → Browser switches back to managed builds.`,
       section: "browser",
+    };
+  }
+  if (t.mode === "unavailable") {
+    return {
+      text: "No browser for this Mac",
+      tone: "warn",
+      title: t.reason ?? "This Mac has no Clearcote build to launch.",
+      // No key: the licence is what is missing. With one, it is the CPU: a binary or the cloud.
+      section: t.licensed ? "browser" : "license",
     };
   }
   const who = t.licensed ? planName(t.plan) : "Open build";

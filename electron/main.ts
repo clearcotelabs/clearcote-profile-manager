@@ -21,6 +21,8 @@ import { CloudManager } from "./cloud";
 import { CloudApi, resolveApiBase, resolveApiKey } from "./cloudapi";
 import { attachOnce } from "./cdpattach";
 import { hostGpuCached } from "./hostgpu";
+import { bundleExecutable } from "./macos";
+import { iconSource, pickBinaryDialog } from "./hostui";
 import type { Profile, Settings, FingerprintMeta } from "./types";
 
 const CLEARCOTE_PROFILES_REPO = "clearcotelabs/clearcote-profiles";
@@ -156,7 +158,7 @@ function showWindow(): void {
 
 async function trayIcon(): Promise<NativeImage> {
   // The app's own icon, straight from the executable — nothing extra to package.
-  return app.getFileIcon(process.execPath, { size: "small" });
+  return app.getFileIcon(iconSource(process.execPath), { size: "small" });
 }
 
 function refreshTrayMenu(): void {
@@ -486,20 +488,15 @@ function registerIpc(): void {
   ipcMain.handle("pickBinary", async () => {
     // The Linux binary is a bare `chrome` with no extension, and an "exe"-only filter would hide
     // the very file being asked for — so the filter follows the host, and Linux keeps an
-    // all-files fallback rather than trusting an extensionless match.
-    const win = process.platform === "win32";
-    const r = await dialog.showOpenDialog({
-      title: win ? "Select the Clearcote chrome.exe" : "Select the Clearcote chrome binary",
-      properties: ["openFile"],
-      filters: win
-        ? [{ name: "Clearcote browser", extensions: ["exe"] }]
-        : [{ name: "All files", extensions: ["*"] }],
-    });
+    // all-files fallback rather than trusting an extensionless match. On macOS the browser is an app
+    // bundle, which the picker hands back as the `.app` folder; it is stored as the executable inside.
+    const r = await dialog.showOpenDialog(pickBinaryDialog(process.platform));
     if (r.canceled || !r.filePaths[0]) return null;
+    const picked = bundleExecutable(r.filePaths[0]);
     const s = readSettings();
-    s.binaryPath = r.filePaths[0];
+    s.binaryPath = picked;
     writeSettings(s);
-    return r.filePaths[0];
+    return picked;
   });
 
   ipcMain.handle("geo:check", (_e, p: Profile) => geo.geoCheck(p));
@@ -690,9 +687,9 @@ app.whenReady().then(() => {
   createWindow();
   // Cloud browsers this app started before a restart keep running on the servers: pick them back up.
   void cloud.restore();
-  app.on("activate", () => {
-    if (BrowserWindow.getAllWindows().length === 0) createWindow();
-  });
+  // macOS: the Dock icon brings the window back — also when it was hidden to the menu bar with
+  // browsers running, which leaves the app with a window, just not a visible one.
+  app.on("activate", () => showWindow());
 });
 
 app.on("window-all-closed", () => {

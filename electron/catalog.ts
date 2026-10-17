@@ -10,6 +10,7 @@
 // otherwise the profile's `browserVersion` resolves here.
 
 import { apiBase } from "./license";
+import { catalogPlatformFor, type BuildPlatform } from "./macos";
 
 export type Tier = "free" | "pro";
 
@@ -27,7 +28,7 @@ export interface CatalogBuild {
   version: string;
   tier: Tier;
   tag: string;
-  platforms: Partial<Record<"windows" | "linux", CatalogPlatform>>;
+  platforms: Partial<Record<BuildPlatform, CatalogPlatform>>;
 }
 export interface Catalog {
   schema: number;
@@ -60,11 +61,18 @@ export interface VersionOption {
   tag: string;
 }
 
-export function platformTag(): "windows" | "linux" {
-  if (process.platform === "win32") return "windows";
-  if (process.platform === "linux") return "linux";
-  throw new Error("Clearcote ships Windows x64 and Linux x64 only.");
+/** This OS's catalog key. macOS is listed under "macos" (PRO, Apple Silicon); whether this Mac's CPU
+ *  can run it is checked by the download (macos.ts buildPlatformFor), not here. */
+export function platformTag(platform: NodeJS.Platform | string = process.platform): BuildPlatform {
+  const key = catalogPlatformFor(platform);
+  if (!key) throw new Error("Clearcote ships Windows x64, Linux x64 and macOS (Apple Silicon) only.");
+  return key;
 }
+
+/** Why an unlicensed Mac has nothing to launch: the free builds have no macOS version. */
+export const MAC_NEEDS_LICENSE =
+  "The free Clearcote builds have no macOS version — the macOS browser is a PRO build for Apple Silicon. " +
+  "Add a licence key in Settings → Licence, choose a browser binary in Settings → Browser, or run the profile in the cloud.";
 
 export async function fetchCatalog(licenseApiBase?: string): Promise<Catalog> {
   const base = apiBase(licenseApiBase);
@@ -78,8 +86,8 @@ export async function fetchCatalog(licenseApiBase?: string): Promise<Catalog> {
 }
 
 /** Builds available for THIS OS, newest major first — for the UI dropdown. */
-export function listVersions(cat: Catalog): VersionOption[] {
-  const plat = platformTag();
+export function listVersions(cat: Catalog, platform: NodeJS.Platform | string = process.platform): VersionOption[] {
+  const plat = platformTag(platform);
   return cat.builds
     .filter((b) => b.platforms[plat])
     .sort((a, b) => b.major - a.major)
@@ -90,8 +98,13 @@ export function listVersions(cat: Catalog): VersionOption[] {
  * Resolve `wanted` ("latest" | "150" | "150.0.7871.114" | "" | undefined) to a concrete build
  * for this OS + tier. `hasLicense` gates PRO builds. Throws a clear, user-facing error otherwise.
  */
-export function resolveVersion(cat: Catalog, wanted: string | undefined, hasLicense: boolean): ResolvedBuild {
-  const plat = platformTag();
+export function resolveVersion(
+  cat: Catalog,
+  wanted: string | undefined,
+  hasLicense: boolean,
+  platform: NodeJS.Platform | string = process.platform,
+): ResolvedBuild {
+  const plat = platformTag(platform);
   const withPlat = cat.builds.filter((b) => b.platforms[plat]);
   const byMajorDesc = [...withPlat].sort((a, b) => b.major - a.major);
   const freeLatest = byMajorDesc.find((b) => b.tier === "free");
@@ -99,6 +112,7 @@ export function resolveVersion(cat: Catalog, wanted: string | undefined, hasLice
 
   const pick = (b: CatalogBuild, revision?: string, latest = false): ResolvedBuild => {
     if (b.tier === "pro" && !hasLicense) {
+      if (!freeLatest && plat === "macos") throw new Error(MAC_NEEDS_LICENSE);
       const free = freeLatest ? ` (the free build is ${freeLatest.version})` : "";
       throw new Error(
         `Clearcote ${b.version} is a PRO build — set a license key in Settings to use it${free}.`,
@@ -138,6 +152,7 @@ export function resolveVersion(cat: Catalog, wanted: string | undefined, hasLice
     // Latest reachable for the tier: a licensed user gets the newest overall (incl. PRO);
     // an unlicensed user gets the newest FREE build.
     const cand = hasLicense ? byMajorDesc[0] : freeLatest;
+    if (!cand && !hasLicense && plat === "macos") throw new Error(MAC_NEEDS_LICENSE);
     if (!cand) throw new Error("No browser build is available for this OS.");
     return pick(cand, undefined, true);
   }
@@ -163,12 +178,16 @@ export function resolveVersion(cat: Catalog, wanted: string | undefined, hasLice
  * here — a deliberately invalid selector, reading `available` off the error. Best-effort by design:
  * any failure returns [] and the UI just offers "latest" plus the plain versions.
  */
-export async function fetchProRevisions(licenseKey?: string, licenseApiBase?: string): Promise<string[]> {
+export async function fetchProRevisions(
+  licenseKey?: string,
+  licenseApiBase?: string,
+  platform: NodeJS.Platform | string = process.platform,
+): Promise<string[]> {
   if (!licenseKey) return []; // revisions are PRO-only; without a key there is nothing to offer
   try {
     const base = apiBase(licenseApiBase);
     const res = await fetch(
-      `${base}/api/v1/download/pro?platform=${platformTag()}&version=__list__`,
+      `${base}/api/v1/download/pro?platform=${platformTag(platform)}&version=__list__`,
       { headers: { authorization: `Bearer ${licenseKey}`, "user-agent": "clearcote-profile-manager" } },
     );
     const body = (await res.json()) as { available?: unknown };

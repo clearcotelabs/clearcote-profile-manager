@@ -5,7 +5,8 @@
 // a short-lived signed blob URL + the archive's SHA-256. We stream it, verify the
 // hash (the trust anchor, exactly like the free pin), extract it, and cache per
 // PRO tag so later launches are instant. Dependency-free: extraction shells out to
-// the system `tar` (bsdtar on Win10+/Linux auto-detects both .zip and .tar.xz).
+// the system `tar` (bsdtar on Win10+/Linux auto-detects both .zip and .tar.xz), and on macOS to
+// `ditto`, which keeps the app bundle's symlinks (see macos.ts).
 
 import { createWriteStream, existsSync, mkdirSync, readdirSync, rmSync, statSync, writeFileSync } from "node:fs";
 import { createHash } from "node:crypto";
@@ -16,6 +17,7 @@ import { Readable, Transform } from "node:stream";
 import { pipeline } from "node:stream/promises";
 import { apiBase, resolveLicenseKey } from "./license";
 import { warmFiles } from "./winlaunch";
+import { appBinary, buildPlatformFor, defaultBinaryName, extractMacBundle } from "./macos";
 import type { ResolvedBuild } from "./catalog";
 
 export function cacheRoot(): string {
@@ -27,18 +29,20 @@ export function cacheRoot(): string {
   return join(process.env.XDG_CACHE_HOME || join(homedir(), ".cache"), "clearcote");
 }
 
-function platformTag(): "windows" | "linux" {
-  if (process.platform === "win32") return "windows";
-  if (process.platform === "linux") return "linux";
-  throw new Error("Clearcote PRO ships Windows x64 and Linux x64 only.");
+/** The browser's path inside an extracted build: a macOS bundle's own executable first (never the
+ *  framework or a helper app of the same tree), else the first file of that name. */
+export function findFile(dir: string, name: string): string | null {
+  return appBinary(dir, name) ?? findByName(dir, name);
 }
 
-function findFile(dir: string, name: string): string | null {
+function findByName(dir: string, name: string): string | null {
   const want = name.toLowerCase();
   for (const entry of readdirSync(dir, { withFileTypes: true })) {
     const full = join(dir, entry.name);
     if (entry.isDirectory()) {
-      const hit = findFile(full, name);
+      // A macOS framework holds the helper apps, never the browser itself.
+      if (entry.name.endsWith(".framework")) continue;
+      const hit = findByName(full, name);
       if (hit) return hit;
     } else if (entry.name.toLowerCase() === want) {
       return full;
@@ -68,6 +72,8 @@ function tarBinary(): string {
   return existsSync(sys) ? sys : "tar";
 }
 function extractArchive(archive: string, dest: string): Promise<void> {
+  // The macOS build is a zipped app bundle: ditto keeps its symlinks and clears the quarantine.
+  if (process.platform === "darwin" && /\.zip$/i.test(archive)) return extractMacBundle(archive, archive, dest);
   mkdirSync(dest, { recursive: true });
   return new Promise((resolve, reject) => {
     const p = spawn(tarBinary(), ["-xf", archive, "-C", dest], { stdio: "ignore" });
@@ -236,7 +242,7 @@ export async function proEnsureBinary(
 ): Promise<string> {
   const key = resolveLicenseKey(licenseKey);
   if (!key) throw new Error("No license key — cannot fetch the PRO build.");
-  const plat = platformTag();
+  const plat = buildPlatformFor(); // throws on an Intel Mac: the macOS build is Apple Silicon only
   const base = apiBase(licenseApiBase);
 
   const q = version ? `&version=${encodeURIComponent(version)}` : "";
@@ -263,7 +269,7 @@ export async function proEnsureBinary(
     {
       tag: meta.tag || `pro-${meta.version || "unknown"}`,
       asset: meta.asset,
-      binary: meta.binary || (plat === "windows" ? "chrome.exe" : "chrome"),
+      binary: meta.binary || defaultBinaryName(plat),
       url: meta.url,
       sha256: meta.sha256,
       size: meta.size,

@@ -2,6 +2,7 @@
 
 import { useId } from "react";
 import Dialog, { DialogHeader } from "./Dialog";
+import { hostOs, keysLabel } from "@/lib/host";
 
 const GROUPS: { title: string; keys: [string, string][] }[] = [
   {
@@ -36,6 +37,7 @@ const GROUPS: { title: string; keys: [string, string][] }[] = [
 
 export default function ShortcutsDialog({ onClose }: { onClose: () => void }) {
   const titleId = useId();
+  const host = hostOs();
   return (
     <Dialog onClose={onClose} labelledBy={titleId} variant="fit" className="max-w-md">
       <DialogHeader id={titleId} title="Keyboard shortcuts" onClose={onClose} />
@@ -49,7 +51,7 @@ export default function ShortcutsDialog({ onClose }: { onClose: () => void }) {
                   <dt className="text-fog/70">{what}</dt>
                   <dd>
                     <kbd className="whitespace-nowrap rounded border border-line-strong bg-ink/60 px-1.5 py-0.5 font-sans text-[11px] text-fog/70">
-                      {k}
+                      {keysLabel(k, host)}
                     </kbd>
                   </dd>
                 </div>

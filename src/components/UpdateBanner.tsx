@@ -16,6 +16,7 @@ export default function UpdateBanner({
   progress,
   error,
   windows,
+  macos = false,
   onDownload,
   onLater,
   onRun,
@@ -28,6 +29,8 @@ export default function UpdateBanner({
   progress: { pct: number; seenMB: number; totalMB: number } | null;
   error: string | null;
   windows: boolean;
+  /** A Mac: the download is a disk image, and Gatekeeper (not SmartScreen) is what warns. */
+  macos?: boolean;
   onDownload: () => void;
   /** Hide it until the app next starts. */
   onLater: () => void;
@@ -62,10 +65,10 @@ export default function UpdateBanner({
         ) : (
           <>
             <button className="rounded-lg bg-sheen px-3 py-1 text-xs font-semibold text-[#07080a]" onClick={onRun}>
-              Run installer
+              {macos ? "Open disk image" : "Run installer"}
             </button>
             <button className={btnGhost} onClick={onReveal}>
-              Show in folder
+              {macos ? "Show in Finder" : "Show in folder"}
             </button>
           </>
         )}
@@ -90,14 +93,16 @@ export default function UpdateBanner({
             <>
               <span className="text-ok">✓ Verified</span> against the checksum published with the release.{" "}
               <button className="underline decoration-dotted underline-offset-2 hover:text-fog" onClick={() => setWhy((v) => !v)}>
-                {why ? "Less" : windows ? "Why does Windows warn?" : "Before you run it"}
+                {why ? "Less" : windows ? "Why does Windows warn?" : macos ? "Why does macOS warn?" : "Before you run it"}
               </button>
               {why && (
                 <span className="mt-1 block text-fog/45">
                   The checksum proves the file is intact; it is not a signature, and this app is not code-signed.
                   {windows
                     ? " Windows will warn on first run — choose More info → Run anyway."
-                    : " An AppImage needs its executable bit set (chmod +x) before it runs."}
+                    : macos
+                      ? " Drag the app to Applications. macOS blocks it on first open — then choose System Settings → Privacy & Security → Open Anyway."
+                      : " An AppImage needs its executable bit set (chmod +x) before it runs."}
                 </span>
               )}
             </>

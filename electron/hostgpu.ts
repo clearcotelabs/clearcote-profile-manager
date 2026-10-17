@@ -7,8 +7,8 @@
 //
 // Windows asks WMI through PowerShell — the one tool every Windows install has — and prefers the
 // controller that has a resolution, i.e. the one with a display attached. Linux reads the DRM
-// class under /sys and prefers the boot VGA device. macOS is reported as unknown: the app does not
-// ship there, and the picker then simply lists every vendor.
+// class under /sys and prefers the boot VGA device. macOS is reported as unknown: an Apple Silicon
+// GPU is none of the picker's vendors, so the picker simply lists every vendor.
 //
 // The parsers are pure functions over the text those sources produce, so the fixtures in
 // tests/hostgpu.test.ts are real PowerShell JSON shapes (one object vs an array; null resolution)

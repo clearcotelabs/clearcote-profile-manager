@@ -6,6 +6,7 @@
 import { useId, useMemo, useRef, useState } from "react";
 import Dialog, { DialogHeader } from "./Dialog";
 import { profilesFromProxyList } from "@/lib/bulkCreate";
+import { defaultPersonaPlatform, hostOs } from "@/lib/host";
 import type { Platform, Profile } from "@/types/profile";
 
 const input =
@@ -30,7 +31,7 @@ export default function BulkCreateDialog({
   const [namePattern, setNamePattern] = useState("Profile {n}");
   const [group, setGroup] = useState("");
   const [tags, setTags] = useState("");
-  const [platform, setPlatform] = useState<Platform>("windows");
+  const [platform, setPlatform] = useState<Platform>(() => defaultPersonaPlatform(hostOs()));
   const [geoip, setGeoip] = useState(true);
   const [busy, setBusy] = useState(false);
 

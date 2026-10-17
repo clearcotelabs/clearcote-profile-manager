@@ -1,14 +1,16 @@
 // What a profile made with "New profile" starts with. Kept out of app/page.tsx so the defaults are
 // testable: each one exists because a customer found the profile wrong without it.
 
-import type { Profile } from "@/types/profile";
+import type { Platform, Profile } from "@/types/profile";
 
-export function newProfile(seed: string, now: string): Profile {
+/** `platform` is the persona's OS: Windows unless the caller says otherwise — the app passes
+ *  "macos" on a Mac (src/lib/host.ts defaultPersonaPlatform). */
+export function newProfile(seed: string, now: string, platform: Platform = "windows"): Profile {
   return {
     id: "",
     name: "",
     fingerprint: seed,
-    platform: "windows",
+    platform,
     // geoip ON. It only does anything once a proxy is set, and when one IS set, matching the
     // persona's timezone/language/position to the proxy's exit region is what everyone wants — the
     // off-by-default version shipped a profile that looked configured while the Geolocation API

@@ -236,7 +236,8 @@ describe.skipIf(!READY)("editor UI — the category rail in a real browser", () 
     expect(shown).not.toContain("super-secret-key");
     // Still there from another category — the preview is feedback, not a setting.
     await rail("Identity").click();
-    await until(() => textOf("pre"), /chrome\.exe/, "preview after switching category");
+    // The program is named as the host OS has it (chrome.exe, chrome, Chromium) — see macos.e2e.
+    await until(() => textOf("pre"), /chrome\.exe|Chromium|\bchrome\b/, "preview after switching category");
   }, 20000);
 
   it("the shader dialect shows as an env var, not a switch", async () => {

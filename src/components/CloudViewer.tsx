@@ -13,6 +13,7 @@ import { api, type CloudEnded, type CloudSession } from "@/lib/ipc";
 import { framePoint, keyEvent, modifiers, mouseButton, navTo, parseLiveText, reconnectDelay, wheelPixels } from "@/lib/liveinput";
 import { endReasonText, formatBytes, formatDuration, formatEur } from "../../electron/cloudtext";
 import { useConfirm } from "./Confirm";
+import { hostOs, shortcutLabel } from "@/lib/host";
 
 type Phase = "connecting" | "live" | "reconnecting" | "ended" | "missing";
 
@@ -346,7 +347,7 @@ export default function CloudViewer({ profileId }: { profileId: string }) {
       </div>
       {control && phase === "live" && (
         <p className="border-t border-line bg-surface/60 px-3 py-1 text-[11px] text-fog/40">
-          Click the page to type into it. Paste with Ctrl+V. Closing this window does not stop the cloud browser.
+          Click the page to type into it. Paste with {shortcutLabel("V", hostOs())}. Closing this window does not stop the cloud browser.
         </p>
       )}
     </div>

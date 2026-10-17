@@ -385,6 +385,34 @@ export function coherenceIssues(
     });
   }
 
+  // ── macOS ─────────────────────────────────────────────────────────────────
+  // On a Mac the browser draws text with the Mac's own fonts whatever the persona claims, so another
+  // OS's persona reports a font list and text metrics no real machine of that OS has. A capture taken
+  // on that OS supplies its fonts and metrics, as in the SDK's platform-host-fonts rule. An unset
+  // platform launches as the host's own (the launcher's default), which is coherent.
+  const claimedPlatform = isSet(profile.platform) ? String(profile.platform) : undefined;
+  if (ctx.hostPlatform === "macos" && claimedPlatform && claimedPlatform !== "macos" && !isSet(profile.fingerprintProfile)) {
+    out.push({
+      id: "persona-platform-on-mac",
+      severity: "warn",
+      field: "platform",
+      message: `This is a Mac, so the browser's fonts and text measurements are macOS's own, but the persona claims ${claimedPlatform} — a mismatch any font check reads.`,
+      fix: `Set Platform to macos on a Mac, or import a fingerprint captured on ${claimedPlatform}.`,
+    });
+  }
+  // The GPU model table has Windows (Direct3D) and Linux (OpenGL) strings only. A macOS persona with
+  // a Direct3D renderer describes a Mac that does not exist: macOS draws through Metal.
+  const renderer = String(profile.gpuRenderer ?? "").toLowerCase();
+  if (claimedPlatform === "macos" && !profile.disableGpuFingerprint && /direct3d|\bd3d/.test(renderer)) {
+    out.push({
+      id: "gpu-direct3d-on-macos",
+      severity: "warn",
+      field: "gpuModel",
+      message: "The persona is macOS but its GPU renderer is a Direct3D string — macOS draws through Metal, never Direct3D.",
+      fix: "Set the GPU model back to Persona default, or enter a Metal renderer under Custom….",
+    });
+  }
+
   // Errors first, then warnings; stable within each band so the list does not reshuffle as you type.
   return [...out.filter((i) => i.severity === "error"), ...out.filter((i) => i.severity === "warn")];
 }

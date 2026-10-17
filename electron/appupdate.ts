@@ -88,9 +88,14 @@ export function compareVersions(a: string, b: string): number {
  * Within an OS, the shape of the install decides. On Windows an NSIS install sits beside its
  * uninstaller and the portable zip does not; handing a zip user an installer would silently create
  * a second, separate installation. On Linux the same question is whether this copy is running as an
- * AppImage (the launcher exports APPIMAGE with the path to it) or from an unpacked tarball. When it
+ * AppImage (the launcher exports APPIMAGE with the path to it) or from an unpacked tarball. On macOS
+ * it is the CPU: the disk image built for this Mac's architecture, never the other one. When it
  * cannot be decided, no asset is offered and the UI points at the release page — better than
  * guessing wrong about where somebody's app lives.
+ *
+ * The macOS assets are named `…-mac-<arch>.dmg`, and no macOS asset ends in `.zip`: copies released
+ * before macOS existed pick the Windows portable zip as "the first `.zip`", so a mac zip in the
+ * release would be handed to them.
  */
 export function pickAsset(
   assets: UpdateAsset[],
@@ -100,10 +105,17 @@ export function pickAsset(
     platform?: NodeJS.Platform;
     /** The AppImage this process was launched from, when it was — `process.env.APPIMAGE`. */
     appImage?: string;
+    /** This copy's CPU architecture — `process.arch`. */
+    arch?: string;
   } = { execPath: process.execPath },
 ): UpdateAsset | undefined {
   const platform = opts.platform ?? process.platform;
   const find = (re: RegExp) => assets.find((a) => re.test(a.name));
+
+  if (platform === "darwin") {
+    const arch = opts.arch ?? process.arch;
+    return find(arch === "arm64" ? /-mac-arm64\.dmg$/i : /-mac-x64\.dmg$/i);
+  }
 
   if (platform === "linux") {
     const appImage = find(/\.AppImage$/i);
@@ -121,7 +133,7 @@ export function pickAsset(
     installed = false;
   }
   const setup = find(/setup\.exe$/i);
-  const zip = find(/\.zip$/i);
+  const zip = find(/^(?!.*-mac-).*\.zip$/i);
   return installed ? setup : zip ?? setup;
 }
 

@@ -38,6 +38,7 @@ import {
 } from "@/lib/launchError";
 import { describeTarget, type LaunchTarget } from "@/lib/launchTarget";
 import { newProfile } from "@/lib/newProfile";
+import { defaultPersonaPlatform, hostOs, shortcutLabel, type HostOs } from "@/lib/host";
 import {
   SORT_LABELS,
   displayName,
@@ -63,7 +64,8 @@ const randomSeed = () =>
 const slugify = (s: string) =>
   s.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-+|-+$/g, "").slice(0, 40);
 
-const freshProfile = (): Profile => newProfile(randomSeed(), new Date().toISOString());
+const freshProfile = (): Profile =>
+  newProfile(randomSeed(), new Date().toISOString(), defaultPersonaPlatform(hostOs()));
 
 const input =
   "w-full rounded-lg bg-ink/70 border border-line px-3 py-2 text-sm text-fog placeholder-fog/30 outline-none focus:border-accent/60 focus:ring-1 focus:ring-accent/40";
@@ -124,6 +126,10 @@ const CLOUD_TOPUP_URL = "https://www.clearcotelabs.com/dashboard/browsers";
 function Manager() {
   const confirm = useConfirm();
   const [profiles, setProfiles] = useState<Profile[]>([]);
+  // The OS, read after mount: the page is prerendered, and a label that differed between the
+  // prerender and a Mac's first render would be a hydration mismatch React leaves unpatched.
+  const [host, setHost] = useState<HostOs | undefined>(undefined);
+  useEffect(() => setHost(hostOs()), []);
   const [running, setRunning] = useState<string[]>([]);
   // Profiles running on Clearcote's servers, as the main process follows them (electron/cloud.ts).
   const [cloudSessions, setCloudSessions] = useState<CloudSession[]>([]);
@@ -843,13 +849,13 @@ function Manager() {
             >
               ?
             </button>
-            <button className={btnGhost} onClick={() => setSettingsOpen("general")} title="Settings (Ctrl+,)">
+            <button className={btnGhost} onClick={() => setSettingsOpen("general")} title={`Settings (${shortcutLabel(",", host)})`}>
               Settings
             </button>
             <button
               className="rounded-lg bg-sheen px-3.5 py-1.5 text-xs font-semibold text-[#07080a] shadow-[0_0_20px_-6px_rgba(56,224,214,0.6)] hover:opacity-95 transition"
               onClick={() => openEditor(freshProfile())}
-              title="New profile (Ctrl+N)"
+              title={`New profile (${shortcutLabel("N", host)})`}
             >
               + New profile
             </button>
@@ -870,6 +876,7 @@ function Manager() {
             progress={updDl}
             error={updErr}
             windows={hostIsWindows()}
+            macos={host === "macos"}
             onDownload={downloadUpdate}
             onLater={laterUpdate}
             onRun={() => updFile && api.update.run(updFile.path)}
@@ -885,7 +892,7 @@ function Manager() {
             className={input + " max-w-sm"}
             placeholder="Search names, groups, tags, proxies…"
             aria-label="Search profiles"
-            title="Search (Ctrl+F or /)"
+            title={`Search (${shortcutLabel("F", host)} or /)`}
             value={query}
             onChange={(e) => setQuery(e.target.value)}
             onKeyDown={(e) => {
@@ -1104,7 +1111,7 @@ function Manager() {
               Delete…
             </button>
             <span className="flex-1" />
-            <button className="text-xs text-fog/50 hover:text-fog" onClick={() => setSelected(new Set(visibleIds))} title="Ctrl+A">
+            <button className="text-xs text-fog/50 hover:text-fog" onClick={() => setSelected(new Set(visibleIds))} title={shortcutLabel("A", host)}>
               Select all {visibleIds.length}
             </button>
             <button className="text-xs text-fog/50 hover:text-fog" onClick={() => setSelected(new Set())} title="Esc">

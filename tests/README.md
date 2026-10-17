@@ -62,6 +62,22 @@ Four layers:
     memory and shared check-in, "valid but busy", and one download per build.
   - `listfeatures.test.ts` — the proxy-list import (including host:port:user:pass), filters, group
     order, the exit-place label, exit notices, the one-browser swap, and Shift+click ranges.
+  - macOS (the host faked as a Mac where it matters; CI also runs the suite on `macos-latest`):
+    - `macos.test.ts` — which Macs have a build (Apple Silicon only), the browser inside
+      `Chromium.app` (never the framework's files), a picked `.app` resolving to its executable, the
+      ditto / unzip / quarantine extraction (and, on a real Mac only, a ditto round-trip that keeps the
+      bundle's symlinks), the Mac's Widevine CDM, `--use-mock-keychain`, the tray icon and the picker.
+    - `macos.download.test.ts` — the real PRO download and catalog on a faked Mac: `platform=macos`,
+      ditto, the bundle's executable back; an Intel Mac refused before any fetch; no licence → the
+      reason, in the catalog and in the header pill; Windows and Linux unchanged.
+    - `macos.launch.test.ts` — `launch()` on a faked Mac: the executable inside a picked `.app` is
+      spawned, `--use-mock-keychain` once and before the start page, a macOS persona by default.
+    - `macos.package.test.ts` — the release's file names (no collisions, macOS disk images only), the
+      update each platform picks — including copies from before macOS existed — the ad-hoc signing
+      hook, and the release / test workflows.
+    - `macos.renderer.test.ts` — the OS from Electron's navigator, the browser names in the UI, a
+      macOS persona for new profiles on a Mac (Windows elsewhere, unchanged), and the two Mac
+      coherence rules.
   - Cloud sessions:
     - `cloudbody.test.ts` — the session a profile becomes (`electron/cloudbody.ts`): identity, persona,
       proxy or included IP, cookies, caps, and every refusal (proxy schemes, http on port 80, ids,

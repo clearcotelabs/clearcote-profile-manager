@@ -5,13 +5,17 @@
 // is mirrored in src/lib/launchTarget.ts, which words it for the UI.
 
 import fs from "node:fs";
-import { fetchCatalog, resolveVersion, type Catalog } from "./catalog";
+import { fetchCatalog, resolveVersion, MAC_NEEDS_LICENSE, type Catalog } from "./catalog";
 import { resolveLicenseKey } from "./license";
 import { listCached } from "./cache";
+import { buildPlatformFor, bundleExecutable } from "./macos";
 import type { Settings } from "./types";
 
 export interface LaunchTarget {
-  mode: "custom" | "managed" | "offline";
+  /** unavailable: this Mac has no managed build to launch (no licence key, or not Apple Silicon). */
+  mode: "custom" | "managed" | "offline" | "unavailable";
+  /** Why, for "unavailable". */
+  reason?: string;
   path?: string;
   licensed?: boolean;
   plan?: string;
@@ -40,12 +44,25 @@ export function resetLaunchTargetCache(): void {
   cached = null;
 }
 
-export async function launchTarget(s: Settings, opts: { timeoutMs?: number } = {}): Promise<LaunchTarget> {
+export async function launchTarget(
+  s: Settings,
+  opts: { timeoutMs?: number; platform?: NodeJS.Platform; arch?: string } = {},
+): Promise<LaunchTarget> {
   const explicit = [s.binaryPath, process.env.CLEARCOTE_BINARY].find((c): c is string => !!c && fs.existsSync(c));
-  if (explicit) return { mode: "custom", path: explicit };
+  if (explicit) return { mode: "custom", path: bundleExecutable(explicit) };
 
   const licensed = !!resolveLicenseKey(s.licenseKey);
   const plan = licensed ? s.lastPlan : undefined;
+  // A Mac has a managed build only with a licence key and an Apple Silicon CPU. Say which is missing
+  // rather than "offline", which would send someone to check their network.
+  if ((opts.platform ?? process.platform) === "darwin") {
+    try {
+      buildPlatformFor("darwin", opts.arch ?? process.arch);
+    } catch (e) {
+      return { mode: "unavailable", licensed, plan, reason: String((e as Error).message) };
+    }
+    if (!licensed) return { mode: "unavailable", licensed, plan, reason: MAC_NEEDS_LICENSE };
+  }
   try {
     const cat = await catalogFor(s.licenseApiBase, opts.timeoutMs ?? 8000);
     const r = resolveVersion(cat, "latest", licensed);

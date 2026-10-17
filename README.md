@@ -4,7 +4,7 @@ A desktop app to **create, save, organize, and launch [Clearcote](https://github
 
 ![Clearcote Profile Manager](docs/screenshots/profile-manager.png)
 
-> **Status:** built — profile create/edit/launch, running a profile in the cloud with a live window, proxy geo-resolve, import/export, a light/dark theme (dark by default), and packaged builds for **Windows and Linux** (both cut by CI on every release). Full design + phases in **[PLAN.md](PLAN.md)**.
+> **Status:** built — profile create/edit/launch, running a profile in the cloud with a live window, proxy geo-resolve, import/export, a light/dark theme (dark by default), and packaged builds for **Windows, Linux and macOS** (all cut by CI on every release). Full design + phases in **[PLAN.md](PLAN.md)**.
 
 <details>
 <summary>More screenshots — meet Clyde, light theme, editor</summary>
@@ -25,7 +25,7 @@ A desktop app to **create, save, organize, and launch [Clearcote](https://github
 
 ## Download
 
-Prebuilt **Windows and Linux** builds are on the **[Releases page](https://github.com/clearcotelabs/clearcote-profile-manager/releases)** — no need to build from source. Every release carries both.
+Prebuilt **Windows, Linux and macOS** builds are on the **[Releases page](https://github.com/clearcotelabs/clearcote-profile-manager/releases)** — no need to build from source. Every release carries all three.
 
 **Windows (x64)**
 
@@ -47,22 +47,39 @@ The app launches the Linux Clearcote build (`chrome`, no extension) — the same
 version dropdown as on Windows. Point it at one in **Settings**, or let it auto-detect a sibling
 `linux-x64/` dev build or `CLEARCOTE_BINARY`.
 
+**macOS**
+
+- **Apple Silicon** — `Clearcote-Profile-Manager-<version>-mac-arm64.dmg` · open it and drag the app to Applications.
+- **Intel** — `Clearcote-Profile-Manager-<version>-mac-x64.dmg` · the same.
+
+The app is ad-hoc signed but not notarized, so macOS blocks the first open: choose **System Settings →
+Privacy & Security → Open Anyway** (or, in Terminal, `xattr -dr com.apple.quarantine "/Applications/Clearcote Profile Manager.app"`).
+
+The Clearcote browser for macOS is a **PRO build for Apple Silicon** (`Chromium.app`): with a licence key
+in **Settings** the app downloads it, unpacks it with `ditto` and launches it, the same way the SDK does.
+The free builds have no macOS version, and an Intel Mac has no browser build, so there run profiles in the
+**cloud**, or choose a `Chromium.app` in **Settings → Browser**. New profiles on a Mac start as a **macOS**
+persona: the browser's fonts and text measurements there are the Mac's own, so a Windows or Linux persona
+would contradict itself on every font check (the editor warns when one does).
+
 ### Verify it's genuine (recommended)
 
-Every release is **built entirely by [GitHub Actions](.github/workflows/release.yml)** from the tagged commit — Windows on a `windows-latest` runner, Linux on `ubuntu-latest`, each packaged natively, never on anyone's machine — so the build is public and auditable. Two independent ways to confirm your download wasn't tampered with:
+Every release is **built entirely by [GitHub Actions](.github/workflows/release.yml)** from the tagged commit — Windows on a `windows-latest` runner, Linux on `ubuntu-latest`, macOS on `macos-latest`, each packaged natively, never on anyone's machine — so the build is public and auditable. Two independent ways to confirm your download wasn't tampered with:
 
 ```bash
 # 1. Provenance — cryptographically proves it came from THIS repo's CI at the release commit
 gh attestation verify Clearcote-Profile-Manager-<version>-setup.exe -R clearcotelabs/clearcote-profile-manager
 gh attestation verify Clearcote-Profile-Manager-<version>-x86_64.AppImage -R clearcotelabs/clearcote-profile-manager
+gh attestation verify Clearcote-Profile-Manager-<version>-mac-arm64.dmg -R clearcotelabs/clearcote-profile-manager
 
 # 2. Checksum — SHA256SUMS.txt ships with every release
-sha256sum -c SHA256SUMS.txt          # macOS / Linux
+sha256sum -c SHA256SUMS.txt --ignore-missing           # Linux
+shasum -a 256 -c SHA256SUMS.txt --ignore-missing       # macOS
 # Windows (PowerShell):
 # (Get-FileHash .\Clearcote-Profile-Manager-<version>-setup.exe -Algorithm SHA256).Hash
 ```
 
-> The app is **unsigned**, so Windows SmartScreen may warn on first run (**More info → Run anyway**). Proper Authenticode signing needs a paid certificate; until then, the public-CI build + provenance attestation + checksums are the trust anchor.
+> The app is **unsigned**, so Windows SmartScreen may warn on first run (**More info → Run anyway**), and macOS blocks the first open (**Open Anyway**, above). Proper Authenticode / Apple Developer ID signing needs a paid certificate; until then, the public-CI build + provenance attestation + checksums are the trust anchor.
 
 ## Why
 
@@ -208,7 +225,7 @@ function now matches the operating system the persona claims.
 
 ## Stack
 
-Electron · Next.js (App Router) · React · TypeScript · Tailwind CSS · packaged with electron-builder for Windows x64 and Linux x64 — the two platforms the browser itself ships on.
+Electron · Next.js (App Router) · React · TypeScript · Tailwind CSS · packaged with electron-builder for Windows x64, Linux x64 and macOS (Apple Silicon and Intel) — the browser itself ships on Windows x64, Linux x64 and macOS Apple Silicon.
 
 ## Quickstart (once implemented — see PLAN.md Phase 1)
 
@@ -230,9 +247,9 @@ npm run dist       # package for whichever OS you are on
 | `tests/` | vitest unit suite (`npm test`) — see [tests/README.md](tests/README.md) |
 | `profiles/` | runtime profile store — JSON per profile + per-profile `userdata/`; git-ignored except the example |
 
-## Packaging (Windows + Linux)
+## Packaging (Windows + Linux + macOS)
 
-Releases are cut automatically by [GitHub Actions](.github/workflows/release.yml) when a `v*` tag is pushed: a matrix builds **both** platforms on clean runners (`windows-latest`, `ubuntu-latest`), then one job collects them → checksums → provenance attestation → a single GitHub Release. Both platforms are built on every release, so a release cannot quietly go Windows-only.
+Releases are cut automatically by [GitHub Actions](.github/workflows/release.yml) when a `v*` tag is pushed: a matrix builds **every** platform on clean runners (`windows-latest`, `ubuntu-latest`, `macos-latest`), then one job collects them → checksums → provenance attestation → a single GitHub Release. Every platform is built on every release, so a release cannot quietly drop one.
 
 To build locally instead:
 
@@ -241,9 +258,10 @@ npm run make-icon     # build/icon.ico + build/icon.png from the brand mark (onc
 npm run dist          # package for the CURRENT OS → release/
 npm run dist:win      # Windows: NSIS installer + portable zip
 npm run dist:linux    # Linux: AppImage + tar.gz
+npm run dist:mac      # macOS: one .dmg per CPU (arm64, x64), ad-hoc signed
 ```
 
-`npm run dist` targets the host: on Windows it produces a signed-able NSIS installer plus a **portable build** at `release/win-unpacked/` (zip it and run `Clearcote Profile Manager.exe` directly); on Linux it produces the AppImage and the tarball, alongside `release/linux-unpacked/`.
+`npm run dist` targets the host: on Windows it produces a signed-able NSIS installer plus a **portable build** at `release/win-unpacked/` (zip it and run `Clearcote Profile Manager.exe` directly); on Linux it produces the AppImage and the tarball, alongside `release/linux-unpacked/`; on macOS the two disk images. The macOS app is ad-hoc signed after packing (`scripts/mac-adhoc-sign.cjs`, which needs `codesign`, so a Mac): without it macOS reports the unsigned bundle as damaged. macOS ships disk images only — copies of the app from before macOS existed update to "the first `.zip`" in a release, which must stay the Windows portable one.
 
 > **Do not cross-build the Linux artifacts from Windows.** `--linux tar.gz` appears to succeed there,
 > but NTFS has no executable bit, so every file in the tarball comes out `0644` — including

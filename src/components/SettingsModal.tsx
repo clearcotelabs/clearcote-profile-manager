@@ -10,6 +10,7 @@ import { useId, useState } from "react";
 import { api, type Settings, type LicenseStatus, type CloudAccount } from "@/lib/ipc";
 import Dialog, { DialogFooter, DialogHeader } from "./Dialog";
 import StorageSection from "./StorageSection";
+import { browserFileName, hostOs } from "@/lib/host";
 
 export type Section = "general" | "browser" | "license" | "cloud" | "updates" | "storage";
 
@@ -202,7 +203,7 @@ export default function SettingsModal({
     }
   }
 
-  const exe = hostIsWindows() ? "chrome.exe" : "chrome";
+  const exe = browserFileName(hostOs() ?? (hostIsWindows() ? "windows" : "linux"));
   const custom = settings.binaryPath;
 
   return (
