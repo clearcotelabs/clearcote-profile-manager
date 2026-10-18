@@ -1,6 +1,7 @@
 // PRO licensing client (electron/license.ts) + pro-binary fetch (electron/proBinary.ts).
 // Hermetic — the only network is a mocked `fetch`. Mirrors the clearcote SDK's tests.
 
+import "./helpers/linux-on-mac"; // pins the Windows/Linux behaviour; a Mac runner runs this suite as Linux
 import { describe, it, expect, vi, afterEach, beforeEach, afterAll } from "vitest";
 import {
   resolveLicenseKey,

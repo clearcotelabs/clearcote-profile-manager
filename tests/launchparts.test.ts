@@ -1,6 +1,7 @@
 // Pieces of a launch: the start page argument (fpargs.ts → launcher + preview), the lease's refusal
 // memory and shared check-in, the licence check's "valid but busy", and one download per build.
 
+import "./helpers/linux-on-mac"; // pins the Windows/Linux behaviour; a Mac runner runs this suite as Linux
 import { describe, it, expect, vi, afterEach, beforeAll, afterAll } from "vitest";
 import fs from "node:fs";
 import os from "node:os";

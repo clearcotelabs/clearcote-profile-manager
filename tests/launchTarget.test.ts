@@ -2,6 +2,7 @@
 // src/lib/launchTarget.ts words it. Plus the settings merge that keeps the learned plan, and the
 // update-check switch. Hermetic: fetch is mocked, the cache is a temp dir.
 
+import "./helpers/linux-on-mac"; // pins the Windows/Linux behaviour; a Mac runner runs this suite as Linux
 import { describe, it, expect, beforeAll, afterAll, afterEach, vi } from "vitest";
 import fs from "node:fs";
 import os from "node:os";

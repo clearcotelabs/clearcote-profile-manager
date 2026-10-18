@@ -6,6 +6,7 @@
 //     long first download
 //   - the plan a real lease reports is remembered for the header; an offline-grace lease is not
 
+import "./helpers/linux-on-mac"; // pins the Windows/Linux behaviour; a Mac runner runs this suite as Linux
 import { describe, it, expect, beforeAll, afterAll, beforeEach, afterEach, vi } from "vitest";
 import fs from "node:fs";
 import os from "node:os";

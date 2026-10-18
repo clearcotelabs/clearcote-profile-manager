@@ -2,6 +2,7 @@
 // mocked `fetch`. Mirrors the clearcote SDK's version-selection matrix: latest / "150" / "149"
 // across licensed (Pro) and unlicensed (free) callers.
 
+import "./helpers/linux-on-mac"; // pins the Windows/Linux behaviour; a Mac runner runs this suite as Linux
 import { describe, it, expect, vi, afterEach } from "vitest";
 import { fetchCatalog, fetchProRevisions, listVersions, resolveVersion, type Catalog } from "../electron/catalog";
 

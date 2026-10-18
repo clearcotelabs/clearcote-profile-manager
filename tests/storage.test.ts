@@ -2,6 +2,7 @@
 // (storage.ts), temp copies and the rename-first delete (cache.ts), and window placement
 // (windowstate.ts). Real files in temp dirs; the catalog is a fixture.
 
+import "./helpers/linux-on-mac"; // pins the Windows/Linux behaviour; a Mac runner runs this suite as Linux
 import { describe, it, expect, beforeAll, afterAll, vi } from "vitest";
 import fs from "node:fs";
 import os from "node:os";
