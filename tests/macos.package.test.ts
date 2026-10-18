@@ -184,8 +184,18 @@ describe("the workflows", () => {
     expect(publish).toContain("mac-arm64.dmg");
   });
 
-  it("test: runs on macOS as well as Linux", () => {
+  it("test: runs on macOS as well as Linux, on main and on feature / fix branches", () => {
     expect(test).toMatch(/os: \[ubuntu-latest, macos-latest\]/);
     expect(test).toContain("runs-on: ${{ matrix.os }}");
+    expect(test).toContain('branches: [main, "feat/**", "fix/**"]');
+  });
+
+  it("test: packages the macOS app on a Mac and checks it, without uploading or publishing anything", () => {
+    const job = test.slice(test.indexOf("package-macos:"));
+    expect(job).toContain("runs-on: macos-latest");
+    expect(job).toContain("npm run dist:mac");
+    expect(job).toMatch(/codesign --verify --deep --strict/);
+    expect(job).toContain("Signature=adhoc");
+    expect(job).not.toMatch(/upload-artifact|action-gh-release|attest/);
   });
 });

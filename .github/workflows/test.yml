@@ -2,8 +2,10 @@ name: Test
 
 on:
   push:
-    branches: [main]
+    # Feature and fix branches too, so a branch is tested on a real Mac before anything is released.
+    branches: [main, "feat/**", "fix/**"]
   pull_request: {}
+  workflow_dispatch: {}
 
 jobs:
   test:
@@ -22,3 +24,30 @@ jobs:
       - run: npm ci
       - run: npm run typecheck
       - run: npm test
+
+  package-macos:
+    # The release's macOS half, without the release: both disk images built and the ad-hoc signature
+    # (scripts/mac-adhoc-sign.cjs) verified on a real Mac. Nothing is uploaded or published.
+    runs-on: macos-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+      - run: npm ci
+      - name: Package (electron-builder, macOS)
+        run: npm run dist:mac
+        env:
+          CSC_IDENTITY_AUTO_DISCOVERY: "false"
+      - name: Check the disk images and the app's signature
+        run: |
+          ls -la release
+          for arch in arm64 x64; do
+            test -f release/Clearcote-Profile-Manager-*-mac-$arch.dmg
+          done
+          if ls release/*.zip 2>/dev/null; then echo "a macOS .zip must never ship (see package.json mac targets)" >&2; exit 1; fi
+          app="release/mac-arm64/Clearcote Profile Manager.app"
+          codesign --verify --deep --strict --verbose=2 "$app"
+          codesign -dv "$app" 2>&1 | grep -E "Signature=adhoc"
+          hdiutil verify release/Clearcote-Profile-Manager-*-mac-arm64.dmg
