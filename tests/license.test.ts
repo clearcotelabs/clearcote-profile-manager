@@ -9,8 +9,16 @@ import {
   checkLicense,
   withRunToken,
   planFromToken,
+  apiBase,
+  leaseDefaults,
+  resetLeaseBreaker,
+  LicenseError,
+  LicenseRevokedError,
+  ConcurrencyLimitError,
+  type LeaseSession,
 } from "../electron/license";
 import { proEnsureBinary } from "../electron/proBinary";
+import type { IncomingMessage, Server } from "node:http";
 
 /** Every isolated HOME the tests below make — removed when the file finishes, rather than being left
  *  in %TEMP% on every run as they used to be. */
@@ -505,5 +513,364 @@ describe("licence calls — User-Agent on the wire", () => {
     } finally {
       await new Promise<void>((r) => server.close(() => r()));
     }
+  });
+});
+
+// ── lease host: lease.clearcotelabs.com first, www.clearcotelabs.com when it cannot be reached ──────────
+// By default the lease calls (checkout, heartbeat, check-in, the Settings key check) go to the licence lease
+// server, and once more to clearcotelabs.com when it cannot be reached: a network error or timeout, a
+// gateway error, or an answer that is not JSON (a CDN challenge page). The lease server is then skipped for
+// a while. A JSON answer from it is final. A base that is set (the licenseApiBase setting,
+// CLEARCOTE_LICENSE_API, CLEARCOTE_LEASE_API) is the only one used. Real local HTTP servers stand in for both
+// hosts: fetch is wrapped to send the two real origins to them and to refuse every other host but this
+// machine, so no test can reach a real licence server.
+describe("lease calls — lease.clearcotelabs.com first, www.clearcotelabs.com as the fallback", () => {
+  const LEASE = "https://lease.clearcotelabs.com";
+  const WWW = "https://www.clearcotelabs.com";
+  const CO = "/api/v1/lease/checkout";
+  const HB = "/api/v1/lease/heartbeat";
+  const CI = "/api/v1/lease/checkin";
+  const realFetch = globalThis.fetch;
+  const savedDefaults = { ...leaseDefaults };
+  const ENV = ["HOME", "USERPROFILE", "APPDATA", "LOCALAPPDATA", "CLEARCOTE_LICENSE_KEY", "CLEARCOTE_LICENSE_API", "CLEARCOTE_LEASE_API"];
+  const savedEnv = Object.fromEntries(ENV.map((k) => [k, process.env[k]]));
+  const servers: Server[] = [];
+  const leases: LeaseSession[] = [];
+  let seq = 0;
+
+  beforeEach(async () => {
+    const { mkdtempSync } = await import("node:fs");
+    const { tmpdir } = await import("node:os");
+    const { join } = await import("node:path");
+    const home = mkdtempSync(join(tmpdir(), "pm-leasehost-"));
+    HOMES.push(home);
+    for (const k of ["HOME", "USERPROFILE", "APPDATA", "LOCALAPPDATA"]) process.env[k] = home;
+    for (const k of ["CLEARCOTE_LICENSE_KEY", "CLEARCOTE_LICENSE_API", "CLEARCOTE_LEASE_API"]) delete process.env[k];
+    resetLeaseBreaker(); // the offline-grace tests above left the real lease host skipped
+  });
+
+  afterEach(async () => {
+    for (const l of leases.splice(0)) await l.stop();
+    vi.useRealTimers();
+    for (const s of servers.splice(0)) {
+      s.closeAllConnections();
+      await new Promise((r) => s.close(r));
+    }
+    globalThis.fetch = realFetch;
+    Object.assign(leaseDefaults, savedDefaults);
+    for (const [k, v] of Object.entries(savedEnv)) {
+      if (v === undefined) delete process.env[k];
+      else process.env[k] = v;
+    }
+  });
+
+  const key = () => `cc_lic_pm_leasehost_${Date.now()}_${++seq}`;
+  const tok = (by: string, n: number) => Buffer.from(JSON.stringify({ v: 1, plan: "pro", by, n })).toString("base64url") + ".sig";
+  const keep = (s: LeaseSession | null) => {
+    leases.push(s!);
+    return s!;
+  };
+  const sleep = (ms: number) => new Promise((r) => setTimeout(r, Math.max(0, ms)));
+  async function until(cond: () => boolean, what: string) {
+    const end = Date.now() + 4_000;
+    while (!cond()) {
+      if (Date.now() > end) throw new Error(`timed out waiting for ${what}`);
+      await sleep(10);
+    }
+  }
+
+  type Answer = [status: number, body: string, contentType?: string] | "reset" | "hang";
+  interface Fake {
+    base: string;
+    hits: { path: string; body: Record<string, unknown>; uas: string[] }[];
+  }
+
+  /**
+   * A licence backend on 127.0.0.1: leases "<name>-L1", "<name>-L2"... whose tokens name the server, beats
+   * that hand back "<name>-beat" tokens. `answer` overrides a call (undefined = answer as healthy).
+   */
+  async function fakeServer(name: string, answer?: (path: string) => Answer | undefined): Promise<Fake> {
+    const { createServer } = await import("node:http");
+    const fake: Fake = { base: "", hits: [] };
+    let made = 0;
+    let beats = 0;
+    const server = createServer((req: IncomingMessage, res) => {
+      const chunks: Buffer[] = [];
+      req.on("data", (c: Buffer) => chunks.push(c));
+      req.on("end", () => {
+        const path = req.url ?? "";
+        const uas: string[] = [];
+        for (let i = 0; i < req.rawHeaders.length; i += 2) if (req.rawHeaders[i].toLowerCase() === "user-agent") uas.push(req.rawHeaders[i + 1]);
+        fake.hits.push({ path, body: chunks.length ? JSON.parse(Buffer.concat(chunks).toString("utf8")) : {}, uas });
+        const exp = Math.floor(Date.now() / 1000) + 900;
+        let a = answer?.(path);
+        if (!a) {
+          if (path === CO) {
+            made++;
+            a = [200, JSON.stringify({ lease_id: `${name}-L${made}`, token: tok(name, made), exp, lease_ttl_sec: 360, heartbeat_interval_sec: 30, concurrency: { used: 1, limit: 5 } })];
+          } else if (path === HB) a = [200, JSON.stringify({ token: tok(`${name}-beat`, ++beats), exp })];
+          else a = [200, JSON.stringify({ ok: true })];
+        }
+        if (a === "hang") return; // never answers; afterEach closes the connection
+        if (a === "reset") return void req.socket.destroy();
+        res.writeHead(a[0], { "content-type": a[2] ?? "application/json", connection: "close" }).end(a[1]);
+      });
+    });
+    await new Promise<void>((r) => server.listen(0, "127.0.0.1", () => r()));
+    servers.push(server);
+    fake.base = `http://127.0.0.1:${(server.address() as { port: number }).port}`;
+    return fake;
+  }
+
+  /** A port on this machine that nothing listens on (connection refused). */
+  async function closedBase(): Promise<string> {
+    const { createServer } = await import("node:http");
+    const s = createServer();
+    await new Promise<void>((r) => s.listen(0, "127.0.0.1", () => r()));
+    const port = (s.address() as { port: number }).port;
+    await new Promise((r) => s.close(r));
+    return `http://127.0.0.1:${port}`;
+  }
+
+  /**
+   * Wrap fetch: the real lease and www origins go to `routes` (changeable mid-test), 127.0.0.1 goes through,
+   * any other host is refused. Records every URL and body as the app sent them.
+   */
+  function rewire(routes: Record<string, string>) {
+    const urls: string[] = [];
+    const bodies: Record<string, unknown>[] = [];
+    globalThis.fetch = (async (input: unknown, init?: RequestInit) => {
+      const u = String(input);
+      urls.push(u);
+      bodies.push(typeof init?.body === "string" ? JSON.parse(init.body) : {});
+      const { origin, hostname } = new URL(u);
+      const to = routes[origin] ?? (hostname === "127.0.0.1" ? origin : undefined);
+      if (!to) throw new TypeError(`refused in tests: ${u}`);
+      return realFetch(to + u.slice(origin.length), init);
+    }) as typeof fetch;
+    return { urls, bodies, routes };
+  }
+
+  it("by default checkout, check-in and the Settings check go to lease.clearcotelabs.com; downloads and the catalog keep www", async () => {
+    const primary = await fakeServer("P");
+    const fallback = await fakeServer("F");
+    const wire = rewire({ [LEASE]: primary.base, [WWW]: fallback.base });
+    const k = key();
+    const s = keep(await acquireLease({ licenseKey: k, quiet: true }));
+    expect(s.leaseId).toBe("P-L1");
+    await s.stop();
+    expect(await checkLicense(k)).toMatchObject({ ok: true, plan: "pro" });
+    expect(wire.urls).toEqual([LEASE + CO, LEASE + CI, LEASE + CO, LEASE + CI]);
+    expect(fallback.hits).toEqual([]);
+    expect(leaseDefaults).toMatchObject({ primary: LEASE, fallback: WWW, breakerMs: 60_000 });
+    expect(apiBase()).toBe(WWW); // what the PRO download (proBinary.ts) and the catalog (catalog.ts) use
+  });
+
+  it("the lease host refusing the connection: the same checkout (same body, same User-Agent) lands on www, and the check-in goes straight there", async () => {
+    const fallback = await fakeServer("F");
+    const wire = rewire({ [LEASE]: await closedBase(), [WWW]: fallback.base });
+    const s = keep(await acquireLease({ licenseKey: key(), quiet: true }));
+    expect(s.leaseId).toBe("F-L1");
+    expect(s.token).toBe(tok("F", 1));
+    expect(wire.urls).toEqual([LEASE + CO, WWW + CO]);
+    expect(Object.keys(wire.bodies[0]).sort()).toEqual(["instance_id", "launch_id", "os"]); // no new fields
+    expect(wire.bodies[1]).toEqual(wire.bodies[0]); // the same instance_id and launch_id
+    expect(fallback.hits[0].uas).toEqual([expect.stringMatching(/^clearcote-profile-manager\//)]);
+    await s.stop();
+    expect(wire.urls).toEqual([LEASE + CO, WWW + CO, WWW + CI]);
+    expect(fallback.hits.map((h) => h.path)).toEqual([CO, CI]);
+    expect(fallback.hits[1].body).toEqual({ lease_id: "F-L1" });
+  });
+
+  it("a reset connection, a TLS error and a lease host that never answers go to www too", async () => {
+    leaseDefaults.primaryTimeoutMs = 300; // stands in for the 30 s
+    const fallback = await fakeServer("F");
+    const plain = await fakeServer("plain"); // plain HTTP: https:// to it fails the TLS handshake
+    const reset = await fakeServer("R", () => "reset");
+    const hang = await fakeServer("H", () => "hang");
+    const k = key();
+    for (const [what, primaryBase] of [
+      ["reset", reset.base],
+      ["TLS error", plain.base.replace("http://", "https://")],
+      ["no answer", hang.base],
+    ] as const) {
+      resetLeaseBreaker();
+      const wire = rewire({ [LEASE]: primaryBase, [WWW]: fallback.base });
+      const t0 = Date.now();
+      expect(await checkLicense(k), what).toMatchObject({ ok: true, plan: "pro" });
+      expect(wire.urls, what).toEqual([LEASE + CO, WWW + CO, WWW + CI]);
+      expect(Date.now() - t0, what).toBeLessThan(4_000);
+    }
+    expect(reset.hits).toHaveLength(1);
+    expect(hang.hits).toHaveLength(1);
+    expect(fallback.hits.filter((h) => h.path === CO)).toHaveLength(3);
+  });
+
+  it("gateway errors (502, 503, 504, 520-527, 530) and an answer that is not JSON (a challenge page) go to www", async () => {
+    const cases: Answer[] = [
+      // a gateway status goes to www even with a JSON body: it is the gateway's answer, not the lease server's
+      ...[502, 503, 504, 520, 521, 522, 523, 524, 525, 526, 527, 530].map((st): Answer => [st, JSON.stringify({ error: "upstream" })]),
+      [403, "<!DOCTYPE html><title>Vercel Security Checkpoint</title>", "text/html"],
+      [429, "<html>Too many requests</html>", "text/html"],
+      [200, "<html>Just a moment...</html>", "text/html"],
+    ];
+    let next: Answer | undefined;
+    const primary = await fakeServer("P", () => next);
+    const fallback = await fakeServer("F");
+    const k = key();
+    for (const c of cases) {
+      const what = JSON.stringify(c).slice(0, 40);
+      resetLeaseBreaker();
+      next = c;
+      const wire = rewire({ [LEASE]: primary.base, [WWW]: fallback.base });
+      expect(await checkLicense(k), what).toMatchObject({ ok: true, plan: "pro" });
+      expect(wire.urls, what).toEqual([LEASE + CO, WWW + CO, WWW + CI]);
+    }
+    expect(primary.hits).toHaveLength(cases.length);
+    expect(fallback.hits.filter((h) => h.path === CO)).toHaveLength(cases.length);
+  });
+
+  it("a JSON answer from the lease host is final: 401, 403, 426 and 429 never reach www, and the lease host stays in use", async () => {
+    let next: Answer | undefined;
+    const primary = await fakeServer("P", () => next);
+    const fallback = await fakeServer("F");
+    const wire = rewire({ [LEASE]: primary.base, [WWW]: fallback.base });
+    const k = key();
+    const err = (status: number, error: string, code: string): Answer => [status, JSON.stringify({ error, code })];
+    next = err(429, "All 5 browsers are in use.", "CONCURRENCY_LIMIT_EXCEEDED");
+    await expect(acquireLease({ licenseKey: k, quiet: true })).rejects.toBeInstanceOf(ConcurrencyLimitError);
+    next = err(403, "This licence was revoked.", "LICENSE_REVOKED");
+    await expect(acquireLease({ licenseKey: k, quiet: true })).rejects.toBeInstanceOf(LicenseRevokedError);
+    next = err(401, "Invalid license key.", "INVALID_LICENSE");
+    await expect(acquireLease({ licenseKey: k, quiet: true })).rejects.toMatchObject({ name: "LicenseError", code: "INVALID_LICENSE", message: "Invalid license key." });
+    next = err(426, "Update the app.", "UPGRADE_REQUIRED");
+    await expect(acquireLease({ licenseKey: k, quiet: true })).rejects.toBeInstanceOf(LicenseError);
+    // the Settings check: busy and invalid are verdicts on the key, from the lease host
+    next = err(429, "All 5 browsers are in use.", "CONCURRENCY_LIMIT_EXCEEDED");
+    expect(await checkLicense(k)).toMatchObject({ ok: true, busy: true });
+    next = err(401, "Invalid license key.", "INVALID_LICENSE");
+    expect(await checkLicense(k)).toEqual({ ok: false, error: "Invalid license key.", code: "INVALID_LICENSE" });
+    expect(wire.urls).toEqual(Array(6).fill(LEASE + CO));
+    expect(fallback.hits).toEqual([]);
+  });
+
+  it("a heartbeat answered 409 by the lease host is final: the re-checkout goes to the lease host too, never www", async () => {
+    const primary = await fakeServer("P", (path) => (path === HB ? [409, JSON.stringify({ error: "Lease expired.", code: "LEASE_EXPIRED" })] : undefined));
+    const fallback = await fakeServer("F");
+    const wire = rewire({ [LEASE]: primary.base, [WWW]: fallback.base });
+    vi.useFakeTimers({ toFake: ["setInterval", "clearInterval"] }); // the heartbeat timer; the HTTP stays real
+    const s = keep(await acquireLease({ licenseKey: key(), quiet: true }));
+    await vi.advanceTimersByTimeAsync(30_000);
+    await until(() => s.token === tok("P", 2), "the re-checkout");
+    expect(wire.urls).toEqual([LEASE + CO, LEASE + HB, LEASE + CO]);
+    expect(primary.hits[1].body.lease_id).toBe("P-L1");
+    expect(primary.hits[2].body.launch_id).toBe(primary.hits[0].body.launch_id);
+    await s.stop();
+    expect(wire.urls.at(-1)).toBe(LEASE + CI);
+    expect(primary.hits.at(-1)!.body).toEqual({ lease_id: "P-L2" });
+    expect(fallback.hits).toEqual([]);
+  });
+
+  it("a heartbeat the lease host cannot take goes to www, and the token www hands back reaches the lease", async () => {
+    const primary = await fakeServer("P");
+    const fallback = await fakeServer("F");
+    const closed = await closedBase();
+    const wire = rewire({ [LEASE]: primary.base, [WWW]: fallback.base });
+    vi.useFakeTimers({ toFake: ["setInterval", "clearInterval"] });
+    const s = keep(await acquireLease({ licenseKey: key(), quiet: true }));
+    expect(s.token).toBe(tok("P", 1));
+    wire.routes[LEASE] = closed; // the lease host goes away
+    await vi.advanceTimersByTimeAsync(30_000);
+    await until(() => s.token === tok("F-beat", 1), "the heartbeat on www");
+    expect(wire.urls).toEqual([LEASE + CO, LEASE + HB, WWW + HB]);
+    expect(wire.bodies[2]).toEqual(wire.bodies[1]); // the same lease_id and nonce
+    expect(fallback.hits[0].body.lease_id).toBe("P-L1");
+    await s.stop();
+    expect(wire.urls.at(-1)).toBe(WWW + CI); // inside the breaker window: straight to www
+    expect(fallback.hits.at(-1)!.body).toEqual({ lease_id: "P-L1" });
+  });
+
+  it("after a failure the lease host is skipped for the breaker window (60 s; 1 s here), then tried again", async () => {
+    leaseDefaults.breakerMs = 1_000;
+    const primary = await fakeServer("P");
+    const fallback = await fakeServer("F");
+    const wire = rewire({ [LEASE]: await closedBase(), [WWW]: fallback.base });
+    const k = key();
+    const call = async () => {
+      const from = wire.urls.length;
+      expect(await checkLicense(k)).toMatchObject({ ok: true, plan: "pro" });
+      return wire.urls.slice(from);
+    };
+    let failedAt = Date.now();
+    expect(await call()).toEqual([LEASE + CO, WWW + CO, WWW + CI]); // refused: once to www, and the window opens
+    expect(await call()).toEqual([WWW + CO, WWW + CI]); // inside the window the lease host is not tried
+    await sleep(failedAt + 1_150 - Date.now());
+    failedAt = Date.now();
+    expect(await call()).toEqual([LEASE + CO, WWW + CO, WWW + CI]); // tried again: still down, a new window
+    wire.routes[LEASE] = primary.base; // the lease host is back...
+    expect(await call()).toEqual([WWW + CO, WWW + CI]); // ...but not tried inside the window
+    await sleep(failedAt + 1_150 - Date.now());
+    expect(await call()).toEqual([LEASE + CO, LEASE + CI]); // after it, the lease host again
+    expect(primary.hits.map((h) => h.path)).toEqual([CO, CI]);
+  });
+
+  it("CLEARCOTE_LEASE_API is the only base used: no fallback to www", async () => {
+    const primary = await fakeServer("P");
+    const fallback = await fakeServer("F");
+    const set = await fakeServer("E");
+    const closed = await closedBase();
+    const wire = rewire({ [LEASE]: primary.base, [WWW]: fallback.base });
+    const k = key();
+    process.env.CLEARCOTE_LEASE_API = closed;
+    await expect(acquireLease({ licenseKey: k, quiet: true })).rejects.toThrow(/Could not reach the license server/);
+    expect(await checkLicense(k)).toMatchObject({ ok: false });
+    expect(wire.urls).toEqual([closed + CO, closed + CO]);
+    process.env.CLEARCOTE_LEASE_API = `${set.base}/`; // a working one (the trailing slash is dropped)
+    const s = keep(await acquireLease({ licenseKey: k, quiet: true }));
+    expect(s.leaseId).toBe("E-L1");
+    await s.stop();
+    expect(wire.urls.slice(2)).toEqual([set.base + CO, set.base + CI]);
+    expect(primary.hits).toEqual([]);
+    expect(fallback.hits).toEqual([]);
+  });
+
+  it("the licenseApiBase setting and CLEARCOTE_LICENSE_API keep their meaning: that base only, no fallback", async () => {
+    const primary = await fakeServer("P");
+    const fallback = await fakeServer("F");
+    const closed = await closedBase();
+    const wire = rewire({ [LEASE]: primary.base, [WWW]: fallback.base });
+    const k = key();
+    await expect(acquireLease({ licenseKey: k, licenseApiBase: closed, quiet: true })).rejects.toThrow(/Could not reach the license server/);
+    expect(await checkLicense(k, closed)).toMatchObject({ ok: false });
+    process.env.CLEARCOTE_LICENSE_API = closed;
+    await expect(acquireLease({ licenseKey: k, quiet: true })).rejects.toThrow(/Could not reach the license server/);
+    expect(await checkLicense(k)).toMatchObject({ ok: false });
+    expect(wire.urls).toEqual(Array(4).fill(closed + CO));
+    expect(primary.hits).toEqual([]);
+    expect(fallback.hits).toEqual([]);
+  });
+
+  it("precedence: the licenseApiBase setting, then CLEARCOTE_LICENSE_API, then CLEARCOTE_LEASE_API", async () => {
+    const a = await fakeServer("A");
+    const b = await fakeServer("B");
+    const c = await fakeServer("C");
+    const primary = await fakeServer("P");
+    const fallback = await fakeServer("F");
+    rewire({ [LEASE]: primary.base, [WWW]: fallback.base });
+    const k = key();
+    const leaseFrom = async (setting?: string) => {
+      const s = keep(await acquireLease({ licenseKey: k, licenseApiBase: setting, quiet: true }));
+      await s.stop();
+      return s.leaseId;
+    };
+    process.env.CLEARCOTE_LICENSE_API = b.base;
+    process.env.CLEARCOTE_LEASE_API = c.base;
+    expect(await leaseFrom(a.base)).toBe("A-L1");
+    expect(await leaseFrom()).toBe("B-L1");
+    delete process.env.CLEARCOTE_LICENSE_API;
+    expect(await leaseFrom()).toBe("C-L1");
+    expect([a, b, c].map((f) => f.hits.map((h) => h.path))).toEqual([[CO, CI], [CO, CI], [CO, CI]]);
+    expect(primary.hits).toEqual([]);
+    expect(fallback.hits).toEqual([]);
   });
 });

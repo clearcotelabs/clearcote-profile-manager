@@ -13,9 +13,25 @@ import { join } from "node:path";
 import { createHash, randomUUID } from "node:crypto";
 
 export const DEFAULT_API_BASE = "https://www.clearcotelabs.com";
+/** The licence lease server: lease checkout, heartbeat and check-in go there first (see leaseRoute()). */
+export const DEFAULT_LEASE_BASE = "https://lease.clearcotelabs.com";
 const RUN_TOKEN_ENV = "CLEARCOTE_RUN_TOKEN";
 /** Points the engine at a file it re-reads while the browser runs (see {@link LeaseSession.bindLaunch}). */
 export const RUN_TOKEN_FILE_ENV = "CLEARCOTE_RUN_TOKEN_FILE";
+
+/**
+ * Where the lease calls go when no base is set (the licenseApiBase setting, CLEARCOTE_LICENSE_API,
+ * CLEARCOTE_LEASE_API), and the fallback's timings. Tests shorten the timings; nothing else changes them.
+ */
+export const leaseDefaults = {
+  primary: DEFAULT_LEASE_BASE,
+  /** Gets a lease call the primary could not take (see leasePost()). */
+  fallback: DEFAULT_API_BASE,
+  /** After the primary failed, lease calls skip it for this long (ms) and go straight to the fallback. */
+  breakerMs: 60_000,
+  /** A primary that has not answered in full by then counts as unreachable (ms). */
+  primaryTimeoutMs: 30_000,
+};
 
 export class LicenseError extends Error {
   code: string;
@@ -57,6 +73,77 @@ export function resolveLicenseKey(explicit?: string): string | undefined {
 
 export function apiBase(explicit?: string): string {
   return (explicit || process.env.CLEARCOTE_LICENSE_API || DEFAULT_API_BASE).replace(/\/$/, "");
+}
+
+/** Where the lease calls go: one base, or the lease server with a fallback for when it cannot be reached. */
+interface LeaseRoute {
+  primary: string;
+  fallback: string | null;
+}
+
+/**
+ * The lease call bases (checkout, heartbeat, check-in). A base that is set is the only one used: the
+ * licenseApiBase setting > CLEARCOTE_LICENSE_API > CLEARCOTE_LEASE_API. Otherwise the licence lease server,
+ * with clearcotelabs.com as its fallback. Every other licence call (the PRO download, the catalog) keeps
+ * {@link apiBase}.
+ */
+function leaseRoute(explicit?: string): LeaseRoute {
+  const set = explicit || process.env.CLEARCOTE_LICENSE_API || process.env.CLEARCOTE_LEASE_API;
+  if (set) return { primary: set.replace(/\/$/, ""), fallback: null };
+  return { primary: leaseDefaults.primary.replace(/\/$/, ""), fallback: leaseDefaults.fallback.replace(/\/$/, "") };
+}
+
+/** Per process: when (epoch ms) a primary last failed. It is skipped for leaseDefaults.breakerMs after that. */
+const primaryFailedAt = new Map<string, number>();
+
+/** Forget every failed primary, so the next lease call tries it again (tests). */
+export function resetLeaseBreaker(): void {
+  primaryFailedAt.clear();
+}
+
+/** Gateway and CDN errors: the request never reached the lease server. */
+function gatewayStatus(status: number): boolean {
+  return status === 502 || status === 503 || status === 504 || (status >= 520 && status <= 527) || status === 530;
+}
+
+/** The lease server answers every call with JSON; anything else (a CDN challenge page) is not its answer. */
+function isJson(text: string): boolean {
+  try {
+    JSON.parse(text);
+    return true;
+  } catch {
+    return false;
+  }
+}
+
+/**
+ * Send one lease call over `route`. With a set base: to that base only, exactly as before. With the default
+ * bases, a call the lease server cannot take (a network error: DNS, refused, reset, TLS; no full answer within
+ * leaseDefaults.primaryTimeoutMs; a gateway error; a body that is not JSON) is sent once more, unchanged, to
+ * the fallback, and the primary is skipped for leaseDefaults.breakerMs. Any JSON answer from the lease server
+ * (200, 401, 403, 409, 426, 429, ...) is final.
+ */
+async function leasePost(route: LeaseRoute, path: string, licenseKey: string, body: unknown): Promise<Response> {
+  if (!route.fallback) return postJson(`${route.primary}${path}`, licenseKey, body);
+  const failedAt = primaryFailedAt.get(route.primary);
+  if (failedAt === undefined || Date.now() - failedAt >= leaseDefaults.breakerMs) {
+    const abort = new AbortController();
+    const timer = setTimeout(() => abort.abort(), leaseDefaults.primaryTimeoutMs);
+    try {
+      const res = await postJson(`${route.primary}${path}`, licenseKey, body, abort.signal);
+      // Read a copy, inside the timeout: the caller reads the answer itself.
+      if (!gatewayStatus(res.status) && isJson(await res.clone().text())) {
+        primaryFailedAt.delete(route.primary);
+        return res;
+      }
+    } catch {
+      /* not reached: the fallback below */
+    } finally {
+      clearTimeout(timer);
+    }
+    primaryFailedAt.set(route.primary, Date.now());
+  }
+  return postJson(`${route.fallback}${path}`, licenseKey, body);
 }
 
 const osTag = (): string =>
@@ -120,11 +207,12 @@ const LICENSE_USER_AGENT = `clearcote-profile-manager/${(() => {
   }
 })()}`;
 
-async function postJson(url: string, licenseKey: string, body: unknown): Promise<Response> {
+async function postJson(url: string, licenseKey: string, body: unknown, signal?: AbortSignal): Promise<Response> {
   return fetch(url, {
     method: "POST",
     headers: { authorization: `Bearer ${licenseKey}`, "content-type": "application/json", "User-Agent": LICENSE_USER_AGENT },
     body: JSON.stringify(body),
+    ...(signal ? { signal } : {}),
   });
 }
 
@@ -236,7 +324,7 @@ export async function acquireLease(opts: {
   const licenseKey = resolveLicenseKey(opts.licenseKey);
   if (!licenseKey) return null; // free mode — inert
 
-  const base = apiBase(opts.licenseApiBase);
+  const route = leaseRoute(opts.licenseApiBase);
   const instanceId = randomUUID();
   // This launch's id. The launcher already takes one lease per browser; sending launch_id lets the
   // backend count it that way on per-browser plans (the free tier), and a re-checkout below re-uses it.
@@ -247,7 +335,7 @@ export async function acquireLease(opts: {
 
   let checkout: CheckoutResponse;
   try {
-    const res = await postJson(`${base}/api/v1/lease/checkout`, licenseKey, {
+    const res = await leasePost(route, "/api/v1/lease/checkout", licenseKey, {
       instance_id: instanceId,
       launch_id: launchId,
       os: osTag(),
@@ -291,12 +379,12 @@ export async function acquireLease(opts: {
 
   const timer = setInterval(async () => {
     try {
-      const res = await postJson(`${base}/api/v1/lease/heartbeat`, licenseKey, {
+      const res = await leasePost(route, "/api/v1/lease/heartbeat", licenseKey, {
         lease_id: leaseId,
         nonce: randomUUID(),
       });
       if (res.status === 409) {
-        const co = await postJson(`${base}/api/v1/lease/checkout`, licenseKey, {
+        const co = await leasePost(route, "/api/v1/lease/checkout", licenseKey, {
           instance_id: instanceId,
           launch_id: launchId,
           os: osTag(),
@@ -339,7 +427,7 @@ export async function acquireLease(opts: {
     if (!stopping) {
       clearInterval(timer);
       tokenFiles.closeAll();
-      stopping = postJson(`${base}/api/v1/lease/checkin`, licenseKey, { lease_id: leaseId }).then(
+      stopping = leasePost(route, "/api/v1/lease/checkin", licenseKey, { lease_id: leaseId }).then(
         () => undefined,
         () => undefined, // best-effort; the lease TTL will reclaim it anyway
       );
@@ -379,9 +467,9 @@ export interface LicenseStatus {
 export async function checkLicense(licenseKey?: string, licenseApiBase?: string): Promise<LicenseStatus> {
   const key = resolveLicenseKey(licenseKey);
   if (!key) return { ok: false, error: "No license key set." };
-  const base = apiBase(licenseApiBase);
+  const route = leaseRoute(licenseApiBase);
   try {
-    const res = await postJson(`${base}/api/v1/lease/checkout`, key, {
+    const res = await leasePost(route, "/api/v1/lease/checkout", key, {
       instance_id: randomUUID(),
       launch_id: newLaunchId(),
       os: osTag(),
@@ -402,7 +490,7 @@ export async function checkLicense(licenseKey?: string, licenseApiBase?: string)
     }
     if (!res.ok) return { ok: false, error: body.error || `HTTP ${res.status}`, code: body.code };
     // release the probe slot right away (best-effort)
-    if (body.lease_id) await postJson(`${base}/api/v1/lease/checkin`, key, { lease_id: body.lease_id }).catch(() => {});
+    if (body.lease_id) await leasePost(route, "/api/v1/lease/checkin", key, { lease_id: body.lease_id }).catch(() => {});
     return {
       ok: true,
       plan: body.token ? planFromToken(body.token) : undefined,
