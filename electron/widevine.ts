@@ -76,8 +76,13 @@ export function widevineCacheRoot(): string {
   return process.env.CLEARCOTE_WIDEVINE_DIR || path.join(homedir(), ".clearcote", "WidevineCdm");
 }
 
-/** Minimal Omaha v3.1 update check for the current-OS CDM (version 0.0.0.0 -> latest). */
-export function omahaRequestBody(platform: NodeJS.Platform = process.platform, cpu: string = process.arch): unknown {
+/** Minimal Omaha v3.1 update check for the current-OS CDM (version 0.0.0.0 -> latest). `appId` asks for
+ *  another component through the same client (electron/crlset.ts asks for the CRLSet). */
+export function omahaRequestBody(
+  platform: NodeJS.Platform = process.platform,
+  cpu: string = process.arch,
+  appId: string = WIDEVINE_APP_ID,
+): unknown {
   const { atOs, osPlatform, osVersion, arch, naclArch, osArch } = cdmPlatform(platform, cpu);
   return {
     request: {
@@ -91,20 +96,20 @@ export function omahaRequestBody(platform: NodeJS.Platform = process.platform, c
       updaterversion: "151.0.0.0",
       dedup: "cr",
       os: { arch: osArch, platform: osPlatform, version: osVersion },
-      app: [{ appid: WIDEVINE_APP_ID, version: "0.0.0.0", updatecheck: {}, ping: { r: -2 } }],
+      app: [{ appid: appId, version: "0.0.0.0", updatecheck: {}, ping: { r: -2 } }],
     },
   };
 }
 
-async function postJson(url: string, body: unknown): Promise<unknown> {
+export async function postJson(url: string, body: unknown, what = "Widevine", signal?: AbortSignal): Promise<unknown> {
   const res = await fetch(url, {
     method: "POST",
     headers: { "Content-Type": "application/json", "User-Agent": UA },
     body: JSON.stringify(body),
     redirect: "follow",
-    signal: AbortSignal.timeout(60_000),
+    signal: signal ?? AbortSignal.timeout(60_000),
   });
-  if (!res.ok) throw new Error(`Widevine update check HTTP ${res.status}`);
+  if (!res.ok) throw new Error(`${what} update check HTTP ${res.status}`);
   let raw = await res.text();
   // Strip the XSSI guard Google prefixes onto JSON responses.
   if (raw.startsWith(")]}'")) raw = raw.includes("\n") ? raw.slice(raw.indexOf("\n") + 1) : raw.slice(4);
@@ -142,7 +147,7 @@ export function crx3ToZip(buf: Buffer): Buffer {
 
 /** Extract with the same System32 bsdtar the browser download uses (a bare `tar` on PATH can be an
  *  MSYS GNU tar that mangles C:\ paths and cannot read .zip). */
-function extractZip(archive: string, dest: string): Promise<void> {
+export function extractZip(archive: string, dest: string, what = "the CDM"): Promise<void> {
   const bin =
     process.platform === "win32"
       ? path.join(process.env.SystemRoot || process.env.windir || "C:\\Windows", "System32", "tar.exe")
@@ -151,7 +156,7 @@ function extractZip(archive: string, dest: string): Promise<void> {
   return new Promise((resolve, reject) => {
     const p = spawn(bin, ["-xf", archive, "-C", dest], { stdio: "ignore" });
     p.on("error", reject);
-    p.on("exit", (code) => (code === 0 ? resolve() : reject(new Error(`tar exited ${code} extracting the CDM`))));
+    p.on("exit", (code) => (code === 0 ? resolve() : reject(new Error(`tar exited ${code} extracting ${what}`))));
   });
 }
 

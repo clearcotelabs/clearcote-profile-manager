@@ -82,7 +82,7 @@ afterAll(() => {
 beforeEach(() => {
   fs.rmSync(path.join(ROOT, "profiles"), { recursive: true, force: true });
   // A picked Chromium.app — exactly what the macOS file picker hands back.
-  store.writeSettings({ licenseKey: "cc_lic_test_key", binaryPath: APP });
+  store.writeSettings({ licenseKey: "cc_lic_test_key", binaryPath: APP, crlset: false });
   leaseMock.mockReset();
   leaseMock.mockResolvedValue({ token: "t.sig", leaseId: "L1", bindLaunch: () => ({ path: path.join(ROOT, "tok"), release: () => {} }), stop: async () => {} });
   spawnMock.mockReset();
@@ -134,7 +134,7 @@ describe("launch() on Windows (lock)", () => {
     const exe = path.join(ROOT, "win", "chrome.exe");
     fs.mkdirSync(path.dirname(exe), { recursive: true });
     fs.writeFileSync(exe, "b");
-    store.writeSettings({ licenseKey: "cc_lic_test_key", binaryPath: exe });
+    store.writeSettings({ licenseKey: "cc_lic_test_key", binaryPath: exe, crlset: false });
     await asHost("win32", () => launcher.launch(profile("win")));
     expect(spawnMock.mock.calls[0][0]).toBe(exe);
     const argv = spawnMock.mock.calls[0][1] as string[];

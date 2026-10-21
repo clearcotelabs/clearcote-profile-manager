@@ -227,6 +227,10 @@ export interface Settings {
   closeBehavior?: "ask" | "tray" | "quit";
   /** Remove cached builds nothing needs once a newer one is downloaded. On unless turned off. */
   autoPruneBuilds?: boolean;
+  /** Seed Chrome's certificate revocation list (CRLSet) into every profile and hold the first tab until it is
+   *  live (electron/crlset.ts). On unless turned off: the engine never receives one by itself, so without it
+   *  certificates Chrome has revoked are still accepted. Fetched from update.googleapis.com every 6 h. */
+  crlset?: boolean;
   /** Window size/position at last close, restored on start when it is still on a screen. */
   window?: { x: number; y: number; width: number; height: number; maximized?: boolean };
   /** The account's API key (`cc_live_...`) for running profiles in the cloud. Separate from the licence

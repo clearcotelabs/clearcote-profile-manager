@@ -281,47 +281,75 @@ export default function SettingsModal({
             )}
 
             {section === "browser" && (
-              <Card>
-                <Row
-                  title={custom ? "Custom binary" : "Automatic"}
-                  hint={
-                    custom
-                      ? "Every profile launches this file, whatever version it asks for."
-                      : "Each profile's browser version is downloaded on first use and checked against its SHA-256."
-                  }
-                >
-                  <span
-                    className={
-                      "rounded-full px-2 py-0.5 text-[11px] font-medium " +
-                      (custom ? "bg-warn/10 text-warn" : "bg-accent/10 text-accent")
+              <div className="space-y-4">
+                <Card>
+                  <Row
+                    title={custom ? "Custom binary" : "Automatic"}
+                    hint={
+                      custom
+                        ? "Every profile launches this file, whatever version it asks for."
+                        : "Each profile's browser version is downloaded on first use and checked against its SHA-256."
                     }
                   >
-                    {custom ? "Override" : "Managed"}
-                  </span>
-                </Row>
-                <div className="px-4 py-3.5">
-                  <div className="text-[11px] font-medium uppercase tracking-wide text-fog/40">
-                    {custom ? "Path" : "Fallback when offline"}
-                  </div>
-                  <div className="mt-1.5 break-all rounded-lg bg-ink/70 px-3 py-2 font-mono text-[11px] text-fog/60">
-                    {custom || binary || "(none found)"}
-                  </div>
-                  <p className="mt-2 text-xs text-fog/40">
-                    Point at a local <span className="font-mono">{exe}</span> to test your own build. The{" "}
-                    <span className="font-mono">CLEARCOTE_BINARY</span> environment variable does the same.
-                  </p>
-                  <div className="mt-3 flex flex-wrap gap-2">
-                    <button className={btn} onClick={onPick}>
-                      Choose {exe}…
-                    </button>
-                    {custom && (
-                      <button className={btn} onClick={() => onSaveSettings({ binaryPath: undefined })}>
-                        Use automatic
+                    <span
+                      className={
+                        "rounded-full px-2 py-0.5 text-[11px] font-medium " +
+                        (custom ? "bg-warn/10 text-warn" : "bg-accent/10 text-accent")
+                      }
+                    >
+                      {custom ? "Override" : "Managed"}
+                    </span>
+                  </Row>
+                  <div className="px-4 py-3.5">
+                    <div className="text-[11px] font-medium uppercase tracking-wide text-fog/40">
+                      {custom ? "Path" : "Fallback when offline"}
+                    </div>
+                    <div className="mt-1.5 break-all rounded-lg bg-ink/70 px-3 py-2 font-mono text-[11px] text-fog/60">
+                      {custom || binary || "(none found)"}
+                    </div>
+                    <p className="mt-2 text-xs text-fog/40">
+                      Point at a local <span className="font-mono">{exe}</span> to test your own build. The{" "}
+                      <span className="font-mono">CLEARCOTE_BINARY</span> environment variable does the same.
+                    </p>
+                    <div className="mt-3 flex flex-wrap gap-2">
+                      <button className={btn} onClick={onPick}>
+                        Choose {exe}…
                       </button>
-                    )}
+                      {custom && (
+                        <button className={btn} onClick={() => onSaveSettings({ binaryPath: undefined })}>
+                          Use automatic
+                        </button>
+                      )}
+                    </div>
                   </div>
-                </div>
-              </Card>
+                </Card>
+                <Card>
+                  <Row
+                    title="Block certificates Chrome has revoked"
+                    hint={
+                      <>
+                        Gives every profile Chrome&apos;s revocation list, which the browser never downloads by itself, so it
+                        refuses the certificates Google has revoked or distrusted, as Chrome does. The list comes from{" "}
+                        <span className="font-mono">update.googleapis.com</span>, directly from this PC rather than
+                        through a profile&apos;s proxy, and is refreshed every 6 hours. The first tab waits on a blank page
+                        for a few seconds until the list is active, then opens the start page.
+                      </>
+                    }
+                  >
+                    <Toggle
+                      label="Block certificates Chrome has revoked"
+                      checked={settings.crlset !== false}
+                      onChange={(v) => onSaveSettings({ crlset: v })}
+                    />
+                  </Row>
+                  {settings.crlset === false && (
+                    <div className="px-4 py-3 text-[11px] text-warn">
+                      With this off, profiles accept certificates Chrome has revoked, such as those of a certificate
+                      authority whose keys were compromised.
+                    </div>
+                  )}
+                </Card>
+              </div>
             )}
 
             {section === "license" && (

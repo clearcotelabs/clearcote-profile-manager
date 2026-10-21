@@ -156,6 +156,25 @@ set no location) and the Geolocation API reports the host's real position — ge
 derived from the proxy on its own. The lookup speaks SOCKS5 with authentication directly, so it works
 through the same residential proxies the browser uses.
 
+## Revoked certificates
+
+Real Chrome downloads Google's certificate revocation list (CRLSet) in the background, which is how a
+distrusted certificate authority stops working within hours, as the eMudhra intermediates revoked on
+17 October 2026 did. A Clearcote browser never downloads one by itself. So the app does it: every
+launch puts the list into the profile, keeps the first tab on a blank page until the list is active
+(about 5 s), and then opens the start page. Without that wait the start page would load before the list
+applies. Settings → Browser → **Block certificates Chrome has revoked**, on unless you turn it off.
+
+- The list comes from Google's update server (`update.googleapis.com`), the same one Widevine uses. It
+  is requested directly from your PC rather than through a profile's proxy, refreshed every 6 hours, and
+  kept in `~/.clearcote/crlset`, the cache the Clearcote SDKs use too. `CLEARCOTE_CRLSET_FILE` supplies
+  a file yourself, and `CLEARCOTE_CRLSET_URL` names a mirror.
+- The wait uses DevTools over `--remote-debugging-pipe`: two pipes only the app holds, with no network
+  port. Only the blank tab is inspected, and the app detaches before the start page opens. The browser
+  closes when the pipe does, so a browser started this way also closes if the app itself exits.
+- A profile whose extra arguments include `--disable-component-update` never reads the list; its launch
+  says so.
+
 ## Cloud sessions
 
 A profile can also run on Clearcote's servers instead of this PC. Its card's **Cloud** button starts

@@ -1,4 +1,5 @@
 import { type ChildProcess } from "node:child_process";
+import type { Readable, Writable } from "node:stream";
 import { EventEmitter } from "node:events";
 import fs from "node:fs";
 import path from "node:path";
@@ -15,6 +16,18 @@ import { fetchCatalog, resolveVersion } from "./catalog";
 import { fingerprintArgs, macosKeychainArgs, mergeFeatureFlags, proxyEgressArgs, startUrlArg, type FpInput } from "./fpargs";
 import { withShaderDialect, shaderDialectWarning } from "./shaderdialect";
 import { seedWidevine, widevineArgs, claimsChromeBrand } from "./widevine";
+import {
+  crlsetArgsWarning,
+  crlsetEnabled,
+  holdUntilLive,
+  resolveCrlset,
+  seedCrlset,
+  HOLD_URL,
+  PIPE_SWITCH,
+  PipeCdp,
+  ProbeServer,
+  WAIT_TIMEOUT_MS,
+} from "./crlset";
 import { spawnBrowser } from "./winlaunch";
 import { linuxFontEnv, linuxLocaleEnv } from "./linuxfonts";
 import { bundleExecutable } from "./macos";
@@ -348,9 +361,28 @@ export async function launch(
 
   const userDataDir = p.userDataDir || path.join(PROFILES_DIR, p.id, "userdata");
   let relay: Relay | null = null;
+  let probe: ProbeServer | undefined;
   try {
     fs.mkdirSync(userDataDir, { recursive: true });
-    const args = buildArgs(p, userDataDir);
+    // Chrome's revocation list (electron/crlset.ts): seeded into the profile, then the first tab is held on
+    // about:blank until it is live, so the start page is never fetched while revoked certificates still pass.
+    // Best-effort, like Widevine: a launch without it is told why, never refused.
+    if (crlsetEnabled(s)) {
+      const blocked = crlsetArgsWarning(p.extraArgs);
+      if (blocked) warnings.push(blocked);
+      else {
+        try {
+          seedCrlset(userDataDir, await resolveCrlset());
+          probe = await ProbeServer.start();
+        } catch (e) {
+          warnings.push(
+            `Could not install Chrome's certificate revocation list (${String((e as Error)?.message || e)}). Launching without it — certificates Chrome has revoked are still accepted.`,
+          );
+        }
+      }
+    }
+    const startUrl = startUrlArg(p.startUrl);
+    const args = probe ? [...buildArgs({ ...p, startUrl: undefined }, userDataDir), PIPE_SWITCH, HOLD_URL] : buildArgs(p, userDataDir);
     // Widevine: seed the CDM into this profile before the browser reads it. Downloaded once into a
     // shared cache and copied in, so only the first opt-in launch pays for it. A failure here is
     // non-fatal — DRM and the brand row stay as they were, and the user is told why.
@@ -399,7 +431,13 @@ export async function launch(
     // unread pipes (Node's default): a browser that logged enough filled the pipe and FROZE on its
     // next write. The tail is also how an exit is explained — the licence watchdog exits with
     // code 0, like a normal close, and only its stderr line tells them apart.
-    const child = await spawnBrowser(bin, argv, { detached: false, env, stdio: ["ignore", "ignore", "pipe"] });
+    //
+    // fds 3 and 4 are the DevTools pipe of a launch that holds its first tab for the revocation list.
+    const child = await spawnBrowser(bin, argv, {
+      detached: false,
+      env,
+      stdio: probe ? ["ignore", "ignore", "pipe", "pipe", "pipe"] : ["ignore", "ignore", "pipe"],
+    });
     const tail = new Tail();
     child.stderr?.on("data", (d: Buffer) => tail.push(d));
     const startedAt = Date.now();
@@ -437,8 +475,27 @@ export async function launch(
       }
     });
     child.on("error", cleanup);
+    if (probe) {
+      const cdp = new PipeCdp(child.stdio[3] as Writable, child.stdio[4] as Readable);
+      try {
+        const live = await holdUntilLive(cdp, probe, startUrl ? { url: startUrl } : { newTab: true });
+        if (!live) {
+          warnings.push(
+            `Chrome's certificate revocation list was not confirmed active within ${WAIT_TIMEOUT_MS / 1000} s, so the start page opened without waiting for it. It still applies once the browser has finished starting.`,
+          );
+        }
+      } catch (e) {
+        // The browser closed during the wait, or it never opened the tab to hold.
+        if (running.has(p.id)) {
+          warnings.push(`The wait for Chrome's certificate revocation list failed (${String((e as Error)?.message || e)}).`);
+        }
+      } finally {
+        probe.close();
+      }
+    }
     return { ok: true, pid: child.pid, pro: !!lease, warnings: warnings.length ? warnings : undefined };
   } catch (e) {
+    probe?.close();
     relay?.stop();
     relays.delete(p.id);
     void lease?.stop(); // don't hold a slot for a launch that failed

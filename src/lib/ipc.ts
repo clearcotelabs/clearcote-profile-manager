@@ -105,6 +105,8 @@ export interface Settings {
   closeBehavior?: "ask" | "tray" | "quit";
   /** Remove cached builds nothing needs once a newer one is downloaded. On unless turned off. */
   autoPruneBuilds?: boolean;
+  /** Block certificates Chrome has revoked (CRLSet seeding + the first-tab wait). On unless turned off. */
+  crlset?: boolean;
   /** Window size/position at last close, restored on start when it is still on a screen. */
   window?: { x: number; y: number; width: number; height: number; maximized?: boolean };
   /** The account's API key (`cc_live_...`) for running profiles in the cloud. Not the licence key. */

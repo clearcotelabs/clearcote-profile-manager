@@ -12,6 +12,7 @@ import fs from "node:fs";
 import os from "node:os";
 import path from "node:path";
 import { EventEmitter } from "node:events";
+import { PassThrough } from "node:stream";
 
 const ROOT = fs.mkdtempSync(path.join(os.tmpdir(), "ccpm-flow-"));
 vi.mock("electron", () => ({ app: { getPath: () => ROOT } }));
@@ -67,6 +68,12 @@ const stopMock = vi.fn(async (child: EventEmitter & { exitCode: number | null })
   return "graceful" as const;
 });
 vi.mock("../electron/procstop", () => ({ stopGracefully: (c: never) => stopMock(c) }));
+// The first-tab hold talks to a real browser over its pipe; tests/crlset.test.ts covers it.
+const holdMock = vi.fn();
+vi.mock("../electron/crlset", async (orig) => {
+  const real = await orig<typeof import("../electron/crlset")>();
+  return { ...real, holdUntilLive: (...a: unknown[]) => holdMock(...a) };
+});
 
 type L = typeof import("../electron/launcher");
 type P = typeof import("../electron/profiles");
@@ -90,6 +97,8 @@ function fakeChild() {
   c.exitCode = null;
   c.stderr = new EventEmitter();
   c.kill = () => c.emit("exit", 0);
+  // What a pipe launch is given: fds 3 and 4 for DevTools.
+  (c as unknown as { stdio: unknown[] }).stdio = [null, null, c.stderr, new PassThrough(), new PassThrough()];
   return c;
 }
 
@@ -103,7 +112,8 @@ afterAll(() => {
 });
 beforeEach(() => {
   fs.rmSync(path.join(ROOT, "profiles"), { recursive: true, force: true });
-  store.writeSettings({ licenseKey: "cc_lic_test_key" });
+  // The revocation-list hold has its own describe below; everything else pins the launch without it.
+  store.writeSettings({ licenseKey: "cc_lic_test_key", crlset: false });
   downloadGate = Promise.resolve();
   leaseMock.mockReset();
   spawnMock.mockReset();
@@ -170,7 +180,7 @@ describe("launch() — bookkeeping on success", () => {
   });
 
   it("an offline-grace lease (cached token) says nothing new about the plan", async () => {
-    store.writeSettings({ licenseKey: "cc_lic_test_key", lastPlan: "pro" });
+    store.writeSettings({ licenseKey: "cc_lic_test_key", lastPlan: "pro", crlset: false });
     leaseMock.mockResolvedValue(lease("free", "cached"));
     await launcher.launch(profile("offline"));
     expect(store.readSettings().lastPlan).toBe("pro");
@@ -251,5 +261,73 @@ describe("launch() — the browser's life after it starts", () => {
 
   it("stop() on something not running is 'gone' and harmless", async () => {
     expect(await launcher.stop("never-launched")).toBe("gone");
+  });
+});
+
+describe("launch() — Chrome's revocation list", () => {
+  const crlsetFile = path.join(ROOT, "crl-set-fixture");
+  beforeEach(() => {
+    const header = Buffer.from(JSON.stringify({ ContentType: "CRLSet", Sequence: 10850 }));
+    const len = Buffer.alloc(2);
+    len.writeUInt16LE(header.length, 0);
+    fs.writeFileSync(crlsetFile, Buffer.concat([len, header]));
+    process.env.CLEARCOTE_CRLSET_FILE = crlsetFile; // never Google from a unit test
+    store.writeSettings({ licenseKey: "cc_lic_test_key" }); // on by default
+    leaseMock.mockResolvedValue(lease("pro"));
+    holdMock.mockReset();
+    holdMock.mockResolvedValue(true);
+  });
+  afterEach(() => {
+    delete process.env.CLEARCOTE_CRLSET_FILE;
+  });
+  const argv = () => spawnMock.mock.calls[0][1] as string[];
+
+  it("seeds the profile, holds the first tab on about:blank over a pipe, then hands it the start page", async () => {
+    const r = await launcher.launch(profile("crl", { startUrl: "example.com" }));
+    expect(r).toMatchObject({ ok: true });
+    expect((r.warnings ?? []).join(" ")).not.toMatch(/revocation|component-update/);
+    expect(argv()).toContain("--remote-debugging-pipe");
+    expect(argv()).not.toContain("https://example.com/");
+    expect(argv().filter((a) => !a.startsWith("--"))).toEqual(["about:blank"]);
+    expect(spawnMock.mock.calls[0][2].stdio).toEqual(["ignore", "ignore", "pipe", "pipe", "pipe"]);
+    expect(holdMock.mock.calls[0][2]).toEqual({ url: "https://example.com/" });
+    const seeded = path.join(ROOT, "profiles", "crl", "userdata", "CertificateRevocation", "10850", "crl-set");
+    expect(fs.existsSync(seeded)).toBe(true);
+  });
+
+  it("no start page: the held tab is released to the new-tab page", async () => {
+    await launcher.launch(profile("crl-ntp"));
+    expect(holdMock.mock.calls[0][2]).toEqual({ newTab: true });
+  });
+
+  it("a wait that gives up still launches, and says so", async () => {
+    holdMock.mockResolvedValue(false);
+    const r = await launcher.launch(profile("crl-slow", { startUrl: "example.com" }));
+    expect(r.ok).toBe(true);
+    expect(r.warnings?.join(" ")).toMatch(/not confirmed active/);
+  });
+
+  it("turned off: no seed, no pipe, the start page on the command line", async () => {
+    store.writeSettings({ licenseKey: "cc_lic_test_key", crlset: false });
+    await launcher.launch(profile("crl-off", { startUrl: "example.com" }));
+    expect(argv()).not.toContain("--remote-debugging-pipe");
+    expect(argv().at(-1)).toBe("https://example.com/");
+    expect(holdMock).not.toHaveBeenCalled();
+    expect(fs.existsSync(path.join(ROOT, "profiles", "crl-off", "userdata", "CertificateRevocation"))).toBe(false);
+  });
+
+  it("a profile that disables the component updater is warned and not held", async () => {
+    const r = await launcher.launch(profile("crl-dcu", { extraArgs: ["--disable-component-update"] }));
+    expect(r.warnings?.join(" ")).toMatch(/--disable-component-update/);
+    expect(argv()).not.toContain("--remote-debugging-pipe");
+    expect(holdMock).not.toHaveBeenCalled();
+  });
+
+  it("no list to be had: launches without it, with a warning", async () => {
+    fs.writeFileSync(crlsetFile, "not a crlset");
+    const r = await launcher.launch(profile("crl-bad", { startUrl: "example.com" }));
+    expect(r.ok).toBe(true);
+    expect(r.warnings?.join(" ")).toMatch(/Could not install Chrome's certificate revocation list/);
+    expect(argv().at(-1)).toBe("https://example.com/");
   });
 });
