@@ -1143,6 +1143,10 @@ function Manager() {
           settings={settings}
           initialSection={settingsOpen}
           onPick={pickBinary}
+          onSettingsReload={(s) => {
+            setSettings(s);
+            refreshTarget();
+          }}
           onSaveSettings={async (patch) => {
             const next = { ...settings, ...patch };
             setSettings(next);

@@ -50,7 +50,7 @@ export function buildPreviewApi(mock: ClearcoteApi): ClearcoteApi {
         return mock.settings.get();
       },
     },
-    license: { check: fail("check your licence") },
+    license: { check: fail("check your licence"), loginStart: fail("use your Clearcote account"), loginPoll: fail("use your Clearcote account") as never },
     pickBinary: async () => {
       askForHelper("choose a browser");
       return null;

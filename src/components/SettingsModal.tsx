@@ -6,8 +6,9 @@
 // Done button were pushed off-screen with nothing able to scroll them back. The frame (and Esc,
 // focus, scroll locking) now comes from the shared Dialog, and only the panel scrolls.
 
-import { useId, useState } from "react";
+import { useEffect, useId, useState } from "react";
 import { api, type Settings, type LicenseStatus, type CloudAccount } from "@/lib/ipc";
+import { needsHelper } from "@/lib/webPreview";
 import Dialog, { DialogFooter, DialogHeader } from "./Dialog";
 import StorageSection from "./StorageSection";
 import { browserFileName, hostOs } from "@/lib/host";
@@ -122,6 +123,7 @@ export default function SettingsModal({
   settings,
   onPick,
   onSaveSettings,
+  onSettingsReload,
   onClose,
   initialSection = "browser",
 }: {
@@ -129,6 +131,8 @@ export default function SettingsModal({
   settings: Settings;
   onPick: () => void;
   onSaveSettings: (patch: Partial<Settings>) => Promise<void> | void;
+  /** Settings changed outside this window (a key saved by "Use my Clearcote account"): here they are. */
+  onSettingsReload?: (s: Settings) => void;
   onClose: () => void;
   /** Open on this section — the header pill and a launch error's action point at the right one. */
   initialSection?: Section;
@@ -161,6 +165,59 @@ export default function SettingsModal({
       setChecking(false);
     }
   }
+
+  // "Use my Clearcote account": sign in on clearcotelabs.com, approve there, and the key is saved for you
+  // (electron/devicelogin.ts). The key itself never comes back to this window.
+  type Login =
+    | { phase: "starting" }
+    | { phase: "waiting"; id: string; userCode: string; uri: string; interval: number }
+    | { phase: "done"; plan?: string; account?: string }
+    | { phase: "error"; error: string };
+  const [login, setLogin] = useState<Login | null>(null);
+  async function useAccount() {
+    if (!api.license.loginStart) return;
+    setLogin({ phase: "starting" });
+    let r;
+    try {
+      r = await api.license.loginStart();
+    } catch (e) {
+      // A helper from before this call existed answers "Unknown call".
+      const msg = String((e as Error)?.message || e);
+      return setLogin({
+        phase: "error",
+        error: /Unknown call/.test(msg) ? "Your Clearcote helper is older than this feature. Download the newest helper and start it again." : msg,
+      });
+    }
+    if (!r.ok) return setLogin(needsHelper(r) ? null : { phase: "error", error: r.error });
+    void api.openExternal(r.verificationUri);
+    setLogin({ phase: "waiting", id: r.id, userCode: r.userCode, uri: r.verificationUri, interval: r.interval });
+  }
+  useEffect(() => {
+    if (login?.phase !== "waiting" || !api.license.loginPoll) return;
+    let stop = false;
+    const { id, interval } = login;
+    const tick = async () => {
+      if (stop) return;
+      const r = await api.license.loginPoll!(id).catch((e) => ({ status: "error" as const, error: String(e?.message || e) }));
+      if (stop) return;
+      if (r.status === "approved") {
+        const s = await api.settings.get();
+        setKey(s.licenseKey || "");
+        onSettingsReload?.(s);
+        setLogin({ phase: "done", plan: r.plan, account: r.account });
+        setStatus(await api.license.check());
+        return;
+      }
+      if (r.status === "denied" || r.status === "expired") return setLogin({ phase: "error", error: r.error });
+      setTimeout(tick, Math.max(2, interval) * 1000);
+    };
+    const t = setTimeout(tick, Math.max(2, interval) * 1000);
+    return () => {
+      stop = true;
+      clearTimeout(t);
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [login?.phase === "waiting" ? login.id : null]);
 
   // ── Cloud ────────────────────────────────────────────────────────────────
   const [apiKey, setApiKey] = useState(settings.cloudApiKey || "");
@@ -354,6 +411,46 @@ export default function SettingsModal({
 
             {section === "license" && (
               <div className="space-y-4">
+                {api.license.loginStart && (
+                  <Card>
+                    <div className="px-4 py-3.5">
+                      <div className="flex flex-wrap items-center gap-3">
+                        <div className="min-w-[220px] flex-1">
+                          <div className="text-[13px] font-medium text-fog">Use my Clearcote account</div>
+                          <p className="mt-1 text-[11px] leading-relaxed text-fog/55">
+                            Sign in on clearcotelabs.com and approve. The key of the plan you pay for (or your free one) is filled in
+                            here. Nothing to copy.
+                          </p>
+                        </div>
+                        <button
+                          className={btn}
+                          onClick={() => void useAccount()}
+                          disabled={login?.phase === "starting" || login?.phase === "waiting"}
+                        >
+                          {login?.phase === "starting" ? "Starting…" : "Use my account ↗"}
+                        </button>
+                      </div>
+                      {login?.phase === "waiting" && (
+                        <div className="mt-3 rounded-lg bg-elevate px-3 py-2.5 text-xs text-fog/75" role="status">
+                          Approve it in the tab that opened. Check that it shows{" "}
+                          <span className="font-mono font-semibold text-fog">{login.userCode}</span>.{" "}
+                          <a className="text-accent underline" href={login.uri} target="_blank" rel="noreferrer">
+                            Open it again
+                          </a>
+                        </div>
+                      )}
+                      {login?.phase === "done" && (
+                        <div className="mt-3 rounded-lg bg-ok/10 px-3 py-2 text-xs text-ok" role="status">
+                          ✓ Key saved{login.plan ? ` (${login.plan} plan)` : ""}
+                          {login.account ? ` from ${login.account}` : ""}.
+                        </div>
+                      )}
+                      {login?.phase === "error" && (
+                        <div className="mt-3 rounded-lg bg-danger/10 px-3 py-2 text-xs text-danger">✕ {login.error}</div>
+                      )}
+                    </div>
+                  </Card>
+                )}
                 <Card>
                   <div className="px-4 py-3.5">
                     <label htmlFor="lic-key" className="text-[13px] font-medium text-fog">

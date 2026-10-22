@@ -319,7 +319,7 @@ export function buildHelperApi(): ClearcoteApi {
     listRevisions: call("versions:revisions"),
     onDownloadProgress: (cb) => on("download:progress", cb),
     settings: { get: call("settings:get"), set: call("settings:set") },
-    license: { check: call("license:check") },
+    license: { check: call("license:check"), loginStart: call("license:loginStart"), loginPoll: call("license:loginPoll") },
     cache: { list: call("cache:list"), remove: call("cache:remove") },
     // The web version is always the newest; the helper has its own downloads.
     update: {

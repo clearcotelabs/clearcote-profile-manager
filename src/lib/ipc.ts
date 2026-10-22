@@ -127,6 +127,14 @@ export interface LaunchResult {
    *  nothing (a switch the resolved build predates), or geoip failing to resolve the exit region. */
   warnings?: string[];
 }
+export type LoginStart =
+  | { ok: true; id: string; userCode: string; verificationUri: string; expiresIn: number; interval: number }
+  | { ok: false; error: string; code?: string };
+export type LoginPoll =
+  | { status: "pending" }
+  | { status: "approved"; plan?: string; account?: string; expiresAt?: string | null }
+  | { status: "denied" | "expired" | "error"; error: string };
+
 export interface LicenseStatus {
   ok: boolean;
   /** Valid, but every browser slot is in use right now (the check could not take one). */
@@ -312,6 +320,10 @@ export interface ClearcoteApi {
   };
   license: {
     check: (key?: string) => Promise<LicenseStatus>;
+    /** "Use my Clearcote account": start a sign-in on clearcotelabs.com. Optional so an older preload works. */
+    loginStart?: () => Promise<LoginStart>;
+    /** Has the person approved? On "approved" the key is already saved in Settings (never returned here). */
+    loginPoll?: (id: string) => Promise<LoginPoll>;
   };
   /** Downloaded-browser cache: list what's on disk, and remove a build to force a re-download. */
   cache: {

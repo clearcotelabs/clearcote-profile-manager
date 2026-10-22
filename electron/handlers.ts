@@ -9,7 +9,8 @@ import * as profiles from "./profiles";
 import * as launcher from "./launcher";
 import * as geo from "./geo";
 import { readSettings, writeSettings, ensureDirs, FINGERPRINTS_DIR, PROFILES_DIR } from "./store";
-import { checkLicense, resolveLicenseKey } from "./license";
+import { apiBase, checkLicense, resolveLicenseKey } from "./license";
+import { pollLogin, startLogin } from "./devicelogin";
 import { fetchCatalog, listVersions, fetchProRevisions } from "./catalog";
 import { screenWarningFromLabel } from "./fpargs";
 import { summarizeFingerprint } from "./fpmeta";
@@ -330,6 +331,21 @@ export function createHandlers(host: HandlerHost): Record<string, Handler> {
         writeSettings({ ...readSettings(), lastPlan: status.plan });
       }
       return status;
+    },
+
+    // "Use my Clearcote account": sign in on clearcotelabs.com (devicelogin.ts). The key never leaves this
+    // process: the caller gets a code to compare and an address to open, and on approval the key is saved.
+    "license:loginStart": async () => {
+      const r = await startLogin(apiBase(readSettings().licenseApiBase));
+      return r.ok ? { ok: true, id: r.id, userCode: r.userCode, verificationUri: r.verificationUri, expiresIn: r.expiresIn, interval: r.interval } : r;
+    },
+    "license:loginPoll": async (_c, id: string) => {
+      const r = await pollLogin(String(id));
+      if (r.status !== "approved") return r;
+      writeSettings({ ...readSettings(), licenseKey: r.key, ...(r.plan ? { lastPlan: r.plan } : {}) });
+      resetLaunchTargetCache();
+      host.changed();
+      return { status: "approved", plan: r.plan, account: r.account, expiresAt: r.expiresAt };
     },
 
     resolveBinary: () => launcher.resolveBinary(),

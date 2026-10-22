@@ -98,6 +98,9 @@ const api = {
   },
   license: {
     check: (key?: string): Promise<LicenseStatus> => ipcRenderer.invoke("license:check", key),
+    /** Sign in on clearcotelabs.com for the key (electron/devicelogin.ts); the key is saved, never returned. */
+    loginStart: () => ipcRenderer.invoke("license:loginStart"),
+    loginPoll: (id: string) => ipcRenderer.invoke("license:loginPoll", id),
   },
   cache: {
     list: (): Promise<CachedBuild[]> => ipcRenderer.invoke("cache:list"),

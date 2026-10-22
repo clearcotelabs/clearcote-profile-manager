@@ -28,7 +28,7 @@ export interface ServerOptions {
 const QUIET = new Set([
   "profiles:list", "profiles:get", "running", "cloud:list", "launchTarget", "settings:get", "versions:list",
   "versions:revisions", "host:gpu", "cache:list", "storage:plan", "storage:temp", "storage:profileSizes",
-  "resolveBinary", "cloud:viewUrl", "fp:library", "license:check",
+  "resolveBinary", "cloud:viewUrl", "fp:library", "license:check", "license:loginPoll",
 ]);
 
 const MAX_BODY = 16 * 1024 * 1024; // an import of many profiles with their fingerprints
