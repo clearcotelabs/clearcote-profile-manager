@@ -91,7 +91,7 @@ function WebShell({ children }: { children: React.ReactNode }) {
     };
   }, []);
 
-  const paired = useCallback(async () => {
+  const paired = useCallback(async (reason: string) => {
     // Profiles made in the preview go to the computer, so nothing tried here is lost.
     const list = previewProfiles(PROFILES_KEY);
     if (list.length) {
@@ -104,6 +104,7 @@ function WebShell({ children }: { children: React.ReactNode }) {
         /* they stay in the preview; nothing is lost */
       }
     }
+    helper.justPaired = reason;
     setWhy(null);
     setLost(false);
     setMode("live");
@@ -150,7 +151,7 @@ function WebShell({ children }: { children: React.ReactNode }) {
       )}
       {/* A new key remounts the app, so it loads again from whichever side it now talks to. */}
       <div key={mode}>{children}</div>
-      {why !== null && <ConnectDialog why={why} onClose={() => setWhy(null)} onPaired={() => void paired()} />}
+      {why !== null && <ConnectDialog why={why} onClose={() => setWhy(null)} onPaired={() => void paired(why)} />}
     </>
   );
 }

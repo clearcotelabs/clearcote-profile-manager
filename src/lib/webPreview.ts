@@ -11,6 +11,8 @@ import { newProfile } from "./newProfile";
 /** A result's code when the preview could not do it: the UI skips its own error for these. */
 export const NEEDS_HELPER = "NEEDS_HELPER";
 export const NEED_HELPER_EVENT = "clearcote:need-helper";
+/** The reason the account sign-in gives when it needs the helper: after pairing, it carries on. */
+export const ACCOUNT_WHY = "use your Clearcote account";
 
 export function askForHelper(why: string) {
   window.dispatchEvent(new CustomEvent(NEED_HELPER_EVENT, { detail: why }));
@@ -50,7 +52,7 @@ export function buildPreviewApi(mock: ClearcoteApi): ClearcoteApi {
         return mock.settings.get();
       },
     },
-    license: { check: fail("check your licence"), loginStart: fail("use your Clearcote account"), loginPoll: fail("use your Clearcote account") as never },
+    license: { check: fail("check your licence"), loginStart: fail(ACCOUNT_WHY), loginPoll: fail(ACCOUNT_WHY) as never },
     pickBinary: async () => {
       askForHelper("choose a browser");
       return null;

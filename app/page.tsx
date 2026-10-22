@@ -1,6 +1,7 @@
 "use client";
 
-import { needsHelper } from "@/lib/webPreview";
+import { needsHelper, ACCOUNT_WHY } from "@/lib/webPreview";
+import { takeJustPaired } from "@/lib/helperBridge";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import type { Profile } from "@/types/profile";
 import {
@@ -157,6 +158,8 @@ function Manager() {
   const [binary, setBinary] = useState<string | null>(null);
   const [target, setTarget] = useState<LaunchTarget | null>(null);
   const [settingsOpen, setSettingsOpen] = useState<SettingsSection | null>(null);
+  /** Settings was opened by "Use my Clearcote account": it starts the sign-in itself. */
+  const [autoLogin, setAutoLogin] = useState(false);
   const [shortcutsOpen, setShortcutsOpen] = useState(false);
   const [exportReq, setExportReq] = useState<{ ids?: string[]; single?: string; count: number } | null>(null);
   const [bulkCreateOpen, setBulkCreateOpen] = useState(false);
@@ -205,7 +208,16 @@ function Manager() {
     setCollapsed(loadList(COLLAPSED_KEY));
     refresh();
     refreshTarget();
-    api.settings.get().then(setSettings);
+    api.settings.get().then((s) => {
+      setSettings(s);
+      // Just paired (web version) and no key yet: offer the account sign-in now, and start it when that
+      // is what the person connected for.
+      const reason = takeJustPaired();
+      if (reason && !s.licenseKey && api.license.loginStart) {
+        setAutoLogin(reason === ACCOUNT_WHY);
+        setSettingsOpen("license");
+      }
+    });
     api.resolveBinary().then(setBinary);
   }, [refresh, refreshTarget]);
 
@@ -798,6 +810,12 @@ function Manager() {
   }, []);
 
   const view = describeTarget(isEl ? target : target ?? { mode: "preview" });
+  // No key yet: "Use my Clearcote account" is the first thing in the header (and the pill does the same).
+  const offerAccount = mounted && !settings.licenseKey && !!api.license.loginStart;
+  function startAccountLogin() {
+    setAutoLogin(true);
+    setSettingsOpen("license");
+  }
   const pillTone = {
     ok: "border-accent/30 text-accent hover:bg-accent/5",
     warn: "border-warn/40 text-warn hover:bg-warn/5",
@@ -826,12 +844,25 @@ function Manager() {
               <div className="text-xs text-fog/40">A clear coat for your browser identity.</div>
             </div>
           </div>
-          <div className="flex items-center gap-2">
+          <div className="flex flex-wrap items-center justify-end gap-2">
+            {offerAccount && (
+              <button
+                className="inline-flex items-center gap-1.5 rounded-lg border border-accent/50 bg-accent/10 px-3 py-1.5 text-xs font-semibold text-accent transition hover:bg-accent/20"
+                onClick={startAccountLogin}
+                title="Sign in on clearcotelabs.com and approve: your licence key is filled in for you"
+              >
+                <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" aria-hidden="true">
+                  <circle cx="12" cy="8" r="4" />
+                  <path d="M4 21c1.5-4 4.5-6 8-6s6.5 2 8 6" />
+                </svg>
+                Use my Clearcote account
+              </button>
+            )}
             {/* What the next launch actually runs — and a way to change it. */}
             <button
               className={`hidden items-center gap-1.5 rounded-full border px-2.5 py-1 text-[11px] transition sm:inline-flex ${pillTone}`}
-              title={view.title}
-              onClick={() => setSettingsOpen(view.section)}
+              title={offerAccount ? "No licence key yet: use your Clearcote account" : view.title}
+              onClick={() => (offerAccount ? startAccountLogin() : setSettingsOpen(view.section))}
             >
               <span className={`h-1.5 w-1.5 rounded-full ${dotTone}`} />
               {view.text}
@@ -1142,6 +1173,7 @@ function Manager() {
           binary={binary}
           settings={settings}
           initialSection={settingsOpen}
+          autoStartLogin={autoLogin}
           onPick={pickBinary}
           onSettingsReload={(s) => {
             setSettings(s);
@@ -1155,6 +1187,7 @@ function Manager() {
           }}
           onClose={() => {
             setSettingsOpen(null);
+            setAutoLogin(false);
             refreshTarget();
           }}
         />

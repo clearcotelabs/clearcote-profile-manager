@@ -124,6 +124,7 @@ export default function SettingsModal({
   onPick,
   onSaveSettings,
   onSettingsReload,
+  autoStartLogin = false,
   onClose,
   initialSection = "browser",
 }: {
@@ -133,6 +134,8 @@ export default function SettingsModal({
   onSaveSettings: (patch: Partial<Settings>) => Promise<void> | void;
   /** Settings changed outside this window (a key saved by "Use my Clearcote account"): here they are. */
   onSettingsReload?: (s: Settings) => void;
+  /** Opened from "Use my Clearcote account": start the sign-in straight away. */
+  autoStartLogin?: boolean;
   onClose: () => void;
   /** Open on this section — the header pill and a launch error's action point at the right one. */
   initialSection?: Section;
@@ -192,6 +195,10 @@ export default function SettingsModal({
     void api.openExternal(r.verificationUri);
     setLogin({ phase: "waiting", id: r.id, userCode: r.userCode, uri: r.verificationUri, interval: r.interval });
   }
+  useEffect(() => {
+    if (autoStartLogin) void useAccount();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
   useEffect(() => {
     if (login?.phase !== "waiting" || !api.license.loginPoll) return;
     let stop = false;
@@ -435,7 +442,7 @@ export default function SettingsModal({
                           Approve it in the tab that opened. Check that it shows{" "}
                           <span className="font-mono font-semibold text-fog">{login.userCode}</span>.{" "}
                           <a className="text-accent underline" href={login.uri} target="_blank" rel="noreferrer">
-                            Open it again
+                            Open the sign-in page
                           </a>
                         </div>
                       )}

@@ -53,6 +53,8 @@ export const helper = {
   conn: null as HelperConn | null,
   /** The app talks to the helper (true) or to the preview (false). HelperGate decides. */
   live: false,
+  /** Set on pairing to why the person connected; the app reads it once to carry on from there. */
+  justPaired: null as string | null,
   /** Called when the helper stops answering or forgets this page; the connect screen comes back. */
   onLost: null as null | ((why: "gone" | "unpaired") => void),
 
@@ -121,6 +123,13 @@ export const helper = {
     events.stop();
   },
 };
+
+/** Why this page was just paired, once (null afterwards, and when it was not). */
+export function takeJustPaired(): string | null {
+  const w = helper.justPaired;
+  helper.justPaired = null;
+  return w;
+}
 
 // ── RPC ───────────────────────────────────────────────────────────────────────
 
