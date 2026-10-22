@@ -51,6 +51,8 @@ const base = (port: number) => `http://127.0.0.1:${port}`;
 /** Connection state, shared by the bridge and the connect screen (HelperGate). */
 export const helper = {
   conn: null as HelperConn | null,
+  /** The app talks to the helper (true) or to the preview (false). HelperGate decides. */
+  live: false,
   /** Called when the helper stops answering or forgets this page; the connect screen comes back. */
   onLost: null as null | ((why: "gone" | "unpaired") => void),
 
@@ -114,6 +116,7 @@ export const helper = {
 
   forget() {
     this.conn = null;
+    this.live = false;
     saveConn(null);
     events.stop();
   },
@@ -144,6 +147,13 @@ async function rpc<T>(channel: string, ...args: unknown[]): Promise<T> {
   if (!j || !r.ok) throw new Error(j?.error || `The helper answered ${r.status}.`);
   if (!j.ok) throw new Error(j.error || "The helper could not do that.");
   return j.result as T;
+}
+
+/** Profiles made in the preview, saved on the computer (ids already taken get new ones). */
+export async function importToHelper(list: unknown[]): Promise<number> {
+  const r = await rpc<{ ok: boolean; count?: number; error?: string }>("profiles:importData", JSON.stringify(list));
+  if (!r.ok) throw new Error(r.error || "The profiles could not be moved.");
+  return r.count ?? 0;
 }
 
 // ── Events ────────────────────────────────────────────────────────────────────
@@ -251,7 +261,6 @@ function openCloudViewer(id: string): boolean {
 
 export function buildHelperApi(): ClearcoteApi {
   helper.load();
-  if (helper.conn) events.start();
   const call =
     <T,>(channel: string) =>
     (...args: unknown[]) =>

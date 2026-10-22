@@ -1,5 +1,6 @@
 "use client";
 
+import { needsHelper } from "@/lib/webPreview";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import type { Profile } from "@/types/profile";
 import {
@@ -413,6 +414,8 @@ function Manager() {
         // the card, where they stay readable, rather than into a toast that vanishes.
         if (r.warnings?.length) setNotices((n) => ({ ...n, [p.id]: describeLaunchWarnings(r.warnings!) }));
         notify(`Launched “${displayName(p)}”.`);
+      } else if (needsHelper(r)) {
+        // The web preview: the connect window is already open.
       } else {
         // On a plan at its limit with one other profile open here, offer to swap them.
         const open = await api.running();
@@ -442,7 +445,7 @@ function Manager() {
         await refresh();
         if (r.warnings.length) setNotices((n) => ({ ...n, [p.id]: describeLaunchWarnings(r.warnings) }));
         notify(`“${displayName(p)}” is running in the cloud.`);
-      } else {
+      } else if (!needsHelper(r)) {
         const n = describeCloudError(r);
         if (n) setNotices((all) => ({ ...all, [p.id]: n }));
       }
@@ -487,7 +490,7 @@ function Manager() {
     if (r.ok) {
       await refresh();
       notify(`“${displayName(p)}” exits in ${[r.city, r.country].filter(Boolean).join(", ") || "an unknown place"}${r.ip ? ` as ${r.ip}` : ""}.`);
-    } else notify(r.error || "The proxy location could not be checked.", { tone: "error" });
+    } else if (!needsHelper(r)) notify(r.error || "The proxy location could not be checked.", { tone: "error" });
   }
 
   async function clearCache(p: Profile) {
@@ -537,7 +540,7 @@ function Manager() {
         `Imported ${r.count} profile${r.count === 1 ? "" : "s"}` +
           (r.renamed ? ` — ${r.renamed} under a new id, because theirs was already taken.` : "."),
       );
-    } else if (r.error) {
+    } else if (r.error && !needsHelper(r)) {
       notify(`Import failed: ${r.error}`, { tone: "error" });
     }
   }

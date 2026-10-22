@@ -5,7 +5,8 @@
 
 import { redactProxyString, screenWarningFromLabel, type Profile } from "@/types/profile";
 import type { LaunchTarget } from "@/lib/launchTarget";
-import { buildHelperApi } from "@/lib/helperBridge";
+import { buildHelperApi, helper } from "@/lib/helperBridge";
+import { buildPreviewApi, seedExamples, switchable } from "@/lib/webPreview";
 
 export type TrashResult = { ok: true; trashId: string } | { ok: false; error: string };
 export type RestoreResult = { ok: true; profile: Profile } | { ok: false; error: string };
@@ -343,7 +344,7 @@ declare global {
   }
 }
 
-const PROFILES_KEY = "clearcote.profiles.mock";
+export const PROFILES_KEY = "clearcote.profiles.mock";
 const SETTINGS_KEY = "clearcote.settings.mock";
 
 function buildMock(): ClearcoteApi {
@@ -730,4 +731,12 @@ export const hasBackend = isElectron || isWeb;
 
 export const api: ClearcoteApi =
   (typeof window !== "undefined" && window.clearcote) ||
-  (isWeb && typeof window !== "undefined" ? buildHelperApi() : buildMock());
+  (isWeb && typeof window !== "undefined" ? buildWebApi() : buildMock());
+
+/** The web version: the helper once this computer is paired, the preview until then (webPreview.ts). */
+function buildWebApi(): ClearcoteApi {
+  seedExamples(PROFILES_KEY);
+  const live = buildHelperApi();
+  const preview = buildPreviewApi(buildMock());
+  return switchable(() => (helper.live ? live : preview));
+}

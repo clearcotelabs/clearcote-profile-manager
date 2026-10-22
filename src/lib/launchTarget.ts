@@ -43,7 +43,14 @@ export function describeTarget(t: LaunchTarget | null): TargetView {
     return { text: "Checking…", tone: "muted", title: "Working out which browser build launches.", section: "browser" };
   }
   if (t.mode === "preview") {
-    return { text: "Browser preview", tone: "muted", title: "Launching works in the desktop app.", section: "browser" };
+    // The web version says what to do: connect this computer (HelperGate), not "use the desktop app".
+    const web = process.env.NEXT_PUBLIC_PM_TARGET === "web";
+    return {
+      text: web ? "Preview" : "Browser preview",
+      tone: "muted",
+      title: web ? "Connect this computer to launch browsers." : "Launching works in the desktop app.",
+      section: "browser",
+    };
   }
   if (t.mode === "custom") {
     return {
