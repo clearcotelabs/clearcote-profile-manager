@@ -22,8 +22,12 @@
     "dist:win": "npm run build && electron-builder --win --publish never",
     "dist:linux": "npm run build && electron-builder --linux --publish never",
     "dist:mac": "npm run build && electron-builder --mac --publish never",
+    "helper:build": "node helper/build.mjs",
+    "helper:verify": "node helper/build.mjs --verify",
+    "helper:dev": "node helper/build.mjs --bundle-only && node helper-dist/lib/clearcote-helper.js --allow-origin http://localhost:3000",
+    "web:build": "cross-env NEXT_PUBLIC_PM_TARGET=web next build",
     "lint": "next lint",
-    "typecheck": "tsc --noEmit && tsc -p electron --noEmit",
+    "typecheck": "tsc --noEmit && tsc -p electron --noEmit && tsc -p helper",
     "test": "vitest run"
   },
   "devDependencies": {
@@ -35,6 +39,7 @@
     "cross-env": "^7.0.3",
     "electron": "^33.2.0",
     "electron-builder": "^25.1.8",
+    "esbuild": "0.28.2",
     "next": "^15.1.0",
     "playwright-core": "^1.62.1",
     "png-to-ico": "^2.1.8",

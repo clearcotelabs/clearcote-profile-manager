@@ -5,6 +5,7 @@
 
 import { redactProxyString, screenWarningFromLabel, type Profile } from "@/types/profile";
 import type { LaunchTarget } from "@/lib/launchTarget";
+import { buildHelperApi } from "@/lib/helperBridge";
 
 export type TrashResult = { ok: true; trashId: string } | { ok: false; error: string };
 export type RestoreResult = { ok: true; profile: Profile } | { ok: false; error: string };
@@ -721,5 +722,12 @@ function buildMock(): ClearcoteApi {
 
 export const isElectron = typeof window !== "undefined" && !!window.clearcote;
 
+/** The web version (NEXT_PUBLIC_PM_TARGET=web): the same UI, talking to the Clearcote Helper. */
+export const isWeb = !isElectron && process.env.NEXT_PUBLIC_PM_TARGET === "web";
+
+/** A real backend is behind the UI (desktop app or helper), not the localStorage design mock. */
+export const hasBackend = isElectron || isWeb;
+
 export const api: ClearcoteApi =
-  (typeof window !== "undefined" && window.clearcote) || buildMock();
+  (typeof window !== "undefined" && window.clearcote) ||
+  (isWeb && typeof window !== "undefined" ? buildHelperApi() : buildMock());

@@ -4,7 +4,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import type { Profile } from "@/types/profile";
 import {
   api,
-  isElectron,
+  hasBackend,
   type Settings,
   type DownloadProgress,
   type UpdateInfo,
@@ -191,7 +191,7 @@ function Manager() {
 
   useEffect(() => {
     setMounted(true);
-    setIsEl(isElectron);
+    setIsEl(hasBackend);
     // sync from the theme the no-flash inline script already applied
     setTheme(document.documentElement.classList.contains("light") ? "light" : "dark");
     try {

@@ -81,6 +81,14 @@ shasum -a 256 -c SHA256SUMS.txt --ignore-missing       # macOS
 
 > The app is **unsigned**, so Windows SmartScreen may warn on first run (**More info → Run anyway**), and macOS blocks the first open (**Open Anyway**, above). Proper Authenticode / Apple Developer ID signing needs a paid certificate; until then, the public-CI build + provenance attestation + checksums are the trust anchor.
 
+## Web version and the Clearcote Helper
+
+The same profile manager also runs in your browser, with no app to install. A web page cannot start
+programs, so a small open-source **helper** does that part: it is this app without its window, the same
+code, reached over `http://127.0.0.1`. You pair it once with a code, approve it on the helper's own page,
+and can see and remove every paired site there. The helper download is reproducible: rebuild it from
+source and compare every file. See **[helper/README.md](helper/README.md)**.
+
 ## Why
 
 Clearcote is driven by command-line identity flags (`--fingerprint`, `--fingerprint-platform`, `--timezone`, `--accept-lang`, `--webrtc-ip`, `--proxy-server`, `--user-data-dir`). Juggling many identities by hand is tedious and error-prone. This app gives you a GUI to:

@@ -39,3 +39,5 @@ profiles/*
 # imported captured-fingerprint profiles (clearcote-profiles) — runtime data
 fingerprints/*
 !fingerprints/.gitkeep
+helper-dist/
+out-web/

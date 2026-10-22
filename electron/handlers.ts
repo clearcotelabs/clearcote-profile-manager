@@ -1,0 +1,417 @@
+// The app's request handlers, shared by the two front doors: the desktop app's IPC (main.ts) and the
+// helper's localhost API for the web version (helper/server.ts). Nothing here touches Electron, so
+// the helper runs it on plain Node. What needs a window or a native dialog stays in main.ts; the
+// web version gets dialog-free twins (profiles:exportData, profiles:importData, fp:importData).
+
+import path from "node:path";
+import fs from "node:fs";
+import * as profiles from "./profiles";
+import * as launcher from "./launcher";
+import * as geo from "./geo";
+import { readSettings, writeSettings, ensureDirs, FINGERPRINTS_DIR, PROFILES_DIR } from "./store";
+import { checkLicense, resolveLicenseKey } from "./license";
+import { fetchCatalog, listVersions, fetchProRevisions } from "./catalog";
+import { screenWarningFromLabel } from "./fpargs";
+import { summarizeFingerprint } from "./fpmeta";
+import { listCached, removeCached, listTempCopies, cleanTempCopies, purgeDeleting } from "./cache";
+import { storagePlan, pruneBuilds } from "./storage";
+import { launchTarget, resetLaunchTargetCache } from "./launchTarget";
+import { mergeRendererSettings } from "./settingsmerge";
+import { CloudManager } from "./cloud";
+import { CloudApi, resolveApiBase, resolveApiKey } from "./cloudapi";
+import { attachOnce } from "./cdpattach";
+import { hostGpuCached } from "./hostgpu";
+import type { Profile, Settings, FingerprintMeta } from "./types";
+
+const CLEARCOTE_PROFILES_REPO = "clearcotelabs/clearcote-profiles";
+
+/** Links out of the app go only to our own pages. */
+export const ALLOWED_EXTERNAL = [/^https:\/\/www\.clearcotelabs\.com\//, /^https:\/\/github\.com\/clearcotelabs\//];
+
+/** Who asked: lets a handler stream progress back to that caller. */
+export interface HandlerCtx {
+  emit(channel: string, data: unknown): void;
+}
+
+/** What a handler needs from the front door it runs behind. */
+export interface HandlerHost {
+  cloud(): CloudManager;
+  /** Something started or stopped (the desktop app refreshes its tray menu). */
+  changed(): void;
+  /** Show a cloud profile's viewer. The web version opens it in a tab itself, so the helper says false. */
+  openViewer(id: string): boolean;
+  /** Open a folder in the file manager; resolves to "" or an error message. */
+  openPath(dir: string): Promise<string>;
+  openExternal(url: string): void;
+}
+
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+export type Handler = (ctx: HandlerCtx, ...args: any[]) => unknown;
+
+/** Persist a captured-profile JSON into the shared fingerprints dir; returns its filename + meta. */
+export function storeFingerprint(name: string, json: string, source: "file" | "library") {
+  fs.mkdirSync(FINGERPRINTS_DIR, { recursive: true });
+  const base = name.replace(/[^a-zA-Z0-9._-]/g, "_").replace(/\.json$/i, "");
+  const file = `${base}.json`;
+  fs.writeFileSync(path.join(FINGERPRINTS_DIR, file), json, "utf8");
+  const sum = summarizeFingerprint(JSON.parse(json));
+  return { file, meta: { ...(sum.meta || {}), source } as FingerprintMeta };
+}
+
+/** A captured-profile JSON checked and stored, or why not. */
+export function importFingerprint(name: string, json: string) {
+  try {
+    if (!summarizeFingerprint(JSON.parse(json)).ok)
+      return { ok: false, error: "Not a clearcote-profile (missing webgl/screen/hardware fields)." };
+    const { file, meta } = storeFingerprint(path.basename(String(name)), json, "file");
+    return { ok: true, file, meta };
+  } catch (e) {
+    return { ok: false, error: String(e) };
+  }
+}
+
+/** The profiles to export (all, or just `ids`), secrets left out unless asked for. */
+export function exportChoice(opts?: { includeSecrets?: boolean; ids?: string[] }) {
+  const only = opts?.ids?.length ? new Set(opts.ids) : null;
+  const chosen = profiles.listProfiles().filter((p) => !only || only.has(p.id));
+  const single = chosen.length === 1 && !!only;
+  return {
+    chosen,
+    title: single ? `Export “${chosen[0].name || chosen[0].id}”` : "Export profiles",
+    filename: single ? `${chosen[0].id}.json` : "clearcote-profiles.json",
+    list: () => profiles.exportList(chosen, { includeSecrets: !!opts?.includeSecrets }),
+  };
+}
+
+/** Import parsed profile JSON. Never overwrites: a taken or unsafe id gets a fresh one. */
+export function importData(data: unknown) {
+  try {
+    const { count, renamed } = profiles.importProfiles(Array.isArray(data) ? data : [data]);
+    return { ok: true, count, renamed };
+  } catch (e) {
+    return { ok: false, error: String(e) };
+  }
+}
+
+/** Remove builds nothing needs any more, after a download brought a newer one. */
+function autoPruneSoon(): void {
+  if (readSettings().autoPruneBuilds === false) return;
+  // After the launch settles: the new build is running by then, so it is kept either way.
+  setTimeout(() => void pruneBuilds(readSettings()).catch(() => {}), 3000);
+}
+
+/** A cloud API client for the saved settings (or a key typed into Settings), or why there is none. */
+export function cloudClient(key?: string): CloudApi | { error: string; code: string } {
+  const s = readSettings();
+  const apiKey = resolveApiKey(key ?? s.cloudApiKey);
+  if (!apiKey) return { error: "Add your Clearcote API key in Settings → Cloud to run profiles in the cloud.", code: "NO_KEY" };
+  const base = resolveApiBase(s.cloudApiBase);
+  if (!base.ok) return { error: base.error, code: "BAD_BASE" };
+  return new CloudApi({ apiKey, base: base.base });
+}
+
+/** Start-up shared by both front doors: folders, trash, interrupted removals, the geoip database,
+ *  and the cloud session follower (persisted in `cloudFile`). */
+export function bootstrap(cloudFile: string): CloudManager {
+  ensureDirs();
+  profiles.purgeTrash(); // deletes past their undo window, from this run or an earlier one
+  void purgeDeleting(); // a cache removal interrupted between rename and delete
+  // A profile that resolves its region from the proxy needs the offline geoip database: fetch it now
+  // (once, ~52 MB, shared with the SDKs) rather than inside that profile's first launch.
+  if (profiles.listProfiles().some((p) => p.geoip && p.proxy)) geo.prefetchGeoDb();
+  return new CloudManager({
+    api: () => cloudClient(),
+    attach: (url) => attachOnce(url),
+    file: cloudFile,
+    runningLocally: (id) => launcher.listRunning().includes(id),
+    pollMs: Number(process.env.CLEARCOTE_CLOUD_POLL_MS) || 15_000,
+  });
+}
+
+export function createHandlers(host: HandlerHost): Record<string, Handler> {
+  const cloud = () => host.cloud();
+  return {
+    "profiles:list": () => profiles.listProfiles(),
+    "profiles:get": (_c, id: string) => profiles.getProfile(id),
+    "profiles:save": (_c, p: Profile) => profiles.saveProfile(p),
+
+    // Delete is recoverable: the profile and its browser data move to a trash folder, the UI offers
+    // Undo, and the trash is purged after profiles.TRASH_TTL_MS. A running profile is refused — its
+    // browser holds the data folder open, and deleting a live identity from under it is never meant.
+    "profiles:delete": (_c, id: string) => {
+      if (launcher.listRunning().includes(id)) {
+        return { ok: false, error: "Stop this profile's browser before deleting it." };
+      }
+      if (cloud().has(id)) return { ok: false, error: "Stop this profile's cloud browser before deleting it." };
+      profiles.purgeTrash();
+      return profiles.trashProfile(id);
+    },
+    "profiles:restore": (_c, trashId: string) => profiles.restoreProfile(trashId),
+    // Open the profile's saved browser data (cookies, storage…) in Explorer / the file manager.
+    "profiles:openData": async (_c, id: string) => {
+      if (!profiles.isSafeId(id)) return { ok: false, error: "Invalid profile id." };
+      const p = profiles.getProfile(id);
+      const dir = p?.userDataDir || path.join(PROFILES_DIR, id, "userdata");
+      if (!fs.existsSync(dir)) return { ok: false, error: "No browser data yet — it is created on the first launch." };
+      const err = await host.openPath(dir);
+      return err ? { ok: false, error: err } : { ok: true };
+    },
+
+    // What a profile on "Latest" launches right now — the header pill.
+    launchTarget: () => launchTarget(readSettings()),
+
+    // Launch, streaming browser-download progress back to the caller (first use of a version
+    // downloads 100–250 MB — the UI shows a live bar so it never looks frozen).
+    launch: async (c, p: Profile) => {
+      if (cloud().has(p.id)) {
+        return {
+          ok: false,
+          error: "This profile is running in the cloud. Stop it there first: a profile runs in one place at a time.",
+          code: "RUNNING_IN_CLOUD",
+        };
+      }
+      let downloaded = false;
+      const r = await launcher.launch(p, (prog) => {
+        downloaded = true;
+        c.emit("download:progress", prog);
+      });
+      if (downloaded) autoPruneSoon();
+      host.changed();
+      return r;
+    },
+    // Graceful: the browser closes like its own window would, and the call returns once its licence
+    // slot is checked back in (procstop.ts).
+    stop: async (_c, id: string) => {
+      const outcome = await launcher.stop(id);
+      host.changed();
+      return outcome;
+    },
+    running: () => launcher.listRunning(),
+
+    // ── Cloud ────────────────────────────────────────────────────────────────
+    // Run a profile on Clearcote's servers (cloud.ts), follow it, stop it, and show it in a viewer.
+    // The API key stays in this process: the viewer only ever gets a 60-second view URL.
+    "cloud:list": () => cloud().list(),
+    "cloud:start": async (_c, p: Profile) => {
+      const r = await cloud().start(p);
+      if (r.ok) {
+        profiles.markLaunched(p.id);
+        host.openViewer(p.id);
+      }
+      host.changed();
+      return r;
+    },
+    "cloud:stop": async (_c, id: string) => {
+      const r = await cloud().stop(String(id));
+      host.changed();
+      return r;
+    },
+    "cloud:open": (_c, id: string) => host.openViewer(String(id)),
+    "cloud:viewUrl": (_c, id: string, control?: boolean) => cloud().viewUrl(String(id), control !== false),
+    // Settings → Cloud: is this key accepted, and what is the balance. A typed key is checked as typed.
+    "cloud:account": async (_c, key?: string) => {
+      const cl = cloudClient(typeof key === "string" && key.trim() ? key.trim() : undefined);
+      if ("error" in cl) return { ok: false, error: cl.error, code: cl.code };
+      const r = await cl.account();
+      return r.ok ? { ok: true, balanceEur: r.data.balanceEur } : { ok: false, error: r.error, code: r.code, status: r.status };
+    },
+
+    // The GPU driving this display (hostgpu.ts) — asked once per run, then cached; "unknown" when it
+    // cannot be told, in which case the editor's GPU model picker lists every vendor.
+    "host:gpu": () => hostGpuCached(),
+
+    // Public browser-build catalog (drives the per-profile version dropdown). Best-effort: an
+    // unreachable catalog returns [] so the UI just falls back to "latest".
+    "versions:list": async () => {
+      try {
+        return listVersions(await fetchCatalog(readSettings().licenseApiBase));
+      } catch {
+        return [];
+      }
+    },
+
+    // PRO rebuild revisions ("150.0.7871.114-r10", …), newest first, for the version dropdown.
+    // "latest" and a bare major track the CURRENT pin, which moves when a rebuild ships — pinning a
+    // revision is what makes a run reproducible. Best-effort: [] when unlicensed or unreachable.
+    "versions:revisions": async () => {
+      const s = readSettings();
+      return fetchProRevisions(resolveLicenseKey(s.licenseKey), s.licenseApiBase);
+    },
+
+    // Downloaded-browser cache: view what's on disk + remove a build to force a re-download.
+    "cache:list": () => listCached(),
+    "cache:remove": (_c, tag: string) => removeCached(tag),
+
+    // Settings → Storage. What can go and why the rest stays (cacheplan.ts), removing it, the
+    // browser copies outside the cache, each profile's own data, and fetching the build ahead of time.
+    "storage:plan": async () => {
+      const plan = await storagePlan(readSettings());
+      const view = (b: { tag: string; version: string; tier: string; sizeBytes: number }) => ({
+        tag: b.tag,
+        version: b.version,
+        tier: b.tier,
+        sizeBytes: b.sizeBytes,
+      });
+      return {
+        keep: plan.keep.map((k) => ({ ...view(k.build), reasons: k.reasons })),
+        remove: plan.remove.map(view),
+        freeBytes: plan.freeBytes,
+        offline: plan.offline,
+      };
+    },
+    "storage:prune": () => pruneBuilds(readSettings()),
+    "storage:temp": () => listTempCopies(),
+    "storage:cleanTemp": () => cleanTempCopies(),
+    "storage:profileSizes": async () => {
+      const run = new Set(launcher.listRunning());
+      return Promise.all(
+        profiles.listProfiles().map(async (p) => ({
+          id: p.id,
+          name: p.name?.trim() || p.id,
+          bytes: await profiles.dirSizeAsync(profiles.userDataDirOf(p)),
+          running: run.has(p.id),
+        })),
+      );
+    },
+    "profiles:clearCache": async (_c, id: string) => {
+      if (!profiles.isSafeId(id)) return { ok: false, error: "Invalid profile id." };
+      if (launcher.listRunning().includes(id)) return { ok: false, error: "Stop this profile's browser first — it has its cache open." };
+      const p = profiles.getProfile(id);
+      if (!p) return { ok: false, error: "That profile no longer exists." };
+      return { ok: true, freedBytes: await profiles.clearBrowsingCache(profiles.userDataDirOf(p)) };
+    },
+    "build:prefetch": async (c) => {
+      let downloaded = false;
+      try {
+        const r = await launcher.ensureBuild(undefined, readSettings(), (pct, seenMB, totalMB, version) => {
+          downloaded = true;
+          c.emit("prefetch:progress", { pct, seenMB, totalMB, version });
+        });
+        if (downloaded) autoPruneSoon();
+        resetLaunchTargetCache();
+        return { ok: true, version: r.version, major: r.major, downloaded };
+      } catch (err) {
+        return { ok: false, error: String((err as Error)?.message || err) };
+      }
+    },
+
+    "profiles:renameGroup": (_c, from: string, to: string) => profiles.renameGroup(String(from), String(to)),
+
+    // Look up where a profile's proxy exits, and keep the answer on the profile for its card.
+    "geo:checkProfile": async (_c, id: string) => {
+      if (!profiles.isSafeId(id)) return { ok: false, error: "Invalid profile id." };
+      const p = profiles.getProfile(id);
+      if (!p) return { ok: false, error: "That profile no longer exists." };
+      const g = await geo.geoCheck(p);
+      const saved = profiles.recordGeo(id, g, p.proxy);
+      return g.ok ? { ...g, profile: saved ?? undefined } : g;
+    },
+
+    openExternal: (_c, url: string) => {
+      if (!ALLOWED_EXTERNAL.some((re) => re.test(String(url)))) return false;
+      host.openExternal(String(url));
+      return true;
+    },
+
+    "settings:get": () => readSettings(),
+    "settings:set": (_c, s: Settings) => {
+      // lastPlan belongs to the main process, never to the renderer's copy — see settingsmerge.ts.
+      const { next, licenceChanged } = mergeRendererSettings(readSettings(), s);
+      if (licenceChanged) resetLaunchTargetCache();
+      writeSettings(next);
+      return readSettings();
+    },
+
+    "license:check": async (_c, key?: string) => {
+      const s = readSettings();
+      const status = await checkLicense(key ?? s.licenseKey, s.licenseApiBase);
+      // Only when the checked key IS the saved one — a key typed but not saved says nothing about it.
+      if (status.ok && status.plan && (key ?? s.licenseKey) === readSettings().licenseKey) {
+        writeSettings({ ...readSettings(), lastPlan: status.plan });
+      }
+      return status;
+    },
+
+    resolveBinary: () => launcher.resolveBinary(),
+    "geo:check": (_c, p: Profile) => geo.geoCheck(p),
+
+    // Dialog-free import/export for the web version: the page does the file picking and saving.
+    "profiles:exportData": (_c, opts?: { includeSecrets?: boolean; ids?: string[] }) => {
+      const x = exportChoice(opts);
+      if (x.chosen.length === 0) return { ok: false };
+      const list = x.list();
+      return { ok: true, filename: x.filename, count: list.length, json: JSON.stringify(list, null, 2) };
+    },
+    "profiles:importData": (_c, json: string) => {
+      try {
+        return importData(JSON.parse(String(json)));
+      } catch (e) {
+        return { ok: false, error: String(e) };
+      }
+    },
+    "fp:importData": (_c, name: string, json: string) => importFingerprint(String(name), String(json)),
+
+    // ---- captured fingerprint profiles (clearcote-profiles) ----
+    "fp:library": async () => {
+      const RAW = `https://raw.githubusercontent.com/${CLEARCOTE_PROFILES_REPO}/main/samples`;
+      // Prefer the curated index.json: it tags each profile with GPU vendor/family/renderer/screen so
+      // the user can pick one matching their host GPU (keeps the imported GPU coherent with the render).
+      try {
+        const ir = await fetch(`${RAW}/index.json`, {
+          headers: { "User-Agent": "clearcote-profile-manager" },
+        });
+        if (ir.ok) {
+          const idx = (await ir.json()) as { profiles?: Array<Record<string, unknown>> };
+          if (Array.isArray(idx.profiles) && idx.profiles.length) {
+            const list = idx.profiles.map((e) => ({
+              name: `${e.id}.json`,
+              downloadUrl: `${RAW}/${e.id}.json`,
+              gpuVendor: e.gpu_vendor as string | undefined,
+              gpuFamily: e.gpu_family as string | undefined,
+              renderer: e.renderer as string | undefined,
+              screen: e.screen as string | undefined,
+              // The index's screen is "WxH" — check it so the picker can warn about a capture too
+              // small to contain a real window BEFORE the user downloads and adopts it.
+              screenWarning: screenWarningFromLabel(e.screen as string | undefined) ?? undefined,
+            }));
+            return { ok: true, profiles: list };
+          }
+        }
+      } catch {
+        /* fall through to the directory listing */
+      }
+      // Fallback: list the samples/ directory (older repo state without index.json).
+      try {
+        const res = await fetch(
+          `https://api.github.com/repos/${CLEARCOTE_PROFILES_REPO}/contents/samples`,
+          { headers: { Accept: "application/vnd.github+json", "User-Agent": "clearcote-profile-manager" } },
+        );
+        if (!res.ok) return { ok: false, error: `GitHub API ${res.status}` };
+        const items = (await res.json()) as Array<{ name: string; download_url: string }>;
+        const list = (Array.isArray(items) ? items : [])
+          .filter((it) => typeof it.name === "string" && it.name.endsWith(".json") && it.name !== "index.json")
+          .map((it) => ({ name: it.name, downloadUrl: it.download_url }));
+        return { ok: true, profiles: list };
+      } catch (e) {
+        return { ok: false, error: String(e) };
+      }
+    },
+
+    "fp:use": async (_c, lib: { name: string; downloadUrl: string }) => {
+      try {
+        // Only the clearcote-profiles samples: the helper must not fetch arbitrary URLs for a web page.
+        if (!String(lib?.downloadUrl).startsWith(`https://raw.githubusercontent.com/${CLEARCOTE_PROFILES_REPO}/`))
+          return { ok: false, error: "Only profiles from the clearcote-profiles library can be used this way." };
+        const res = await fetch(lib.downloadUrl, { headers: { "User-Agent": "clearcote-profile-manager" } });
+        if (!res.ok) return { ok: false, error: `download failed (${res.status})` };
+        const json = await res.text();
+        if (!summarizeFingerprint(JSON.parse(json)).ok)
+          return { ok: false, error: "Downloaded file is not a clearcote-profile." };
+        const { file, meta } = storeFingerprint(lib.name, json, "library");
+        return { ok: true, file, meta };
+      } catch (e) {
+        return { ok: false, error: String(e) };
+      }
+    },
+  };
+}

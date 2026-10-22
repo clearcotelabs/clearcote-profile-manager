@@ -1,0 +1,170 @@
+name: Helper release
+
+# Builds the Clearcote Helper downloads on GitHub's runners, attaches a build-provenance attestation,
+# and publishes them with SHA256SUMS. A second job rebuilds the same commit on Windows and macOS and
+# fails if any file differs: the downloads are reproducible, and this checks it on every release.
+# See helper/README.md and helper/build.mjs.
+
+on:
+  push:
+    tags: ["helper-v*"]
+  workflow_dispatch: {}
+
+permissions:
+  contents: write # create the release + upload assets
+  id-token: write # OIDC for the provenance attestation (Sigstore)
+  attestations: write # store the attestation
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          # build.mjs takes every file's time from the commit (git log) and names the commit.
+          fetch-depth: 0
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: npm
+
+      - run: npm ci
+
+      - name: Build every platform
+        run: npm run helper:build
+
+      - name: Attest build provenance
+        uses: actions/attest-build-provenance@v2
+        with:
+          subject-path: |
+            helper-dist/*.zip
+            helper-dist/*.tar.gz
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: helper-dist
+          path: |
+            helper-dist/*.zip
+            helper-dist/*.tar.gz
+            helper-dist/SHA256SUMS
+          if-no-files-found: error
+
+  reproduce:
+    # Same commit, different OS: every file must come out identical.
+    needs: build
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [windows-latest, macos-latest]
+    runs-on: ${{ matrix.os }}
+    defaults:
+      run:
+        shell: bash
+    steps:
+      # Windows runners check files out with CRLF line endings by default. The bundle would then
+      # differ from Linux's for that reason alone, so check out exactly the committed bytes.
+      - run: git config --global core.autocrlf false
+
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: npm
+
+      - run: npm ci
+
+      - name: Rebuild every platform here
+        run: npm run helper:build
+
+      - uses: actions/download-artifact@v4
+        with:
+          name: helper-dist
+          path: from-build
+
+      - name: Compare with the build job, file by file
+        run: |
+          set -euo pipefail
+          # Prints MANIFEST.sha256 out of a .zip or .tar.gz, nothing else extracted.
+          cat > "$RUNNER_TEMP/manifest.cjs" <<'JS'
+          const fs = require("fs"), zlib = require("zlib");
+          const [file, top] = process.argv.slice(2);
+          const buf = fs.readFileSync(file);
+          const want = `${top}/MANIFEST.sha256`;
+          if (file.endsWith(".zip")) {
+            let e = buf.length - 22; while (buf.readUInt32LE(e) !== 0x06054b50) e--;
+            let p = buf.readUInt32LE(e + 16);
+            for (let i = 0; i < buf.readUInt16LE(e + 10); i++) {
+              const n = buf.readUInt16LE(p + 28), x = buf.readUInt16LE(p + 30), c = buf.readUInt16LE(p + 32);
+              if (buf.subarray(p + 46, p + 46 + n).toString() === want) {
+                const l = buf.readUInt32LE(p + 42), s = l + 30 + buf.readUInt16LE(l + 26) + buf.readUInt16LE(l + 28);
+                process.stdout.write(zlib.inflateRawSync(buf.subarray(s, s + buf.readUInt32LE(p + 20))));
+                process.exit(0);
+              }
+              p += 46 + n + x + c;
+            }
+          } else {
+            const t = zlib.gunzipSync(buf); let p = 0;
+            while (p + 512 <= t.length) {
+              const h = t.subarray(p, p + 512), str = (o, l) => h.subarray(o, o + l).toString().replace(/\0.*$/s, "");
+              const size = parseInt(str(124, 12).trim() || "0", 8), pre = str(345, 155);
+              if ((pre ? `${pre}/${str(0, 100)}` : str(0, 100)) === want) { process.stdout.write(t.subarray(p + 512, p + 512 + size)); process.exit(0); }
+              p += 512 + Math.ceil(size / 512) * 512;
+            }
+          }
+          console.error(`no ${want} in ${file}`); process.exit(1);
+          JS
+          status=0
+
+          # 1. Each download's MANIFEST.sha256 (the hash of every file in it) must match this rebuild's.
+          for f in from-build/*.zip from-build/*.tar.gz; do
+            name="$(basename "$f")"
+            top="${name%.zip}"; top="${top%.tar.gz}"
+            node "$RUNNER_TEMP/manifest.cjs" "$f" "$top" > theirs.txt
+            node "$RUNNER_TEMP/manifest.cjs" "helper-dist/$name" "$top" > mine.txt
+            if diff -u theirs.txt mine.txt; then
+              echo "manifest same  $name"
+            else
+              echo "::error::MANIFEST.sha256 differs for $name"
+              status=1
+            fi
+          done
+
+          # 2. The verify command people are told to run must pass on every download.
+          for f in from-build/*.zip from-build/*.tar.gz; do
+            echo "== verify $(basename "$f")"
+            node helper/build.mjs --verify "$f" || { echo "::error::verify failed for $(basename "$f")"; status=1; }
+          done
+
+          # 3. Not required (the manifest is what counts), but report whether the archives are identical too.
+          (cd from-build && sha256sum *.zip *.tar.gz) > theirs-archives.txt
+          (cd helper-dist && sha256sum *.zip *.tar.gz) > mine-archives.txt
+          if diff -u theirs-archives.txt mine-archives.txt; then
+            echo "archives byte-identical too"
+          else
+            echo "::notice::archive bytes differ (compression); every file inside is what counts"
+          fi
+
+          exit $status
+
+  publish:
+    # Only after Windows and macOS rebuilt every file identically.
+    needs: [build, reproduce]
+    if: startsWith(github.ref, 'refs/tags/helper-v')
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/download-artifact@v4
+        with:
+          name: helper-dist
+          path: helper-dist
+      - name: Publish the release
+        env:
+          GH_TOKEN: ${{ github.token }}
+          GH_REPO: ${{ github.repository }}
+        # --latest=false: the desktop app's update check reads the "latest" release; a helper
+        # release must never look like a desktop update.
+        run: |
+          gh release create "$GITHUB_REF_NAME" --latest=false             --title "Clearcote Helper ${GITHUB_REF_NAME#helper-v}"             --notes "Reproducible build of commit $GITHUB_SHA, rebuilt identically on Linux, Windows and macOS before release. Check a download with \`npm run helper:verify -- <file>\` at this tag, or \`gh attestation verify <file> --repo $GITHUB_REPOSITORY\`. See helper/README.md."             helper-dist/*.zip helper-dist/*.tar.gz helper-dist/SHA256SUMS

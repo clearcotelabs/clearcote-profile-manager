@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 import "./globals.css";
+import HelperGate from "@/components/HelperGate";
 
 export const metadata: Metadata = {
   title: "Clearcote Profile Manager",
@@ -17,7 +18,9 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
       <head>
         <script dangerouslySetInnerHTML={{ __html: themeScript }} />
       </head>
-      <body className="font-sans antialiased bg-ink text-fog">{children}</body>
+      <body className="font-sans antialiased bg-ink text-fog">
+        <HelperGate>{children}</HelperGate>
+      </body>
     </html>
   );
 }

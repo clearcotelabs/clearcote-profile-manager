@@ -1,0 +1,6 @@
+# The helper bundle must be the same bytes on every OS (helper/build.mjs): no CRLF checkouts.
+electron/** text eol=lf
+helper/** text eol=lf
+package.json text eol=lf
+package-lock.json text eol=lf
+LICENSE text eol=lf
