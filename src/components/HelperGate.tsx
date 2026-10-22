@@ -10,7 +10,16 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import { isWeb, PROFILES_KEY } from "@/lib/ipc";
 import { helper, importToHelper, type PairRequest, type Probe } from "@/lib/helperBridge";
 import { NEED_HELPER_EVENT, forgetPreviewProfiles, previewProfiles } from "@/lib/webPreview";
-import { RELEASES_FALLBACK, detectArch, downloadFor, fetchHelperRelease, type HelperArch, type HelperRelease } from "@/lib/helperRelease";
+import {
+  RELEASES_FALLBACK,
+  bestHelperRelease,
+  builtHelperRelease,
+  detectArch,
+  downloadFor,
+  fetchHelperRelease,
+  type HelperArch,
+  type HelperRelease,
+} from "@/lib/helperRelease";
 import { LogoMark } from "./LogoMark";
 
 const SOURCE = "https://github.com/clearcotelabs/clearcote-profile-manager/tree/main/helper";
@@ -323,10 +332,11 @@ function ConnectDialog({ why, onClose, onPaired }: { why: string; onClose: () =>
 
 function Missing({ blocked }: { blocked: boolean }) {
   const os = osName();
-  const [rel, setRel] = useState<HelperRelease | null>(null);
+  // The release this page was built with works at once; GitHub's answer only swaps in a newer one.
+  const [rel, setRel] = useState<HelperRelease | null>(() => builtHelperRelease());
   const [arch, setArch] = useState<HelperArch | undefined>(undefined);
   useEffect(() => {
-    void fetchHelperRelease().then(setRel);
+    void fetchHelperRelease().then((api) => setRel(bestHelperRelease(api)));
     void detectArch().then(setArch);
   }, []);
   const mine = rel ? downloadFor(rel, os, arch) : null;
@@ -353,7 +363,7 @@ function Missing({ blocked }: { blocked: boolean }) {
               rel="noreferrer"
               className="inline-flex min-h-[44px] items-center rounded-xl bg-fog px-5 font-semibold text-ink hover:opacity-90"
             >
-              {mine ? `Download for ${mine.label} (${mine.sizeMB} MB)` : "Get Clearcote Helper"}
+              {mine ? `Download for ${mine.label}${mine.sizeMB ? ` (${mine.sizeMB} MB)` : ""}` : "Get Clearcote Helper"}
             </a>
             <div className="text-xs text-fog/60">
               {rel ? (

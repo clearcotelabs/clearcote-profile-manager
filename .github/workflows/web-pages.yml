@@ -32,6 +32,9 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
+        with:
+          # The helper-v* tags: next.config.mjs bakes the newest one into the download button.
+          fetch-depth: 0
 
       - uses: actions/setup-node@v4
         with:

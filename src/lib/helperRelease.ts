@@ -1,10 +1,15 @@
 // Where the connect screen sends people to download the helper: the newest helper-v* release on
 // GitHub, and in it the file for their system. Helper releases are never "latest" (that one is the
-// desktop app's), and GitHub's release search does not match tags, so the page asks the API.
+// desktop app's) and GitHub's release search finds nothing useful, so the links are built from the
+// release this page was built with; GitHub's API, when the browser may use it, only adds a newer one.
 
 export const REPO = "clearcotelabs/clearcote-profile-manager";
-/** When the API cannot be reached: a search that matches the helper releases' titles. */
-export const RELEASES_FALLBACK = `https://github.com/${REPO}/releases?q=Clearcote+Helper&expanded=true`;
+/** The newest helper release when this page was built (next.config.mjs); "" when none existed. */
+export const BUILT_HELPER_VERSION = process.env.NEXT_PUBLIC_HELPER_VERSION || "";
+/** Where to send people when there is nothing better: that release's page, else every release. */
+export const RELEASES_FALLBACK = BUILT_HELPER_VERSION
+  ? `https://github.com/${REPO}/releases/tag/helper-v${BUILT_HELPER_VERSION}`
+  : `https://github.com/${REPO}/releases`;
 
 export type HelperOs = "Windows" | "macOS" | "Linux";
 export type HelperArch = "x64" | "arm64";
@@ -43,6 +48,32 @@ const TARGET: Record<string, { os: HelperOs; arch: HelperArch; label: string }> 
   "linux-x64": { os: "Linux", arch: "x64", label: "Linux x64" },
   "linux-arm64": { os: "Linux", arch: "arm64", label: "Linux arm64" },
 };
+
+/** The release this page was built with, its download links worked out from the file names
+ *  helper/build.mjs gives them: no network needed. Sizes are unknown (0). */
+export function builtHelperRelease(version = BUILT_HELPER_VERSION): HelperRelease | null {
+  if (!version) return null;
+  const tag = `helper-v${version}`;
+  const downloads = Object.entries(TARGET).map(([target, t]) => ({
+    ...t,
+    url: `https://github.com/${REPO}/releases/download/${tag}/clearcote-helper-${version}-${target}.${t.os === "Windows" ? "zip" : "tar.gz"}`,
+    sizeMB: 0,
+  }));
+  return { version, page: `https://github.com/${REPO}/releases/tag/${tag}`, downloads };
+}
+
+const newer = (a: string, b: string) => {
+  const pa = a.split(".").map(Number);
+  const pb = b.split(".").map(Number);
+  for (let i = 0; i < Math.max(pa.length, pb.length); i++) if ((pa[i] || 0) !== (pb[i] || 0)) return (pa[i] || 0) > (pb[i] || 0);
+  return false;
+};
+
+/** The release to offer: GitHub's newest when it answers (and is not older), else the built-in one. */
+export function bestHelperRelease(fromApi: HelperRelease | null, built = builtHelperRelease()): HelperRelease | null {
+  if (fromApi && (!built || !newer(built.version, fromApi.version))) return fromApi;
+  return built;
+}
 
 /** The newest published helper release in a GitHub releases list (newest first, as the API gives it). */
 export function pickHelperRelease(list: GhRelease[]): HelperRelease | null {

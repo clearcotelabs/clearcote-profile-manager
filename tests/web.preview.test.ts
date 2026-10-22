@@ -93,3 +93,30 @@ describe("the web preview", () => {
     expect(api.n).toBe(2);
   });
 });
+
+describe("the built-in helper release (no API needed)", () => {
+  it("builds every download link from the version", async () => {
+    const { builtHelperRelease } = await import("../src/lib/helperRelease");
+    const r = builtHelperRelease("0.20.1")!;
+    expect(r.page).toBe("https://github.com/clearcotelabs/clearcote-profile-manager/releases/tag/helper-v0.20.1");
+    expect(r.downloads.map((d) => d.url.split("/").pop())).toEqual([
+      "clearcote-helper-0.20.1-win-x64.zip",
+      "clearcote-helper-0.20.1-win-arm64.zip",
+      "clearcote-helper-0.20.1-mac-arm64.tar.gz",
+      "clearcote-helper-0.20.1-mac-x64.tar.gz",
+      "clearcote-helper-0.20.1-linux-x64.tar.gz",
+      "clearcote-helper-0.20.1-linux-arm64.tar.gz",
+    ]);
+    expect(builtHelperRelease("")).toBeNull();
+  });
+
+  it("takes GitHub's answer only when it is not older", async () => {
+    const { builtHelperRelease, bestHelperRelease } = await import("../src/lib/helperRelease");
+    const built = builtHelperRelease("0.20.1");
+    const api = (v: string) => ({ version: v, page: "p", downloads: [] });
+    expect(bestHelperRelease(null, built)?.version).toBe("0.20.1");
+    expect(bestHelperRelease(api("0.21.0"), built)?.version).toBe("0.21.0");
+    expect(bestHelperRelease(api("0.20.0"), built)?.version).toBe("0.20.1");
+    expect(bestHelperRelease(api("0.20.0"), null)?.version).toBe("0.20.0");
+  });
+});
