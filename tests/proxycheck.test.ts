@@ -162,3 +162,10 @@ describe("what the results say", () => {
     expect(launchReport({ proxy: "http://h:1", geoip: false }, "C")).toBe("Launched “C” · through its proxy.");
   });
 });
+
+describe("when the place is not known", () => {
+  it("says the address instead of 'an unknown place'", () => {
+    expect(describeCheck({ ok: true, ms: 100, geo: { ok: true, ip: "81.2.3.4" } }).lines[0]).toBe("Works · exits at 81.2.3.4 · answered in 0.1 s");
+    expect(launchReport({ proxy: "http://h:1", geoip: false }, "D", { ip: "81.2.3.4", at: "x", proxy: "p" })).toBe("Launched “D” · exits at 81.2.3.4.");
+  });
+});

@@ -6,8 +6,11 @@ import type { LastGeo, Profile } from "@/types/profile";
 
 export type Tone = "ok" | "warn" | "bad";
 
-const where = (g: { country?: string; city?: string; ip?: string }) =>
-  [g.city, g.country].filter(Boolean).join(", ") || "an unknown place";
+/** "exits in Amsterdam, Netherlands (81.2.3.4)", or "exits at 81.2.3.4" when the place is not known. */
+const exitsAt = (g: { country?: string; city?: string; ip?: string }) => {
+  const place = [g.city, g.country].filter(Boolean).join(", ");
+  return place ? `exits in ${place} (${g.ip ?? "?"})` : `exits at ${g.ip ?? "an unknown address"}`;
+};
 
 /** One line on UDP: what the result means for "Relay UDP through the proxy" and for WebRTC. */
 export function udpLine(v: UdpVerdict | undefined, detail?: string): { tone: Tone; text: string } | null {
@@ -35,7 +38,7 @@ export function describeCheck(c: ProxyCheck): { tone: Tone; lines: string[] } {
   if (!c.ok || !c.geo?.ok) return { tone: "bad", lines: [`Doesn't work: ${c.error || c.geo?.error || "no answer through this proxy"}.`.replace(/\.\.$/, ".")] };
   const g = c.geo;
   const speed = c.ms != null ? ` · answered in ${(c.ms / 1000).toFixed(1)} s` : "";
-  const lines = [`Works · exits in ${where(g)} (${g.ip ?? "?"})${speed}`];
+  const lines = [`Works · ${exitsAt(g)}${speed}`];
   const u = udpLine(c.udp, c.udpDetail);
   if (u) lines.push(u.text);
   return { tone: "ok", lines };
@@ -44,7 +47,7 @@ export function describeCheck(c: ProxyCheck): { tone: Tone; lines: string[] } {
 /** The message after a launch: where the profile exits, and whether its region follows the proxy. */
 export function launchReport(p: Pick<Profile, "proxy" | "geoip" | "timezone" | "acceptLanguage">, name: string, last?: LastGeo): string {
   if (!p.proxy) return `Launched “${name}” · no proxy: it uses this computer's own connection.`;
-  const exit = last?.ip ? `exits in ${where(last)} (${last.ip})` : "through its proxy";
+  const exit = last?.ip ? exitsAt(last) : "through its proxy";
   const region =
     p.geoip !== false
       ? p.timezone && p.acceptLanguage
