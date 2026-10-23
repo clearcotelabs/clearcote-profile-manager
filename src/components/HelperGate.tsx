@@ -433,17 +433,17 @@ function ConnectDialog({
 
 const WAY_KEY = "clearcote.connectWay";
 
-/** The way this browser connected before: the download, or the SDK's `clearcote connect`. */
+/** The SDK's `clearcote connect` unless this browser picked the download before. */
 function savedWay(): "download" | "sdk" {
   try {
-    return localStorage.getItem(WAY_KEY) === "sdk" ? "sdk" : "download";
+    return localStorage.getItem(WAY_KEY) === "download" ? "download" : "sdk";
   } catch {
-    return "download";
+    return "sdk";
   }
 }
 
 function Missing({ blocked, code }: { blocked: boolean; code: string }) {
-  const [way, setWay] = useState<"download" | "sdk">("download");
+  const [way, setWay] = useState<"download" | "sdk">("sdk");
   useEffect(() => setWay(savedWay()), []);
   const pick = (w: "download" | "sdk") => {
     setWay(w);
@@ -483,8 +483,8 @@ function Missing({ blocked, code }: { blocked: boolean; code: string }) {
         aria-label="How to start the helper"
         className="flex gap-1 rounded-xl border border-line bg-elevate p-1"
       >
-        {tab("download", "Download the helper")}
         {tab("sdk", "I use the Clearcote SDK")}
+        {tab("download", "Download the helper")}
       </div>
       {way === "download" ? <DownloadSteps /> : <SdkSteps code={code} />}
       <p className="text-xs text-fog/50">Looking for the helper…</p>
@@ -522,25 +522,39 @@ function SdkSteps({ code }: { code: string }) {
   return (
     <div className="space-y-4 text-sm">
       <p className="leading-relaxed text-fog/75">
-        Run this in a terminal on this computer. It downloads the same helper
-        (checked against its SHA-256) and starts it. This tab connects by
-        itself: the code is how the helper knows it is you.
+        Run this in a terminal on this computer, with Node.js or Python. It
+        downloads the same helper (checked against its SHA-256) and starts it.
+        This tab connects by itself: the code is how the helper knows it is you.
       </p>
       <div className="space-y-1.5">
         <div className="text-xs font-semibold uppercase tracking-wider text-fog/60">
           Node.js
         </div>
-        <Copyable text={`npx clearcote connect ${code}`} />
+        <Copyable text={`npx clearcote@latest connect ${code}`} />
+        <div className="text-xs text-fog/60">
+          Nothing to install first: npx fetches the SDK. Needs Node.js 20 or
+          newer (
+          <a
+            className="text-accent underline"
+            href="https://nodejs.org/"
+            target="_blank"
+            rel="noreferrer"
+          >
+            nodejs.org
+          </a>
+          ).
+        </div>
       </div>
       <div className="space-y-1.5">
         <div className="text-xs font-semibold uppercase tracking-wider text-fog/60">
           Python
         </div>
-        <Copyable text={`clearcote connect ${code}`} />
         <div className="text-xs text-fog/60">
-          Needs the SDK 0.61 or newer:{" "}
-          <code className="font-mono">pip install -U clearcote</code>.
+          1. Install or update the SDK (Python 3.8 or newer):
         </div>
+        <Copyable text="pip install -U clearcote" />
+        <div className="text-xs text-fog/60">2. Start the helper:</div>
+        <Copyable text={`clearcote connect ${code}`} />
       </div>
       <p className="text-xs text-fog/60">
         Keep the terminal open while you use the profile manager. Ctrl+C closes
