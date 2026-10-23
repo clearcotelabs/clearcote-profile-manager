@@ -6,6 +6,8 @@
 import { redactProxyString, screenWarningFromLabel, type Profile } from "@/types/profile";
 import type { LaunchTarget } from "@/lib/launchTarget";
 import type { ProfileTemplate } from "@/lib/templates";
+import type { ProxyCheck } from "../../electron/proxycheck";
+export type { ProxyCheck, UdpVerdict } from "../../electron/proxycheck";
 import { buildHelperApi, helper } from "@/lib/helperBridge";
 import { buildPreviewApi, seedExamples, switchable } from "@/lib/webPreview";
 
@@ -344,6 +346,9 @@ export interface ClearcoteApi {
   resolveBinary: () => Promise<string | null>;
   pickBinary: () => Promise<string | null>;
   geoCheck: (p: Profile) => Promise<GeoResult>;
+  /** The proxy's exit, speed and UDP support, without changing the profile. Optional: an older
+   *  desktop app or helper does not have it. */
+  proxyCheck?: (p: Profile) => Promise<ProxyCheck>;
   exportProfiles: (opts?: { includeSecrets?: boolean; ids?: string[] }) => Promise<ExportResult>;
   importProfiles: () => Promise<ImportResult>;
   fp: {
@@ -669,6 +674,8 @@ function buildMock(): ClearcoteApi {
     resolveBinary: async () => null,
     pickBinary: async () => null,
     geoCheck: async () => ({ ok: false, error: "IP / geo check runs in the desktop app." }),
+    // localStorage["clearcote.mock.proxycheck"] plays the check's answer (tests, design review).
+    proxyCheck: async () => readJson<ProxyCheck>("clearcote.mock.proxycheck", { ok: false, error: "Checking a proxy runs in the desktop app." }),
     exportProfiles: async (opts) => {
       const only = opts?.ids?.length ? new Set(opts.ids) : null;
       const list = read()

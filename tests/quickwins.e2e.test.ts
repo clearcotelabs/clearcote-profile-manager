@@ -53,6 +53,8 @@ describe.skipIf(!READY)("quick create — the shortcuts in a real browser", () =
     // The browser preview's mock launches only when told to (src/lib/ipc.ts).
     await ctx.addInitScript(() => localStorage.setItem("clearcote.mock.launch", "ok"));
     page = await ctx.newPage();
+    // These cases use the category rail; Simple (the default since 0.23) has its own suite.
+    await page.addInitScript(() => localStorage.setItem("clearcote.editor.mode", "all"));
     page.on("pageerror", (e) => errors.push(e.message));
     await page.goto(ORIGIN, { waitUntil: "domcontentloaded" });
     await page.waitForSelector('main[data-ready="1"]', { timeout: 60000 });

@@ -15,6 +15,8 @@
 // `custom: <id>` and the editor renders a bespoke control for them; they still live here so they
 // keep their category, their search text and their position.
 
+import { newProfile } from "./newProfile";
+
 export type CategoryId = "identity" | "browser" | "hardware" | "network" | "rendering" | "session" | "cloud";
 
 export interface Category {
@@ -715,5 +717,44 @@ export function searchFields(query: string): FieldDef[] {
     `${f.label} ${f.desc ?? ""} ${f.hint ?? ""} ${f.why ?? ""} ${f.keywords ?? ""} ${f.key}`
       .toLowerCase()
       .includes(q),
+  );
+}
+
+/**
+ * The editor's Simple view: the settings most hand-made profiles need, on one page. Everything else
+ * keeps its default (or a template's value) and stays one click away under "All settings". The four
+ * screen fields stay together so they render as their group, with "Use this display".
+ */
+export const ESSENTIAL_KEYS = [
+  "name",
+  "proxy",
+  "platform",
+  "group",
+  "tags",
+  "notes",
+  "startUrl",
+  "screenWidth",
+  "screenHeight",
+  "availWidth",
+  "availHeight",
+] as const;
+
+export function isEssential(key: string): boolean {
+  return (ESSENTIAL_KEYS as readonly string[]).includes(key);
+}
+
+export function essentialFields(): FieldDef[] {
+  return ESSENTIAL_KEYS.map((k) => fieldByKey(k)).filter((f): f is FieldDef => !!f);
+}
+
+/** Settings you chose that the Simple view does not show (the seed is always there, so it is not one).
+ *  A control over other keys (the GPU model over its two strings) counts once; the keys it hosts do
+ *  not. A value every new profile starts with (geoip and Widevine on) is not a choice, so it does not
+ *  count either. */
+export function setOutsideEssentials(profile: Record<string, unknown>): number {
+  const start = newProfile("", "") as unknown as Record<string, unknown>;
+  return FIELDS.filter((f) => !f.hostedBy && f.key !== "fingerprint" && !isEssential(f.key)).reduce(
+    (n, f) => n + (isFieldSet(profile, f) && !(start[f.key] !== undefined && profile[f.key] === start[f.key]) ? 1 : 0),
+    0,
   );
 }

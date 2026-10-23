@@ -11,6 +11,7 @@ import type { TrashResult, RestoreResult } from "./profiles";
 import type { ExitEvent } from "./launcher";
 import type { StopOutcome } from "./procstop";
 import type { TempCopy } from "./cache";
+import type { ProxyCheck } from "./proxycheck";
 import type { CloudSessionState, CloudStartResult, CloudEnded } from "./cloud";
 import type { HostGpu } from "./hostgpu";
 
@@ -125,6 +126,7 @@ const api = {
   resolveBinary: (): Promise<string | null> => ipcRenderer.invoke("resolveBinary"),
   pickBinary: (): Promise<string | null> => ipcRenderer.invoke("pickBinary"),
   geoCheck: (p: Profile): Promise<GeoResult> => ipcRenderer.invoke("geo:check", p),
+  proxyCheck: (p: Profile): Promise<ProxyCheck> => ipcRenderer.invoke("proxy:check", p),
   exportProfiles: (opts?: { includeSecrets?: boolean; ids?: string[] }): Promise<ExportResult> =>
     ipcRenderer.invoke("profiles:export", opts),
   importProfiles: (): Promise<ImportResult> => ipcRenderer.invoke("profiles:import"),

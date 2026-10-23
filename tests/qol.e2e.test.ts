@@ -65,6 +65,8 @@ describe.skipIf(!READY)("quality-of-life round — in a real browser", () => {
       put("clearcote.mock.prefetch", s.prefetch);
     }, seed);
     const page = await ctx.newPage();
+    // These cases use the category rail; Simple (the default since 0.23) has its own suite.
+    await page.addInitScript(() => localStorage.setItem("clearcote.editor.mode", "all"));
     const errors: string[] = [];
     page.on("pageerror", (e) => errors.push(e.message));
     await page.goto(ORIGIN, { waitUntil: "domcontentloaded" });

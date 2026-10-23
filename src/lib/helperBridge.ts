@@ -360,6 +360,7 @@ export function buildHelperApi(): ClearcoteApi {
       return null;
     },
     geoCheck: call("geo:check"),
+    proxyCheck: call("proxy:check"),
     exportProfiles: async (opts) => {
       const r = await rpc<{ ok: boolean; filename?: string; count?: number; json?: string }>("profiles:exportData", opts);
       if (!r.ok || !r.json) return { ok: false };

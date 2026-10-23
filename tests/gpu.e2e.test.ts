@@ -64,6 +64,8 @@ describe.skipIf(!READY)("GPU model picker — in a real browser", () => {
       if (s.gpu) localStorage.setItem("clearcote.mock.gpu", JSON.stringify(s.gpu));
     }, seed);
     const page = await ctx.newPage();
+    // These cases use the category rail; Simple (the default since 0.23) has its own suite.
+    await page.addInitScript(() => localStorage.setItem("clearcote.editor.mode", "all"));
     const errors: string[] = [];
     page.on("pageerror", (e) => errors.push(e.message));
     await page.goto(ORIGIN, { waitUntil: "domcontentloaded" });

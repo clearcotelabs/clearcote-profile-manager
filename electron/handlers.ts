@@ -8,6 +8,7 @@ import fs from "node:fs";
 import * as profiles from "./profiles";
 import * as launcher from "./launcher";
 import * as geo from "./geo";
+import { checkProxy } from "./proxycheck";
 import { readSettings, writeSettings, ensureDirs, FINGERPRINTS_DIR, PROFILES_DIR } from "./store";
 import { apiBase, checkLicense, resolveLicenseKey } from "./license";
 import { pollLogin, startLogin } from "./devicelogin";
@@ -350,6 +351,8 @@ export function createHandlers(host: HandlerHost): Record<string, Handler> {
 
     resolveBinary: () => launcher.resolveBinary(),
     "geo:check": (_c, p: Profile) => geo.geoCheck(p),
+    // Reports only — the exit, the time it took and whether UDP gets through. Writes nothing.
+    "proxy:check": (_c, p: Profile) => checkProxy(p),
 
     // Dialog-free import/export for the web version: the page does the file picking and saving.
     "profiles:exportData": (_c, opts?: { includeSecrets?: boolean; ids?: string[] }) => {

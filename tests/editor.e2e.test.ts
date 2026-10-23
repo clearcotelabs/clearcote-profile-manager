@@ -60,6 +60,8 @@ describe.skipIf(!READY)("editor UI — the category rail in a real browser", () 
     const executablePath = process.env.CLEARCOTE_UI_BROWSER || undefined;
     browser = await chromium.launch({ headless: true, executablePath, args: ["--no-sandbox"] });
     page = await browser.newPage({ viewport: { width: 1280, height: 900 } });
+    // These cases use the category rail; Simple (the default since 0.23) has its own suite.
+    await page.addInitScript(() => localStorage.setItem("clearcote.editor.mode", "all"));
     // A renderer exception means the editor is broken even when the DOM still looks right.
     const errors: string[] = [];
     page.on("pageerror", (e) => errors.push(e.message));

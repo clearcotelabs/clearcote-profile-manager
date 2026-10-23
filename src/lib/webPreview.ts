@@ -58,6 +58,7 @@ export function buildPreviewApi(mock: ClearcoteApi): ClearcoteApi {
       return null;
     },
     geoCheck: fail("check where a proxy exits"),
+    proxyCheck: fail("check a proxy"),
     importProfiles: fail("import profiles"),
     fp: { ...mock.fp, import: fail("import a fingerprint"), use: fail("use a library fingerprint") },
   };

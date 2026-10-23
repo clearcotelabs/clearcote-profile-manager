@@ -243,3 +243,16 @@ describe("the Cloud section", () => {
     expect(countSet({ cloud: { exit: "managed", adblock: true } }, "cloud")).toBe(1);
   });
 });
+
+describe("Simple view: settings set outside the essentials", () => {
+  it("counts what you chose, not what every new profile starts with", async () => {
+    const { setOutsideEssentials, essentialFields, ESSENTIAL_KEYS } = await import("../src/lib/fields");
+    const { newProfile } = await import("../src/lib/newProfile");
+    const fresh = newProfile("seed", "2026-10-23T00:00:00Z") as unknown as Record<string, unknown>;
+    expect(setOutsideEssentials(fresh)).toBe(0);
+    expect(setOutsideEssentials({ ...fresh, deviceMemory: 8 })).toBe(1);
+    expect(setOutsideEssentials({ ...fresh, deviceMemory: 8, timezone: "Europe/Amsterdam" })).toBe(2);
+    expect(setOutsideEssentials({ ...fresh, screenWidth: 1920, name: "x", proxy: "http://h:1" })).toBe(0);
+    expect(essentialFields().map((f) => f.key)).toEqual([...ESSENTIAL_KEYS]);
+  });
+});

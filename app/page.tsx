@@ -22,6 +22,7 @@ import UpdateBanner from "@/components/UpdateBanner";
 import ExportDialog from "@/components/ExportDialog";
 import BulkCreateDialog from "@/components/BulkCreateDialog";
 import Menu from "@/components/Menu";
+import { launchReport, udpLine } from "@/lib/proxyReport";
 import { ManageTemplatesDialog, SaveTemplateDialog } from "@/components/TemplateDialogs";
 import {
   describeTemplate,
@@ -472,6 +473,21 @@ function Manager() {
   }
 
   // ── Launch / stop ─────────────────────────────────────────────────────────
+  /** The message after a launch: where it exits (when the launch just looked that up for geoip) and,
+   *  with "Relay UDP" on, whether the proxy really carries UDP. */
+  async function reportLaunch(p: Profile) {
+    const fresh = (await api.profiles.get(p.id).catch(() => null)) ?? p;
+    const g = fresh.lastGeo;
+    const recent = g && Date.now() - Date.parse(g.at) < 2 * 60_000 ? g : undefined;
+    const text = launchReport(fresh, displayName(p), recent);
+    notify(text);
+    if (!p.socks5Udp || !p.proxy || !api.proxyCheck) return;
+    const c = await api.proxyCheck(p).catch(() => null);
+    const u = c && udpLine(c.udp, c.udpDetail);
+    // A refused UDP is safe (WebRTC stays blocked), so it is information, not an error.
+    if (u) notify(`${text} ${u.text}`);
+  }
+
   /** Launch one profile. Resolves to the failure code, if it failed — bulk launch stops on a
    *  plan's browser limit instead of piling the same error onto every card. */
   async function launch(p: Profile): Promise<{ ok: boolean; code?: string }> {
@@ -487,7 +503,7 @@ function Manager() {
         // Warnings mean the browser DID start but an option silently won't take effect. They go on
         // the card, where they stay readable, rather than into a toast that vanishes.
         if (r.warnings?.length) setNotices((n) => ({ ...n, [p.id]: describeLaunchWarnings(r.warnings!) }));
-        notify(`Launched “${displayName(p)}”.`);
+        void reportLaunch(p);
       } else if (needsHelper(r)) {
         // The web preview: the connect window is already open.
       } else {

@@ -20,6 +20,9 @@ import Dialog, { DialogHeader } from "./Dialog";
 import {
   CATEGORIES,
   FIELDS,
+  essentialFields,
+  isEssential,
+  setOutsideEssentials,
   countSet,
   fieldByKey,
   fieldsIn,
@@ -54,7 +57,8 @@ import {
   type FingerprintMeta,
   type Profile,
 } from "@/types/profile";
-import { api, isWeb, type GeoResult, type HostGpu, type VersionOption } from "@/lib/ipc";
+import { api, isWeb, type GeoResult, type HostGpu, type ProxyCheck, type VersionOption } from "@/lib/ipc";
+import { describeCheck } from "@/lib/proxyReport";
 import { browserCommandName, hostOs, shortcutLabel, type HostOs } from "@/lib/host";
 import { normalizeProxyLine } from "@/lib/bulkCreate";
 import {
@@ -73,6 +77,9 @@ const label = "mb-1 block text-[10px] font-medium uppercase tracking-wider text-
 const btnGhost = "rounded-lg border border-line px-3 py-1.5 text-sm text-fog/70 hover:border-line-strong hover:text-fog";
 
 const randomSeed = () => Math.random().toString(36).slice(2, 14);
+
+/** Where the editor remembers Simple vs All settings. */
+const MODE_KEY = "clearcote.editor.mode";
 
 /** The host OS, for the coherence rules that depend on it (the shader dialect off Windows, the
  *  persona platform on a Mac). */
@@ -138,12 +145,33 @@ export default function ProfileEditor({
 }: ProfileEditorProps) {
   const titleId = useId();
   const [cat, setCat] = useState<CategoryId>("identity");
+  // Simple (the essentials on one page) or All settings (the category rail). The choice is kept;
+  // opening on a field Simple does not show switches to All settings for this time only.
+  const [simple, setSimple] = useState<boolean>(() => {
+    if (initialField && !isEssential(hostFieldFor(initialField)?.key ?? initialField)) return false;
+    try {
+      return localStorage.getItem(MODE_KEY) !== "all";
+    } catch {
+      return true;
+    }
+  });
+  const chooseMode = (s: boolean) => {
+    setSimple(s);
+    try {
+      localStorage.setItem(MODE_KEY, s ? "simple" : "all");
+    } catch {
+      /* private window: the choice lasts this session */
+    }
+  };
   const [query, setQuery] = useState("");
   const [cohOpen, setCohOpen] = useState(false);
   const [prevOpen, setPrevOpen] = useState(false);
 
   // Carried over verbatim from the previous editor.
   const [geo, setGeo] = useState<GeoResult | null>(null);
+  /** "Check": the proxy's exit, speed and UDP — reported, never written to the profile. */
+  const [check, setCheck] = useState<ProxyCheck | null>(null);
+  const [checking, setChecking] = useState(false);
   const [resolving, setResolving] = useState(false);
   const [libOpen, setLibOpen] = useState(false);
   const [fpMsg, setFpMsg] = useState<string | null>(null);
@@ -234,6 +262,7 @@ export default function ProfileEditor({
     if (!f) return;
     setQuery("");
     setCat(f.cat);
+    if (!isEssential(f.key)) setSimple(false);
     setFlash(f.key);
     window.setTimeout(() => {
       const el = panelRef.current?.querySelector<HTMLElement>(`[data-field="${f.key}"]`);
@@ -273,6 +302,7 @@ export default function ProfileEditor({
     // user. Legacy profiles that arrive already incoherent are handled by the coherence warning
     // instead, since silently rewriting a saved profile on open is not ours to do.
     setClipProxy(null);
+    setCheck(null);
     if (shouldAutoEnableGeoip(profile, next)) {
       onChange({ ...profile, proxy: next, geoip: true });
       setAutoGeoip(true);
@@ -280,6 +310,19 @@ export default function ProfileEditor({
     }
     if (!next) setAutoGeoip(false);
     set("proxy", next);
+  }
+
+  async function checkProxyNow() {
+    if (!api.proxyCheck) return;
+    setChecking(true);
+    setCheck(null);
+    try {
+      setCheck(await api.proxyCheck(profile));
+    } catch (e) {
+      setCheck({ ok: false, error: (e as Error)?.message || String(e) });
+    } finally {
+      setChecking(false);
+    }
   }
 
   /** The Paste button: a click is the user gesture a web page needs to read the clipboard. */
@@ -357,7 +400,10 @@ export default function ProfileEditor({
   const screenFrom = screenSource(profile, host);
 
   const results = query.trim() ? searchFields(query) : null;
-  const shown = (results ?? fieldsIn(cat)).filter((f) => !f.showWhen || f.showWhen(profile as unknown as Record<string, unknown>));
+  const shown = (results ?? (simple ? essentialFields() : fieldsIn(cat))).filter(
+    (f) => !f.showWhen || f.showWhen(profile as unknown as Record<string, unknown>),
+  );
+  const hiddenSet = simple ? setOutsideEssentials(profile as unknown as Record<string, unknown>) : 0;
 
   // ── Field rendering ────────────────────────────────────────────────────────
   function why(f: FieldDef) {
@@ -711,6 +757,18 @@ export default function ProfileEditor({
                     Paste
                   </button>
                 )}
+                {profile.proxy && api.proxyCheck && (
+                  <button
+                    type="button"
+                    className={btnGhost + " py-1 text-xs"}
+                    onClick={checkProxyNow}
+                    disabled={checking}
+                    title="Does it work, where does it exit, and does it carry UDP? Changes nothing."
+                    data-proxy-check-btn="1"
+                  >
+                    {checking ? "Checking…" : "Check"}
+                  </button>
+                )}
                 {profile.proxy && (
                   <button className={btnGhost + " py-1 text-xs"} onClick={resolveGeo} disabled={resolving}>
                     {resolving ? "Resolving…" : "Resolve from proxy →"}
@@ -735,6 +793,31 @@ export default function ProfileEditor({
               onChange={(e) => setProxy(e.target.value || undefined)}
             />
             {pasteMsg && !profile.proxy && <p className="mt-1 text-[11px] text-warn">{pasteMsg}</p>}
+            {checking && (
+              <p className="mt-1 text-[11px] text-fog/50" role="status">
+                Checking the proxy and whether it carries UDP… (a few seconds)
+              </p>
+            )}
+            {check &&
+              (() => {
+                const d = describeCheck(check);
+                return (
+                  <div
+                    className={
+                      "mt-1.5 rounded-lg border px-3 py-2 text-[11px] leading-relaxed " +
+                      (d.tone === "ok" ? "border-ok/40 bg-ok/5 text-fog/80" : "border-danger/40 bg-danger/5 text-fog/80")
+                    }
+                    role="status"
+                    data-proxy-check={d.tone}
+                  >
+                    {d.lines.map((l, i) => (
+                      <p key={i} className={i === 0 ? "font-medium " + (d.tone === "ok" ? "text-ok" : "text-danger") : "mt-0.5"}>
+                        {l}
+                      </p>
+                    ))}
+                  </div>
+                );
+              })()}
             {autoGeoip && profile.geoip && (
               <p className="mt-1 text-[11px] text-accent">
                 geoip switched on — timezone, language and position will follow this proxy&apos;s exit region at
@@ -900,6 +983,24 @@ export default function ProfileEditor({
           <DialogHeader id={titleId} title={profile.id ? "Edit profile" : "New profile"} onClose={onCancel}>
             <span className="min-w-0 truncate text-sm text-fog/40">{profile.name || "Untitled"}</span>
             <span className="flex-1" />
+            <div className="flex rounded-lg border border-line p-0.5 text-xs" role="group" aria-label="How much to show" data-editor-mode={simple ? "simple" : "all"}>
+              <button
+                type="button"
+                aria-pressed={simple}
+                onClick={() => chooseMode(true)}
+                className={"rounded-md px-2.5 py-1 " + (simple ? "bg-accent/15 font-semibold text-accent" : "text-fog/55 hover:text-fog")}
+              >
+                Simple
+              </button>
+              <button
+                type="button"
+                aria-pressed={!simple}
+                onClick={() => chooseMode(false)}
+                className={"rounded-md px-2.5 py-1 " + (!simple ? "bg-accent/15 font-semibold text-accent" : "text-fog/55 hover:text-fog")}
+              >
+                All settings
+              </button>
+            </div>
             <button
               onClick={() => setCohOpen((v) => !v)}
               aria-expanded={cohOpen}
@@ -949,8 +1050,9 @@ export default function ProfileEditor({
             </div>
           )}
 
-          <div className="grid min-h-0 flex-1 grid-cols-[168px_1fr] max-sm:grid-cols-1">
-            {/* Rail */}
+          <div className={"grid min-h-0 flex-1 " + (simple ? "grid-cols-1" : "grid-cols-[168px_1fr] max-sm:grid-cols-1")}>
+            {/* Rail — All settings only. */}
+            {!simple && (
             <nav className="flex min-h-0 flex-col border-r border-line bg-ink/30 max-sm:border-b max-sm:border-r-0">
               <div className="flex-none p-2.5">
                 <input
@@ -1007,6 +1109,7 @@ export default function ProfileEditor({
                 })}
               </ul>
             </nav>
+            )}
 
             {/* Panel */}
             <div ref={panelRef} className="min-h-0 overflow-y-auto px-5 py-4">
@@ -1041,7 +1144,7 @@ export default function ProfileEditor({
                   </button>
                 </div>
               )}
-              {cat === "network" && !results && protectedList.length > 0 && (
+              {(simple || cat === "network") && !results && protectedList.length > 0 && (
                 <div className="mb-4 rounded-lg border border-line/70 bg-ink/30 p-3" data-protected="1">
                   <p className="text-[10px] font-medium uppercase tracking-wider text-fog/40">Always on while a proxy is set</p>
                   {protectedView}
@@ -1053,6 +1156,24 @@ export default function ProfileEditor({
                     {results.length} {results.length === 1 ? "setting matches" : "settings match"} “{query.trim()}”
                   </h3>
                   <p className="mb-4 mt-0.5 text-xs text-fog/40">Across all categories. Clear the search to go back.</p>
+                </>
+              ) : simple ? (
+                <>
+                  <h3 className="text-[15px] font-semibold">Essentials</h3>
+                  <p className="mb-4 mt-0.5 max-w-[62ch] text-xs text-fog/40">
+                    What most profiles need. Everything else keeps its default
+                    {hiddenSet ? (
+                      <>
+                        {" "}
+                        —{" "}
+                        <button type="button" className="text-accent hover:underline" onClick={() => chooseMode(false)} data-hidden-set={hiddenSet}>
+                          {hiddenSet} more {hiddenSet === 1 ? "setting" : "settings"} you set {hiddenSet === 1 ? "is" : "are"} in All settings
+                        </button>
+                      </>
+                    ) : (
+                      <>; All settings has the rest.</>
+                    )}
+                  </p>
                 </>
               ) : (
                 <>
