@@ -83,11 +83,12 @@ export const helper = {
     return null;
   },
 
-  async startPairing(port: number, name: string): Promise<PairRequest> {
+  /** `code`: the one this page showed for `clearcote connect CODE`; a helper started with it pairs at once. */
+  async startPairing(port: number, name: string, code?: string): Promise<PairRequest> {
     const r = await fetch(`${base(port)}/v1/pair`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ name }),
+      body: JSON.stringify(code ? { name, code } : { name }),
     });
     if (!r.ok) throw new Error(`The helper refused (${r.status}).`);
     return r.json();
@@ -123,6 +124,17 @@ export const helper = {
     events.stop();
   },
 };
+
+/** helper/auth.ts CODE_ALPHABET: no 0/O, 1/I/L. */
+const CODE_ALPHABET = "23456789ABCDEFGHJKMNPQRSTUVWXYZ";
+
+/** A code for `clearcote connect CODE`, like "4F7-K2Q". Made here: the helper is not running yet. */
+export function connectCode(): string {
+  const r = new Uint32Array(6);
+  crypto.getRandomValues(r);
+  const c = Array.from(r, (n) => CODE_ALPHABET[n % CODE_ALPHABET.length]).join("");
+  return `${c.slice(0, 3)}-${c.slice(3)}`;
+}
 
 /** Why this page was just paired, once (null afterwards, and when it was not). */
 export function takeJustPaired(): string | null {
