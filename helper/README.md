@@ -17,12 +17,16 @@ public GitHub workflow, and you can rebuild it yourself and get the same bytes. 
 1. Download the helper for your system from the
    [releases](https://github.com/clearcotelabs/clearcote-profile-manager/releases) (tags `helper-v…`).
 2. Unpack it and start it:
-   - Windows: double-click `Clearcote Helper.cmd`.
+   - Windows: double-click `Clearcote Helper.cmd`. A console window opens for a moment and closes:
+     the helper keeps running without a window, as the Clearcote icon in the notification area (next
+     to the clock; it may be behind the **^** arrow). Right-click the icon for **Open status page**,
+     **Paired sites…** and **Quit**. Quit closes your browsers (each one properly, so its licence slot
+     is returned) and stops the helper. See [The tray icon](#the-tray-icon-windows).
    - macOS: double-click `Clearcote Helper.command`. The first time, macOS may block it: right-click
      it and choose **Open**.
    - Linux: run `./clearcote-helper.sh`.
-3. A console window opens. Keep it open while you use the profile manager. Closing it closes your
-   browsers (each one properly, so its licence slot is returned).
+3. On macOS and Linux a console window opens. Keep it open while you use the profile manager. Closing
+   it closes your browsers (each one properly, so its licence slot is returned).
 4. Open the web profile manager. The first time, it asks to pair with the helper (below).
 
 Nothing is installed. The folder is the whole program. To remove it, delete the folder.
@@ -76,7 +80,31 @@ Open `http://127.0.0.1:47821/` at any time. It shows:
 - recent activity: every call a site made that changes something (launch, stop, save, delete,
   settings…), with the time and the site. Calls that only read are not listed.
 
-The console window prints the same activity as it happens.
+The console window (on Windows: `helper-log.txt` in the data folder) prints the same activity as it
+happens.
+
+### The tray icon (Windows)
+
+`Clearcote Helper.cmd` starts the helper with `--tray`. That first copy, in the console window,
+starts a second copy of itself without any console (its output goes to `helper-log.txt` in the data
+folder, replaced at each start), waits until it listens, and exits, so the window closes. The second
+copy starts `tray\clearcote-tray.ps1` with Windows PowerShell, hidden. The script is plain text, a
+hundred lines: read it. It shows the icon (`tray\clearcote.ico`, the same one as the desktop app's) and
+its menu, and its tooltip says how many browsers are open. Double-clicking the icon opens the status
+page too.
+
+The script talks to the helper only through two routes on the same local server: `GET /tray/status`
+(the tooltip) and `POST /tray/quit`. Both need a token that the helper makes fresh at every start and
+gives only to the script, in its environment (`CLEARCOTE_HELPER_TRAY_TOKEN`, not on its command line),
+sent back in an `X-Clearcote-Tray` header. A request with any `Origin` header is refused, and a web page
+cannot send a request to another site without one. A page also cannot add that header without a CORS
+preflight, which the helper refuses, and it does not know the token. The Host check above applies too.
+
+The two end together. The script watches the helper's process and exits when it is gone. The helper
+quits (closing its browsers first) when the script exits, so it never runs on with no way to stop it.
+
+For troubleshooting, `Clearcote Helper (console).cmd` runs the helper in its console window, as before,
+with no tray icon. Without the tray script next to it (a build from source), `--tray` does the same.
 
 ### Chrome's local network prompt
 
@@ -88,7 +116,7 @@ left of the address bar).
 ### Options
 
 ```
-clearcote-helper [--port N] [--allow-origin ORIGIN]... [--no-open] [--pair-code CODE]
+clearcote-helper [--port N] [--allow-origin ORIGIN]... [--no-open] [--pair-code CODE] [--tray]
 ```
 
 - `--port N` listen on this port only. By default the helper uses the first free one of 47821, 47822,
@@ -100,6 +128,8 @@ clearcote-helper [--port N] [--allow-origin ORIGIN]... [--no-open] [--pair-code 
 - `--pair-code CODE` the code the web page shows: that page pairs without the approval page (see
   [Starting it from the Clearcote SDK](#starting-it-from-the-clearcote-sdk)).
   `CLEARCOTE_HELPER_PAIR_CODE` does the same.
+- `--tray` (Windows) run without a console window, with the tray icon (above). `Clearcote Helper.cmd`
+  passes it. Ignored on macOS and Linux.
 
 If a helper is already running, starting a second one just opens the first one's page and exits.
 
@@ -167,7 +197,9 @@ Pair only sites you opened yourself, and remove ones you no longer use.
 | `lib/clearcote-helper.js` | The helper's whole program: this repo's `helper/` and `electron/` sources, bundled by esbuild (version pinned in `package-lock.json`). **Not minified**, so you can read it. Its first lines name the commit it was built from. |
 | `runtime/node` or `runtime/node.exe` | The official Node.js binary, byte for byte as nodejs.org ships it. |
 | `runtime/NODE-LICENSE.txt` | Node.js's licence. |
-| `Clearcote Helper.cmd` / `.command` / `clearcote-helper.sh` | Starts `runtime/node` with `lib/clearcote-helper.js`. Read it: it is a few lines. |
+| `Clearcote Helper.cmd` / `.command` / `clearcote-helper.sh` | Starts `runtime/node` with `lib/clearcote-helper.js` (on Windows with `--tray`). Read it: it is a few lines. |
+| `Clearcote Helper (console).cmd` | Windows: the same, in a console window, without the tray icon. |
+| `tray/clearcote-tray.ps1`, `tray/clearcote.ico` | Windows: the tray icon's script ([`helper/tray.ps1`](tray.ps1)) and the Clearcote icon (`build/icon.ico`). |
 | `README.txt`, `LICENSE.txt`, `package.json` | What it is, the licence, and its version. |
 | `MANIFEST.sha256` | The SHA-256 of every file above. |
 
@@ -223,7 +255,8 @@ builds one.
 
 ## Known limits
 
-- There is no tray icon. The helper is a console window, and it has to stay open.
+- The tray icon is Windows only. On macOS and Linux the helper is a console window, and it has to stay
+  open.
 - Do not run the desktop app and the helper at the same time. They share the same profiles, and each
   keeps its own list of running browsers, so the same profile could be started twice.
 - The downloads are not code-signed by us. On Windows, `runtime/node.exe` is the Node.js project's own

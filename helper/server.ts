@@ -3,6 +3,8 @@
 //   /v1/*     the web profile manager, from an allowed site (auth.ts). CORS-checked, token-checked.
 //   / , /local/*   the helper's own page, opened on this computer: pairing approval, paired sites,
 //             recent activity. Only answers its own origin, and every form carries a per-run secret.
+//   /tray/*   the Windows tray icon (tray.ts, tray.ps1): status and Quit. Needs the per-run tray
+//             token in a header and no Origin at all, so no web page can call it.
 //
 // The API is one RPC route over the same handlers the desktop app uses (electron/handlers.ts), plus
 // an event stream for progress and "a browser closed". It listens on 127.0.0.1 only.
@@ -12,6 +14,7 @@ import crypto from "node:crypto";
 import { allowedOrigins, hostOk, isLocalOrigin, Pairings, TokenStore, type Pairing } from "./auth";
 import type { Handler } from "../electron/handlers";
 import { statusPage, pairPage } from "./pages";
+import { TRAY_HEADER, trayTokenOk } from "./tray";
 
 export interface ServerOptions {
   port: number;
@@ -24,6 +27,8 @@ export interface ServerOptions {
   /** A pairing request arrived: open the approval page for the person. */
   onPairRequest(p: Pairing, url: string): void;
   log(line: string): void;
+  /** Only when the tray icon runs: its token, what its tooltip says, and its Quit. */
+  tray?: { token: string; status(): { tooltip: string; browsers: number }; quit(): void };
 }
 
 /** Calls the web page may make that change nothing — kept out of the visible activity log. */
@@ -224,6 +229,19 @@ export function createServer(opts: ServerOptions) {
     res.end("Not found");
   }
 
+  /** The tray icon's two calls. Not a web page's: those always send Origin, and never know the token. */
+  function tray(req: http.IncomingMessage, res: http.ServerResponse, url: URL, origin: string | undefined) {
+    const t = opts.tray;
+    if (!t || origin !== undefined || !trayTokenOk(req.headers[TRAY_HEADER], t.token)) return json(res, 403, { error: "Forbidden" });
+    if (req.method === "GET" && url.pathname === "/tray/status") return json(res, 200, t.status());
+    if (req.method === "POST" && url.pathname === "/tray/quit") {
+      json(res, 200, { ok: true });
+      res.on("finish", () => t.quit());
+      return;
+    }
+    return json(res, 404, { error: "Not found" });
+  }
+
   const server = http.createServer((req, res) => {
     // DNS rebinding: only requests addressed to this helper by its own name.
     if (!hostOk(req.headers.host, opts.port)) {
@@ -244,6 +262,7 @@ export function createServer(opts: ServerOptions) {
         if (!res.headersSent) json(res, 500, { error: String((e as Error)?.message || e) }, cors(origin));
       });
     }
+    if (url.pathname.startsWith("/tray/")) return tray(req, res, url, origin);
     // The helper's own pages: never from another site (a top-level visit has no Origin on GET).
     if (origin && !isLocalOrigin(origin, opts.port)) {
       res.writeHead(403, { "Content-Type": "text/plain" });

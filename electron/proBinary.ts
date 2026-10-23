@@ -76,7 +76,7 @@ function extractArchive(archive: string, dest: string): Promise<void> {
   if (process.platform === "darwin" && /\.zip$/i.test(archive)) return extractMacBundle(archive, archive, dest);
   mkdirSync(dest, { recursive: true });
   return new Promise((resolve, reject) => {
-    const p = spawn(tarBinary(), ["-xf", archive, "-C", dest], { stdio: "ignore" });
+    const p = spawn(tarBinary(), ["-xf", archive, "-C", dest], { stdio: "ignore", windowsHide: true });
     p.on("error", reject);
     p.on("exit", (code) => (code === 0 ? resolve() : reject(new Error(`tar exited ${code} extracting ${archive}`))));
   });

@@ -46,7 +46,7 @@ function source() {
   const commit = process.env.HELPER_COMMIT || git("rev-parse", "HEAD") || "unknown";
   const epoch = Number(process.env.SOURCE_DATE_EPOCH || git("log", "-1", "--format=%ct") || 0);
   if (!epoch) throw new Error("No SOURCE_DATE_EPOCH and no git history to take it from.");
-  const dirty = !process.env.HELPER_COMMIT && git("status", "--porcelain", "--", "helper", "electron", "package.json", "package-lock.json") !== "";
+  const dirty = !process.env.HELPER_COMMIT && git("status", "--porcelain", "--", "helper", "electron", "build/icon.ico", "package.json", "package-lock.json") !== "";
   return { commit: dirty ? `${commit}+local-changes` : commit, epoch };
 }
 
@@ -135,12 +135,25 @@ async function nodeFiles(target) {
 
 // ── Assembling a download ─────────────────────────────────────────────────────
 
-const START_WIN = `@echo off\r
-rem Starts the Clearcote Helper with the Node.js runtime next to this file. Nothing is installed.\r
-title Clearcote Helper\r
-"%~dp0runtime\\node.exe" "%~dp0lib\\clearcote-helper.js" %*\r
-if errorlevel 1 pause\r
-`;
+/** Windows wants CRLF in .cmd files. Made here from LF text, so every checkout gives the same bytes. */
+export const crlf = (text) => text.replace(/\r/g, "").replace(/\n/g, "\r\n");
+
+// The double-click entry on Windows: the helper moves to the tray and this window closes (tray.ts).
+export const START_WIN = crlf(`@echo off
+rem Starts the Clearcote Helper with the Node.js runtime next to this file. Nothing is installed.
+rem It runs without a window, with an icon in the notification area (tray\\clearcote-tray.ps1).
+rem To see its output in a window instead, start "Clearcote Helper (console).cmd".
+title Clearcote Helper
+"%~dp0runtime\\node.exe" "%~dp0lib\\clearcote-helper.js" --tray %*
+if errorlevel 1 pause
+`);
+// The same helper in this console window, as before the tray icon: for troubleshooting.
+export const START_WIN_CONSOLE = crlf(`@echo off
+rem Starts the Clearcote Helper in this window, without the tray icon. Closing the window stops it.
+title Clearcote Helper
+"%~dp0runtime\\node.exe" "%~dp0lib\\clearcote-helper.js" %*
+if errorlevel 1 pause
+`);
 const START_UNIX = `#!/bin/sh
 # Starts the Clearcote Helper with the Node.js runtime next to this file. Nothing is installed.
 here="$(cd "$(dirname "$0")" && pwd)"
@@ -151,17 +164,19 @@ function readme(target, src) {
   return `Clearcote Helper ${VERSION} (${target})
 
 Lets the Clearcote web profile manager start the Clearcote browser on this computer.
-Start it, keep its window open, and open the profile manager in your browser.
+Start it and open the profile manager in your browser.
 
-  Windows: double-click "Clearcote Helper.cmd"
-  macOS:   double-click "Clearcote Helper.command" (first time: right-click, Open)
-  Linux:   ./clearcote-helper.sh
+  Windows: double-click "Clearcote Helper.cmd". It moves to an icon in the notification area
+           (next to the clock); right-click the icon to open its page or to quit.
+           "Clearcote Helper (console).cmd" runs it in a console window instead.
+  macOS:   double-click "Clearcote Helper.command" (first time: right-click, Open), keep its window open
+  Linux:   ./clearcote-helper.sh, keep it running
 
 Its own page, http://127.0.0.1:47821/, lists the sites you paired and everything they asked for.
 
 What is in this folder
   lib/clearcote-helper.js   the whole program, readable (not minified)
-  runtime/                  the official Node.js ${runtime.version} binary from nodejs.org, unchanged
+  runtime/                  the official Node.js ${runtime.version} binary from nodejs.org, unchanged${target.startsWith("win-") ? "\n  tray/                     the tray icon: a PowerShell script (readable) and the Clearcote icon" : ""}
   MANIFEST.sha256           the SHA-256 of every file here
 
 Built from https://github.com/clearcotelabs/clearcote-profile-manager
@@ -170,6 +185,16 @@ commit ${src.commit}
 Check it yourself: clone that commit, run \`npm ci\` and
 \`npm run helper:verify -- <this download>\`. It rebuilds the helper and compares every file.
 `;
+}
+
+/** The Windows-only files: both start scripts and the tray icon (helper/tray.ps1 + build/icon.ico). */
+export function windowsFiles() {
+  return [
+    { path: "Clearcote Helper.cmd", data: Buffer.from(START_WIN) },
+    { path: "Clearcote Helper (console).cmd", data: Buffer.from(START_WIN_CONSOLE) },
+    { path: "tray/clearcote-tray.ps1", data: Buffer.from(crlf(fs.readFileSync(path.join(ROOT, "helper", "tray.ps1"), "utf8"))) },
+    { path: "tray/clearcote.ico", data: fs.readFileSync(path.join(ROOT, "build", "icon.ico")) },
+  ];
 }
 
 /** Every file of one download, in a fixed order, with the modes they need. */
@@ -188,11 +213,11 @@ async function files(target, code, src) {
     { path: "lib/clearcote-helper.js", data: code },
     { path: isWin ? "runtime/node.exe" : "runtime/node", data: node, exec: true },
     { path: "runtime/NODE-LICENSE.txt", data: license },
-    isWin
-      ? { path: "Clearcote Helper.cmd", data: Buffer.from(START_WIN) }
+    ...(isWin
+      ? windowsFiles()
       : t.os === "mac"
-        ? { path: "Clearcote Helper.command", data: Buffer.from(START_UNIX), exec: true }
-        : { path: "clearcote-helper.sh", data: Buffer.from(START_UNIX), exec: true },
+        ? [{ path: "Clearcote Helper.command", data: Buffer.from(START_UNIX), exec: true }]
+        : [{ path: "clearcote-helper.sh", data: Buffer.from(START_UNIX), exec: true }]),
   ];
   list.sort((a, b) => (a.path < b.path ? -1 : 1));
   const manifest = list.map((f) => `${sha256(f.data)}  ${f.path}`).join("\n") + "\n";
@@ -460,7 +485,10 @@ async function main() {
   if (!argv.length) fs.writeFileSync(path.join(OUT, "SHA256SUMS"), sums.join("\n") + "\n");
 }
 
-main().catch((e) => {
-  console.error(e.message || e);
-  process.exitCode = 1;
-});
+// Run as a script (npm run helper:build); imported by the tests, it only exports.
+if (process.argv[1] && path.resolve(process.argv[1]) === fileURLToPath(import.meta.url)) {
+  main().catch((e) => {
+    console.error(e.message || e);
+    process.exitCode = 1;
+  });
+}

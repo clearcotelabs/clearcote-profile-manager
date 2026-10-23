@@ -617,11 +617,10 @@ function DownloadSteps() {
           <div className="font-semibold">Unzip it and start it</div>
           <div className="text-fog/65">
             {os === "Windows"
-              ? "Double-click “Clearcote Helper.cmd”."
-              : os === "macOS"
-                ? "Right-click “Clearcote Helper.command”, then Open."
-                : "Run ./clearcote-helper.sh."}{" "}
-            Keep its window open.
+              ? "Double-click “Clearcote Helper.cmd”. It runs as an icon next to the clock; right-click it to quit."
+              : (os === "macOS"
+                  ? "Right-click “Clearcote Helper.command”, then Open."
+                  : "Run ./clearcote-helper.sh.") + " Keep its window open."}
           </div>
         </div>
       </li>
