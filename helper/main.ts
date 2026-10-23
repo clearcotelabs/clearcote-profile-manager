@@ -4,7 +4,7 @@
 // reached over http://127.0.0.1 instead of Electron IPC. Run it, keep the window open, and open the
 // profile manager in your browser. Everything it does is listed in this window and on its own page.
 //
-//   node clearcote-helper.js [--port 47821] [--allow-origin http://localhost:3000] [--no-open]
+//   node clearcote-helper.js [--port 47821] [--allow-origin http://localhost:3000] [--no-open] [--pair-code 4F7-K2Q]
 
 import { spawn } from "node:child_process";
 import path from "node:path";
@@ -22,14 +22,15 @@ const VERSION = typeof __HELPER_VERSION__ === "string" ? __HELPER_VERSION__ : "d
 export const PORTS = [47821, 47822, 47823];
 
 function args(argv: string[]) {
-  const out = { port: 0, origins: [] as string[], open: true };
+  const out = { port: 0, origins: [] as string[], open: true, pairCode: process.env.CLEARCOTE_HELPER_PAIR_CODE || "" };
   for (let i = 0; i < argv.length; i++) {
     const a = argv[i];
     if (a === "--port") out.port = Number(argv[++i]);
     else if (a === "--allow-origin") out.origins.push(String(argv[++i]));
     else if (a === "--no-open") out.open = false;
+    else if (a === "--pair-code") out.pairCode = String(argv[++i] || "");
     else if (a === "--help" || a === "-h") {
-      console.log("clearcote-helper [--port N] [--allow-origin ORIGIN]... [--no-open]");
+      console.log("clearcote-helper [--port N] [--allow-origin ORIGIN]... [--no-open] [--pair-code CODE]");
       process.exit(0);
     }
   }
@@ -72,6 +73,7 @@ async function main() {
   for (const port of ports) {
     if (await helperOn(port)) {
       log(`A Clearcote helper is already running at http://127.0.0.1:${port}/ — this one is not needed.`);
+      if (opt.pairCode) log("That helper does not know your code: approve the pairing on the page it opens instead.");
       if (opt.open) await openWithOs(`http://127.0.0.1:${port}/`);
       return;
     }
@@ -103,6 +105,7 @@ async function main() {
       version: VERSION,
       handlers,
       tokens,
+      pairCode: opt.pairCode || undefined,
       extraOrigins: opt.origins,
       log,
       onPairRequest: (p, url) => {
@@ -127,6 +130,7 @@ async function main() {
   }
   const { broadcast, url } = started;
   log(`Listening on ${url}  (open it to see paired sites and activity)`);
+  if (opt.pairCode) log(`Waiting for the web page that shows the code ${opt.pairCode.toUpperCase()}. It connects by itself.`);
 
   launcher.browserEvents.on("exited", (ev) => {
     log(`Browser for profile ${ev.id} closed.`);

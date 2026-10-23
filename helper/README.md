@@ -49,6 +49,24 @@ The first time a web page wants to use the helper, it has to be paired:
 
 A pairing request expires after 2 minutes. Each site has at most one open request.
 
+### Starting it from the Clearcote SDK
+
+If you have the Clearcote SDK (0.61 or newer), you can skip the download. When the profile manager
+cannot find a helper, it shows a command with a code, for example:
+
+```
+npx clearcote connect 4F7-K2Q        # Node.js
+clearcote connect 4F7-K2Q            # Python
+```
+
+The SDK downloads this helper release (the same files as on the releases page), checks the archive
+against the SHA-256 the SDK has pinned, unpacks it once into its cache, and starts it in that terminal
+with the code (`--pair-code`). The tab that shows the code connects by itself: no approval page. Typing
+the code into your own terminal is the approval, because it shows the person at that page also controls
+this computer. A code works once, for 10 minutes, and only for a page on an allowed site (below); after 5
+wrong codes it is thrown away. Without a code, `clearcote connect` opens the profile manager, and pairing
+works as above.
+
 ### The helper's own page
 
 Open `http://127.0.0.1:47821/` at any time. It shows:
@@ -70,7 +88,7 @@ left of the address bar).
 ### Options
 
 ```
-clearcote-helper [--port N] [--allow-origin ORIGIN]... [--no-open]
+clearcote-helper [--port N] [--allow-origin ORIGIN]... [--no-open] [--pair-code CODE]
 ```
 
 - `--port N` listen on this port only. By default the helper uses the first free one of 47821, 47822,
@@ -79,6 +97,9 @@ clearcote-helper [--port N] [--allow-origin ORIGIN]... [--no-open]
   web UI yourself. Repeat it for more. `CLEARCOTE_HELPER_ORIGINS` (comma-separated) does the same.
 - `--no-open` do not open the approval page in your browser. Open the address printed in the console
   instead.
+- `--pair-code CODE` the code the web page shows: that page pairs without the approval page (see
+  [Starting it from the Clearcote SDK](#starting-it-from-the-clearcote-sdk)).
+  `CLEARCOTE_HELPER_PAIR_CODE` does the same.
 
 If a helper is already running, starting a second one just opens the first one's page and exits.
 
@@ -100,7 +121,8 @@ Every request from a web page passes three checks (`helper/server.ts`, `helper/a
 3. **Token.** Everything except "is a helper here" and pairing needs a token, and the token only works
    for the site that paired it.
 
-Pairing needs a person at the keyboard. The approval page lives on the helper itself
+Pairing needs a person at the keyboard: either the code the page shows, typed into
+`clearcote connect` (or `--pair-code`) when starting the helper, or the approval page. The approval page lives on the helper itself
 (`http://127.0.0.1:<port>`). A website cannot read it, frame it (`frame-ancestors 'none'`,
 `X-Frame-Options: DENY`) or submit it: its forms only accept posts whose `Origin` is the helper's own
 page and that carry a secret made fresh each time the helper starts. The page has no scripts and loads
