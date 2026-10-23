@@ -154,7 +154,7 @@ export function extractZip(archive: string, dest: string, what = "the CDM"): Pro
       : "tar";
   mkdirSync(dest, { recursive: true });
   return new Promise((resolve, reject) => {
-    const p = spawn(bin, ["-xf", archive, "-C", dest], { stdio: "ignore" });
+    const p = spawn(bin, ["-xf", archive, "-C", dest], { stdio: "ignore", windowsHide: true });
     p.on("error", reject);
     p.on("exit", (code) => (code === 0 ? resolve() : reject(new Error(`tar exited ${code} extracting ${what}`))));
   });

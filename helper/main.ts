@@ -1,12 +1,16 @@
 // Clearcote Helper: lets the web profile manager start the Clearcote browser on this computer.
 //
 // It is the desktop app without its window: the same profile store and launcher (electron/*.ts),
-// reached over http://127.0.0.1 instead of Electron IPC. Run it, keep the window open, and open the
-// profile manager in your browser. Everything it does is listed in this window and on its own page.
+// reached over http://127.0.0.1 instead of Electron IPC. Run it and open the profile manager in your
+// browser. Everything it does is listed in its console window (or helper-log.txt) and on its own page.
 //
-//   node clearcote-helper.js [--port 47821] [--allow-origin http://localhost:3000] [--no-open] [--pair-code 4F7-K2Q]
+//   node clearcote-helper.js [--port 47821] [--allow-origin http://localhost:3000] [--no-open] [--pair-code 4F7-K2Q] [--tray]
+//
+// --tray (Windows; what "Clearcote Helper.cmd" passes): run without a console window, with an icon in
+// the notification area instead. See tray.ts.
 
-import { spawn } from "node:child_process";
+import { spawn, type ChildProcess } from "node:child_process";
+import fs from "node:fs";
 import path from "node:path";
 import * as launcher from "../electron/launcher";
 import { USER_DATA } from "./userdata";
@@ -14,6 +18,7 @@ import { bootstrap, createHandlers } from "../electron/handlers";
 import { TokenStore } from "./auth";
 import { createServer } from "./server";
 import { webPolicy } from "./policy";
+import { backgroundArgs, LOG_FILE, newTrayToken, TRAY_SCRIPT, TRAY_TOKEN_ENV, trayCommand, trayTooltip } from "./tray";
 
 declare const __HELPER_VERSION__: string;
 const VERSION = typeof __HELPER_VERSION__ === "string" ? __HELPER_VERSION__ : "dev";
@@ -22,15 +27,24 @@ const VERSION = typeof __HELPER_VERSION__ === "string" ? __HELPER_VERSION__ : "d
 export const PORTS = [47821, 47822, 47823];
 
 function args(argv: string[]) {
-  const out = { port: 0, origins: [] as string[], open: true, pairCode: process.env.CLEARCOTE_HELPER_PAIR_CODE || "" };
+  const out = {
+    port: 0,
+    origins: [] as string[],
+    open: true,
+    pairCode: process.env.CLEARCOTE_HELPER_PAIR_CODE || "",
+    tray: false,
+    background: false,
+  };
   for (let i = 0; i < argv.length; i++) {
     const a = argv[i];
     if (a === "--port") out.port = Number(argv[++i]);
     else if (a === "--allow-origin") out.origins.push(String(argv[++i]));
     else if (a === "--no-open") out.open = false;
     else if (a === "--pair-code") out.pairCode = String(argv[++i] || "");
+    else if (a === "--tray") out.tray = true;
+    else if (a === "--background") out.background = true;
     else if (a === "--help" || a === "-h") {
-      console.log("clearcote-helper [--port N] [--allow-origin ORIGIN]... [--no-open] [--pair-code CODE]");
+      console.log("clearcote-helper [--port N] [--allow-origin ORIGIN]... [--no-open] [--pair-code CODE] [--tray]");
       process.exit(0);
     }
   }
@@ -66,9 +80,71 @@ async function helperOn(port: number): Promise<boolean> {
   }
 }
 
+/** The tray script in this download, or null (not Windows, or run from source without one). */
+function trayScript(): string | null {
+  if (process.platform !== "win32") return null;
+  const p = path.join(__dirname, TRAY_SCRIPT);
+  return fs.existsSync(p) ? p : null;
+}
+
+/**
+ * --tray, in the console window: start the helper again without a console (its output into
+ * helper-log.txt), wait until it listens, and return, so the window closes. False when that copy
+ * did not come up: the caller exits with an error and the window stays open (the .cmd pauses).
+ */
+async function startInBackground(argv: string[]): Promise<boolean> {
+  fs.mkdirSync(USER_DATA, { recursive: true });
+  const logPath = path.join(USER_DATA, LOG_FILE);
+  const fd = fs.openSync(logPath, "w");
+  let child: ChildProcess;
+  try {
+    // detached: no console at all (not a hidden one), and it outlives this window.
+    child = spawn(process.execPath, [process.argv[1], ...backgroundArgs(argv)], {
+      detached: true,
+      windowsHide: true,
+      stdio: ["ignore", fd, fd, "ipc"],
+    });
+  } finally {
+    fs.closeSync(fd);
+  }
+  const url = await new Promise<string | null>((resolve) => {
+    const timer = setTimeout(() => done(null), 30_000);
+    function done(v: string | null) {
+      clearTimeout(timer);
+      resolve(v);
+    }
+    child.on("message", (m: { listening?: string }) => {
+      if (m?.listening) done(m.listening);
+    });
+    child.on("exit", () => done(null));
+    child.on("error", () => done(null));
+  });
+  if (!url) {
+    try {
+      process.stdout.write(fs.readFileSync(logPath, "utf8"));
+    } catch {
+      /* no log */
+    }
+    log(`The helper did not start in the background. Its output is above and in ${logPath}.`);
+    log(`"Clearcote Helper (console).cmd" runs it in a window instead.`);
+    return false;
+  }
+  if (child.connected) child.disconnect();
+  child.unref();
+  log(`Clearcote Helper is running at ${url}`);
+  log("Its icon is in the notification area (next to the clock; maybe behind the ^ arrow).");
+  log("Right-click it to open its page or to quit. This window closes now.");
+  return true;
+}
+
 async function main() {
-  const opt = args(process.argv.slice(2));
+  const argv = process.argv.slice(2);
+  const opt = args(argv);
   const ports = opt.port ? [opt.port] : PORTS;
+  const script = opt.tray || opt.background ? trayScript() : null;
+  if (opt.tray && !script && process.platform === "win32") {
+    log("No tray script next to this program (tray\\clearcote-tray.ps1): running in this window instead.");
+  }
 
   for (const port of ports) {
     if (await helperOn(port)) {
@@ -79,9 +155,16 @@ async function main() {
     }
   }
 
+  if (opt.tray && !opt.background && script) {
+    process.exitCode = (await startInBackground(argv)) ? 0 : 1;
+    return;
+  }
+  const background = opt.background && !!script;
+
   console.log(`Clearcote Helper ${VERSION}`);
   console.log(`Profiles and settings: ${USER_DATA}`);
-  console.log("Keep this window open while you use the web profile manager. Closing it closes your browsers.\n");
+  if (background) console.log("Running without a window, with an icon in the notification area. Quit it from there.\n");
+  else console.log("Keep this window open while you use the web profile manager. Closing it closes your browsers.\n");
 
   const cloud = bootstrap(path.join(USER_DATA, "cloud-sessions.json"));
   const tokens = new TokenStore(path.join(USER_DATA, "helper-paired-sites.json"));
@@ -98,6 +181,10 @@ async function main() {
   handlers["update:check"] = () => null;
   handlers["helper:info"] = () => ({ version: VERSION, platform: process.platform, arch: process.arch, dataDir: USER_DATA });
 
+  const trayToken = background ? newTrayToken() : "";
+  // Set below; the tray's Quit can only arrive once the server is up, after that.
+  let quit: (why: string) => Promise<void> = async () => {};
+
   let started: ReturnType<typeof createServer> | null = null;
   for (const port of ports) {
     const s = createServer({
@@ -112,6 +199,16 @@ async function main() {
         log(`Pairing request from ${p.origin}. Code ${p.code}. Approve it at ${url}`);
         if (opt.open) void openWithOs(url);
       },
+      tray: background
+        ? {
+            token: trayToken,
+            status: () => {
+              const browsers = launcher.listRunning().length;
+              return { tooltip: trayTooltip(browsers), browsers };
+            },
+            quit: () => void quit("Quit (tray icon)"),
+          }
+        : undefined,
     });
     const ok = await new Promise<boolean>((resolve) => {
       s.server.once("error", () => resolve(false));
@@ -140,17 +237,39 @@ async function main() {
   cloud.on("ended", (ev) => broadcast("cloud:ended", ev));
   void cloud.restore();
 
-  // Closing the window or Ctrl+C: close the browsers properly so each licence slot is checked back in.
+  // Closing the window, Ctrl+C or the tray's Quit: close the browsers properly so each licence slot
+  // is checked back in.
   let quitting = false;
-  const quit = async (sig: string) => {
+  let trayChild: ChildProcess | null = null;
+  quit = async (why: string) => {
     if (quitting) return;
     quitting = true;
-    log(`${sig}: closing browsers…`);
+    log(`${why}: closing browsers…`);
     launcher.setQuitting(true);
     await Promise.race([launcher.stopAll({ timeoutMs: 4000 }), new Promise((r) => setTimeout(r, 4500))]);
+    if (trayChild && trayChild.exitCode === null) trayChild.kill();
     process.exit(0);
   };
   for (const sig of ["SIGINT", "SIGTERM", "SIGHUP", "SIGBREAK"] as const) process.on(sig, () => void quit(sig));
+
+  if (background && script) {
+    const cmd = trayCommand({ script, port: Number(new URL(url).port), helperPid: process.pid, systemRoot: process.env.SystemRoot });
+    const child = spawn(cmd.file, cmd.args, {
+      stdio: "ignore",
+      windowsHide: true,
+      env: { ...process.env, [TRAY_TOKEN_ENV]: trayToken },
+    });
+    trayChild = child;
+    // Without its icon nobody could quit this helper, so it goes when the icon goes.
+    child.on("exit", (code) => void quit(`The tray icon closed (exit ${code ?? "?"})`));
+    child.on("error", (e) => void quit(`The tray icon could not start (${e.message})`));
+    log(`Tray icon started (Windows PowerShell, PID ${child.pid ?? "?"}).`);
+  }
+  // The console copy that started this one (--tray) waits for this, then closes its window.
+  if (process.send) {
+    process.send({ listening: url });
+    process.disconnect?.();
+  }
 }
 
 void main().catch((e) => {
