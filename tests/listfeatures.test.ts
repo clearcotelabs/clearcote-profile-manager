@@ -18,8 +18,15 @@ describe("normalizeProxyLine", () => {
       "http://user-country-us:p%40ss%3Aw@gate.example.net:10000",
     );
   });
-  it("leaves every other form alone", () => {
-    for (const v of ["http://u:p@h:1", "socks5://h:1080", "u:p@h:8080", "h:8080"]) expect(normalizeProxyLine(v)).toBe(v);
+  it("writes every other readable form as the same URL form, keeping the scheme", () => {
+    expect(normalizeProxyLine("http://u:p@h:1")).toBe("http://u:p@h:1");
+    expect(normalizeProxyLine("socks5://h:1080")).toBe("socks5://h:1080");
+    expect(normalizeProxyLine("u:p@h:8080")).toBe("http://u:p@h:8080");
+    expect(normalizeProxyLine("h:8080")).toBe("http://h:8080");
+    expect(normalizeProxyLine("socks5://gate.example.net:1080:u:p")).toBe("socks5://u:p@gate.example.net:1080");
+  });
+  it("leaves text it cannot read as typed, so the field can still show it", () => {
+    for (const v of ["not a proxy at all", "ftp://h:21", "h:99999"]) expect(normalizeProxyLine(v)).toBe(v);
   });
 });
 
@@ -46,7 +53,7 @@ describe("profilesFromProxyList", () => {
       "http://u:p@de1.example.net:8080",
       "socks5://u:p@10.0.0.1:1080",
       "http://alice:s3cret@203.0.113.7:3128",
-      "de2.example.net:9000",
+      "http://de2.example.net:9000",
     ]);
     expect(r.duplicates).toBe(1);
     expect(r.invalid).toEqual([{ line: 6, text: "not a proxy" }]);

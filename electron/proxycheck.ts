@@ -10,7 +10,7 @@ import net from "node:net";
 import dgram from "node:dgram";
 import dns from "node:dns/promises";
 import { geoCheck } from "./geo";
-import { parseProxy, type ParsedProxy } from "./proxyargs";
+import { parseProxy, proxyProblem, type ParsedProxy } from "./proxyargs";
 import type { GeoResult, Profile } from "./types";
 
 /** works: a datagram went out and an answer came back · refused: the proxy said no to UDP ·
@@ -155,6 +155,8 @@ export async function probeSocksUdp(px: ParsedProxy, timeoutMs = 6000): Promise<
 
 /** The whole check. Never changes the profile. */
 export async function checkProxy(profile: Profile): Promise<ProxyCheck> {
+  const unreadable = proxyProblem(profile.proxy);
+  if (unreadable) return { ok: false, error: unreadable };
   let px: ParsedProxy | null;
   try {
     px = parseProxy(profile.proxy);

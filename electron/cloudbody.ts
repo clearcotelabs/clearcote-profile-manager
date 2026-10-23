@@ -9,7 +9,7 @@
 // are that parser's, so a profile the server would refuse is refused here instead, with a sentence
 // that names the setting to change and no session created.
 
-import { parseProxy } from "./proxyargs";
+import { parseProxy, proxyProblem } from "./proxyargs";
 import { sha256Hex } from "./fpargs";
 
 /** Per-profile cloud settings. Everything else comes from the profile itself. */
@@ -237,6 +237,8 @@ export function cloudSessionPlan(p: CloudInput): CloudPlan {
 
   // ── where the traffic leaves ────────────────────────────────────────────────────────────────
   let exit: Extract<CloudPlan, { ok: true }>["exit"];
+  const unreadable = proxyProblem(p.proxy);
+  if (unreadable && p.cloud?.exit !== "managed") return fail(unreadable, "proxy");
   if (cloudExit(p) === "profile") {
     const px = parseProxy(p.proxy);
     if (!px) return fail("This profile has no proxy to use in the cloud. Pick the included residential IP instead.", "cloud");

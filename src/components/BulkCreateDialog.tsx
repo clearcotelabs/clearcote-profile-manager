@@ -118,8 +118,9 @@ export default function BulkCreateDialog({
           spellCheck={false}
         />
         <p className="mt-1 text-[11px] text-fog/40">
-          Also accepts <span className="font-mono">host:port:user:pass</span>, the format most providers export. Blank lines and
-          lines starting with # are skipped.
+          Also accepts <span className="font-mono">host:port:user:pass</span>, <span className="font-mono">user:pass:host:port</span>{" "}
+          and <span className="font-mono">host:port@user:pass</span>, with a scheme like socks5:// in front or without (then http).
+          Blank lines and lines starting with # are skipped.
         </p>
 
         <div className="mt-4 grid grid-cols-1 gap-3 sm:grid-cols-2">

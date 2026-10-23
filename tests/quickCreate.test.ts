@@ -38,7 +38,9 @@ describe("proxy from the clipboard", () => {
     ["gw.example.io:7777:user-x:p@ss", "http://user-x:p%40ss@gw.example.io:7777"],
     ["http://u:p@1.2.3.4:8080", "http://u:p@1.2.3.4:8080"],
     ["socks5://u:p@proxy.example.com:1080", "socks5://u:p@proxy.example.com:1080"],
-    ["  10.0.0.1:3128 \n", "10.0.0.1:3128"],
+    ["  10.0.0.1:3128 \n", "http://10.0.0.1:3128"],
+    ["socks5://relay-eu.example.com:1080:plan-a-country-dk:pw", "socks5://plan-a-country-dk:pw@relay-eu.example.com:1080"],
+    ["user:pw:1.2.3.4:8080", "http://user:pw@1.2.3.4:8080"],
   ])("accepts %j", (text, want) => {
     expect(proxyFromText(text)).toBe(want);
   });

@@ -17,7 +17,7 @@ describe("echo parsing and settings", () => {
     expect(ipFromEcho("{not json")).toBe("");
   });
   it("uses ipify then icanhazip unless CLEARCOTE_GEOIP_ECHO_URL replaces them", () => {
-    expect(echoUrls({})).toEqual(["http://api.ipify.org", "http://icanhazip.com"]);
+    expect(echoUrls({})).toEqual(["https://api.ipify.org", "https://icanhazip.com"]);
     expect(echoUrls({ CLEARCOTE_GEOIP_ECHO_URL: " http://a/ip , http://b " })).toEqual(["http://a/ip", "http://b"]);
   });
   it("asks ip-api.com only on opt-in", () => {

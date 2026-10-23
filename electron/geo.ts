@@ -10,7 +10,7 @@
 
 import net from "node:net";
 import tls from "node:tls";
-import { parseProxy, type ParsedProxy } from "./proxy";
+import { parseProxy, proxyProblem, type ParsedProxy } from "./proxy";
 import { socks5Connect } from "./socks";
 import { ensureMmdb, geoFromRecord, ipBits, lookupFile, mmdbDownloading, type DbGeo } from "./geodb";
 import type { Profile } from "./types";
@@ -56,7 +56,9 @@ export function languageForCountry(cc?: string): string {
 //      while it is still downloading on first use). Off by default: its free endpoint is for
 //      non-commercial use only and bans an IP that asks more than 45 times a minute.
 // This used to ask ip-api.com for everything, on every check and every geoip launch.
-export const IPECHO_URLS = ["http://api.ipify.org", "http://icanhazip.com"];
+// https: some proxies answer every plain-http request with a 301 to https,
+// which made Resolve and Check fail on a proxy that browses fine.
+export const IPECHO_URLS = ["https://api.ipify.org", "https://icanhazip.com"];
 export const ECHO_URL_ENV = "CLEARCOTE_GEOIP_ECHO_URL";
 export const IPAPI_ENV = "CLEARCOTE_GEOIP_IPAPI";
 const IPAPI_URL = "http://ip-api.com/json/?fields=status,message,query,country,countryCode,city,timezone,lat,lon";
@@ -87,10 +89,73 @@ export function ipFromEcho(text: string): string {
 }
 
 /** Plain http:// only: the echoes and ip-api are asked over HTTP, as the SDKs do. */
-function parseHttpUrl(url: string): { host: string; port: number; path: string } {
+function parseHttpUrl(url: string): { secure: boolean; host: string; port: number; path: string } {
   const u = new URL(url);
-  if (u.protocol !== "http:") throw new Error(`only http:// endpoints are supported (${url})`);
-  return { host: u.hostname, port: Number(u.port || 80), path: `${u.pathname}${u.search}` };
+  if (u.protocol !== "http:" && u.protocol !== "https:") throw new Error(`only http(s):// endpoints are supported (${url})`);
+  const secure = u.protocol === "https:";
+  return { secure, host: u.hostname, port: Number(u.port || (secure ? 443 : 80)), path: `${u.pathname}${u.search}` };
+}
+
+/** A raw byte tunnel to `host:port` for TLS: direct, SOCKS, or an http(s) proxy's CONNECT. */
+async function tunnelThrough(proxy: ParsedProxy | null, host: string, port: number, timeoutMs: number): Promise<net.Socket> {
+  const { sock, absoluteForm } = await connectThrough(proxy, host, port, timeoutMs);
+  if (!absoluteForm) return sock;
+  const lines = [`CONNECT ${host}:${port} HTTP/1.1`, `Host: ${host}:${port}`];
+  if (proxy?.username) {
+    lines.push(`Proxy-Authorization: Basic ${Buffer.from(`${proxy.username}:${proxy.password ?? ""}`).toString("base64")}`);
+  }
+  sock.write(lines.join("\r\n") + "\r\n\r\n");
+  const head = await new Promise<string>((resolve, reject) => {
+    let buf = "";
+    const done = (err?: Error) => {
+      clearTimeout(timer);
+      sock.removeListener("data", onData);
+      sock.removeListener("error", onError);
+      sock.removeListener("end", onEnd);
+      sock.pause();
+      if (err) {
+        sock.destroy();
+        reject(err);
+      } else resolve(buf);
+    };
+    const timer = setTimeout(() => done(new Error(`timed out waiting for the proxy to open a tunnel to ${host}`)), timeoutMs);
+    const onData = (c: Buffer) => {
+      buf += c.toString("latin1");
+      if (buf.includes("\r\n\r\n")) done();
+      else if (buf.length > 16384) done(new Error("proxy sent an oversized CONNECT reply"));
+    };
+    const onError = (e: Error) => done(e);
+    const onEnd = () => done(new Error(`the proxy closed the connection instead of opening a tunnel to ${host}`));
+    sock.on("data", onData);
+    sock.once("error", onError);
+    sock.once("end", onEnd);
+  });
+  const status = Number(/^HTTP\/1\.[01] (\d{3})/.exec(head)?.[1] ?? 0);
+  if (status !== 200) {
+    sock.destroy();
+    throw new Error(status === 407 ? "the proxy refused the login (HTTP 407)" : `the proxy refused a tunnel to ${host} (HTTP ${status || "?"})`);
+  }
+  return sock;
+}
+
+/** TLS over an open tunnel, verifying the echo service's certificate. */
+function startTls(sock: net.Socket, host: string, timeoutMs: number): Promise<net.Socket> {
+  return new Promise((resolve, reject) => {
+    const secure = tls.connect({ socket: sock, servername: host });
+    const timer = setTimeout(() => {
+      secure.destroy();
+      reject(new Error(`timed out during the TLS handshake with ${host}`));
+    }, timeoutMs);
+    secure.once("secureConnect", () => {
+      clearTimeout(timer);
+      resolve(secure);
+    });
+    secure.once("error", (e) => {
+      clearTimeout(timer);
+      secure.destroy();
+      reject(e);
+    });
+  });
 }
 
 /** Open a byte pipe to `host:port` — directly, or through the profile's proxy. Returns the socket
@@ -140,15 +205,18 @@ function connectTcp(host: string, port: number, timeoutMs: number): Promise<net.
   });
 }
 
-/** GET an http:// URL through `proxy` and return the decoded body. */
+/** GET an http:// or https:// URL through `proxy` and return the decoded body. */
 async function fetchText(url: string, proxy: ParsedProxy | null, timeoutMs: number): Promise<string> {
-  const { host, port, path } = parseHttpUrl(url);
-  const { sock, absoluteForm } = await connectThrough(proxy, host, port, timeoutMs);
+  const { secure, host, port, path } = parseHttpUrl(url);
+  const { sock, absoluteForm } = secure
+    ? { sock: await startTls(await tunnelThrough(proxy, host, port, timeoutMs), host, timeoutMs), absoluteForm: false }
+    : await connectThrough(proxy, host, port, timeoutMs);
   try {
+    const defaultPort = secure ? 443 : 80;
     const target = absoluteForm ? `http://${host}${port === 80 ? "" : `:${port}`}${path}` : path;
     const headers = [
       `GET ${target} HTTP/1.1`,
-      `Host: ${port === 80 ? host : `${host}:${port}`}`,
+      `Host: ${port === defaultPort ? host : `${host}:${port}`}`,
       "User-Agent: clearcote-profile-manager",
       "Accept: */*",
       "Connection: close",
@@ -227,6 +295,9 @@ function decodeBody(head: string, body: string): string {
  * Doubles as a proxy health check: a failure here means the proxy itself is unusable.
  */
 export async function geoCheck(profile: Profile, timeoutMs = 20000): Promise<GeoResult> {
+  // Unreadable is not "no proxy": looking up this PC's own exit would fill the profile with it.
+  const unreadable = proxyProblem(profile.proxy);
+  if (unreadable) return { ok: false, error: unreadable };
   let px: ParsedProxy | null;
   try {
     px = parseProxy(profile.proxy);
@@ -255,7 +326,10 @@ export async function geoCheck(profile: Profile, timeoutMs = 20000): Promise<Geo
   }
   if (!ip) {
     const msg = echoError || "could not determine the exit IP";
-    return { ok: false, error: px ? `${msg} (check the proxy)` : msg };
+    if (!px) return { ok: false, error: msg };
+    // An address typed without a scheme is read as http; a SOCKS-only port then just hangs up.
+    const hint = !px.schemeGiven && px.scheme === "http" ? ". If this is a SOCKS5 proxy, start the address with socks5://" : "";
+    return { ok: false, error: `${msg} (check the proxy)${hint}` };
   }
 
   // 2. Its region, from the offline database. The first-use download (~52 MB) may outlast the

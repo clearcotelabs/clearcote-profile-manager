@@ -2,7 +2,6 @@
 // from the clipboard, and the switches a proxy adds, said in words. Pure, so the editor and the tests
 // share one definition.
 
-import { normalizeProxyLine } from "./bulkCreate";
 import { parseProxy } from "../../electron/proxyargs";
 import { proxyEgressArgs } from "../../electron/fpargs";
 import type { Profile } from "@/types/profile";
@@ -51,18 +50,12 @@ export function screenSource(p: Profile, host: HostScreen | undefined): "host" |
  *  that is an IP or has a dot — so a copied sentence or password is never offered as a proxy. */
 export function proxyFromText(text: string | null | undefined): string | null {
   const v = (text ?? "").trim();
-  if (!v || v.length > 500 || /\s/.test(v)) return null;
-  const normalized = normalizeProxyLine(v);
-  let u: URL;
-  try {
-    u = new URL(/:\/\//.test(normalized) ? normalized : `http://${normalized}`);
-  } catch {
-    return null;
-  }
-  if (!/^(https?|socks[45]h?):$/i.test(u.protocol) || !u.port || (u.pathname && u.pathname !== "/") || u.search || u.hash) return null;
-  const host = u.hostname.replace(/^\[|\]$/g, "");
+  if (!v || v.length > 500 || /[\r\n]/.test(v)) return null;
+  const p = parseProxy(v);
+  if (!p || !p.portGiven) return null;
+  const host = p.host.replace(/^\[|\]$/g, "");
   if (!host.includes(".") && !host.includes(":") && host !== "localhost") return null;
-  return parseProxy(normalized) ? normalized : null;
+  return p.raw;
 }
 
 /** The address a proxy is shown as in an offer: host and port, never the credentials. */

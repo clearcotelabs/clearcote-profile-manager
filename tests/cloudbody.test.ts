@@ -133,7 +133,10 @@ describe("where the traffic leaves", () => {
 
   it("uses socks5 and socks5h proxies, and the legacy object form", () => {
     expect(plan({ proxy: "socks5://u:p@10.0.0.2:1080" }).body.proxy).toEqual({ server: "socks5://10.0.0.2:1080", username: "u", password: "p" });
-    expect(plan({ proxy: "socks5h://gate.example:7000" }).body.proxy).toEqual({ server: "socks5h://gate.example:7000" });
+    // socks5h is what Chromium does for SOCKS5 anyway (the proxy resolves names), so it is sent as socks5.
+    expect(plan({ proxy: "socks5h://gate.example:7000" }).body.proxy).toEqual({ server: "socks5://gate.example:7000" });
+    // Bare socks:// means SOCKS5, as it does for every vendor that writes it.
+    expect(plan({ proxy: "socks://gate.example:7000" }).body.proxy).toEqual({ server: "socks5://gate.example:7000" });
     expect(plan({ proxy: { server: "proxy.example:3128", username: "u", password: "p" } }).body.proxy).toEqual({
       server: "http://proxy.example:3128",
       username: "u",
@@ -152,7 +155,7 @@ describe("where the traffic leaves", () => {
   });
 
   it("refuses proxies the cloud cannot use, and says what to do instead", () => {
-    for (const proxy of ["https://proxy.example:443", "socks4://proxy.example:1080", "socks://proxy.example:1080"]) {
+    for (const proxy of ["https://proxy.example:443", "socks4://proxy.example:1080", "socks4a://proxy.example:1080"]) {
       const r = refusal({ proxy });
       expect(r.field).toBe("proxy");
       expect(r.error).toMatch(/http:\/\/ or socks5:\/\//);

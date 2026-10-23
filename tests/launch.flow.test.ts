@@ -145,6 +145,27 @@ describe("launch() — licence refusals", () => {
   });
 });
 
+describe("launch() — a proxy that cannot be read", () => {
+  it("refuses before the licence or the browser, instead of launching on this PC's own IP", async () => {
+    const r = await launcher.launch(profile("badproxy", { proxy: "relay.example.com:port:user:pw" }));
+    expect(r.ok).toBe(false);
+    expect(r.error).toMatch(/proxy address cannot be read/);
+    expect(leaseMock).not.toHaveBeenCalled();
+    expect(spawnMock).not.toHaveBeenCalled();
+    expect(profiles.getProfile("badproxy")?.lastLaunchedAt).toBeUndefined();
+  });
+
+  it("a vendor colon form with a scheme launches through that proxy (the 10-23 report)", async () => {
+    leaseMock.mockResolvedValue(lease("free"));
+    const r = await launcher.launch(profile("colon", { proxy: "socks5://relay-eu.example.com:1080:plan-a-country-dk:pw" }));
+    expect(r.ok).toBe(true);
+    const args = spawnMock.mock.calls[0][1] as string[];
+    expect(args).toContain("--proxy-server=socks5://relay-eu.example.com:1080");
+    expect(args).toContain("--socks5-credentials=plan-a-country-dk:pw");
+    expect(args).toContain("--disable-quic");
+  });
+});
+
 describe("launch() — bookkeeping on success", () => {
   it("records lastLaunchedAt and leaves updatedAt alone", async () => {
     leaseMock.mockResolvedValue(lease("free"));

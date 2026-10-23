@@ -61,6 +61,7 @@ import { api, isWeb, type GeoResult, type HostGpu, type ProxyCheck, type Version
 import { describeCheck } from "@/lib/proxyReport";
 import { browserCommandName, hostOs, shortcutLabel, type HostOs } from "@/lib/host";
 import { normalizeProxyLine } from "@/lib/bulkCreate";
+import { proxyProblem } from "../../electron/proxyargs";
 import {
   protectedSwitches,
   proxyFromText,
@@ -780,18 +781,33 @@ export default function ProfileEditor({
               className={input + " font-mono"}
               value={proxyString(profile.proxy)}
               placeholder="http://user:pass@host:8080  ·  socks5://user:pass@host:1080  ·  host:port:user:pass"
+              data-proxy-input="1"
               onPaste={(e) => {
-                // host:port:user:pass, as most proxy vendors hand it out, becomes the URL form the
-                // launcher reads — the same conversion "From proxy list…" does.
+                // Any vendor form (host:port:user:pass, user:pass:host:port, …) becomes the URL form
+                // the launcher reads — the same conversion "From proxy list…" does. Only when the
+                // paste replaces the whole field: a paste into the middle of an address is editing.
+                const el = e.currentTarget;
+                const whole = !el.value || (el.selectionStart === 0 && el.selectionEnd === el.value.length);
                 const text = e.clipboardData.getData("text").trim();
                 const url = normalizeProxyLine(text);
-                if (!e.currentTarget.value && url !== text) {
+                if (whole && url !== text) {
                   e.preventDefault();
                   setProxy(url);
                 }
               }}
               onChange={(e) => setProxy(e.target.value || undefined)}
+              onBlur={(e) => {
+                // A typed address gets the same conversion once the field is left.
+                const text = e.currentTarget.value.trim();
+                const url = text ? normalizeProxyLine(text) : text;
+                if (url !== e.currentTarget.value) set("proxy", url || undefined);
+              }}
             />
+            {proxyProblem(profile.proxy) && (
+              <p className="mt-1 text-[11px] text-danger" role="alert" data-proxy-problem="1">
+                {proxyProblem(profile.proxy)}
+              </p>
+            )}
             {pasteMsg && !profile.proxy && <p className="mt-1 text-[11px] text-warn">{pasteMsg}</p>}
             {checking && (
               <p className="mt-1 text-[11px] text-fog/50" role="status">

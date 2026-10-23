@@ -18,6 +18,8 @@ import net from "node:net";
 
 export {
   parseProxy,
+  normalizeProxy,
+  proxyProblem,
   proxyServerArg,
   redactProxyString,
   isAuthenticatedSocks,

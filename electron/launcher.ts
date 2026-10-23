@@ -8,7 +8,7 @@ import { PROFILES_DIR, FINGERPRINTS_DIR, readSettings, writeSettings } from "./s
 import { markLaunched, recordGeo } from "./profiles";
 import { Tail, type ExitFacts } from "./exitreason";
 import { stopGracefully, type StopOutcome } from "./procstop";
-import { parseProxy, startRelay, needsRelay, proxyArgs, socks5AuthSupportWarning, socks5UdpSupportWarning, type Relay } from "./proxy";
+import { parseProxy, proxyProblem, startRelay, needsRelay, proxyArgs, socks5AuthSupportWarning, socks5UdpSupportWarning, type Relay } from "./proxy";
 import { geoCheck } from "./geo";
 import { resolveLicenseKey, acquireLease, withRunToken, planFromToken, type LeaseSession } from "./license";
 import { proEnsureBinary, freeEnsureBinary } from "./proBinary";
@@ -282,6 +282,10 @@ export async function launch(
   if (running.has(p.id)) {
     return { ok: false, error: "This profile is already running." };
   }
+  // A proxy that is filled in but unreadable must never mean "launch without one": that would
+  // open the browser on this PC's own IP while the profile says it uses a proxy.
+  const unreadable = proxyProblem(p.proxy);
+  if (unreadable) return { ok: false, error: unreadable };
 
   // Resolve the binary + its tier from the profile's browserVersion (explicit path wins).
   // A configured license key unlocks PRO builds; the gated PRO engine also needs a

@@ -1,13 +1,14 @@
 // Many profiles from a pasted proxy list — the usual way this tool is used at scale.
 // PURE, so every rule below is pinned by a test.
 //
-// Accepted per line (blank lines and "# comments" are ignored):
-//   scheme://user:pass@host:port   user:pass@host:port   host:port
-//   host:port:user:pass            ← how most proxy providers export their lists
+// Accepted per line (blank lines and "# comments" are ignored): every form parseProxy reads —
+//   scheme://user:pass@host:port   user:pass@host:port   host:port   host:port@user:pass
+//   host:port:user:pass  user:pass:host:port  ← how most proxy providers export their lists
+// — with or without a scheme in front, which is kept.
 // Each valid, not-yet-seen proxy becomes one profile with its own random seed.
 
 import type { Platform, Profile } from "@/types/profile";
-import { parseProxy } from "../../electron/proxyargs";
+import { normalizeProxy, parseProxy } from "../../electron/proxyargs";
 
 export interface BulkOptions {
   /** "{n}" is the running number, "{host}" the proxy host. Without "{n}", " {n}" is appended so
@@ -30,12 +31,11 @@ export interface BulkResult {
   duplicates: number;
 }
 
-/** "host:port:user:pass" → a URL the rest of the app understands. Other forms pass through. */
+/** Any proxy form → the URL form the rest of the app stores (scheme kept). Unreadable text passes
+ *  through unchanged, so the caller can still show what was typed. */
 export function normalizeProxyLine(line: string): string {
   const v = line.trim();
-  const m = /^([^\s:/@]+):(\d{1,5}):([^\s:@]+):(.+)$/.exec(v);
-  if (m) return `http://${encodeURIComponent(m[3])}:${encodeURIComponent(m[4])}@${m[1]}:${m[2]}`;
-  return v;
+  return normalizeProxy(v) ?? v;
 }
 
 const slug = (s: string) =>
@@ -64,10 +64,9 @@ export function profilesFromProxyList(
   text.split(/\r?\n/).forEach((rawLine, i) => {
     const line = rawLine.trim();
     if (!line || line.startsWith("#")) return;
-    const proxy = normalizeProxyLine(line);
-    const parsed = parseProxy(proxy);
+    const parsed = parseProxy(line);
     // A bare word parses as "http://word:80"; a real entry names a port or a scheme.
-    if (!parsed || !parsed.host || !/:\d{1,5}(\/|$)|^[a-z0-9+.-]+:\/\//i.test(proxy)) {
+    if (!parsed || !parsed.host || !(parsed.portGiven || parsed.schemeGiven)) {
       invalid.push({ line: i + 1, text: line });
       return;
     }
@@ -89,7 +88,7 @@ export function profilesFromProxyList(
       geoip: opts.geoip,
       // Same default as a profile made in the editor: the Chrome brand needs Google's CDM.
       widevine: true,
-      proxy,
+      proxy: parsed.raw,
       createdAt: now,
       updatedAt: now,
     };
