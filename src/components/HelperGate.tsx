@@ -304,7 +304,9 @@ function ConnectDialog({
 
   return (
     <div
-      className="fixed inset-0 z-50 flex items-start justify-center overflow-y-auto bg-black/60 px-4 py-8 sm:items-center"
+      // items-start + the dialog's my-auto: centred when it fits, and when it is taller than the screen it
+      // starts at the top and scrolls (items-center pushed its top, close button included, out of reach).
+      className="fixed inset-0 z-50 flex items-start justify-center overflow-y-auto bg-black/60 px-4 py-8"
       onClick={onClose}
     >
       <div
@@ -312,7 +314,7 @@ function ConnectDialog({
         aria-modal="true"
         aria-labelledby="connect-title"
         onClick={(e) => e.stopPropagation()}
-        className="relative w-full max-w-[560px] rounded-2xl border border-line bg-surface p-6 text-fog shadow-xl sm:p-8"
+        className="relative my-auto w-full max-w-[560px] rounded-2xl border border-line bg-surface p-5 text-fog shadow-xl sm:p-8"
       >
         <button
           type="button"
@@ -496,7 +498,8 @@ function Copyable({ text }: { text: string }) {
   const [copied, setCopied] = useState(false);
   return (
     <div className="flex items-center gap-2 rounded-lg border border-line bg-ink px-3 py-2">
-      <code className="flex-1 overflow-x-auto whitespace-nowrap font-mono text-[13px] text-fog">
+      {/* Wraps at the spaces on a phone, so the code at the end is never scrolled out of sight. */}
+      <code className="min-w-0 flex-1 whitespace-pre-wrap font-mono text-[13px] text-fog [overflow-wrap:anywhere]">
         {text}
       </code>
       <button
