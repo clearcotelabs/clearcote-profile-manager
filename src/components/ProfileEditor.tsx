@@ -54,8 +54,17 @@ import {
   type FingerprintMeta,
   type Profile,
 } from "@/types/profile";
-import { api, type GeoResult, type HostGpu, type VersionOption } from "@/lib/ipc";
+import { api, isWeb, type GeoResult, type HostGpu, type VersionOption } from "@/lib/ipc";
 import { browserCommandName, hostOs, shortcutLabel, type HostOs } from "@/lib/host";
+import { normalizeProxyLine } from "@/lib/bulkCreate";
+import {
+  protectedSwitches,
+  proxyFromText,
+  proxyLabel,
+  screenSource,
+  withHostScreen,
+  withoutScreen,
+} from "@/lib/quickCreate";
 import CloudFields from "./CloudFields";
 
 const input =
@@ -95,6 +104,8 @@ export interface ProfileEditorProps {
   profile: Profile;
   onChange: (p: Profile) => void;
   onSave: (p: Profile) => void;
+  /** Save, close and launch in one go ("Create & launch"). Absent: the button is not shown. */
+  onSaveAndLaunch?: (p: Profile) => void;
   /** Close request (✕, Esc, backdrop, Cancel). The page asks first when there are unsaved changes. */
   onCancel: () => void;
   /** Differs from what is saved — shown in the footer. */
@@ -114,6 +125,7 @@ export default function ProfileEditor({
   profile,
   onChange,
   onSave,
+  onSaveAndLaunch,
   onCancel,
   dirty,
   initialField,
@@ -145,8 +157,36 @@ export default function ProfileEditor({
    *  select would snap back to the model the moment Custom… was chosen, because the strings
    *  (deliberately left as the starting point for editing) still match it. */
   const [gpuCustom, setGpuCustom] = useState(false);
+  /** A proxy found on the clipboard when a new profile opened — offered, never filled in unasked. */
+  const [clipProxy, setClipProxy] = useState<string | null>(null);
+  const [pasteMsg, setPasteMsg] = useState<string | null>(null);
 
   const panelRef = useRef<HTMLDivElement>(null);
+
+  // A new profile without a proxy looks at the clipboard once: copying a proxy and pressing New is
+  // the usual way in. The desktop app may read it; a web page only reads it silently when the
+  // browser already allows that, so opening the editor never raises a permission prompt.
+  useEffect(() => {
+    if (profile.id || profile.proxy || typeof navigator === "undefined" || !navigator.clipboard?.readText) return;
+    let alive = true;
+    (async () => {
+      try {
+        if (isWeb) {
+          const st = await navigator.permissions?.query({ name: "clipboard-read" as PermissionName });
+          if (st?.state !== "granted") return;
+        }
+        const found = proxyFromText(await navigator.clipboard.readText());
+        if (alive && found) setClipProxy(found);
+      } catch {
+        // No focus, no permission, or no clipboard: the Paste button still works.
+      }
+    })();
+    return () => {
+      alive = false;
+    };
+    // Once, on open.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   // One load on mount. The `alive` flag stops a late resolve from setting state after unmount, and
   // the optional calls tolerate an older preload that predates these channels.
@@ -213,11 +253,43 @@ export default function ProfileEditor({
       if ((e.ctrlKey || e.metaKey) && !e.altKey && e.key.toLowerCase() === "s") {
         e.preventDefault(); // never the browser's "save page as"
         if (canSave && !libOpen) onSave(profile);
+      } else if ((e.ctrlKey || e.metaKey) && !e.altKey && e.key === "Enter" && onSaveAndLaunch) {
+        e.preventDefault();
+        if (canSave && !libOpen) onSaveAndLaunch(profile);
       }
     };
     window.addEventListener("keydown", onKey);
     return () => window.removeEventListener("keydown", onKey);
-  }, [profile, canSave, libOpen, onSave]);
+  }, [profile, canSave, libOpen, onSave, onSaveAndLaunch]);
+
+  /** Store a proxy the way typing one does, including turning geoip on the first time. */
+  function setProxy(next: string | undefined) {
+    // Auto-correct, once: the moment a profile FIRST gains a proxy, turn geoip on so the persona's
+    // region follows the exit rather than the host. Fired on the transition — not on every
+    // keystroke — so unticking geoip afterwards sticks instead of being switched back on under the
+    // user. Legacy profiles that arrive already incoherent are handled by the coherence warning
+    // instead, since silently rewriting a saved profile on open is not ours to do.
+    setClipProxy(null);
+    if (shouldAutoEnableGeoip(profile, next)) {
+      onChange({ ...profile, proxy: next, geoip: true });
+      setAutoGeoip(true);
+      return;
+    }
+    if (!next) setAutoGeoip(false);
+    set("proxy", next);
+  }
+
+  /** The Paste button: a click is the user gesture a web page needs to read the clipboard. */
+  async function pasteProxy() {
+    setPasteMsg(null);
+    try {
+      const found = proxyFromText(await navigator.clipboard.readText());
+      if (found) setProxy(found);
+      else setPasteMsg("The clipboard doesn't hold a proxy address (host:port, with or without a login).");
+    } catch {
+      setPasteMsg("The clipboard can't be read here. Paste into the field with Ctrl+V instead.");
+    }
+  }
 
   async function importFp() {
     setFpMsg(null);
@@ -258,6 +330,28 @@ export default function ProfileEditor({
   const envLines = Object.entries(profileToEnv(profile))
     .map(([k, v]) => `${k}=${v} \\\n`)
     .join("");
+
+  // The switches a proxy adds, said in words — they show in the launch command and get asked about.
+  const protectedList = protectedSwitches(profile);
+  const protectedView = (
+    <ul className="mt-2 flex flex-col gap-2">
+      {protectedList.map((s) => (
+        <li key={s.arg} className="flex items-start gap-2 text-xs">
+          <svg aria-hidden="true" viewBox="0 0 24 24" className="mt-0.5 h-3.5 w-3.5 shrink-0 text-accent" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+            <rect x="4" y="11" width="16" height="10" rx="2" />
+            <path d="M8 11V7a4 4 0 0 1 8 0v4" />
+          </svg>
+          <span className="text-fog/60">
+            <span className="font-medium text-fog">{s.title}.</span> {s.why}{" "}
+            <code className="font-mono text-[10px] text-fog/40">{s.arg}</code>
+          </span>
+        </li>
+      ))}
+    </ul>
+  );
+
+  const host = hostScreen();
+  const screenFrom = screenSource(profile, host);
 
   const results = query.trim() ? searchFields(query) : null;
   const shown = (results ?? fieldsIn(cat)).filter((f) => !f.showWhen || f.showWhen(profile as unknown as Record<string, unknown>));
@@ -608,33 +702,36 @@ export default function ProfileEditor({
           <>
             <div className="flex items-center justify-between">
               {labelFor(f)}
-              {profile.proxy && (
-                <button className={btnGhost + " -mt-1 py-1 text-xs"} onClick={resolveGeo} disabled={resolving}>
-                  {resolving ? "Resolving…" : "Resolve from proxy →"}
-                </button>
-              )}
+              <span className="-mt-1 flex gap-1.5">
+                {!profile.proxy && (
+                  <button type="button" className={btnGhost + " py-1 text-xs"} onClick={pasteProxy} data-proxy-paste="1">
+                    Paste
+                  </button>
+                )}
+                {profile.proxy && (
+                  <button className={btnGhost + " py-1 text-xs"} onClick={resolveGeo} disabled={resolving}>
+                    {resolving ? "Resolving…" : "Resolve from proxy →"}
+                  </button>
+                )}
+              </span>
             </div>
             <input
               className={input + " font-mono"}
               value={proxyString(profile.proxy)}
-              placeholder="http://user:pass@host:8080  ·  socks5://user:pass@host:1080"
-              onChange={(e) => {
-                const next = e.target.value || undefined;
-                // Auto-correct, once: the moment a profile FIRST gains a proxy, turn geoip on so the
-                // persona's region follows the exit rather than the host. Fired on the transition —
-                // not on every keystroke — so unticking geoip afterwards sticks instead of being
-                // switched back on under the user. Legacy profiles that arrive already incoherent
-                // are handled by the coherence warning instead, since silently rewriting a saved
-                // profile on open is not ours to do.
-                if (shouldAutoEnableGeoip(profile, next)) {
-                  onChange({ ...profile, proxy: next, geoip: true });
-                  setAutoGeoip(true);
-                  return;
+              placeholder="http://user:pass@host:8080  ·  socks5://user:pass@host:1080  ·  host:port:user:pass"
+              onPaste={(e) => {
+                // host:port:user:pass, as most proxy vendors hand it out, becomes the URL form the
+                // launcher reads — the same conversion "From proxy list…" does.
+                const text = e.clipboardData.getData("text").trim();
+                const url = normalizeProxyLine(text);
+                if (!e.currentTarget.value && url !== text) {
+                  e.preventDefault();
+                  setProxy(url);
                 }
-                if (!next) setAutoGeoip(false);
-                set("proxy", next);
               }}
+              onChange={(e) => setProxy(e.target.value || undefined)}
             />
+            {pasteMsg && !profile.proxy && <p className="mt-1 text-[11px] text-warn">{pasteMsg}</p>}
             {autoGeoip && profile.geoip && (
               <p className="mt-1 text-[11px] text-accent">
                 geoip switched on — timezone, language and position will follow this proxy&apos;s exit region at
@@ -752,7 +849,35 @@ export default function ProfileEditor({
       i--;
       out.push(
         <div key={"g-" + groupName} className="sm:col-span-2 rounded-lg border border-line/70 bg-ink/30 p-3">
-          <p className="text-[10px] font-medium uppercase tracking-wider text-fog/40">{groupName}</p>
+          <div className="flex items-center justify-between gap-2">
+            <p className="text-[10px] font-medium uppercase tracking-wider text-fog/40">{groupName}</p>
+            {groupName === "Screen dimensions" && (
+              <span className="flex flex-wrap items-center justify-end gap-1.5" data-screen-source={screenFrom}>
+                {screenFrom === "host" && <span className="text-[11px] text-ok">✓ This display</span>}
+                {host && screenFrom !== "host" && (
+                  <button
+                    type="button"
+                    className={btnGhost + " py-1 text-xs"}
+                    onClick={() => onChange(withHostScreen(profile, host))}
+                    title={`Fill all four from this display: ${host.width} × ${host.height}, work area ${host.availWidth} × ${host.availHeight}`}
+                    data-use-display="1"
+                  >
+                    Use this display ({host.width} × {host.height})
+                  </button>
+                )}
+                {screenFrom !== "empty" && (
+                  <button
+                    type="button"
+                    className={btnGhost + " py-1 text-xs"}
+                    onClick={() => onChange(withoutScreen(profile))}
+                    title="Empty all four: the seed or capture brings a screen that agrees with itself"
+                  >
+                    Clear
+                  </button>
+                )}
+              </span>
+            )}
+          </div>
           {note && <p className="mb-3 mt-1 text-[11px] text-fog/40">{note}</p>}
           <div className={"grid grid-cols-1 gap-3 sm:grid-cols-2 " + (note ? "" : "mt-3")}>
             {members.map((m) => renderField(m))}
@@ -882,6 +1007,34 @@ export default function ProfileEditor({
 
             {/* Panel */}
             <div ref={panelRef} className="min-h-0 overflow-y-auto px-5 py-4">
+              {/* Above every category: a new profile opens on Identity, the proxy lives under Network. */}
+              {clipProxy && !profile.proxy && (
+                <div
+                  className="mb-4 flex items-center gap-2 rounded-lg border border-accent/40 bg-accent/10 px-3 py-2 text-xs"
+                  role="status"
+                  data-clip-proxy="1"
+                >
+                  <span className="min-w-0 flex-1 truncate text-fog/80">
+                    Proxy on your clipboard: <span className="font-mono text-fog">{proxyLabel(clipProxy)}</span>
+                  </span>
+                  <button
+                    type="button"
+                    className="rounded-md bg-accent px-2.5 py-1 font-semibold text-ink"
+                    onClick={() => setProxy(clipProxy)}
+                  >
+                    Use it
+                  </button>
+                  <button type="button" className="text-fog/50 hover:text-fog" onClick={() => setClipProxy(null)}>
+                    Dismiss
+                  </button>
+                </div>
+              )}
+              {cat === "network" && !results && protectedList.length > 0 && (
+                <div className="mb-4 rounded-lg border border-line/70 bg-ink/30 p-3" data-protected="1">
+                  <p className="text-[10px] font-medium uppercase tracking-wider text-fog/40">Always on while a proxy is set</p>
+                  {protectedView}
+                </div>
+              )}
               {results ? (
                 <>
                   <h3 className="text-[15px] font-semibold">
@@ -929,7 +1082,24 @@ export default function ProfileEditor({
               >
                 Save profile
               </button>
+              {onSaveAndLaunch && (
+                <button
+                  className="whitespace-nowrap rounded-lg border border-accent/60 px-4 py-1.5 text-sm font-semibold text-accent hover:bg-accent/10 disabled:opacity-40"
+                  disabled={!canSave}
+                  onClick={() => onSaveAndLaunch(profile)}
+                  title={`${profile.id ? "Save" : "Create"} and launch (${shortcutLabel("Enter", hostPlatform())})`}
+                  data-save-launch="1"
+                >
+                  {profile.id ? "Save & launch" : "Create & launch"}
+                </button>
+              )}
             </div>
+            {prevOpen && protectedList.length > 0 && (
+              <div className="px-5 pb-2" data-protected-launch="1">
+                <p className="text-[10px] font-medium uppercase tracking-wider text-fog/40">Added because a proxy is set</p>
+                {protectedView}
+              </div>
+            )}
             {prevOpen && (
               <pre className="max-h-28 overflow-auto px-5 pb-3 font-mono text-[11px] leading-relaxed text-fog/60">
                 {envLines}

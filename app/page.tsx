@@ -332,12 +332,19 @@ function Manager() {
     return () => window.removeEventListener("beforeunload", h);
   }, [editorDirty]);
 
-  async function save(p: Profile) {
+  async function save(p: Profile): Promise<Profile> {
     const id = p.id || `${slugify(p.name) || "profile"}-${randomSeed().slice(0, 4)}`;
     const saved = await api.profiles.save({ ...p, id });
     closeEditorNow();
     await refresh();
     notify(`Saved “${displayName(saved)}”.`);
+    return saved;
+  }
+
+  /** "Create & launch": the saved copy is what launches, as the web version's helper only launches
+   *  stored profiles. */
+  async function saveAndLaunch(p: Profile) {
+    await launch(await save(p));
   }
 
   function duplicate(p: Profile) {
@@ -1160,6 +1167,7 @@ function Manager() {
           profile={editing}
           onChange={setEditing}
           onSave={save}
+          onSaveAndLaunch={saveAndLaunch}
           onCancel={closeEditor}
           dirty={editorDirty}
           initialField={editingField}
