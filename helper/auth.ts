@@ -5,7 +5,8 @@
 //      that points its own domain at 127.0.0.1 (DNS rebinding) sends its own name here and is refused.
 //   2. Origin: the page is one of ALLOWED_ORIGINS. Browsers set Origin themselves; a page cannot fake it.
 //   3. Token: the page was paired. Pairing needs the person at the keyboard to press Approve on the
-//      helper's own page (http://127.0.0.1:<port>), which no website can read or click.
+//      helper's own page (http://127.0.0.1:<port>), which no website can read or click, or to have
+//      started the helper with the code the page shows (`clearcote connect CODE`, Pairings.allowCode).
 // A token is tied to the site that paired it, kept only as a SHA-256 hash, and revocable on that page.
 
 import crypto from "node:crypto";
@@ -154,12 +155,59 @@ export function pairingCode(): string {
 
 export const PAIRING_TTL_MS = 2 * 60_000;
 
+/** "4f7 k2q" -> "4F7K2Q"; null for anything that cannot be a pairing code. */
+export function normalizeCode(code: string): string | null {
+  const c = String(code || "").toUpperCase().replace(/[\s-]/g, "");
+  if (c.length !== 6) return null;
+  for (const ch of c) if (!CODE_ALPHABET.includes(ch)) return null;
+  return c;
+}
+
+/** How long a code given on the command line (`clearcote connect CODE`) stays good. */
+export const COMMAND_CODE_TTL_MS = 10 * 60_000;
+/** Wrong codes sent before the command-line code is thrown away. */
+const COMMAND_CODE_TRIES = 5;
+
 export class Pairings {
   private all = new Map<string, Pairing>();
+  private command: { code: string; until: number; tries: number } | null = null;
   constructor(private now: () => number = Date.now) {}
 
-  /** A new request from `origin`. One open request per site: a new one replaces the old. */
-  start(origin: string, name: string): Pairing {
+  /**
+   * The person typed this code into their own terminal (`clearcote connect 4F7-K2Q`), copied from the
+   * web page that shows it. That is the approval: the page that sends the same code is paired without
+   * the approval page. Good for one pairing, for 10 minutes, and gone after 5 wrong codes.
+   */
+  allowCode(code: string): boolean {
+    const c = normalizeCode(code);
+    this.command = c ? { code: c, until: this.now() + COMMAND_CODE_TTL_MS, tries: 0 } : null;
+    return !!c;
+  }
+
+  /** True once, for the command-line code. */
+  private takeCode(code: string | undefined): boolean {
+    const want = this.command;
+    if (!want || code === undefined) return false;
+    if (this.now() > want.until) {
+      this.command = null;
+      return false;
+    }
+    const got = normalizeCode(code);
+    const a = Buffer.from(got ?? "");
+    const b = Buffer.from(want.code);
+    if (a.length === b.length && crypto.timingSafeEqual(a, b)) {
+      this.command = null;
+      return true;
+    }
+    if (++want.tries >= COMMAND_CODE_TRIES) this.command = null;
+    return false;
+  }
+
+  /**
+   * A new request from `origin`. One open request per site: a new one replaces the old. With the code
+   * from the command line it comes back already approved (`issue` makes its token).
+   */
+  start(origin: string, name: string, code?: string, issue?: (p: Pairing) => string): Pairing {
     this.sweep();
     for (const p of this.all.values()) if (p.origin === origin && p.status === "pending") p.status = "expired";
     const p: Pairing = {
@@ -171,6 +219,11 @@ export class Pairings {
       createdAt: this.now(),
       status: "pending",
     };
+    if (issue && this.takeCode(code)) {
+      p.code = normalizeCode(code!)!.replace(/^(...)/, "$1-");
+      p.status = "approved";
+      p.token = issue(p);
+    }
     this.all.set(p.id, p);
     return p;
   }

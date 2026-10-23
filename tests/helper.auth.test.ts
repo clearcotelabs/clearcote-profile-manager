@@ -13,7 +13,9 @@ import {
   TokenStore,
   Pairings,
   pairingCode,
+  normalizeCode,
   PAIRING_TTL_MS,
+  COMMAND_CODE_TTL_MS,
 } from "../helper/auth";
 
 const TMP = fs.mkdtempSync(path.join(os.tmpdir(), "ccpm-helper-auth-"));
@@ -180,5 +182,57 @@ describe("Pairings", () => {
     expect(p.decide(r.id, false, () => (issued++, "t"))?.status).toBe("denied");
     expect(issued).toBe(0);
     expect(p.collect(r.id, r.secret)).toEqual({ status: "denied" });
+  });
+});
+
+describe("the code from the command line (clearcote connect CODE)", () => {
+  const A = "https://app.clearcotelabs.com";
+  const B = "https://www.clearcotelabs.com";
+  const issue = () => "cch_test";
+
+  it("normalizes the way people type it", () => {
+    expect(normalizeCode("4f7-k2q")).toBe("4F7K2Q");
+    expect(normalizeCode(" 4F7 K2Q ")).toBe("4F7K2Q");
+    for (const bad of ["", "4F7-K2", "4F7-K2QQ", "4F0-K2Q", "4F7-K1Q", "4F7_K2Q", "ABC-DEI"]) expect(normalizeCode(bad)).toBeNull();
+  });
+
+  it("refuses a code the page could never show", () => {
+    expect(new Pairings().allowCode("hello")).toBe(false);
+  });
+
+  it("pairs the page that sends it at once, once", () => {
+    const p = new Pairings();
+    expect(p.allowCode("4f7-k2q")).toBe(true);
+    const r = p.start(A, "Chrome on Windows", "4F7K2Q", issue);
+    expect(r.status).toBe("approved");
+    expect(r.code).toBe("4F7-K2Q");
+    expect(p.pending()).toEqual([]);
+    expect(p.collect(r.id, r.secret)).toEqual({ status: "approved", token: "cch_test" });
+    // Used up: the next request with it waits for the approval page like any other.
+    expect(p.start(B, "x", "4F7-K2Q", issue).status).toBe("pending");
+  });
+
+  it("without the code, or without a code given, nothing changes", () => {
+    const p = new Pairings();
+    expect(p.start(A, "x", "4F7-K2Q", issue).status).toBe("pending");
+    p.allowCode("4F7-K2Q");
+    expect(p.start(A, "x", undefined, issue).status).toBe("pending");
+    expect(p.start(A, "x", "4F7-K2Q").status).toBe("pending"); // no issue(): the old call
+    expect(p.start(A, "x", "4F7-K2Q", issue).status).toBe("approved");
+  });
+
+  it("is thrown away after 5 wrong codes", () => {
+    const p = new Pairings();
+    p.allowCode("4F7-K2Q");
+    for (let i = 0; i < 5; i++) expect(p.start(A, "x", "222-222", issue).status).toBe("pending");
+    expect(p.start(A, "x", "4F7-K2Q", issue).status).toBe("pending");
+  });
+
+  it("expires after 10 minutes", () => {
+    let now = 5_000_000;
+    const p = new Pairings(() => now);
+    p.allowCode("4F7-K2Q");
+    now += COMMAND_CODE_TTL_MS + 1;
+    expect(p.start(A, "x", "4F7-K2Q", issue).status).toBe("pending");
   });
 });

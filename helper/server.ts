@@ -15,6 +15,8 @@ import { statusPage, pairPage } from "./pages";
 
 export interface ServerOptions {
   port: number;
+  /** The code from `--pair-code` / CLEARCOTE_HELPER_PAIR_CODE: the page showing it pairs without the approval page. */
+  pairCode?: string;
   version: string;
   handlers: Record<string, Handler>;
   tokens: TokenStore;
@@ -42,6 +44,7 @@ export interface Activity {
 export function createServer(opts: ServerOptions) {
   const origins = allowedOrigins(opts.extraOrigins);
   const pairings = new Pairings();
+  if (opts.pairCode && !pairings.allowCode(opts.pairCode)) opts.log(`Ignored the pairing code "${opts.pairCode}": it is not a code the web page shows.`);
   const localSecret = crypto.randomBytes(24).toString("base64url");
   const streams = new Set<http.ServerResponse>();
   const activity: Activity[] = [];
@@ -105,15 +108,22 @@ export function createServer(opts: ServerOptions) {
     if (url.pathname === "/v1/pair" && req.method === "POST") {
       if (!isJson(req)) return json(res, 415, { error: "JSON only" }, h);
       let name = "A browser";
+      let code: string | undefined;
       try {
-        name = String(JSON.parse(await readBody(req))?.name || name);
+        const body = JSON.parse(await readBody(req));
+        name = String(body?.name || name);
+        if (typeof body?.code === "string") code = body.code;
       } catch {
         /* default name */
       }
-      const p = pairings.start(origin, name);
-      note(origin, `asked to pair (code ${p.code})`);
-      opts.onPairRequest(p, `${selfUrl}/pair/${p.id}`);
-      return json(res, 200, { id: p.id, code: p.code, secret: p.secret, approveUrl: `${selfUrl}/pair/${p.id}` }, h);
+      const p = pairings.start(origin, name, code, (pp) => opts.tokens.issue(pp.origin, pp.name));
+      if (p.status === "approved") {
+        note(origin, `paired as “${p.name}” (code ${p.code}, from the command line)`);
+      } else {
+        note(origin, `asked to pair (code ${p.code})`);
+        opts.onPairRequest(p, `${selfUrl}/pair/${p.id}`);
+      }
+      return json(res, 200, { id: p.id, code: p.code, secret: p.secret, approveUrl: `${selfUrl}/pair/${p.id}`, status: p.status }, h);
     }
 
     const pairMatch = url.pathname.match(/^\/v1\/pair\/([A-Za-z0-9_-]{8,64})$/);
