@@ -21,6 +21,20 @@ import ShortcutsDialog from "@/components/ShortcutsDialog";
 import UpdateBanner from "@/components/UpdateBanner";
 import ExportDialog from "@/components/ExportDialog";
 import BulkCreateDialog from "@/components/BulkCreateDialog";
+import Menu from "@/components/Menu";
+import { ManageTemplatesDialog, SaveTemplateDialog } from "@/components/TemplateDialogs";
+import {
+  describeTemplate,
+  markUsed,
+  nextNumber,
+  profileFromTemplate,
+  readTemplates,
+  sortTemplates,
+  templateFromProfile,
+  upsertTemplate,
+  type ProfileTemplate,
+} from "@/lib/templates";
+import type { HostGpuVendor } from "@/lib/gpuPicker";
 import PromptDialog from "@/components/PromptDialog";
 import GroupHeader from "@/components/GroupHeader";
 import { fmtSize } from "@/components/StorageSection";
@@ -163,6 +177,12 @@ function Manager() {
   const [shortcutsOpen, setShortcutsOpen] = useState(false);
   const [exportReq, setExportReq] = useState<{ ids?: string[]; single?: string; count: number } | null>(null);
   const [bulkCreateOpen, setBulkCreateOpen] = useState(false);
+  // Templates: the profile being saved as one, the manage dialog, and the template the open editor
+  // was started from (its use is counted when that profile is saved).
+  const [saveTplFor, setSaveTplFor] = useState<Profile | null>(null);
+  const [manageTplOpen, setManageTplOpen] = useState(false);
+  const [editingFrom, setEditingFrom] = useState<ProfileTemplate | null>(null);
+  const [hostVendor, setHostVendor] = useState<HostGpuVendor>("unknown");
   const [prompt, setPrompt] = useState<PromptKind | null>(null);
   // A launch error or warning stays on its card until dismissed or the next launch of that profile.
   const [notices, setNotices] = useState<Record<string, LaunchNotice>>({});
@@ -208,6 +228,8 @@ function Manager() {
     setCollapsed(loadList(COLLAPSED_KEY));
     refresh();
     refreshTarget();
+    // The GPU maker of this computer, for templates that give every profile a new random GPU.
+    api.hostGpu?.().then((g) => g && setHostVendor(g.vendor)).catch(() => {});
     api.settings.get().then((s) => {
       setSettings(s);
       // Just paired (web version) and no key yet: offer the account sign-in now, and start it when that
@@ -306,6 +328,7 @@ function Manager() {
     setEditing(null);
     setEditingInitial(null);
     setEditingField(undefined);
+    setEditingFrom(null);
   }
   async function closeEditor() {
     if (editorDirty) {
@@ -334,11 +357,43 @@ function Manager() {
 
   async function save(p: Profile): Promise<Profile> {
     const id = p.id || `${slugify(p.name) || "profile"}-${randomSeed().slice(0, 4)}`;
+    const from = !p.id ? editingFrom : null;
     const saved = await api.profiles.save({ ...p, id });
     closeEditorNow();
     await refresh();
+    if (from) await saveTemplates(markUsed(templates, from.id, new Date().toISOString()));
     notify(`Saved “${displayName(saved)}”.`);
     return saved;
+  }
+
+  // ── Templates ─────────────────────────────────────────────────────────────
+  const templates = useMemo(() => sortTemplates(readTemplates(settings.templates)), [settings.templates]);
+  // The latest settings, so two quick template changes never write from a stale copy.
+  const settingsRef = useRef(settings);
+  settingsRef.current = settings;
+  async function saveTemplates(list: ProfileTemplate[]) {
+    const next = { ...settingsRef.current, templates: list };
+    settingsRef.current = next;
+    setSettings(next);
+    setSettings(await api.settings.set(next));
+  }
+  async function saveAsTemplate(p: Profile, choice: { name: string; proxy: ProfileTemplate["proxy"]; gpu: ProfileTemplate["gpu"] }) {
+    const now = new Date().toISOString();
+    const replacing = templates.some((t) => t.name.trim().toLowerCase() === choice.name.trim().toLowerCase());
+    await saveTemplates(upsertTemplate(templates, templateFromProfile(p, choice, now, `tpl-${randomSeed()}`), now));
+    setSaveTplFor(null);
+    notify(`${replacing ? "Replaced" : "Saved"} the template “${choice.name.trim()}”. Use it from the ▾ next to New profile.`);
+  }
+  /** Open the editor on a new profile made from a template — on the proxy, when it asks for one. */
+  function newFromTemplate(t: ProfileTemplate) {
+    const p = profileFromTemplate(t, {
+      seed: randomSeed(),
+      now: new Date().toISOString(),
+      number: nextNumber(t, profiles.map((x) => x.name)),
+      hostVendor,
+    });
+    openEditor(p, t.proxy === "ask" ? "proxy" : undefined);
+    setEditingFrom(t);
   }
 
   /** "Create & launch": the saved copy is what launches, as the web version's helper only launches
@@ -563,11 +618,12 @@ function Manager() {
       notify(`Import failed: ${r.error}`, { tone: "error" });
     }
   }
-  async function createMany(list: Profile[]) {
+  async function createMany(list: Profile[], template?: ProfileTemplate) {
     for (const p of list) await api.profiles.save(p);
     setBulkCreateOpen(false);
     await refresh();
-    notify(`Created ${list.length} profile${list.length === 1 ? "" : "s"}.`);
+    if (template && list.length) await saveTemplates(markUsed(templates, template.id, new Date().toISOString(), list.length));
+    notify(`Created ${list.length} profile${list.length === 1 ? "" : "s"}${template ? ` from “${template.name}”` : ""}.`);
   }
   async function openData(p: Profile) {
     const r = await api.profiles.openData(p.id);
@@ -776,15 +832,20 @@ function Manager() {
   // ── Keyboard ──────────────────────────────────────────────────────────────
   // Page-level shortcuts stand down while any dialog is open, and single keys never fire while
   // typing in a field.
-  const kb = useRef({ visibleIds, selectedCount: selected.size, filtering });
-  kb.current = { visibleIds, selectedCount: selected.size, filtering };
+  // The most recently used template, for Ctrl+Shift+N (read through the ref, like the rest).
+  const newFromLast = () => (templates[0] ? newFromTemplate(templates[0]) : setManageTplOpen(true));
+  const kb = useRef({ visibleIds, selectedCount: selected.size, filtering, newFromLast });
+  kb.current = { visibleIds, selectedCount: selected.size, filtering, newFromLast };
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
       if (dialogOpen() || e.defaultPrevented) return;
       const mod = e.ctrlKey || e.metaKey;
       const k = e.key.toLowerCase();
       const typing = isTyping(e.target);
-      if (mod && !e.altKey && k === "n") {
+      if (mod && !e.altKey && e.shiftKey && k === "n") {
+        e.preventDefault();
+        kb.current.newFromLast();
+      } else if (mod && !e.altKey && k === "n") {
         e.preventDefault();
         openEditor(freshProfile());
       } else if (mod && !e.altKey && k === "f") {
@@ -893,13 +954,40 @@ function Manager() {
             <button className={btnGhost} onClick={() => setSettingsOpen("general")} title={`Settings (${shortcutLabel(",", host)})`}>
               Settings
             </button>
-            <button
-              className="rounded-lg bg-sheen px-3.5 py-1.5 text-xs font-semibold text-[#07080a] shadow-[0_0_20px_-6px_rgba(56,224,214,0.6)] hover:opacity-95 transition"
-              onClick={() => openEditor(freshProfile())}
-              title={`New profile (${shortcutLabel("N", host)})`}
-            >
-              + New profile
-            </button>
+            <div className="flex shadow-[0_0_20px_-6px_rgba(56,224,214,0.6)]" data-new-split="1">
+              <button
+                className="rounded-l-lg bg-sheen px-3.5 py-1.5 text-xs font-semibold text-[#07080a] hover:opacity-95 transition"
+                onClick={() => openEditor(freshProfile())}
+                title={`New profile (${shortcutLabel("N", host)})`}
+              >
+                + New profile
+              </button>
+              <Menu
+                label="New from a template"
+                trigger="▾"
+                triggerClassName="h-full rounded-r-lg border-l border-[#07080a]/25 bg-sheen px-2 py-1.5 text-xs font-bold text-[#07080a] hover:opacity-95 transition"
+                items={[
+                  ...(templates.length
+                    ? templates.slice(0, 12).map((t, i) => ({
+                        label: t.name,
+                        hint: describeTemplate(t),
+                        shortcut: i === 0 ? shortcutLabel("Shift+N", host) : undefined,
+                        onSelect: () => newFromTemplate(t),
+                      }))
+                    : [
+                        {
+                          label: "No templates yet",
+                          hint: "Open ⋯ on any profile and choose Save as template",
+                          disabled: true,
+                          onSelect: () => {},
+                        },
+                      ]),
+                  "separator" as const,
+                  { label: "From proxy list…", onSelect: () => setBulkCreateOpen(true) },
+                  { label: "Manage templates…", onSelect: () => setManageTplOpen(true) },
+                ]}
+              />
+            </div>
           </div>
         </header>
 
@@ -1104,6 +1192,7 @@ function Manager() {
                         onCloudOpen={() => void cloudOpen(p)}
                         onEdit={(field) => openEditor(p, field)}
                         onDuplicate={() => duplicate(p)}
+                        onSaveTemplate={() => setSaveTplFor(p)}
                         onDelete={() => remove(p)}
                         onExport={() => openExport([p.id])}
                         onOpenData={() => openData(p)}
@@ -1174,6 +1263,7 @@ function Manager() {
           takenNames={takenNames}
           renderLibrary={(onApply, onClose) => <LibraryModal onApply={onApply} onClose={onClose} />}
           launchTarget={target}
+          fromTemplate={editingFrom ? { name: editingFrom.name, detail: describeTemplate({ ...editingFrom, usedCount: 0 }) } : undefined}
         />
       )}
       {settingsOpen && (
@@ -1207,9 +1297,31 @@ function Manager() {
       {bulkCreateOpen && (
         <BulkCreateDialog
           existingIds={profiles.map((p) => p.id)}
+          existingNames={profiles.map((p) => p.name)}
           groups={groupNames}
+          templates={templates}
+          hostVendor={hostVendor}
           onCreate={createMany}
           onClose={() => setBulkCreateOpen(false)}
+        />
+      )}
+      {saveTplFor && (
+        <SaveTemplateDialog
+          profile={saveTplFor}
+          templates={templates}
+          onSave={(choice) => saveAsTemplate(saveTplFor, choice)}
+          onClose={() => setSaveTplFor(null)}
+        />
+      )}
+      {manageTplOpen && (
+        <ManageTemplatesDialog
+          templates={templates}
+          onSave={async (next) => {
+            await saveTemplates(next);
+            setManageTplOpen(false);
+            notify("Templates saved.");
+          }}
+          onClose={() => setManageTplOpen(false)}
         />
       )}
       {prompt?.kind === "set-group" && (

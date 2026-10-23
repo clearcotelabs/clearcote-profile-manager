@@ -5,6 +5,7 @@
 
 import { redactProxyString, screenWarningFromLabel, type Profile } from "@/types/profile";
 import type { LaunchTarget } from "@/lib/launchTarget";
+import type { ProfileTemplate } from "@/lib/templates";
 import { buildHelperApi, helper } from "@/lib/helperBridge";
 import { buildPreviewApi, seedExamples, switchable } from "@/lib/webPreview";
 
@@ -114,6 +115,8 @@ export interface Settings {
   /** The account's API key (`cc_live_...`) for running profiles in the cloud. Not the licence key. */
   cloudApiKey?: string;
   cloudApiBase?: string;
+  /** Profile templates (src/lib/templates.ts): starting points for new profiles. */
+  templates?: ProfileTemplate[];
 }
 export interface LaunchResult {
   ok: boolean;

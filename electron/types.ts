@@ -239,6 +239,8 @@ export interface Settings {
   cloudApiKey?: string;
   /** Override the cloud API address (default https://www.clearcotelabs.com; CLEARCOTE_API_URL wins). */
   cloudApiBase?: string;
+  /** Profile templates — owned by the renderer (src/lib/templates.ts), stored here as given. */
+  templates?: Record<string, unknown>[];
 }
 
 export interface LaunchResult {

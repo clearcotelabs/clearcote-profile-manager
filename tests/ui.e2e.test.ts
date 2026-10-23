@@ -373,6 +373,8 @@ describe.skipIf(!READY)("usability pass — in a real browser", () => {
     await page.keyboard.press("ArrowDown");
     expect(await page.evaluate(() => document.activeElement?.textContent)).toBe("Duplicate");
     await page.keyboard.press("ArrowDown");
+    expect(await page.evaluate(() => document.activeElement?.textContent)).toBe("Save as template…");
+    await page.keyboard.press("ArrowDown");
     expect(await page.evaluate(() => document.activeElement?.textContent)).toBe("Export…");
     await page.keyboard.press("Escape");
     expect(await page.getByRole("menu").count()).toBe(0);

@@ -9,6 +9,7 @@ const GROUPS: { title: string; keys: [string, string][] }[] = [
     title: "Anywhere",
     keys: [
       ["Ctrl N", "New profile"],
+      ["Ctrl Shift N", "New profile from the last-used template"],
       ["Ctrl F  or  /", "Search profiles"],
       ["Ctrl ,", "Settings"],
       ["Ctrl A", "Select every profile shown"],

@@ -36,6 +36,8 @@ export interface CardProps {
   onCloudOpen: () => void;
   onEdit: (field?: string) => void;
   onDuplicate: () => void;
+  /** Save this profile's settings as a template for new profiles. */
+  onSaveTemplate: () => void;
   onDelete: () => void;
   onExport: () => void;
   onOpenData: () => void;
@@ -338,6 +340,7 @@ export default function ProfileCard(props: CardProps) {
                 ? [{ label: "Run in the cloud", onSelect: props.onCloudStart }, "separator" as const]
                 : []),
             { label: "Duplicate", onSelect: props.onDuplicate },
+            { label: "Save as template…", onSelect: props.onSaveTemplate },
             { label: "Export…", onSelect: props.onExport },
             { label: "Open data folder", onSelect: props.onOpenData },
             ...(p.proxy ? [{ label: "Check proxy location", onSelect: props.onCheckGeo }] : []),

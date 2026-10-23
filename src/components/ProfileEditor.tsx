@@ -119,6 +119,8 @@ export interface ProfileEditorProps {
   /** What "Latest" launches for this licence, and whether an explicit binary overrides every
    *  version (the header pill's target). Tells the revision-gated rules which build runs. */
   launchTarget?: LaunchTarget | null;
+  /** The template this new profile was started from, said above the panel. */
+  fromTemplate?: { name: string; detail: string };
 }
 
 export default function ProfileEditor({
@@ -132,6 +134,7 @@ export default function ProfileEditor({
   takenNames = [],
   renderLibrary,
   launchTarget,
+  fromTemplate,
 }: ProfileEditorProps) {
   const titleId = useId();
   const [cat, setCat] = useState<CategoryId>("identity");
@@ -1007,6 +1010,15 @@ export default function ProfileEditor({
 
             {/* Panel */}
             <div ref={panelRef} className="min-h-0 overflow-y-auto px-5 py-4">
+              {fromTemplate && !profile.id && (
+                <p
+                  className="mb-3 rounded-lg border border-iris/40 bg-iris/10 px-3 py-2 text-xs text-fog/80"
+                  role="status"
+                  data-from-template={fromTemplate.name}
+                >
+                  From template <span className="font-semibold text-fog">{fromTemplate.name}</span> · new seed · {fromTemplate.detail}
+                </p>
+              )}
               {/* Above every category: a new profile opens on Identity, the proxy lives under Network. */}
               {clipProxy && !profile.proxy && (
                 <div

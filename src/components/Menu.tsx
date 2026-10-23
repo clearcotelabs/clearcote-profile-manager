@@ -23,6 +23,8 @@ export default function Menu({
   items,
   quiet = false,
   align = "right",
+  trigger,
+  triggerClassName,
 }: {
   label: string;
   items: (MenuItem | "separator")[];
@@ -30,6 +32,9 @@ export default function Menu({
   quiet?: boolean;
   /** Which edge of the trigger the menu lines up with — "left" near the page's left edge. */
   align?: "left" | "right";
+  /** What the trigger shows instead of ⋯, and its classes (a split button's arrow, say). */
+  trigger?: React.ReactNode;
+  triggerClassName?: string;
 }) {
   const [open, setOpen] = useState(false);
   const [up, setUp] = useState(false);
@@ -90,9 +95,10 @@ export default function Menu({
       <button
         ref={btnRef}
         className={
-          quiet
+          triggerClassName ??
+          (quiet
             ? "rounded-md px-1.5 py-0.5 text-xs text-fog/35 transition hover:bg-elevate hover:text-fog"
-            : "rounded-lg border border-line px-2.5 py-1.5 text-xs font-medium text-fog/70 transition hover:bg-elevate hover:text-fog"
+            : "rounded-lg border border-line px-2.5 py-1.5 text-xs font-medium text-fog/70 transition hover:bg-elevate hover:text-fog")
         }
         aria-label={label}
         title={label}
@@ -107,7 +113,7 @@ export default function Menu({
           }
         }}
       >
-        ⋯
+        {trigger ?? "⋯"}
       </button>
       {open && (
         <div

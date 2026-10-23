@@ -6,6 +6,8 @@
 import { useId, useMemo, useRef, useState } from "react";
 import Dialog, { DialogHeader } from "./Dialog";
 import { profilesFromProxyList } from "@/lib/bulkCreate";
+import { applyTemplate, describeTemplate, nextNumber, type ProfileTemplate } from "@/lib/templates";
+import type { HostGpuVendor } from "@/lib/gpuPicker";
 import { defaultPersonaPlatform, hostOs } from "@/lib/host";
 import type { Platform, Profile } from "@/types/profile";
 
@@ -15,17 +17,25 @@ const label = "block text-[11px] font-medium uppercase tracking-wide text-fog/45
 
 export default function BulkCreateDialog({
   existingIds,
+  existingNames = [],
   groups,
+  templates = [],
+  hostVendor = "unknown",
   onCreate,
   onClose,
 }: {
   existingIds: string[];
+  /** Profile names already taken — a template's numbering continues after them. */
+  existingNames?: string[];
   groups: string[];
-  onCreate: (profiles: Profile[]) => Promise<void> | void;
+  /** Profile templates; picking one gives every profile its settings. */
+  templates?: ProfileTemplate[];
+  hostVendor?: HostGpuVendor;
+  onCreate: (profiles: Profile[], template?: ProfileTemplate) => Promise<void> | void;
   onClose: () => void;
 }) {
   const titleId = useId();
-  const ids = { list: useId(), name: useId(), group: useId(), tags: useId(), platform: useId(), geo: useId(), groups: useId() };
+  const ids = { list: useId(), name: useId(), group: useId(), tags: useId(), platform: useId(), geo: useId(), groups: useId(), tpl: useId() };
   const listRef = useRef<HTMLTextAreaElement>(null);
   const [text, setText] = useState("");
   const [namePattern, setNamePattern] = useState("Profile {n}");
@@ -34,24 +44,37 @@ export default function BulkCreateDialog({
   const [platform, setPlatform] = useState<Platform>(() => defaultPersonaPlatform(hostOs()));
   const [geoip, setGeoip] = useState(true);
   const [busy, setBusy] = useState(false);
+  const [tplId, setTplId] = useState("");
+  const tpl = templates.find((t) => t.id === tplId);
+
+  /** Picking a template names the profiles after it, numbered on from the ones already there. */
+  function pickTemplate(id: string) {
+    setTplId(id);
+    const t = templates.find((x) => x.id === id);
+    if (t) setNamePattern(`${t.name} {n}`);
+    else setNamePattern("Profile {n}");
+  }
+  const startAt = tpl && namePattern.trim() === `${tpl.name} {n}` ? nextNumber(tpl, existingNames) : undefined;
+  // With a template: its settings under each listed profile's own name, seed and proxy.
+  const build = (list: Profile[]) => (tpl ? list.map((p) => applyTemplate(p, tpl, { hostVendor })) : list);
 
   // Suffix and seed are stable per render so the preview names don't flicker; the real ids are
   // generated again on create.
   const preview = useMemo(
     () =>
-      profilesFromProxyList(text, { namePattern, group, tags: tags.split(","), platform, geoip }, existingIds, {
+      profilesFromProxyList(text, { namePattern, group, tags: tags.split(","), platform, geoip, startAt }, existingIds, {
         seed: () => "preview",
         suffix: () => "xxxx",
       }),
-    [text, namePattern, group, tags, platform, geoip, existingIds],
+    [text, namePattern, group, tags, platform, geoip, existingIds, startAt],
   );
 
   async function create() {
-    const real = profilesFromProxyList(text, { namePattern, group, tags: tags.split(","), platform, geoip }, existingIds);
+    const real = profilesFromProxyList(text, { namePattern, group, tags: tags.split(","), platform, geoip, startAt }, existingIds);
     if (!real.profiles.length) return;
     setBusy(true);
     try {
-      await onCreate(real.profiles);
+      await onCreate(build(real.profiles), tpl);
     } finally {
       setBusy(false);
     }
@@ -62,6 +85,26 @@ export default function BulkCreateDialog({
     <Dialog onClose={onClose} labelledBy={titleId} className="max-h-[720px] max-w-2xl" initialFocus={listRef}>
       <DialogHeader id={titleId} title="Create profiles from a proxy list" onClose={onClose} />
       <div className="min-h-0 flex-1 overflow-y-auto px-5 py-4">
+        {templates.length > 0 && (
+          <div className="mb-4">
+            <label htmlFor={ids.tpl} className={label}>
+              Template
+            </label>
+            <select id={ids.tpl} className={input} value={tplId} onChange={(e) => pickTemplate(e.target.value)} data-bulk-template="1">
+              <option value="">None — default settings</option>
+              {templates.map((t) => (
+                <option key={t.id} value={t.id}>
+                  {t.name} · {describeTemplate({ ...t, usedCount: 0 })}
+                </option>
+              ))}
+            </select>
+            <p className="mt-1 text-[11px] text-fog/40">
+              {tpl
+                ? "Every profile copies the template's settings with its own seed and the proxy from its line. Group and tags below override the template's."
+                : "Pick one to give every profile the settings of a template."}
+            </p>
+          </div>
+        )}
         <label htmlFor={ids.list} className={label}>
           Proxies — one per line
         </label>
@@ -119,7 +162,14 @@ export default function BulkCreateDialog({
             <label htmlFor={ids.platform} className={label}>
               Platform
             </label>
-            <select id={ids.platform} className={input} value={platform} onChange={(e) => setPlatform(e.target.value as Platform)}>
+            <select
+              id={ids.platform}
+              className={input + (tpl ? " opacity-40" : "")}
+              value={tpl?.base.platform ?? platform}
+              disabled={!!tpl}
+              title={tpl ? "From the template" : undefined}
+              onChange={(e) => setPlatform(e.target.value as Platform)}
+            >
               <option value="windows">Windows</option>
               <option value="linux">Linux</option>
               <option value="macos">macOS</option>
