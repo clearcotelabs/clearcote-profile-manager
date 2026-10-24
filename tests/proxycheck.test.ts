@@ -169,3 +169,40 @@ describe("when the place is not known", () => {
     expect(launchReport({ proxy: "http://h:1", geoip: false }, "D", { ip: "81.2.3.4", at: "x", proxy: "p" })).toBe("Launched “D” · exits at 81.2.3.4.");
   });
 });
+
+// CR-LYJSFW: Check reports a fresh exit; the profile may still hold an older one as its WebRTC IP.
+describe("Check against the stored WebRTC IP", () => {
+  const geo = { ok: true, ip: "62.198.28.61", country: "Denmark", city: "Højby" };
+  const resolvedEarlier = { webrtcIp: "87.50.91.122", lastGeo: { ip: "87.50.91.122", at: "x", proxy: "p" } };
+
+  it("a resolved WebRTC IP that the exit has moved away from: still ok, and says a launch refreshes it", () => {
+    const d = describeCheck({ ok: true, ms: 500, geo, udp: "works" }, resolvedEarlier);
+    expect(d.tone).toBe("ok");
+    expect(d.lines[2]).toContain("has moved since “Resolve from proxy” stored 87.50.91.122");
+    expect(d.lines[2]).toContain("will report 62.198.28.61");
+  });
+
+  it("a typed WebRTC IP that is not the exit: a warning, with both addresses and the way out", () => {
+    const d = describeCheck({ ok: true, ms: 500, geo }, { webrtcIp: "203.0.113.9" });
+    expect(d.tone).toBe("warn");
+    expect(d.lines[1]).toContain("HTTP from 62.198.28.61 and WebRTC from 203.0.113.9");
+    expect(d.lines[1]).toContain("Resolve from proxy");
+  });
+
+  it("no stored IP, or one that matches: nothing extra", () => {
+    expect(describeCheck({ ok: true, ms: 500, geo }, {}).lines).toHaveLength(1);
+    expect(describeCheck({ ok: true, ms: 500, geo }, { webrtcIp: "62.198.28.61" }).lines).toHaveLength(1);
+    expect(describeCheck({ ok: true, ms: 500, geo }).lines).toHaveLength(1);
+  });
+
+  it("the launch message names a typed WebRTC IP that is not the exit, and stays quiet for a resolved one", () => {
+    const last = { ...geo, at: "x", proxy: "p" };
+    expect(launchReport({ proxy: "socks5://h:1", geoip: false, webrtcIp: "203.0.113.9" }, "E", last)).toBe(
+      "Launched “E” · exits in Højby, Denmark (62.198.28.61) · WebRTC reports 203.0.113.9, not this exit.",
+    );
+    // After a launch the saved profile holds the refreshed value, which equals lastGeo.ip.
+    expect(launchReport({ proxy: "socks5://h:1", geoip: false, webrtcIp: "62.198.28.61", lastGeo: last }, "F", last)).toBe(
+      "Launched “F” · exits in Højby, Denmark (62.198.28.61).",
+    );
+  });
+});

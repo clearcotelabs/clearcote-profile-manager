@@ -6,6 +6,7 @@ import path from "node:path";
 import zlib from "node:zlib";
 import { PROFILES_DIR, FINGERPRINTS_DIR, readSettings, writeSettings } from "./store";
 import { markLaunched, recordGeo } from "./profiles";
+import { webrtcIpFollowsProxy } from "./proxyargs";
 import { Tail, type ExitFacts } from "./exitreason";
 import { stopGracefully, type StopOutcome } from "./procstop";
 import { parseProxy, proxyProblem, startRelay, needsRelay, proxyArgs, socks5AuthSupportWarning, socks5UdpSupportWarning, type Relay } from "./proxy";
@@ -208,7 +209,8 @@ function profileAcceptLanguage(ref: string): string | undefined {
 }
 
 /**
- * Fill any UNSET timezone / acceptLanguage / location / webrtcIp from the proxy's exit-IP geo.
+ * Fill any UNSET timezone / acceptLanguage / location / webrtcIp from the proxy's exit-IP geo, and
+ * refresh a WebRTC IP that came from an earlier lookup.
  *
  * This is what the `geoip` toggle promises, and until now nothing performed it: the flag was saved
  * on the profile and shown as a chip, but no code path ever read it, so a profile with geoip on and
@@ -216,32 +218,52 @@ function profileAcceptLanguage(ref: string): string | undefined {
  * returned the host's real position. Explicit values always win — geoip fills gaps, it never
  * overrides a choice the user made.
  *
+ * A WebRTC IP the app itself resolved is not such a choice. "Resolve from proxy" writes the exit it
+ * found into `webrtcIp`, and the engine reports exactly that address as the WebRTC public IP
+ * (--webrtc-ip wins over any real STUN answer, "Relay UDP" on or off). Residential sticky sessions
+ * move to another exit every few minutes, so by launch time that snapshot was stale: HTTP left from
+ * the proxy's new address while WebRTC still named the old one — CR-LYJSFW, measured 2026-10-24 with
+ * the customer's own proxies. So while `webrtcIp` still equals the last exit the app looked up
+ * ({@link webrtcIpFollowsProxy}), every launch looks the exit up again and replaces it, whatever
+ * the geoip toggle says; the new value is saved so the next launch recognises it again. An address
+ * the user typed (anything else) is left alone.
+ *
  * Best-effort: a proxy that cannot be reached returns the profile unchanged plus a warning, because
  * failing to enrich is not a reason to refuse a launch the user asked for.
  */
-export async function applyGeoip(p: Profile): Promise<{ profile: Profile; warning?: string }> {
-  if (!p.geoip || !p.proxy) return { profile: p };
+export async function applyGeoip(p: Profile): Promise<{ profile: Profile; warning?: string; refreshedWebrtcIp?: string }> {
+  if (!p.proxy) return { profile: p };
   const unset = (v: unknown) => v === undefined || v === null || v === "";
-  // Nothing to fill — skip the network round-trip entirely.
-  if (!unset(p.timezone) && !unset(p.acceptLanguage) && !unset(p.location) && !unset(p.webrtcIp)) {
-    return { profile: p };
-  }
+  const follows = webrtcIpFollowsProxy(p);
+  const gaps = !!p.geoip && (unset(p.timezone) || unset(p.acceptLanguage) || unset(p.location) || unset(p.webrtcIp));
+  // Nothing to fill and nothing to refresh — skip the network round-trip entirely.
+  if (!gaps && !follows) return { profile: p };
   const geo = await geoCheck(p);
   if (!geo.ok) {
     return {
       profile: p,
-      warning: `geoip is on but the proxy's exit region could not be resolved (${geo.error}). Launching with the profile's own timezone / language / location.`,
+      warning: gaps
+        ? `geoip is on but the proxy's exit region could not be resolved (${geo.error}). Launching with the profile's own timezone / language / location.`
+        : `The proxy's exit could not be looked up (${geo.error}), so WebRTC reports ${p.webrtcIp} from the last lookup, which may no longer be where the proxy exits.`,
     };
   }
-  // Keep what we learned, so the card can show where this profile's traffic exits.
-  recordGeo(p.id, geo, p.proxy);
   const enriched: Profile = { ...p };
-  if (unset(enriched.timezone) && geo.timezone) enriched.timezone = geo.timezone;
-  if (unset(enriched.acceptLanguage) && geo.acceptLanguage) enriched.acceptLanguage = geo.acceptLanguage;
-  if (unset(enriched.location) && geo.lat != null && geo.lon != null) enriched.location = `${geo.lat},${geo.lon}`;
-  // Coherent WebRTC: report the proxy's egress IP rather than letting WebRTC contradict HTTP.
-  if (unset(enriched.webrtcIp) && geo.ip) enriched.webrtcIp = geo.ip;
-  return { profile: enriched };
+  if (gaps) {
+    if (unset(enriched.timezone) && geo.timezone) enriched.timezone = geo.timezone;
+    if (unset(enriched.acceptLanguage) && geo.acceptLanguage) enriched.acceptLanguage = geo.acceptLanguage;
+    if (unset(enriched.location) && geo.lat != null && geo.lon != null) enriched.location = `${geo.lat},${geo.lon}`;
+    // Coherent WebRTC: report the proxy's egress IP rather than letting WebRTC contradict HTTP.
+    if (unset(enriched.webrtcIp) && geo.ip) enriched.webrtcIp = geo.ip;
+  }
+  let refreshedWebrtcIp: string | undefined;
+  if (follows && geo.ip && geo.ip !== p.webrtcIp) {
+    enriched.webrtcIp = geo.ip;
+    refreshedWebrtcIp = geo.ip;
+  }
+  // Keep what we learned, so the card can show where this profile's traffic exits — and the
+  // refreshed WebRTC IP with it, so it still matches the lookup next time.
+  recordGeo(p.id, geo, p.proxy, undefined, follows && geo.ip ? { webrtcIp: geo.ip } : undefined);
+  return { profile: enriched, ...(refreshedWebrtcIp ? { refreshedWebrtcIp } : {}) };
 }
 
 /**

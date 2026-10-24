@@ -315,3 +315,16 @@ export function socks5AuthSupportWarning(p: ParsedProxy | null, major?: number):
     `an http/https proxy.`
   );
 }
+
+/**
+ * True when the profile's WebRTC IP is the exit the app itself last looked up ("Resolve from proxy"
+ * or a launch), not an address the user typed. Such a value follows the proxy: a launch looks the
+ * exit up again and replaces it, because residential sticky sessions move every few minutes and a
+ * snapshot taken earlier makes WebRTC name an address HTTP no longer leaves from (CR-LYJSFW).
+ * A typed address that happens to equal the last lookup counts as following too — it was the
+ * proxy's exit, so keeping it current is what the user meant.
+ */
+export function webrtcIpFollowsProxy(p: { webrtcIp?: string; lastGeo?: { ip?: string } } | undefined): boolean {
+  const ip = p?.webrtcIp?.trim();
+  return !!ip && !!p?.lastGeo?.ip && ip === p.lastGeo.ip;
+}

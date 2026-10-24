@@ -445,7 +445,15 @@ export const FIELDS: FieldDef[] = [
     keywords: "--fingerprint-location gps coordinates position",
     why: "What the Geolocation API reports, once a page has permission. Unset and with geoip off, that is your real position.",
   },
-  { key: "webrtcIp", cat: "network", label: "WebRTC IP", type: "text", placeholder: "proxy egress IP", keywords: "--webrtc-ip srflx stun leak" },
+  {
+    key: "webrtcIp",
+    cat: "network",
+    label: "WebRTC IP",
+    type: "text",
+    placeholder: "proxy egress IP",
+    keywords: "--webrtc-ip srflx stun leak",
+    why: "What WebRTC reports as the public address. “Resolve from proxy” fills it with the proxy's exit, and every launch looks that exit up again while the field still holds it, so a proxy that moves to another address does not leave WebRTC behind. Type an address to pin it.",
+  },
   {
     defaultOption: "on",
     key: "webrtcMdns",

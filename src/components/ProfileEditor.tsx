@@ -59,6 +59,7 @@ import {
 } from "@/types/profile";
 import { api, isWeb, type GeoResult, type HostGpu, type ProxyCheck, type VersionOption } from "@/lib/ipc";
 import { describeCheck } from "@/lib/proxyReport";
+import { proxySummary } from "@/lib/profileList";
 import { browserCommandName, hostOs, shortcutLabel, type HostOs } from "@/lib/host";
 import { normalizeProxyLine } from "@/lib/bulkCreate";
 import { proxyProblem } from "../../electron/proxyargs";
@@ -358,13 +359,17 @@ export default function ProfileEditor({
       setGeo(r);
       if (r.ok) {
         // Every field falls back to what is already there, so a blank response never clobbers a
-        // value the user chose.
+        // value the user chose. lastGeo records that the WebRTC IP came from this lookup: while the
+        // field still holds it, a launch looks the exit up again instead of keeping the snapshot.
         onChange({
           ...profile,
           timezone: r.timezone || profile.timezone,
           acceptLanguage: r.acceptLanguage || profile.acceptLanguage,
           location: r.lat != null && r.lon != null ? `${r.lat},${r.lon}` : profile.location,
           webrtcIp: r.ip || profile.webrtcIp,
+          ...(r.ip
+            ? { lastGeo: { ip: r.ip, country: r.country, countryCode: r.countryCode, city: r.city, at: new Date().toISOString(), proxy: proxySummary(profile.proxy) ?? "" } }
+            : {}),
         });
       }
     } finally {
@@ -816,18 +821,18 @@ export default function ProfileEditor({
             )}
             {check &&
               (() => {
-                const d = describeCheck(check);
+                const d = describeCheck(check, profile);
+                const box =
+                  d.tone === "ok"
+                    ? "border-ok/40 bg-ok/5 text-fog/80"
+                    : d.tone === "warn"
+                      ? "border-warn/40 bg-warn/5 text-fog/80"
+                      : "border-danger/40 bg-danger/5 text-fog/80";
+                const head = d.tone === "ok" ? "text-ok" : d.tone === "warn" ? "text-warn" : "text-danger";
                 return (
-                  <div
-                    className={
-                      "mt-1.5 rounded-lg border px-3 py-2 text-[11px] leading-relaxed " +
-                      (d.tone === "ok" ? "border-ok/40 bg-ok/5 text-fog/80" : "border-danger/40 bg-danger/5 text-fog/80")
-                    }
-                    role="status"
-                    data-proxy-check={d.tone}
-                  >
+                  <div className={"mt-1.5 rounded-lg border px-3 py-2 text-[11px] leading-relaxed " + box} role="status" data-proxy-check={d.tone}>
                     {d.lines.map((l, i) => (
-                      <p key={i} className={i === 0 ? "font-medium " + (d.tone === "ok" ? "text-ok" : "text-danger") : "mt-0.5"}>
+                      <p key={i} className={i === 0 ? "font-medium " + head : "mt-0.5"}>
                         {l}
                       </p>
                     ))}

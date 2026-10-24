@@ -3,6 +3,7 @@
 
 import type { ProxyCheck, UdpVerdict } from "./ipc";
 import type { LastGeo, Profile } from "@/types/profile";
+import { webrtcIpFollowsProxy } from "../../electron/proxyargs";
 
 export type Tone = "ok" | "warn" | "bad";
 
@@ -33,19 +34,38 @@ export function udpLine(v: UdpVerdict | undefined, detail?: string): { tone: Ton
   }
 }
 
-/** The editor's "Check" result. */
-export function describeCheck(c: ProxyCheck): { tone: Tone; lines: string[] } {
+/** What the browser will report over WebRTC when the proxy now exits at `exit`, given the profile's
+ *  stored WebRTC IP. One line, or null when they agree (or nothing is stored). Residential sticky
+ *  sessions move every few minutes; an address the app resolved is refreshed at launch, one the user
+ *  typed is kept — and will disagree with HTTP. */
+export function webrtcIpLine(stored: Pick<Profile, "webrtcIp" | "lastGeo"> | undefined, exit: string | undefined): { tone: Tone; text: string } | null {
+  const ip = stored?.webrtcIp;
+  if (!ip || !exit || ip === exit) return null;
+  if (webrtcIpFollowsProxy(stored)) {
+    return { tone: "ok", text: `The exit has moved since “Resolve from proxy” stored ${ip} as the WebRTC IP. Each launch looks it up again, so the browser will report ${exit}.` };
+  }
+  return {
+    tone: "warn",
+    text: `WebRTC IP is set to ${ip}, which is not this exit: pages will see HTTP from ${exit} and WebRTC from ${ip}. Clear the field, or click “Resolve from proxy”, to keep them together.`,
+  };
+}
+
+/** The editor's "Check" result. `stored` is the profile being edited, for the WebRTC IP comparison. */
+export function describeCheck(c: ProxyCheck, stored?: Pick<Profile, "webrtcIp" | "lastGeo">): { tone: Tone; lines: string[] } {
   if (!c.ok || !c.geo?.ok) return { tone: "bad", lines: [`Doesn't work: ${c.error || c.geo?.error || "no answer through this proxy"}.`.replace(/\.\.$/, ".")] };
   const g = c.geo;
   const speed = c.ms != null ? ` · answered in ${(c.ms / 1000).toFixed(1)} s` : "";
   const lines = [`Works · ${exitsAt(g)}${speed}`];
   const u = udpLine(c.udp, c.udpDetail);
   if (u) lines.push(u.text);
-  return { tone: "ok", lines };
+  const w = webrtcIpLine(stored, g.ip);
+  if (w) lines.push(w.text);
+  return { tone: w?.tone === "warn" ? "warn" : "ok", lines };
 }
 
-/** The message after a launch: where the profile exits, and whether its region follows the proxy. */
-export function launchReport(p: Pick<Profile, "proxy" | "geoip" | "timezone" | "acceptLanguage">, name: string, last?: LastGeo): string {
+/** The message after a launch: where the profile exits, whether its region follows the proxy, and
+ *  a typed WebRTC IP that does not match the exit. */
+export function launchReport(p: Pick<Profile, "proxy" | "geoip" | "timezone" | "acceptLanguage" | "webrtcIp" | "lastGeo">, name: string, last?: LastGeo): string {
   if (!p.proxy) return `Launched “${name}” · no proxy: it uses this computer's own connection.`;
   const exit = last?.ip ? exitsAt(last) : "through its proxy";
   const region =
@@ -54,5 +74,7 @@ export function launchReport(p: Pick<Profile, "proxy" | "geoip" | "timezone" | "
         ? " · time zone and language as you set them"
         : " · time zone and language follow the proxy"
       : "";
-  return `Launched “${name}” · ${exit}${region}.`;
+  const w = webrtcIpLine(p, last?.ip);
+  const webrtc = w?.tone === "warn" ? ` · WebRTC reports ${p.webrtcIp}, not this exit` : "";
+  return `Launched “${name}” · ${exit}${region}${webrtc}.`;
 }

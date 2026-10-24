@@ -98,12 +98,15 @@ export function proxyKey(proxy: unknown): string {
 /**
  * Keep a proxy exit lookup on the saved profile (lastGeo only — same discipline as markLaunched),
  * so the card can say where the traffic goes. Quiet no-op for an unknown profile or a failed lookup.
+ * `patch.webrtcIp` is the one other field a launch may touch: the WebRTC IP it refreshed from this
+ * very lookup, saved so the next launch can tell it from an address the user typed.
  */
 export function recordGeo(
   id: string,
   geo: { ok: boolean; ip?: string; country?: string; countryCode?: string; city?: string },
   proxy: unknown,
   at = new Date().toISOString(),
+  patch?: { webrtcIp?: string },
 ): Profile | null {
   if (!geo.ok) return null;
   try {
@@ -117,7 +120,7 @@ export function recordGeo(
       at,
       proxy: proxyKey(proxy),
     };
-    const out: Profile = { ...cur, lastGeo };
+    const out: Profile = { ...cur, lastGeo, ...(patch?.webrtcIp ? { webrtcIp: patch.webrtcIp } : {}) };
     fs.writeFileSync(profilePath(id), JSON.stringify(out, null, 2), "utf8");
     return out;
   } catch {

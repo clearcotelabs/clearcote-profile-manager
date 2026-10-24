@@ -673,7 +673,8 @@ function buildMock(): ClearcoteApi {
     },
     resolveBinary: async () => null,
     pickBinary: async () => null,
-    geoCheck: async () => ({ ok: false, error: "IP / geo check runs in the desktop app." }),
+    // localStorage["clearcote.mock.geocheck"] plays Resolve from proxy's answer (tests, design review).
+    geoCheck: async () => readJson<GeoResult>("clearcote.mock.geocheck", { ok: false, error: "IP / geo check runs in the desktop app." }),
     // localStorage["clearcote.mock.proxycheck"] plays the check's answer (tests, design review).
     proxyCheck: async () => readJson<ProxyCheck>("clearcote.mock.proxycheck", { ok: false, error: "Checking a proxy runs in the desktop app." }),
     exportProfiles: async (opts) => {
