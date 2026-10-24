@@ -13,6 +13,7 @@ import { parseProxy, proxyProblem, startRelay, needsRelay, proxyArgs, socks5Auth
 import { geoCheck } from "./geo";
 import { pinUdpSession, type UdpVerdict } from "./proxycheck";
 import { resolveLicenseKey, acquireLease, withRunToken, planFromToken, type LeaseSession } from "./license";
+import { preparePersonaLaunch } from "./persona";  // r51+: server-side personas (the signed persona token)
 import { proEnsureBinary, freeEnsureBinary } from "./proBinary";
 import { fetchCatalog, resolveVersion } from "./catalog";
 import { fingerprintArgs, macosKeychainArgs, mergeFeatureFlags, proxyEgressArgs, startUrlArg, type FpInput } from "./fpargs";
@@ -456,7 +457,7 @@ export async function launch(
     }
     args.push(...proxyEgressArgs(!!proxy, p.extraArgs));
     // One --enable-features and one --disable-features: Chromium keeps only the last of each.
-    const argv = mergeFeatureFlags(args);
+    let argv = mergeFeatureFlags(args);
     // Linux: the browser's own font bundle (FONTCONFIG_FILE) and the UI locale from --lang (LANGUAGE),
     // as the SDK sets them. Without the first, a Linux launch rendered with the host's fonts.
     const linuxEnv = { ...linuxFontEnv(bin, (m) => warnings.push(m)), ...linuxLocaleEnv(argv) };
@@ -470,6 +471,10 @@ export async function launch(
       const bound = lease.bindLaunch();
       releaseTokenFile = bound.release;
       env = withRunToken(lease.token, env ?? process.env, bound.path);
+      // r51+ engines need the signed persona token (persona.ts); older engines come back unchanged.
+      const personaLaunch = await preparePersonaLaunch(bin, argv, lease);
+      argv = personaLaunch.args;
+      env = personaLaunch.env(env);
     }
     // spawnBrowser survives the Windows first-launch SxS/AV race ("spawn UNKNOWN") on a
     // freshly-extracted chrome.exe: warm + back off + retry, then recover from a fresh copy.
