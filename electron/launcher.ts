@@ -11,6 +11,7 @@ import { Tail, type ExitFacts } from "./exitreason";
 import { stopGracefully, type StopOutcome } from "./procstop";
 import { parseProxy, proxyProblem, startRelay, needsRelay, proxyArgs, socks5AuthSupportWarning, socks5UdpSupportWarning, type Relay } from "./proxy";
 import { geoCheck } from "./geo";
+import { pinUdpSession, type UdpVerdict } from "./proxycheck";
 import { resolveLicenseKey, acquireLease, withRunToken, planFromToken, type LeaseSession } from "./license";
 import { proEnsureBinary, freeEnsureBinary } from "./proBinary";
 import { fetchCatalog, resolveVersion } from "./catalog";
@@ -267,6 +268,25 @@ export async function applyGeoip(p: Profile): Promise<{ profile: Profile; warnin
 }
 
 /**
+ * Everything a launch does to the proxy session before the browser starts, in this order:
+ *   1. Relay UDP on → the session's first UDP association (pinUdpSession). Residential vendors move a
+ *      sticky session to one of their UDP-capable exits at the first association and leave it there
+ *      (CR-LYJSFW, measured), so this has to happen before step 2 or the address resolved is not the
+ *      one the browser ends up on. Its verdict is the launch message's UDP line — the app used to
+ *      run a whole Check after the launch for that, which moved the session under the running browser.
+ *   2. applyGeoip on the session as it now is.
+ */
+export async function prepareProxySession(
+  p: Profile,
+): Promise<{ profile: Profile; warnings: string[]; udp?: { udp: UdpVerdict; detail?: string } }> {
+  const warnings: string[] = [];
+  const pinned = proxyProblem(p.proxy) ? null : await pinUdpSession(p);
+  const geo = await applyGeoip(p);
+  if (geo.warning) warnings.push(geo.warning);
+  return { profile: geo.profile, warnings, ...(pinned ? { udp: pinned } : {}) };
+}
+
+/**
  * The real launch command line. The fingerprint switches come from the shared builder
  * (electron/fpargs.ts) so this path and the renderer's preview can never drift; only the bits that
  * genuinely differ live here — reading + gzipping the captured profile, the resolved user-data-dir,
@@ -363,11 +383,12 @@ export async function launch(
     );
   }
 
-  // geoip fills unset timezone / language / location / WebRTC IP from the proxy's exit region.
-  // Done BEFORE buildArgs so the enriched values reach the switches.
-  const geo = await applyGeoip(p);
-  if (geo.warning) warnings.push(geo.warning);
-  p = geo.profile;
+  // With Relay UDP on, the session's first UDP association, then geoip (unset timezone / language /
+  // location / WebRTC IP from the proxy's exit region, and a resolved WebRTC IP refreshed). Done
+  // BEFORE buildArgs so the enriched values reach the switches.
+  const session = await prepareProxySession(p);
+  warnings.push(...session.warnings);
+  p = session.profile;
 
   // Acquire the concurrency lease BEFORE launching (so an over-limit / revoked license fails
   // fast and never spawns a browser the gate would just refuse) — but ONLY for a gated launch:
@@ -519,7 +540,13 @@ export async function launch(
         probe.close();
       }
     }
-    return { ok: true, pid: child.pid, pro: !!lease, warnings: warnings.length ? warnings : undefined };
+    return {
+      ok: true,
+      pid: child.pid,
+      pro: !!lease,
+      warnings: warnings.length ? warnings : undefined,
+      ...(session.udp ? { udp: session.udp.udp, udpDetail: session.udp.detail } : {}),
+    };
   } catch (e) {
     probe?.close();
     relay?.stop();

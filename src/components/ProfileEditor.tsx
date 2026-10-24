@@ -58,7 +58,7 @@ import {
   type Profile,
 } from "@/types/profile";
 import { api, isWeb, type GeoResult, type HostGpu, type ProxyCheck, type VersionOption } from "@/lib/ipc";
-import { describeCheck } from "@/lib/proxyReport";
+import { describeCheck, UDP_TEST_WARNING } from "@/lib/proxyReport";
 import { proxySummary } from "@/lib/profileList";
 import { browserCommandName, hostOs, shortcutLabel, type HostOs } from "@/lib/host";
 import { normalizeProxyLine } from "@/lib/bulkCreate";
@@ -174,6 +174,8 @@ export default function ProfileEditor({
   /** "Check": the proxy's exit, speed and UDP — reported, never written to the profile. */
   const [check, setCheck] = useState<ProxyCheck | null>(null);
   const [checking, setChecking] = useState(false);
+  /** "Test UDP…" was clicked: its warning is showing, waiting for "Test anyway". */
+  const [confirmUdp, setConfirmUdp] = useState(false);
   const [resolving, setResolving] = useState(false);
   const [libOpen, setLibOpen] = useState(false);
   const [fpMsg, setFpMsg] = useState<string | null>(null);
@@ -314,12 +316,15 @@ export default function ProfileEditor({
     set("proxy", next);
   }
 
-  async function checkProxyNow() {
+  /** Check. UDP is tested only with Relay UDP on, or with `udp` (the "Test UDP" button, after its
+   *  warning): a UDP test can move a residential sticky session to another exit. */
+  async function checkProxyNow(udp = false) {
     if (!api.proxyCheck) return;
     setChecking(true);
     setCheck(null);
+    setConfirmUdp(false);
     try {
-      setCheck(await api.proxyCheck(profile));
+      setCheck(await api.proxyCheck(profile, udp ? { udp: true } : undefined));
     } catch (e) {
       setCheck({ ok: false, error: (e as Error)?.message || String(e) });
     } finally {
@@ -767,9 +772,9 @@ export default function ProfileEditor({
                   <button
                     type="button"
                     className={btnGhost + " py-1 text-xs"}
-                    onClick={checkProxyNow}
+                    onClick={() => void checkProxyNow()}
                     disabled={checking}
-                    title="Does it work, where does it exit, and does it carry UDP? Changes nothing."
+                    title={profile.socks5Udp ? "Does it work, where does it exit, and does it carry UDP? Changes nothing in the profile." : "Does it work and where does it exit? Changes nothing. UDP is tested only when you ask."}
                     data-proxy-check-btn="1"
                   >
                     {checking ? "Checking…" : "Check"}
@@ -816,7 +821,7 @@ export default function ProfileEditor({
             {pasteMsg && !profile.proxy && <p className="mt-1 text-[11px] text-warn">{pasteMsg}</p>}
             {checking && (
               <p className="mt-1 text-[11px] text-fog/50" role="status">
-                Checking the proxy and whether it carries UDP… (a few seconds)
+                {profile.socks5Udp ? "Checking the proxy and whether it carries UDP… (a few seconds)" : "Checking the proxy… (a few seconds)"}
               </p>
             )}
             {check &&
@@ -836,6 +841,25 @@ export default function ProfileEditor({
                         {l}
                       </p>
                     ))}
+                    {check.ok && check.udpSkipped && (
+                      <div className="mt-1.5 flex flex-wrap items-center gap-2" data-udp-test={confirmUdp ? "confirm" : "offer"}>
+                        {confirmUdp ? (
+                          <>
+                            <span className="text-warn">{UDP_TEST_WARNING}</span>
+                            <button className={btnGhost + " py-0.5 text-[11px]"} onClick={() => void checkProxyNow(true)} data-udp-test-go="1">
+                              Test anyway
+                            </button>
+                            <button className={btnGhost + " py-0.5 text-[11px]"} onClick={() => setConfirmUdp(false)}>
+                              Cancel
+                            </button>
+                          </>
+                        ) : (
+                          <button className={btnGhost + " py-0.5 text-[11px]"} onClick={() => setConfirmUdp(true)} data-udp-test-btn="1">
+                            Test UDP…
+                          </button>
+                        )}
+                      </div>
+                    )}
                   </div>
                 );
               })()}

@@ -408,7 +408,7 @@ export const FIELDS: FieldDef[] = [
     hint: "Most residential proxies refuse UDP; when they do, the browser quietly falls back.",
     keywords: "--socks5-udp webrtc voice video associate rfc1928 datagram",
     why:
-      "Ordinary browsers cannot proxy UDP at all, so WebRTC normally bypasses the proxy. This routes it through the same SOCKS5 endpoint that already carries TCP. It needs a proxy that permits the UDP command — a self-hosted one usually does, a residential vendor usually does not.",
+      "Ordinary browsers cannot proxy UDP at all, so WebRTC normally bypasses the proxy. This routes it through the same SOCKS5 endpoint that already carries TCP. It needs a proxy that permits the UDP command — a self-hosted one usually does, a residential vendor usually does not. Many residential proxies move a sticky session to another exit the first time UDP goes through it, and keep it there; with this on, the app sends that first UDP before it looks up the exit (at launch, Resolve from proxy and Check), so the address you see is the one the browser uses.",
   },
   {
     key: "transparentProxy",

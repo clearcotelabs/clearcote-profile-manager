@@ -12,6 +12,7 @@ import {
   type UpdateInfo,
   type ExitEvent,
   type CloudSession,
+  type LaunchResult,
 } from "@/lib/ipc";
 import ProfileEditor from "@/components/ProfileEditor";
 import SettingsModal, { type Section as SettingsSection } from "@/components/SettingsModal";
@@ -474,18 +475,18 @@ function Manager() {
 
   // ── Launch / stop ─────────────────────────────────────────────────────────
   /** The message after a launch: where it exits (when the launch just looked that up for geoip) and,
-   *  with "Relay UDP" on, whether the proxy really carries UDP. */
-  async function reportLaunch(p: Profile) {
+   *  with "Relay UDP" on, whether the proxy really carries UDP — from the UDP association the launch
+   *  made BEFORE it started the browser. This used to run a whole proxy check after the launch, and
+   *  that check's own UDP test moved a residential sticky session to another exit under the running
+   *  browser (CR-LYJSFW). Nothing here touches the proxy any more. */
+  async function reportLaunch(p: Profile, r: LaunchResult) {
     const fresh = (await api.profiles.get(p.id).catch(() => null)) ?? p;
     const g = fresh.lastGeo;
     const recent = g && Date.now() - Date.parse(g.at) < 2 * 60_000 ? g : undefined;
     const text = launchReport(fresh, displayName(p), recent);
-    notify(text);
-    if (!p.socks5Udp || !p.proxy || !api.proxyCheck) return;
-    const c = await api.proxyCheck(p).catch(() => null);
-    const u = c && udpLine(c.udp, c.udpDetail);
     // A refused UDP is safe (WebRTC stays blocked), so it is information, not an error.
-    if (u) notify(`${text} ${u.text}`);
+    const u = p.socks5Udp && p.proxy ? udpLine(r.udp, r.udpDetail) : null;
+    notify(u ? `${text} ${u.text}` : text);
   }
 
   /** Launch one profile. Resolves to the failure code, if it failed — bulk launch stops on a
@@ -503,7 +504,7 @@ function Manager() {
         // Warnings mean the browser DID start but an option silently won't take effect. They go on
         // the card, where they stay readable, rather than into a toast that vanishes.
         if (r.warnings?.length) setNotices((n) => ({ ...n, [p.id]: describeLaunchWarnings(r.warnings!) }));
-        void reportLaunch(p);
+        void reportLaunch(p, r);
       } else if (needsHelper(r)) {
         // The web preview: the connect window is already open.
       } else {

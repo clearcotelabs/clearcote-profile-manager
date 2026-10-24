@@ -8,7 +8,8 @@ import fs from "node:fs";
 import * as profiles from "./profiles";
 import * as launcher from "./launcher";
 import * as geo from "./geo";
-import { checkProxy } from "./proxycheck";
+import { checkProxy, resolveExit } from "./proxycheck";
+import { webrtcIpFollowsProxy } from "./proxyargs";
 import { readSettings, writeSettings, ensureDirs, FINGERPRINTS_DIR, PROFILES_DIR } from "./store";
 import { apiBase, checkLicense, resolveLicenseKey } from "./license";
 import { pollLogin, startLogin } from "./devicelogin";
@@ -299,13 +300,16 @@ export function createHandlers(host: HandlerHost): Record<string, Handler> {
 
     "profiles:renameGroup": (_c, from: string, to: string) => profiles.renameGroup(String(from), String(to)),
 
-    // Look up where a profile's proxy exits, and keep the answer on the profile for its card.
+    // Look up where a profile's proxy exits, and keep the answer on the profile for its card. Same
+    // order as a launch (Relay UDP on → the first UDP association first). A WebRTC IP that came from
+    // the previous lookup moves with this one; otherwise the new lookup would make it look typed.
     "geo:checkProfile": async (_c, id: string) => {
       if (!profiles.isSafeId(id)) return { ok: false, error: "Invalid profile id." };
       const p = profiles.getProfile(id);
       if (!p) return { ok: false, error: "That profile no longer exists." };
-      const g = await geo.geoCheck(p);
-      const saved = profiles.recordGeo(id, g, p.proxy);
+      const g = await resolveExit(p);
+      const follow = g.ok && g.ip && webrtcIpFollowsProxy(p) ? { webrtcIp: g.ip } : undefined;
+      const saved = profiles.recordGeo(id, g, p.proxy, undefined, follow);
       return g.ok ? { ...g, profile: saved ?? undefined } : g;
     },
 
@@ -350,9 +354,12 @@ export function createHandlers(host: HandlerHost): Record<string, Handler> {
     },
 
     resolveBinary: () => launcher.resolveBinary(),
-    "geo:check": (_c, p: Profile) => geo.geoCheck(p),
-    // Reports only — the exit, the time it took and whether UDP gets through. Writes nothing.
-    "proxy:check": (_c, p: Profile) => checkProxy(p),
+    // "Resolve from proxy". With Relay UDP on, the session's first UDP association comes first, so
+    // the address resolved is the one the browser will end up on (proxycheck.ts explains why).
+    "geo:check": (_c, p: Profile) => resolveExit(p),
+    // Reports only — the exit, the time it took and, with Relay UDP on or when asked, whether UDP gets
+    // through. Writes nothing. Only `udp: true` is read from the options.
+    "proxy:check": (_c, p: Profile, opts?: { udp?: unknown }) => checkProxy(p, { udp: opts?.udp === true }),
 
     // Dialog-free import/export for the web version: the page does the file picking and saving.
     "profiles:exportData": (_c, opts?: { includeSecrets?: boolean; ids?: string[] }) => {

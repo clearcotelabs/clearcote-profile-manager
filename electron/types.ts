@@ -1,6 +1,7 @@
 // Electron-side types. Kept self-contained (decoupled from the renderer's
 // src/types/profile.ts) so the electron build has no cross-rootDir imports.
 // The two shapes are intentionally identical — see PLAN.md.
+import type { UdpVerdict } from "./proxycheck";
 
 import type { CloudOptions } from "./cloudbody";
 
@@ -254,6 +255,10 @@ export interface LaunchResult {
   /** Non-fatal problems with an otherwise successful launch — an option that will silently do
    *  nothing (a switch the resolved build predates), or geoip failing to resolve. */
   warnings?: string[];
+  /** Relay UDP on: whether the session's first UDP association, made before the launch, got
+   *  through. The launch message reports it, so nothing has to test UDP again afterwards. */
+  udp?: UdpVerdict;
+  udpDetail?: string;
 }
 
 /** Streamed to the renderer while a launch downloads the browser build (first use of a version).

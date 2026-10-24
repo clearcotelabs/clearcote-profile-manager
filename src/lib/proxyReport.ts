@@ -50,6 +50,14 @@ export function webrtcIpLine(stored: Pick<Profile, "webrtcIp" | "lastGeo"> | und
   };
 }
 
+/** Check with Relay UDP off: why UDP was left alone. The editor offers "Test UDP" next to it. */
+export const UDP_NOT_TESTED =
+  "UDP not tested: with “Relay UDP through the proxy” off the browser sends none through this proxy, and a test can move a sticky session to another exit.";
+
+/** The warning the editor shows before an explicit UDP test. */
+export const UDP_TEST_WARNING =
+  "Many residential proxies move a sticky session to another exit the first time UDP goes through it, and keep it there. Test anyway?";
+
 /** The editor's "Check" result. `stored` is the profile being edited, for the WebRTC IP comparison. */
 export function describeCheck(c: ProxyCheck, stored?: Pick<Profile, "webrtcIp" | "lastGeo">): { tone: Tone; lines: string[] } {
   if (!c.ok || !c.geo?.ok) return { tone: "bad", lines: [`Doesn't work: ${c.error || c.geo?.error || "no answer through this proxy"}.`.replace(/\.\.$/, ".")] };
@@ -58,6 +66,8 @@ export function describeCheck(c: ProxyCheck, stored?: Pick<Profile, "webrtcIp" |
   const lines = [`Works · ${exitsAt(g)}${speed}`];
   const u = udpLine(c.udp, c.udpDetail);
   if (u) lines.push(u.text);
+  if (c.udpSkipped) lines.push(UDP_NOT_TESTED);
+  if (c.moved) lines.push(`The UDP test moved this session from ${c.moved.from} to ${c.moved.to}. It stays on ${c.moved.to} from now on.`);
   const w = webrtcIpLine(stored, g.ip);
   if (w) lines.push(w.text);
   return { tone: w?.tone === "warn" ? "warn" : "ok", lines };

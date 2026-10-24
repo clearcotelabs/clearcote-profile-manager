@@ -5,6 +5,19 @@
 // 1928), then one small DNS question through the relay it hands out. "Relay UDP through the proxy"
 // only works when both succeed; most residential proxies refuse the command, and an HTTP proxy can
 // never carry UDP at all.
+//
+// A UDP test is NOT harmless (CR-LYJSFW, measured 2026-10-24 on ~30 fresh residential sticky
+// sessions): the FIRST UDP ASSOCIATE moves a sticky session to another exit — one of the vendor's
+// exits that carry UDP — even when no datagram is ever sent (17 of 18 moved; untouched sessions 0 of
+// 7). Later associations leave it there (1 move in 66). Check used to run that test on every click,
+// in parallel with the exit lookup, so "Resolve" showed one address and the second "Check" another;
+// after a launch with Relay UDP on the app ran it again by itself and moved the session under the
+// running browser. So now:
+//   - Check tests UDP only when Relay UDP is on (the launch will make that association anyway) or
+//     when asked (`udp: true`, the editor's "Test UDP", which warns first). It tests BEFORE the
+//     final exit lookup and reports the move, so the address it shows is where the session stays.
+//   - Resolve and launch make the association first when Relay UDP is on (pinUdpSession), so the
+//     exit they look up is the one the browser's UDP will leave from too.
 
 import net from "node:net";
 import dgram from "node:dgram";
@@ -25,7 +38,44 @@ export interface ProxyCheck {
   geo?: GeoResult;
   udp?: UdpVerdict;
   udpDetail?: string;
+  /** True when UDP was deliberately not tested (a SOCKS5 proxy, Relay UDP off, not asked). */
+  udpSkipped?: boolean;
+  /** The UDP test moved the session: where it exited before the test and where it exits now. */
+  moved?: { from: string; to: string };
   error?: string;
+}
+
+/** What a caller may ask of Check. `udp: true` tests UDP even with Relay UDP off. */
+export interface CheckOptions {
+  udp?: boolean;
+}
+
+/** A SOCKS5 proxy whose profile relays UDP: the case where the first association has to come first. */
+function relaysUdp(profile: Pick<Profile, "proxy" | "socks5Udp">): ParsedProxy | null {
+  if (!profile.socks5Udp) return null;
+  try {
+    const px = parseProxy(profile.proxy);
+    return px && px.scheme.startsWith("socks5") ? px : null;
+  } catch {
+    return null;
+  }
+}
+
+/**
+ * With Relay UDP on, make the session's first UDP association now — before anything looks up the
+ * exit — and report whether UDP gets through. Null when there is nothing to pin (no SOCKS5 proxy,
+ * Relay UDP off). Never throws: a failed pin is a verdict, and the caller goes on.
+ */
+export async function pinUdpSession(profile: Pick<Profile, "proxy" | "socks5Udp">): Promise<{ udp: UdpVerdict; detail?: string } | null> {
+  const px = relaysUdp(profile);
+  return px ? probeSocksUdp(px) : null;
+}
+
+/** "Resolve from proxy": the exit a launch will present. With Relay UDP on, the session is pinned
+ *  first, so the address stored is the one the browser ends up with. */
+export async function resolveExit(profile: Profile): Promise<GeoResult> {
+  if (!proxyProblem(profile.proxy)) await pinUdpSession(profile);
+  return geoCheck(profile);
 }
 
 const REPLIES: Record<number, string> = {
@@ -153,8 +203,9 @@ export async function probeSocksUdp(px: ParsedProxy, timeoutMs = 6000): Promise<
   }
 }
 
-/** The whole check. Never changes the profile. */
-export async function checkProxy(profile: Profile): Promise<ProxyCheck> {
+/** The whole check. Never changes the profile. UDP is tested only with Relay UDP on or `opts.udp`
+ *  (see the top of this file for why a test is not harmless). */
+export async function checkProxy(profile: Profile, opts: CheckOptions = {}): Promise<ProxyCheck> {
   const unreadable = proxyProblem(profile.proxy);
   if (unreadable) return { ok: false, error: unreadable };
   let px: ParsedProxy | null;
@@ -164,15 +215,28 @@ export async function checkProxy(profile: Profile): Promise<ProxyCheck> {
     return { ok: false, error: `This proxy address cannot be read (${(e as Error)?.message || e}).` };
   }
   if (!px) return { ok: false, error: "There is no proxy to check." };
-  const t0 = Date.now();
-  let ms = 0;
-  const [geo, udp] = await Promise.all([
-    geoCheck(profile).then((g) => {
-      ms = Date.now() - t0;
-      return g;
-    }),
-    probeSocksUdp(px),
-  ]);
+  const socks5 = px.scheme.startsWith("socks5");
+  const lookup = async () => {
+    const t0 = Date.now();
+    const g = await geoCheck(profile);
+    return { g, ms: Date.now() - t0 };
+  };
+
+  // No UDP test: the exit and the speed only. An HTTP proxy cannot carry UDP, which needs no test.
+  if (!socks5 || !(opts.udp || profile.socks5Udp)) {
+    const { g, ms } = await lookup();
+    const udpPart = socks5 ? { udpSkipped: true } : { udp: "not-socks" as const, udpDetail: "An HTTP proxy only carries ordinary connections, never UDP." };
+    if (!g.ok) return { ok: false, error: g.error || "The proxy did not work.", geo: g, ...udpPart };
+    return { ok: true, ms, geo: g, ...udpPart };
+  }
+
+  // UDP test: where it exits now, the test, then where it exits after — in that order, never in
+  // parallel, so the address reported is the one the session stays on, and a move is named.
+  const before = await lookup();
+  const udp = await probeSocksUdp(px);
+  const after = await lookup();
+  const geo = after.g.ok ? after.g : before.g;
+  const moved = before.g.ok && after.g.ok && before.g.ip && after.g.ip && before.g.ip !== after.g.ip ? { from: before.g.ip, to: after.g.ip } : undefined;
   if (!geo.ok) return { ok: false, error: geo.error || "The proxy did not work.", geo, udp: udp.udp, udpDetail: udp.detail };
-  return { ok: true, ms, geo, udp: udp.udp, udpDetail: udp.detail };
+  return { ok: true, ms: after.g.ok ? after.ms : before.ms, geo, udp: udp.udp, udpDetail: udp.detail, ...(moved ? { moved } : {}) };
 }

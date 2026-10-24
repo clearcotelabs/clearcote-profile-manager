@@ -126,7 +126,7 @@ const api = {
   resolveBinary: (): Promise<string | null> => ipcRenderer.invoke("resolveBinary"),
   pickBinary: (): Promise<string | null> => ipcRenderer.invoke("pickBinary"),
   geoCheck: (p: Profile): Promise<GeoResult> => ipcRenderer.invoke("geo:check", p),
-  proxyCheck: (p: Profile): Promise<ProxyCheck> => ipcRenderer.invoke("proxy:check", p),
+  proxyCheck: (p: Profile, opts?: { udp?: boolean }): Promise<ProxyCheck> => ipcRenderer.invoke("proxy:check", p, opts),
   exportProfiles: (opts?: { includeSecrets?: boolean; ids?: string[] }): Promise<ExportResult> =>
     ipcRenderer.invoke("profiles:export", opts),
   importProfiles: (): Promise<ImportResult> => ipcRenderer.invoke("profiles:import"),
