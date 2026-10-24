@@ -15,7 +15,7 @@ import { join } from "node:path";
 import { spawn } from "node:child_process";
 import { Readable, Transform } from "node:stream";
 import { pipeline } from "node:stream/promises";
-import { apiBase, resolveLicenseKey } from "./license";
+import { apiBase, licenseUserAgent, resolveLicenseKey } from "./license";
 import { warmFiles } from "./winlaunch";
 import { appBinary, buildPlatformFor, defaultBinaryName, extractMacBundle } from "./macos";
 import type { ResolvedBuild } from "./catalog";
@@ -246,8 +246,10 @@ export async function proEnsureBinary(
   const base = apiBase(licenseApiBase);
 
   const q = version ? `&version=${encodeURIComponent(version)}` : "";
+  // Named with the app version (clearcote-profile-manager/<v>): since 156-r51 a build can need a
+  // minimum client (the persona token), and the route holds back a client that names no version.
   const res = await fetch(`${base}/api/v1/download/pro?platform=${plat}${q}`, {
-    headers: { authorization: `Bearer ${key}` },
+    headers: { authorization: `Bearer ${key}`, "user-agent": licenseUserAgent() },
   });
   if (!res.ok) {
     const body = await res.text().catch(() => "");

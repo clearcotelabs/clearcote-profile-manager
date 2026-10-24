@@ -207,6 +207,11 @@ const LICENSE_USER_AGENT = `clearcote-profile-manager/${(() => {
   }
 })()}`;
 
+/** The User-Agent every licence call sends ("clearcote-profile-manager/<version>"). */
+export function licenseUserAgent(): string {
+  return LICENSE_USER_AGENT;
+}
+
 async function postJson(url: string, licenseKey: string, body: unknown, signal?: AbortSignal): Promise<Response> {
   return fetch(url, {
     method: "POST",

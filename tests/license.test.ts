@@ -154,6 +154,9 @@ describe("proEnsureBinary (license-gated download)", () => {
     const [url, init] = spy.mock.calls[0] as [string, RequestInit];
     expect(String(url)).toMatch(/^https:\/\/example\.test\/api\/v1\/download\/pro\?platform=(windows|linux)$/);
     expect((init.headers as Record<string, string>).authorization).toBe("Bearer cc_lic_probe");
+    // Since 156-r51 a build can carry a minimum client version; the route holds back a client that names
+    // no version, so the request must say which Profile Manager this is.
+    expect((init.headers as Record<string, string>)["user-agent"]).toMatch(/^clearcote-profile-manager\/\d+\.\d+\.\d+/);
   });
 });
 
