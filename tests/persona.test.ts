@@ -145,6 +145,14 @@ describe("server-side personas (r51)", () => {
     await expect(fetchPersonaToken("t", { fingerprint: "1" }, { gpu_vendor: "none" }, null, ["http://127.0.0.1:9"], 500)).rejects.toThrow(PersonaServiceError);
   });
 
+  it("gives the host-facts probe the launch env, run-token FILE included (a free token is refused without it)", async () => {
+    const env = { HOME: dir, LOCALAPPDATA: dir, CLEARCOTE_RUN_TOKEN: "hdr.sig", CLEARCOTE_RUN_TOKEN_FILE: join(dir, "run.tok") };
+    await preparePersonaLaunch(bin, ["--fingerprint=7"], lease, { supports: R51, runner, env });
+    expect(runnerCalls).toHaveLength(1);
+    expect(runnerCalls[0].env.CLEARCOTE_RUN_TOKEN_FILE).toBe(join(dir, "run.tok"));
+    expect(runnerCalls[0].env.CLEARCOTE_RUN_TOKEN).toBe("hdr.sig");
+  });
+
   it("raises when the engine does not report its host facts", async () => {
     await expect(preparePersonaLaunch(bin, ["--fingerprint=1"], lease, { ...deps(), runner: () => "not json" })).rejects.toThrow(/host facts/);
     expect(svc.requests).toHaveLength(0);

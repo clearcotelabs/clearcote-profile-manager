@@ -75,6 +75,16 @@ vi.mock("../electron/crlset", async (orig) => {
   return { ...real, holdUntilLive: (...a: unknown[]) => holdMock(...a) };
 });
 
+// The persona step (r51+): recorded, never run, so a fake binary is fine. What the launcher hands it is the point.
+const personaMock = vi.fn(async (_bin: string, args: readonly string[], _lease: unknown, _deps?: { env?: NodeJS.ProcessEnv }) => ({
+  args: [...args],
+  env: (e: NodeJS.ProcessEnv | undefined) => e,
+}));
+vi.mock("../electron/persona", async (orig) => {
+  const real = await orig<typeof import("../electron/persona")>();
+  return { ...real, preparePersonaLaunch: (...a: Parameters<typeof personaMock>) => personaMock(...a) };
+});
+
 type L = typeof import("../electron/launcher");
 type P = typeof import("../electron/profiles");
 type S = typeof import("../electron/store");
@@ -167,6 +177,19 @@ describe("launch() — a proxy that cannot be read", () => {
 });
 
 describe("launch() — bookkeeping on success", () => {
+  // 0.27.0 on r51: the host-facts probe got only CLEARCOTE_RUN_TOKEN, the engine refused the free token without its
+  // file, and every free launch died before its persona was fetched. The persona step gets the launch's env.
+  it("hands the persona step the launch env, run-token FILE included", async () => {
+    leaseMock.mockResolvedValue(lease("free"));
+    personaMock.mockClear();
+    const r = await launcher.launch(profile("persona-env"));
+    expect(r).toMatchObject({ ok: true });
+    expect(personaMock).toHaveBeenCalledTimes(1);
+    const env = personaMock.mock.calls[0][3]?.env ?? {};
+    expect(env.CLEARCOTE_RUN_TOKEN_FILE).toBe(path.join(ROOT, "run-token"));
+    expect(env.CLEARCOTE_RUN_TOKEN).toBe(tokenFor("free"));
+  });
+
   it("records lastLaunchedAt and leaves updatedAt alone", async () => {
     leaseMock.mockResolvedValue(lease("free"));
     const saved = profile("ok");

@@ -471,8 +471,10 @@ export async function launch(
       const bound = lease.bindLaunch();
       releaseTokenFile = bound.release;
       env = withRunToken(lease.token, env ?? process.env, bound.path);
-      // r51+ engines need the signed persona token (persona.ts); older engines come back unchanged.
-      const personaLaunch = await preparePersonaLaunch(bin, argv, lease);
+      // r51+ engines need the signed persona token (persona.ts); older engines come back unchanged. The host-facts
+      // probe gets this launch's env, token FILE included: the engine refuses a FREE token without the file, so a
+      // probe given only CLEARCOTE_RUN_TOKEN died and every free launch failed before its persona was fetched (0.27.0).
+      const personaLaunch = await preparePersonaLaunch(bin, argv, lease, { env });
       argv = personaLaunch.args;
       env = personaLaunch.env(env);
     }
