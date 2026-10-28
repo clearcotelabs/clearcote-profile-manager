@@ -31,6 +31,10 @@ describe("proxyEgressArgs", () => {
     expect(proxyEgressArgs(true, ["--webrtc-ip-handling-policy=default"])).toEqual(["--disable-quic"]);
     expect(proxyEgressArgs(true, ["--disable-quic"])).toEqual(["--webrtc-ip-handling-policy=disable_non_proxied_udp"]);
   });
+  it("keeps QUIC on when the engine carries it through the SOCKS5 UDP relay (PRO r54+)", () => {
+    expect(proxyEgressArgs(true, [], true)).toEqual(["--webrtc-ip-handling-policy=disable_non_proxied_udp"]);
+    expect(proxyEgressArgs(false, [], true)).toEqual([]);
+  });
 });
 
 describe("mergeFeatureFlags", () => {

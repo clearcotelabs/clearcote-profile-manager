@@ -1,7 +1,7 @@
 import { afterEach, describe, expect, it } from "vitest";
 import net from "node:net";
 import dgram from "node:dgram";
-import { dnsQuery, parseBound, probeSocksUdp, socksUdpPacket } from "../electron/proxycheck";
+import { dnsQuery, parseBound, probeSocksUdp, relayProxyByIp, socksUdpPacket } from "../electron/proxycheck";
 import { parseProxy } from "../electron/proxyargs";
 import { describeCheck, launchReport, udpLine } from "../src/lib/proxyReport";
 
@@ -204,5 +204,28 @@ describe("Check against the stored WebRTC IP", () => {
     expect(launchReport({ proxy: "socks5://h:1", geoip: false, webrtcIp: "62.198.28.61", lastGeo: last }, "F", last)).toBe(
       "Launched “F” · exits in Højby, Denmark (62.198.28.61).",
     );
+  });
+});
+
+describe("Relay UDP hands the browser the proxy's IP address", () => {
+  const lookup = async (host: string) => (host === "gw.example.com" ? "203.0.113.9" : Promise.reject(new Error("ENOTFOUND")));
+  it("looks up a socks5 host name when Relay UDP is on, keeping the rest", async () => {
+    const px = parseProxy("socks5://u:p@gw.example.com:1080")!;
+    const r = await relayProxyByIp(px, true, lookup);
+    expect(r).toEqual({ proxy: { ...px, host: "203.0.113.9" } });
+  });
+  it("leaves an IP, Relay UDP off, and a non-SOCKS5 proxy alone", async () => {
+    const boom = async () => Promise.reject(new Error("looked up"));
+    for (const [raw, on] of [["socks5://198.51.100.4:1080", true], ["socks5://gw.example.com:1080", false], ["http://gw.example.com:8080", true]] as const) {
+      const px = parseProxy(raw);
+      expect((await relayProxyByIp(px, on, boom)).proxy).toBe(px);
+    }
+    expect((await relayProxyByIp(null, true, boom)).proxy).toBeNull();
+  });
+  it("keeps the name and says why when it does not resolve", async () => {
+    const px = parseProxy("socks5://nope.invalid:1080")!;
+    const r = await relayProxyByIp(px, true, lookup);
+    expect(r.proxy).toBe(px);
+    expect(r.warning).toMatch(/not relayed on this launch/);
   });
 });

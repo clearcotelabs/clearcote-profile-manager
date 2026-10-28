@@ -11,12 +11,12 @@ import { Tail, type ExitFacts } from "./exitreason";
 import { stopGracefully, type StopOutcome } from "./procstop";
 import { parseProxy, proxyProblem, startRelay, needsRelay, proxyArgs, socks5AuthSupportWarning, socks5UdpSupportWarning, type Relay } from "./proxy";
 import { geoCheck } from "./geo";
-import { pinUdpSession, type UdpVerdict } from "./proxycheck";
+import { pinUdpSession, relayProxyByIp, type UdpVerdict } from "./proxycheck";
 import { resolveLicenseKey, acquireLease, withRunToken, planFromToken, type LeaseSession } from "./license";
-import { preparePersonaLaunch } from "./persona";  // r51+: server-side personas (the signed persona token)
+import { engineSupportsSwitch, preparePersonaLaunch } from "./persona";  // r51+: server-side personas (the signed persona token)
 import { proEnsureBinary, freeEnsureBinary } from "./proBinary";
 import { fetchCatalog, resolveVersion } from "./catalog";
-import { fingerprintArgs, macosKeychainArgs, mergeFeatureFlags, proxyEgressArgs, startUrlArg, type FpInput } from "./fpargs";
+import { fingerprintArgs, macosKeychainArgs, mergeFeatureFlags, proxyEgressArgs, QUIC_RELAY_SWITCH, startUrlArg, type FpInput } from "./fpargs";
 import { withShaderDialect, shaderDialectWarning } from "./shaderdialect";
 import { seedWidevine, widevineArgs, claimsChromeBrand } from "./widevine";
 import {
@@ -453,9 +453,14 @@ export async function launch(
       relays.set(p.id, relay);
       args.push(...proxyArgs(proxy, { relayUrl: relay.url, transparentProxy: p.transparentProxy }));
     } else {
-      args.push(...proxyArgs(proxy, { socks5Udp: p.socks5Udp, transparentProxy: p.transparentProxy }));
+      // Relay UDP: a proxy given by host name goes to the browser as the IP address the engine relays through.
+      const relayed = await relayProxyByIp(proxy, p.socks5Udp);
+      if (relayed.warning) warnings.push(relayed.warning);
+      args.push(...proxyArgs(relayed.proxy, { socks5Udp: p.socks5Udp, transparentProxy: p.transparentProxy }));
     }
-    args.push(...proxyEgressArgs(!!proxy, p.extraArgs));
+    // PRO r54+: with Relay UDP on a socks5 proxy, HTTP/3 goes through the relay too, so QUIC stays on.
+    const quicRelay = !!proxy && !!p.socks5Udp && proxy.scheme.startsWith("socks5") && engineSupportsSwitch(bin, QUIC_RELAY_SWITCH);
+    args.push(...proxyEgressArgs(!!proxy, p.extraArgs, quicRelay));
     // One --enable-features and one --disable-features: Chromium keeps only the last of each.
     let argv = mergeFeatureFlags(args);
     // Linux: the browser's own font bundle (FONTCONFIG_FILE) and the UI locale from --lang (LANGUAGE),

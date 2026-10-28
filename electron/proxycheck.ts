@@ -62,6 +62,32 @@ function relaysUdp(profile: Pick<Profile, "proxy" | "socks5Udp">): ParsedProxy |
 }
 
 /**
+ * The proxy the browser is handed when Relay UDP is on: a socks5 proxy given by host name, with that name
+ * looked up to an IPv4 address here. The engine relays UDP (WebRTC, and HTTP/3 on PRO r54+) only through
+ * a proxy given as an IP address — it opens the association without a host lookup of its own — so a
+ * provider gateway given by name was never relayed. Looked up once, every connection of the browser (TCP
+ * and UDP) goes to the same address. Anything else comes back unchanged; so does a name that does not
+ * resolve, with a warning (UDP is then not relayed, as before).
+ */
+export async function relayProxyByIp(
+  px: ParsedProxy | null,
+  socks5Udp: boolean | undefined,
+  lookup: (host: string) => Promise<string> = async (host) => (await dns.lookup(host, { family: 4 })).address,
+): Promise<{ proxy: ParsedProxy | null; warning?: string }> {
+  if (!px || !socks5Udp || !px.scheme.startsWith("socks5") || !px.host || net.isIP(px.host.replace(/^\[|\]$/g, ""))) {
+    return { proxy: px };
+  }
+  try {
+    return { proxy: { ...px, host: await lookup(px.host) } };
+  } catch (e) {
+    return {
+      proxy: px,
+      warning: `Could not look up the proxy host ${px.host} (${String((e as Error)?.message || e)}). UDP is relayed only through a proxy given as an IP address, so it is not relayed on this launch.`,
+    };
+  }
+}
+
+/**
  * With Relay UDP on, make the session's first UDP association now — before anything looks up the
  * exit — and report whether UDP gets through. Null when there is nothing to pin (no SOCKS5 proxy,
  * Relay UDP off). Never throws: a failed pin is a verdict, and the caller goes on.

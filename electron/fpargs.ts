@@ -341,6 +341,9 @@ export function mergeFeatureFlags(args: string[]): string[] {
   });
 }
 
+/** PRO r54+: the engine carries HTTP/3 through the SOCKS5 UDP relay; this switch turns that off. */
+export const QUIC_RELAY_SWITCH = "disable-socks5-udp-quic";
+
 /**
  * Switches that keep traffic from leaving AROUND a proxy, as the SDK sends them whenever one is set:
  *   --disable-quic: a SOCKS5 / HTTP proxy carries only TCP, so real proxied Chrome never speaks
@@ -349,10 +352,12 @@ export function mergeFeatureFlags(args: string[]): string[] {
  *     page sees; a TURN relay with iceTransportPolicy "relay" still sends UDP from the host's own
  *     address. --socks5-udp composes with it (the association is made under the policy).
  * A policy the user set in extraArgs wins, and none is added twice.
+ * `quicRelay` (PRO r54+, Relay UDP on with a socks5 proxy, an engine with --disable-socks5-udp-quic): the
+ * engine carries HTTP/3 through the proxy's UDP relay, so QUIC stays on; the proxy resolves each site.
  */
-export function proxyEgressArgs(hasProxy: boolean, extraArgs: string[] = []): string[] {
+export function proxyEgressArgs(hasProxy: boolean, extraArgs: string[] = [], quicRelay = false): string[] {
   if (!hasProxy) return [];
-  const out = ["--disable-quic"];
+  const out = quicRelay ? [] : ["--disable-quic"];
   const own = extraArgs.some(
     (a) => a.startsWith("--webrtc-ip-handling-policy") || a.startsWith("--force-webrtc-ip-handling-policy"),
   );
