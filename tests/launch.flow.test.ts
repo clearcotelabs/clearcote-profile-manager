@@ -319,7 +319,7 @@ describe("launch() — Chrome's revocation list", () => {
     store.writeSettings({ licenseKey: "cc_lic_test_key" }); // on by default
     leaseMock.mockResolvedValue(lease("pro"));
     holdMock.mockReset();
-    holdMock.mockResolvedValue(true);
+    holdMock.mockResolvedValue("live");
   });
   afterEach(() => {
     delete process.env.CLEARCOTE_CRLSET_FILE;
@@ -345,10 +345,17 @@ describe("launch() — Chrome's revocation list", () => {
   });
 
   it("a wait that gives up still launches, and says so", async () => {
-    holdMock.mockResolvedValue(false);
+    holdMock.mockResolvedValue("timeout");
     const r = await launcher.launch(profile("crl-slow", { startUrl: "example.com" }));
     expect(r.ok).toBe(true);
     expect(r.warnings?.join(" ")).toMatch(/not confirmed active/);
+  });
+
+  it("the user navigating or closing the held tab is not a warning", async () => {
+    holdMock.mockResolvedValue("left");
+    const r = await launcher.launch(profile("crl-left", { startUrl: "example.com" }));
+    expect(r.ok).toBe(true);
+    expect((r.warnings ?? []).join(" ")).not.toMatch(/revocation/);
   });
 
   it("turned off: no seed, no pipe, the start page on the command line", async () => {

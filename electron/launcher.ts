@@ -532,8 +532,9 @@ export async function launch(
     if (probe) {
       const cdp = new PipeCdp(child.stdio[3] as Writable, child.stdio[4] as Readable);
       try {
-        const live = await holdUntilLive(cdp, probe, startUrl ? { url: startUrl } : { newTab: true });
-        if (!live) {
+        // "left": the user navigated or closed the held tab during the wait — their choice, not a failure.
+        const outcome = await holdUntilLive(cdp, probe, startUrl ? { url: startUrl } : { newTab: true });
+        if (outcome === "timeout") {
           warnings.push(
             `Chrome's certificate revocation list was not confirmed active within ${WAIT_TIMEOUT_MS / 1000} s, so the start page opened without waiting for it. It still applies once the browser has finished starting.`,
           );

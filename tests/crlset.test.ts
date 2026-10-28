@@ -182,7 +182,14 @@ describe("ReadinessState", () => {
 });
 
 /** A browser that is up, completes startup on the `startupAt`-th histogram call and drops the probe at `dropAt`. */
-function fakeBrowser(opts: { targets?: { targetId: string; type: string; url: string }[]; startupAt?: number; dropAt?: number }) {
+function fakeBrowser(opts: {
+  targets?: { targetId: string; type: string; url: string }[];
+  startupAt?: number;
+  dropAt?: number;
+  /** On the n-th probe, the tab navigated under it ("throw") or before it ("moved": the guard returns -1). */
+  leaveAt?: { probe: number; how: "throw" | "moved" };
+  attachFails?: string;
+}) {
   const calls: { method: string; params: any; sessionId?: string }[] = [];
   const opened = [0];
   let clock = 0;
@@ -193,7 +200,10 @@ function fakeBrowser(opts: { targets?: { targetId: string; type: string; url: st
     async send(method: string, params: any = {}, sessionId?: string): Promise<any> {
       calls.push({ method, params, sessionId });
       if (method === "Target.getTargets") return { targetInfos: targets };
-      if (method === "Target.attachToTarget") return { sessionId: "S1" };
+      if (method === "Target.attachToTarget") {
+        if (opts.attachFails) throw new Error(opts.attachFails);
+        return { sessionId: "S1" };
+      }
       if (method === "Browser.getHistogram") {
         histograms++;
         if (opts.startupAt !== undefined && histograms >= opts.startupAt) return { histogram: {} };
@@ -201,6 +211,10 @@ function fakeBrowser(opts: { targets?: { targetId: string; type: string; url: st
       }
       if (method === "Runtime.evaluate") {
         probes++;
+        if (opts.leaveAt?.probe === probes) {
+          if (opts.leaveAt.how === "throw") throw new Error("Inspected target navigated or closed");
+          return { result: { type: "number", value: -1 } };
+        }
         if (opts.dropAt !== undefined && probes === opts.dropAt) opened.push(clock);
         return { result: { value: 204 } };
       }
@@ -225,7 +239,7 @@ function fakeBrowser(opts: { targets?: { targetId: string; type: string; url: st
 describe("holdUntilLive", () => {
   it("waits for the drop after startup, then opens the start page in the held tab and detaches", async () => {
     const b = fakeBrowser({ startupAt: 3, dropAt: 6 });
-    expect(await holdUntilLive(b.cdp, b.probe, { url: "https://example.com/" }, b.timing)).toBe(true);
+    expect(await holdUntilLive(b.cdp, b.probe, { url: "https://example.com/" }, b.timing)).toBe("live");
     const nav = b.calls.filter((c) => c.method === "Page.navigate");
     expect(nav).toEqual([{ method: "Page.navigate", params: { url: "https://example.com/" }, sessionId: "S1" }]);
     expect(b.calls.at(-1)).toMatchObject({ method: "Target.detachFromTarget", params: { sessionId: "S1" } });
@@ -236,7 +250,7 @@ describe("holdUntilLive", () => {
 
   it("still opens the start page when the list is not confirmed in time", async () => {
     const b = fakeBrowser({});
-    expect(await holdUntilLive(b.cdp, b.probe, { url: "https://example.com/" }, b.timing)).toBe(false);
+    expect(await holdUntilLive(b.cdp, b.probe, { url: "https://example.com/" }, b.timing)).toBe("timeout");
     expect(b.calls.some((c) => c.method === "Page.navigate" && c.params.url === "https://example.com/")).toBe(true);
   });
 
@@ -258,6 +272,34 @@ describe("holdUntilLive", () => {
     await holdUntilLive(b.cdp, b.probe, { newTab: true }, b.timing);
     expect(b.calls.some((c) => c.method === "Page.navigate")).toBe(false);
     expect(b.calls.find((c) => c.method === "Target.closeTarget")?.params).toEqual({ targetId: "T1" });
+  });
+
+  for (const how of ["throw", "moved"] as const) {
+    it(`the tab navigated or closed during the wait (${how}): left where it went, only detached`, async () => {
+      const b = fakeBrowser({ startupAt: 1, leaveAt: { probe: 3, how } });
+      expect(await holdUntilLive(b.cdp, b.probe, { url: "https://example.com/" }, b.timing)).toBe("left");
+      expect(b.calls.filter((c) => c.method === "Runtime.evaluate")).toHaveLength(3);
+      expect(b.calls.some((c) => c.method === "Page.navigate" || c.method === "Target.closeTarget")).toBe(false);
+      expect(b.calls.at(-1)).toMatchObject({ method: "Target.detachFromTarget", params: { sessionId: "S1" } });
+    });
+  }
+
+  it("the probe fetches only while the tab is still about:blank", async () => {
+    const b = fakeBrowser({ startupAt: 1, dropAt: 2 });
+    await holdUntilLive(b.cdp, b.probe, { url: "https://example.com/" }, b.timing);
+    const expr = b.calls.find((c) => c.method === "Runtime.evaluate")!.params.expression as string;
+    expect(expr).toMatch(/^location\.href === "about:blank" \? fetch\(/);
+  });
+
+  it("the tab went before it could be attached: left, nothing sent to it", async () => {
+    const b = fakeBrowser({ attachFails: "No target with given id found" });
+    expect(await holdUntilLive(b.cdp, b.probe, { url: "https://example.com/" }, b.timing)).toBe("left");
+    expect(b.calls.some((c) => c.method === "Runtime.evaluate" || c.method === "Page.navigate")).toBe(false);
+  });
+
+  it("other DevTools errors still reach the caller", async () => {
+    const b = fakeBrowser({ attachFails: "the browser closed the DevTools pipe" });
+    await expect(holdUntilLive(b.cdp, b.probe, { url: "https://example.com/" }, b.timing)).rejects.toThrow(/closed the DevTools pipe/);
   });
 
   it("throws when there is no about:blank tab to hold", async () => {

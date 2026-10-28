@@ -384,21 +384,33 @@ interface TargetInfo {
   url: string;
 }
 
+/** How the wait ended: the CRLSet confirmed live, given up on in time, or the held tab was navigated or closed. */
+export type HoldOutcome = "live" | "timeout" | "left";
+
 const sleep = (ms: number) => new Promise((r) => setTimeout(r, ms));
-// runs in the held about:blank tab
-const PROBE_JS = (u: string) => `fetch(${JSON.stringify(u)}, { cache: "no-store" }).then((r) => r.status, () => 0)`;
+// Runs in the held tab. Fetches only while it is still about:blank, so a page the user (or Chrome) opened in
+// that tab never sees the probe.
+const LEFT = -1;
+const PROBE_JS = (u: string) =>
+  `location.href === ${JSON.stringify(HOLD_URL)} ? fetch(${JSON.stringify(u)}, { cache: "no-store" }).then((r) => r.status, () => 0) : ${LEFT}`;
+
+/** DevTools' errors for a tab that navigated or closed under a command sent to it. */
+function tabGone(e: unknown): boolean {
+  return /navigated or closed|no session with given id|no target with given id|target closed/i.test(errText(e));
+}
 
 /**
  * Hold the browser's about:blank tab until the CRLSet is live, then release it: navigate it to the start page,
- * or, with none, to the new-tab page (or close it when Chrome restored other tabs). Resolves to true when the
- * CRLSet was confirmed live, false when the wait gave up; the tab is released either way when it can be.
+ * or, with none, to the new-tab page (or close it when Chrome restored other tabs). Resolves to "live" when the
+ * CRLSet was confirmed live and "timeout" when the wait gave up; the tab is released either way. "left" means
+ * the tab was navigated or closed during the wait (the user took it over): it is left where it went.
  */
 export async function holdUntilLive(
   cdp: Pick<PipeCdp, "send">,
   probe: Pick<ProbeServer, "url" | "count" | "reopenedAfter">,
   release: ReleaseTarget,
   opts: { timeoutMs?: number; now?: () => number; pause?: (ms: number) => Promise<unknown> } = {},
-): Promise<boolean> {
+): Promise<HoldOutcome> {
   const now = opts.now ?? (() => performance.now());
   const pause = opts.pause ?? sleep;
   const deadline = now() + (opts.timeoutMs ?? WAIT_TIMEOUT_MS);
@@ -410,8 +422,14 @@ export async function holdUntilLive(
     if (!hold) await pause(50);
   }
   if (!hold) throw new Error("the browser opened no about:blank tab to hold");
-  const { sessionId } = await cdp.send<{ sessionId: string }>("Target.attachToTarget", { targetId: hold.targetId, flatten: true });
-  let live = false;
+  let sessionId: string;
+  try {
+    ({ sessionId } = await cdp.send<{ sessionId: string }>("Target.attachToTarget", { targetId: hold.targetId, flatten: true }));
+  } catch (e) {
+    if (tabGone(e)) return "left";
+    throw e;
+  }
+  let outcome: HoldOutcome = "timeout";
   try {
     const state = new ReadinessState(probe);
     let first = true;
@@ -425,17 +443,29 @@ export async function holdUntilLive(
         }
       }
       first = false;
-      await cdp.send("Runtime.evaluate", { expression: PROBE_JS(probe.url), awaitPromise: true }, sessionId);
+      let r: { result?: { value?: unknown } };
+      try {
+        r = await cdp.send("Runtime.evaluate", { expression: PROBE_JS(probe.url), awaitPromise: true, returnByValue: true }, sessionId);
+      } catch (e) {
+        if (!tabGone(e)) throw e;
+        outcome = "left";
+        break;
+      }
+      if (r?.result?.value === LEFT) {
+        outcome = "left";
+        break;
+      }
       if (state.ready(now())) {
-        live = true;
+        outcome = "live";
         break;
       }
       await pause(50);
     }
   } finally {
-    await releaseHold(cdp, hold.targetId, sessionId, release);
+    if (outcome === "left") await cdp.send("Target.detachFromTarget", { sessionId }).catch(() => {});
+    else await releaseHold(cdp, hold.targetId, sessionId, release);
   }
-  return live;
+  return outcome;
 }
 
 async function releaseHold(cdp: Pick<PipeCdp, "send">, holdId: string, sessionId: string, release: ReleaseTarget): Promise<void> {
