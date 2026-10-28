@@ -273,9 +273,26 @@ function saveFile(name: string, text: string) {
 const ALLOWED_EXTERNAL = [/^https:\/\/www\.clearcotelabs\.com\//, /^https:\/\/github\.com\/clearcotelabs\//];
 
 /** The cloud viewer page, next to this one (cloud.html in the static export, /cloud in dev). */
-function openCloudViewer(id: string): boolean {
-  const page = process.env.NODE_ENV === "production" ? "cloud.html" : "/cloud";
-  return !!window.open(`${page}?id=${encodeURIComponent(id)}`, `cc-cloud-${id}`);
+const viewerUrl = (id: string) => `${process.env.NODE_ENV === "production" ? "cloud.html" : "/cloud"}?id=${encodeURIComponent(id)}`;
+
+/**
+ * The viewer's tab, opened NOW, while the click still counts as one: a cloud start takes several
+ * seconds, and a browser blocks a tab opened that long after the click (that is what made the
+ * viewer never appear). It shows a holding page until the session is up; then it loads the viewer.
+ */
+function holdViewerTab(id: string): Window | null {
+  const w = window.open("", `cc-cloud-${id}`);
+  if (!w) return null;
+  try {
+    if (w.location.href === "about:blank") {
+      w.document.title = "Starting the cloud browser…";
+      w.document.body.style.cssText = "margin:0;background:#07080a;color:#e6e9ee;font:15px Inter,system-ui,sans-serif;display:flex;align-items:center;justify-content:center;height:100vh";
+      w.document.body.textContent = "Starting the cloud browser…";
+    }
+  } catch {
+    /* a viewer of this profile is already open there: it is reused */
+  }
+  return w;
 }
 
 // ── The API ───────────────────────────────────────────────────────────────────
@@ -321,14 +338,36 @@ export function buildHelperApi(): ClearcoteApi {
     cloud: {
       list: call("cloud:list"),
       start: async (p) => {
-        const r = await rpc<Awaited<ReturnType<ClearcoteApi["cloud"]["start"]>>>("cloud:start", p);
-        if (r.ok) openCloudViewer(p.id);
+        const w = holdViewerTab(p.id);
+        let r: Awaited<ReturnType<ClearcoteApi["cloud"]["start"]>>;
+        try {
+          r = await rpc("cloud:start", p);
+        } catch (e) {
+          w?.close();
+          throw e;
+        }
+        if (r.ok && w && !w.closed) w.location.href = new URL(viewerUrl(p.id), window.location.href).href;
+        else w?.close();
         return r;
       },
       stop: call("cloud:stop"),
       open: async (id) => {
+        const w = holdViewerTab(id); // before the await, while it is still the click's
         const list = await rpc<{ profileId: string }[]>("cloud:list");
-        return list.some((s) => s.profileId === id) && openCloudViewer(id);
+        const running = list.some((s) => s.profileId === id);
+        if (!running || !w) {
+          w?.close();
+          return false;
+        }
+        let showing = false;
+        try {
+          showing = /\/cloud(\.html)?$/.test(w.location.pathname);
+        } catch {
+          /* not readable: load it */
+        }
+        if (showing) w.focus();
+        else w.location.href = new URL(viewerUrl(id), window.location.href).href;
+        return true;
       },
       viewUrl: call("cloud:viewUrl"),
       account: call("cloud:account"),

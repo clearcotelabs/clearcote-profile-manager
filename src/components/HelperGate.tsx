@@ -7,6 +7,7 @@
 // In the desktop app (and the design mock) it renders its children straight away.
 
 import { useCallback, useEffect, useRef, useState } from "react";
+import { usePathname } from "next/navigation";
 import { isWeb, PROFILES_KEY } from "@/lib/ipc";
 import {
   connectCode,
@@ -98,10 +99,13 @@ function WebShell({ children }: { children: React.ReactNode }) {
   const [why, setWhy] = useState<string | null>(null);
   const [lost, setLost] = useState(false);
   const [moved, setMoved] = useState<number | null>(null);
+  const [checked, setChecked] = useState(false);
+  // The cloud viewer's own tab: it only means something connected, so no preview there.
+  const viewer = /\/cloud(\.html)?$/.test(usePathname() ?? "");
   helper.live = mode === "live";
 
   useEffect(() => {
-    if (!helper.load()) return;
+    if (!helper.load()) return setChecked(true);
     setChecking(true);
     void helper.probe().then((p) => {
       if (p?.paired) {
@@ -109,6 +113,7 @@ function WebShell({ children }: { children: React.ReactNode }) {
         setMode("live");
       }
       setChecking(false);
+      setChecked(true);
     });
   }, []);
 
@@ -144,6 +149,15 @@ function WebShell({ children }: { children: React.ReactNode }) {
     setLost(false);
     setMode("live");
   }, []);
+
+  if (viewer) {
+    if (mode === "live") return <>{children}</>;
+    return (
+      <main className="flex min-h-screen items-center justify-center bg-ink px-6 text-center text-sm text-fog/70">
+        {checked ? "This cloud browser opens from the Clearcote profile manager, on a computer connected to it." : "Connecting to the Clearcote helper…"}
+      </main>
+    );
+  }
 
   return (
     <>
