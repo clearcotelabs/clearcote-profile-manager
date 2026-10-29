@@ -159,6 +159,8 @@ export function exportList(list: Profile[], opts: { includeSecrets?: boolean } =
     const out = { ...p };
     if (out.proxy) out.proxy = redactProxyString(out.proxy);
     delete out.encryptionKey;
+    // A secret task value (a password) keeps its name, so the importer sees which one to fill in again.
+    if (out.vars?.some((v) => v.secret)) out.vars = out.vars.map((v) => (v.secret ? { ...v, value: "" } : v));
     return out;
   });
 }

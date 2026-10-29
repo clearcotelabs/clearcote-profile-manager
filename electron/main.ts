@@ -10,7 +10,7 @@ import { checkForUpdate, downloadUpdate, startupCheckEnabled, type UpdateInfo } 
 import { CloudManager } from "./cloud";
 import { bundleExecutable } from "./macos";
 import { iconSource, pickBinaryDialog } from "./hostui";
-import { bootstrap, createHandlers, exportChoice, importData, importFingerprint } from "./handlers";
+import { bootstrap, createHandlers, exportChoice, getSyncManager, importData, importFingerprint } from "./handlers";
 
 const isDev = process.env.ELECTRON_DEV === "1";
 
@@ -185,6 +185,7 @@ async function stopAndQuit(): Promise<void> {
   if (quittingApp) return;
   quittingApp = true;
   launcher.setQuitting(true);
+  await getSyncManager({ cloud: () => cloud }).shutdown();
   await Promise.all([
     launcher.stopAll({ timeoutMs: 8000 }),
     // Bounded: an unreachable API must not keep the app from quitting.
@@ -360,6 +361,7 @@ app.whenReady().then(() => {
   });
   cloud.on("ended", (ev) => sendAll("cloud:ended", ev));
   registerIpc();
+  getSyncManager({ cloud: () => cloud }).on("changed", (runs) => sendAll("sync:changed", runs));
   // A browser that stopped without being asked to: tell the window, so its card can say why.
   launcher.browserEvents.on("exited", (ev) => {
     if (mainWin && !mainWin.isDestroyed()) mainWin.webContents.send("browser:exited", ev);

@@ -27,6 +27,7 @@ import { hostGpuCached } from "./hostgpu";
 import { parseCookies, parseMigration } from "./migrate";
 import { addPending, readPending } from "./cookiejar";
 import crypto from "node:crypto";
+import { SyncManager, spawnJet, type StartRequest } from "./jetsync";
 import type { Profile, Settings, FingerprintMeta } from "./types";
 
 const CLEARCOTE_PROFILES_REPO = "clearcotelabs/clearcote-profiles";
@@ -183,8 +184,26 @@ export function bootstrap(cloudFile: string): CloudManager {
   });
 }
 
+/** The one task runner of this process (electron/jetsync.ts). The front door subscribes to its "changed". */
+let syncManager: SyncManager | null = null;
+export function getSyncManager(host: Pick<HandlerHost, "cloud">): SyncManager {
+  syncManager ??= new SyncManager({
+    getProfile: (id) => profiles.getProfile(id),
+    // A task needs the window's DevTools endpoint, so its launches always have automation on.
+    launch: (p) => launcher.launch(p, undefined, { automation: true }),
+    stop: (id) => launcher.stop(id),
+    isRunning: (id) => launcher.listRunning().includes(id),
+    cdpEndpoint: (id) => launcher.cdpEndpoint(id),
+    inCloud: (id) => host.cloud().has(id),
+    settings: () => readSettings(),
+    spawnWorker: spawnJet,
+  });
+  return syncManager;
+}
+
 export function createHandlers(host: HandlerHost): Record<string, Handler> {
   const cloud = () => host.cloud();
+  const sync = () => getSyncManager(host);
   return {
     "profiles:list": () => profiles.listProfiles(),
     "profiles:get": (_c, id: string) => profiles.getProfile(id),
@@ -198,6 +217,7 @@ export function createHandlers(host: HandlerHost): Record<string, Handler> {
         return { ok: false, error: "Stop this profile's browser before deleting it." };
       }
       if (cloud().has(id)) return { ok: false, error: "Stop this profile's cloud browser before deleting it." };
+      if (sync().busyProfiles().has(id)) return { ok: false, error: "A task is running on this profile. Stop it before deleting the profile." };
       profiles.purgeTrash();
       return profiles.trashProfile(id);
     },
@@ -242,6 +262,16 @@ export function createHandlers(host: HandlerHost): Record<string, Handler> {
       return outcome;
     },
     running: () => launcher.listRunning(),
+
+    // ── Run a task on profiles (Jet) ─────────────────────────────────────────
+    "sync:list": () => sync().list(),
+    "sync:start": (_c, req: StartRequest) => sync().start(req),
+    "sync:approve": (_c, runId: string, profileId?: string) => sync().approve(String(runId), profileId ? String(profileId) : undefined),
+    "sync:cancel": (_c, runId: string, profileId?: string) => sync().cancel(String(runId), profileId ? String(profileId) : undefined),
+    "sync:stop": (_c, runId: string, profileId?: string) => sync().stop(String(runId), profileId ? String(profileId) : undefined),
+    "sync:clear": () => sync().clearFinished(),
+    /** Where a running profile's DevTools endpoint is, for driving it from your own script. */
+    "cdp:endpoint": (_c, id: string) => launcher.cdpEndpoint(String(id)) ?? null,
 
     // ── Cloud ────────────────────────────────────────────────────────────────
     // Run a profile on Clearcote's servers (cloud.ts), follow it, stop it, and show it in a viewer.

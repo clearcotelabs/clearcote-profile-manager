@@ -145,6 +145,10 @@ export interface Profile {
   userDataDir?: string;
   /** Running this profile on Clearcote's servers instead of this PC (electron/cloudbody.ts). */
   cloud?: CloudOptions;
+  /** Values a task run on this profile fills in: a goal saying "Log in as {{email}}" types this
+   *  profile's `email`. A secret one is never shown, logged, exported or sent to Jet's model; it is
+   *  typed only (electron/jetslots.ts). */
+  vars?: ProfileVar[];
 }
 
 export interface FingerprintMeta {
@@ -242,6 +246,18 @@ export interface Settings {
   cloudApiBase?: string;
   /** Profile templates — owned by the renderer (src/lib/templates.ts), stored here as given. */
   templates?: Record<string, unknown>[];
+  /** Open a local DevTools endpoint on every launch, so the SDK, Playwright or Jet can drive the window
+   *  (electron/devtools.ts). Off unless turned on: while a profile runs, any program on this PC can use it.
+   *  Running a task on profiles turns it on for those launches only. */
+  automation?: boolean;
+  /** How to start Jet for "Run a task": a command line, e.g. `clearcote-jet` or
+   *  `C:\Python312\python.exe -m clearcote_jet.cli`. Empty = `clearcote-jet` from PATH. */
+  jetCommand?: string;
+  /** Key for Jet's decision model (TYPESAFE_API_KEY). Only needed to learn a task; replays use no model. */
+  jetApiKey?: string;
+  /** Run-a-task defaults: how many profiles at once, and the random wait between starts (seconds). */
+  syncConcurrency?: number;
+  syncStaggerSec?: [number, number];
 }
 
 export interface LaunchResult {
@@ -259,6 +275,8 @@ export interface LaunchResult {
    *  through. The launch message reports it, so nothing has to test UDP again afterwards. */
   udp?: UdpVerdict;
   udpDetail?: string;
+  /** Launched with automation: the local DevTools endpoint (http://127.0.0.1:<port>). */
+  cdp?: string;
 }
 
 /** Streamed to the renderer while a launch downloads the browser build (first use of a version).
@@ -304,4 +322,11 @@ export interface ImportResult {
   /** Imported under a new id because theirs was unusable or already taken (never overwritten). */
   renamed?: number;
   error?: string;
+}
+
+/** One named value for task runs (see Profile.vars). */
+export interface ProfileVar {
+  key: string;
+  value: string;
+  secret?: boolean;
 }

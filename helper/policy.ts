@@ -9,6 +9,8 @@
 //   - It cannot point a profile at another folder (userDataDir) or a fingerprint file elsewhere.
 //   - Launches use the profile as saved on this computer, not whatever the page sends.
 //   - It sees the licence and API keys masked (it can replace them, not read them).
+//   - It cannot run tasks on profiles, open a browser's DevTools endpoint or learn where one is:
+//     whoever holds that endpoint controls the browser. Which program Jet is (jetCommand) stays as saved.
 // Everything set in the desktop app on this computer stays as it is.
 
 import * as profiles from "../electron/profiles";
@@ -75,7 +77,7 @@ const mask = (v?: string) => (v ? `${v.slice(0, 7)}${MASK}${v.slice(-4)}` : v);
 
 /** Settings as a web page sees them: keys masked. */
 export function maskSettings(s: Settings): Settings {
-  return { ...s, licenseKey: mask(s.licenseKey), cloudApiKey: mask(s.cloudApiKey) };
+  return { ...s, licenseKey: mask(s.licenseKey), cloudApiKey: mask(s.cloudApiKey), jetApiKey: mask(s.jetApiKey) };
 }
 
 /** Settings from a web page: the parts that decide what runs and where keys go stay as saved. */
@@ -84,9 +86,12 @@ export function cleanSettings(incoming: Settings, saved: Settings): Settings {
   s.binaryPath = saved.binaryPath;
   s.licenseApiBase = saved.licenseApiBase;
   s.cloudApiBase = saved.cloudApiBase;
+  s.jetCommand = saved.jetCommand;
+  s.automation = saved.automation;
   // A masked key coming back unchanged means "keep it".
   if (s.licenseKey?.includes(MASK)) s.licenseKey = saved.licenseKey;
   if (s.cloudApiKey?.includes(MASK)) s.cloudApiKey = saved.cloudApiKey;
+  if (s.jetApiKey?.includes(MASK)) s.jetApiKey = saved.jetApiKey;
   return s;
 }
 
@@ -108,10 +113,18 @@ export function webPolicy(h: Record<string, Handler>): Record<string, Handler> {
       const list = (Array.isArray(data) ? data : [data]).map((p: Profile) => cleanProfile(p, null));
       return h["profiles:importData"](c, JSON.stringify(list));
     },
+    ...desktopOnly(["sync:start", "sync:approve", "sync:cancel", "sync:stop", "sync:clear", "cdp:endpoint"]),
+    "sync:list": () => [],
     // A masked key from the Settings form means "the saved one".
     "license:check": (c, key?: string) => h["license:check"](c, key?.includes(MASK) ? undefined : key),
     "cloud:account": (c, key?: string) => h["cloud:account"](c, key?.includes(MASK) ? undefined : key),
     "settings:get": async (c) => maskSettings((await h["settings:get"](c)) as Settings),
     "settings:set": async (c, s: Settings) => maskSettings((await h["settings:set"](c, cleanSettings(s, readSettings()))) as Settings),
   };
+}
+
+const DESKTOP_ONLY = "Running tasks on profiles is in the desktop app only: it opens each browser's automation port.";
+
+function desktopOnly(channels: string[]): Record<string, Handler> {
+  return Object.fromEntries(channels.map((ch) => [ch, () => ({ ok: false, error: DESKTOP_ONLY })]));
 }

@@ -14,7 +14,7 @@ import fs from "node:fs";
 import path from "node:path";
 import * as launcher from "../electron/launcher";
 import { USER_DATA } from "./userdata";
-import { bootstrap, createHandlers } from "../electron/handlers";
+import { bootstrap, createHandlers, getSyncManager } from "../electron/handlers";
 import { TokenStore } from "./auth";
 import { createServer } from "./server";
 import { webPolicy } from "./policy";
@@ -235,6 +235,7 @@ async function main() {
   });
   cloud.on("changed", (list) => broadcast("cloud:changed", list));
   cloud.on("ended", (ev) => broadcast("cloud:ended", ev));
+  getSyncManager({ cloud: () => cloud }).on("changed", (runs) => broadcast("sync:changed", runs));
   void cloud.restore();
 
   // Closing the window, Ctrl+C or the tray's Quit: close the browsers properly so each licence slot
@@ -246,6 +247,7 @@ async function main() {
     quitting = true;
     log(`${why}: closing browsers…`);
     launcher.setQuitting(true);
+    await getSyncManager({ cloud: () => cloud }).shutdown();
     await Promise.race([launcher.stopAll({ timeoutMs: 4000 }), new Promise((r) => setTimeout(r, 4500))]);
     if (trayChild && trayChild.exitCode === null) trayChild.kill();
     process.exit(0);

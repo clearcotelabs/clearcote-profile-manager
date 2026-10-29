@@ -240,6 +240,10 @@ export interface Profile {
   /** Running this profile on Clearcote's servers instead of this PC: where its traffic leaves, whether
    *  its cookies are kept between cloud sessions, a traffic cap. See electron/cloudbody.ts. */
   cloud?: CloudOptions;
+  /** Values a task run on this profile fills in: a goal saying "Log in as {{email}}" types this
+   *  profile's `email`. A secret one is never shown, logged, exported or sent to Jet's model; it is
+   *  typed only (electron/jetslots.ts). */
+  vars?: ProfileVar[];
 }
 
 /** Summary of a captured fingerprint profile, cached on the Profile for display. */
@@ -329,4 +333,11 @@ export function profileToArgs(p: Profile): string[] {
  *  shader dialect is read by the GPU process, which never receives the fingerprint switches. */
 export function profileToEnv(p: Profile): Record<string, string> {
   return p.shaderDialect ? { [SHADER_DIALECT_ENV]: p.shaderDialect } : {};
+}
+
+/** One named value for task runs (see Profile.vars). */
+export interface ProfileVar {
+  key: string;
+  value: string;
+  secret?: boolean;
 }

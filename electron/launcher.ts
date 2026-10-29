@@ -34,6 +34,7 @@ import {
   WAIT_TIMEOUT_MS,
 } from "./crlset";
 import { spawnBrowser } from "./winlaunch";
+import { clearActivePort, debugPortArgs, endpointFor, waitForActivePort } from "./devtools";
 import { linuxFontEnv, linuxLocaleEnv } from "./linuxfonts";
 import { bundleExecutable } from "./macos";
 import type { Settings, DownloadProgress } from "./types";
@@ -126,6 +127,8 @@ const relays = new Map<string, Relay>();
 const leases = new Map<string, LeaseSession>();
 /** The binary each running browser was launched from — a build in use is never pruned. */
 const runningBins = new Map<string, string>();
+/** The local DevTools endpoint of each browser launched with automation (electron/devtools.ts). */
+const endpoints = new Map<string, string>();
 /** Profiles whose browser THIS app is stopping, so their exit is not reported as unexpected. */
 const stopping = new Set<string>();
 let quitting = false;
@@ -339,9 +342,18 @@ export function buildArgs(p: Profile, userDataDir: string): string[] {
   return a;
 }
 
+export interface LaunchOptions {
+  /** Open a local DevTools endpoint (electron/devtools.ts), as the Jet synchronizer needs. The
+   *  "Allow automation" setting turns it on for every launch. */
+  automation?: boolean;
+  /** How long to wait for the browser to report its DevTools port (tests shorten it). */
+  portWaitMs?: number;
+}
+
 export async function launch(
   p: Profile,
   onDownload?: (ev: DownloadProgress) => void,
+  opts: LaunchOptions = {},
 ): Promise<LaunchResult> {
   if (running.has(p.id)) {
     return { ok: false, error: "This profile is already running." };
@@ -458,6 +470,11 @@ export async function launch(
     const hold = !!probe || cookies.length > 0;
     const startUrl = startUrlArg(p.startUrl);
     const args = hold ? [...buildArgs({ ...p, startUrl: undefined }, userDataDir), PIPE_SWITCH, HOLD_URL] : buildArgs(p, userDataDir);
+    const automation = !!(opts.automation || s.automation);
+    if (automation) {
+      clearActivePort(userDataDir);
+      args.push(...debugPortArgs(p.extraArgs));
+    }
     // Widevine: seed the CDM into this profile before the browser reads it. Downloaded once into a
     // shared cache and copied in, so only the first opt-in launch pays for it. A failure here is
     // non-fatal — DRM and the brand row stay as they were, and the user is told why.
@@ -537,6 +554,7 @@ export async function launch(
       cleaned = true;
       running.delete(p.id);
       runningBins.delete(p.id);
+      endpoints.delete(p.id);
       relays.get(p.id)?.stop();
       relays.delete(p.id);
       releaseTokenFile?.(); // remove this launch's run-token file
@@ -597,9 +615,20 @@ export async function launch(
         probe.close();
       }
     }
+    let endpoint: string | undefined;
+    if (automation) {
+      const port = await waitForActivePort(userDataDir, { alive: () => running.get(p.id) === child, timeoutMs: opts.portWaitMs });
+      if (port) {
+        endpoint = endpointFor(port);
+        if (running.get(p.id) === child) endpoints.set(p.id, endpoint);
+      } else if (running.get(p.id) === child) {
+        warnings.push("The browser did not open its local automation port, so tasks cannot run in this window. Close it and launch it again.");
+      }
+    }
     return {
       ok: true,
       pid: child.pid,
+      ...(endpoint ? { cdp: endpoint } : {}),
       pro: !!lease,
       warnings: warnings.length ? warnings : undefined,
       ...(session.udp ? { udp: session.udp.udp, udpDetail: session.udp.detail } : {}),
@@ -638,6 +667,11 @@ export async function stop(id: string, opts: { timeoutMs?: number } = {}): Promi
 /** Stop every running browser (quitting the app). */
 export async function stopAll(opts: { timeoutMs?: number } = {}): Promise<void> {
   await Promise.all(listRunning().map((id) => stop(id, opts)));
+}
+
+/** The local DevTools endpoint of a running profile, when it was launched with automation. */
+export function cdpEndpoint(id: string): string | undefined {
+  return running.has(id) ? endpoints.get(id) : undefined;
 }
 
 export function listRunning(): string[] {
