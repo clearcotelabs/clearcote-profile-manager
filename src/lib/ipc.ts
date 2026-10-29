@@ -191,6 +191,32 @@ export interface FingerprintMeta {
   screenWarning?: string;
   source?: "file" | "library";
 }
+/** Profiles made from another browser's export (electron/migrate.ts). */
+export interface MigrateResult {
+  ok: boolean;
+  count?: number;
+  /** Cookies parked for the new profiles' first launch. */
+  cookies?: number;
+  /** Rows that held nothing usable. */
+  skipped?: number;
+  /** What did not come across, one line each. */
+  warnings?: string[];
+  error?: string;
+  code?: string;
+}
+
+/** Cookies added to a profile for its next launch. */
+export interface CookieImportResult {
+  ok: boolean;
+  count?: number;
+  expired?: number;
+  skipped?: number;
+  /** Cookies now waiting for the next launch, this import included. */
+  pending?: number;
+  error?: string;
+  code?: string;
+}
+
 export interface FpImportResult {
   ok: boolean;
   file?: string;
@@ -355,6 +381,9 @@ export interface ClearcoteApi {
   proxyCheck?: (p: Profile, opts?: CheckOptions) => Promise<ProxyCheck>;
   exportProfiles: (opts?: { includeSecrets?: boolean; ids?: string[] }) => Promise<ExportResult>;
   importProfiles: () => Promise<ImportResult>;
+  /** Optional: an older desktop app or helper does not have these. */
+  migrateImport?: (text: string, filename?: string) => Promise<MigrateResult>;
+  importCookies?: (id: string, text: string) => Promise<CookieImportResult>;
   fp: {
     import: () => Promise<FpImportResult>;
     library: () => Promise<FpListResult>;
@@ -709,6 +738,8 @@ function buildMock(): ClearcoteApi {
       return { ok: true, count: list.length };
     },
     importProfiles: async () => ({ ok: false, error: t("Import runs in the desktop app.") }),
+    migrateImport: async () => ({ ok: false, error: t("Import runs in the desktop app.") }),
+    importCookies: async () => ({ ok: false, error: t("Import runs in the desktop app.") }),
     fp: {
       import: async () => ({ ok: false, error: t("Importing a fingerprint runs in the desktop app.") }),
       library: async () => {

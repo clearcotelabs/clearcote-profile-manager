@@ -130,6 +130,8 @@ const api = {
   exportProfiles: (opts?: { includeSecrets?: boolean; ids?: string[] }): Promise<ExportResult> =>
     ipcRenderer.invoke("profiles:export", opts),
   importProfiles: (): Promise<ImportResult> => ipcRenderer.invoke("profiles:import"),
+  migrateImport: (text: string, filename?: string): Promise<unknown> => ipcRenderer.invoke("migrate:import", text, filename),
+  importCookies: (id: string, text: string): Promise<unknown> => ipcRenderer.invoke("cookies:import", id, text),
   fp: {
     import: (): Promise<FpImportResult> => ipcRenderer.invoke("fp:import"),
     library: (): Promise<FpListResult> => ipcRenderer.invoke("fp:library"),

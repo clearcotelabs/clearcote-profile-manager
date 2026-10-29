@@ -61,6 +61,8 @@ export function buildPreviewApi(mock: ClearcoteApi): ClearcoteApi {
     geoCheck: fail(tx("check where a proxy exits")),
     proxyCheck: fail(tx("check a proxy")),
     importProfiles: fail(tx("import profiles")),
+    migrateImport: fail(tx("import profiles")),
+    importCookies: fail(tx("import cookies")),
     fp: { ...mock.fp, import: fail(tx("import a fingerprint")), use: fail(tx("use a library fingerprint")) },
   };
 }

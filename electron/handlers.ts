@@ -24,6 +24,9 @@ import { CloudManager } from "./cloud";
 import { CloudApi, resolveApiBase, resolveApiKey } from "./cloudapi";
 import { attachOnce } from "./cdpattach";
 import { hostGpuCached } from "./hostgpu";
+import { parseCookies, parseMigration } from "./migrate";
+import { addPending, readPending } from "./cookiejar";
+import crypto from "node:crypto";
 import type { Profile, Settings, FingerprintMeta } from "./types";
 
 const CLEARCOTE_PROFILES_REPO = "clearcotelabs/clearcote-profiles";
@@ -94,6 +97,55 @@ export function importData(data: unknown) {
   } catch (e) {
     return { ok: false, error: String(e) };
   }
+}
+
+/**
+ * Profiles from another browser's export (electron/migrate.ts): each gets a fresh id and seed, the new-profile
+ * defaults (src/lib/newProfile.ts: geoip and Widevine on) and its cookies parked for the first launch.
+ */
+export function migrateImport(text: string, filename?: string) {
+  try {
+    const parsed = parseMigration(String(text ?? ""), String(filename ?? ""));
+    const now = new Date().toISOString();
+    const fallback = process.platform === "darwin" ? "macos" : "windows";
+    for (const m of parsed.profiles) {
+      const id = profiles.freshId(m.name);
+      profiles.saveProfile({
+        id,
+        name: m.name,
+        fingerprint: crypto.randomBytes(6).toString("hex"),
+        platform: m.platform ?? fallback,
+        geoip: true,
+        widevine: true,
+        ...(m.notes ? { notes: m.notes } : {}),
+        ...(m.tags ? { tags: m.tags } : {}),
+        ...(m.group ? { group: m.group } : {}),
+        ...(m.proxy ? { proxy: m.proxy } : {}),
+        createdAt: now,
+        updatedAt: now,
+      });
+      if (m.cookies.length) addPending(id, m.cookies);
+    }
+    return { ok: true, count: parsed.profiles.length, cookies: parsed.cookies, skipped: parsed.skipped, warnings: parsed.warnings };
+  } catch (e) {
+    return { ok: false, error: String((e as Error)?.message || e) };
+  }
+}
+
+/** Cookies from a file or pasted text, added to a saved profile for its next launch. */
+export function importCookies(id: string, text: string) {
+  if (!profiles.isSafeId(String(id)) || !profiles.getProfile(String(id))) return { ok: false, error: "Save the profile first." };
+  const jar = parseCookies(String(text ?? ""));
+  if (!jar.cookies.length) {
+    return {
+      ok: false,
+      error: jar.expired
+        ? `All ${jar.expired} cookies in it have expired.`
+        : "No cookies found. Use a cookies.txt file or the JSON an extension like Cookie-Editor exports.",
+    };
+  }
+  const pending = addPending(String(id), jar.cookies);
+  return { ok: true, count: jar.cookies.length, expired: jar.expired, skipped: jar.skipped, pending };
 }
 
 /** Remove builds nothing needs any more, after a download brought a newer one. */
@@ -375,6 +427,9 @@ export function createHandlers(host: HandlerHost): Record<string, Handler> {
         return { ok: false, error: String(e) };
       }
     },
+    "migrate:import": (_c, text: string, filename?: string) => migrateImport(text, filename),
+    "cookies:import": (_c, id: string, text: string) => importCookies(id, text),
+    "cookies:pending": (_c, id: string) => (profiles.isSafeId(String(id)) ? readPending(String(id)).length : 0),
     "fp:importData": (_c, name: string, json: string) => importFingerprint(String(name), String(json)),
 
     // ---- captured fingerprint profiles (clearcote-profiles) ----

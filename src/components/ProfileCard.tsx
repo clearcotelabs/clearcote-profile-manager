@@ -41,6 +41,8 @@ export interface CardProps {
   onSaveTemplate: () => void;
   onDelete: () => void;
   onExport: () => void;
+  /** Add cookies from a file; they go in at the next launch. */
+  onImportCookies: () => void;
   onOpenData: () => void;
   onDismissNotice: () => void;
   onNoticeAction: (a: NoticeAction) => void;
@@ -350,6 +352,7 @@ export default function ProfileCard(props: CardProps) {
             { label: t("Duplicate"), onSelect: props.onDuplicate },
             { label: t("Save as template…"), onSelect: props.onSaveTemplate },
             { label: t("Export…"), onSelect: props.onExport },
+            { label: t("Import cookies…"), onSelect: props.onImportCookies },
             { label: t("Open data folder"), onSelect: props.onOpenData },
             ...(p.proxy ? [{ label: t("Check proxy location"), onSelect: props.onCheckGeo }] : []),
             {

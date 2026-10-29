@@ -17,12 +17,14 @@ import { engineSupportsSwitch, preparePersonaLaunch } from "./persona";  // r51+
 import { proEnsureBinary, freeEnsureBinary } from "./proBinary";
 import { fetchCatalog, resolveVersion } from "./catalog";
 import { fingerprintArgs, macosKeychainArgs, mergeFeatureFlags, proxyEgressArgs, QUIC_RELAY_SWITCH, startUrlArg, type FpInput } from "./fpargs";
+import { clearPending, injectCookies, readPending } from "./cookiejar";
 import { withShaderDialect, shaderDialectWarning } from "./shaderdialect";
 import { seedWidevine, widevineArgs, claimsChromeBrand } from "./widevine";
 import {
   crlsetArgsWarning,
   crlsetEnabled,
   holdUntilLive,
+  releaseHeldTab,
   resolveCrlset,
   seedCrlset,
   HOLD_URL,
@@ -450,8 +452,12 @@ export async function launch(
         }
       }
     }
+    // Imported cookies (electron/cookiejar.ts) go in over the same DevTools pipe, before the first page loads,
+    // so a launch that has some holds its first tab too.
+    const cookies = readPending(p.id);
+    const hold = !!probe || cookies.length > 0;
     const startUrl = startUrlArg(p.startUrl);
-    const args = probe ? [...buildArgs({ ...p, startUrl: undefined }, userDataDir), PIPE_SWITCH, HOLD_URL] : buildArgs(p, userDataDir);
+    const args = hold ? [...buildArgs({ ...p, startUrl: undefined }, userDataDir), PIPE_SWITCH, HOLD_URL] : buildArgs(p, userDataDir);
     // Widevine: seed the CDM into this profile before the browser reads it. Downloaded once into a
     // shared cache and copied in, so only the first opt-in launch pays for it. A failure here is
     // non-fatal — DRM and the brand row stay as they were, and the user is told why.
@@ -512,11 +518,11 @@ export async function launch(
     // next write. The tail is also how an exit is explained — the licence watchdog exits with
     // code 0, like a normal close, and only its stderr line tells them apart.
     //
-    // fds 3 and 4 are the DevTools pipe of a launch that holds its first tab for the revocation list.
+    // fds 3 and 4 are the DevTools pipe of a launch that holds its first tab (revocation list, imported cookies).
     const child = await spawnBrowser(bin, argv, {
       detached: false,
       env,
-      stdio: probe ? ["ignore", "ignore", "pipe", "pipe", "pipe"] : ["ignore", "ignore", "pipe"],
+      stdio: hold ? ["ignore", "ignore", "pipe", "pipe", "pipe"] : ["ignore", "ignore", "pipe"],
     });
     const tail = new Tail();
     child.stderr?.on("data", (d: Buffer) => tail.push(d));
@@ -555,8 +561,25 @@ export async function launch(
       }
     });
     child.on("error", cleanup);
-    if (probe) {
-      const cdp = new PipeCdp(child.stdio[3] as Writable, child.stdio[4] as Readable);
+    const cdp = hold ? new PipeCdp(child.stdio[3] as Writable, child.stdio[4] as Readable) : null;
+    if (cdp && cookies.length) {
+      try {
+        const { set, refused } = await injectCookies(cdp, cookies);
+        clearPending(p.id);
+        if (refused) {
+          warnings.push(
+            `${set} imported cookie${set === 1 ? "" : "s"} added; the browser refused ${refused} (malformed or not allowed for its site).`,
+          );
+        }
+      } catch (e) {
+        // Kept for the next launch: the browser closed before they were all in.
+        warnings.push(`The imported cookies could not be added (${String((e as Error)?.message || e)}). They will be tried again at the next launch.`);
+      }
+    }
+    if (cdp && !probe) {
+      await releaseHeldTab(cdp, startUrl ? { url: startUrl } : { newTab: true }).catch(() => {});
+    }
+    if (cdp && probe) {
       try {
         // "left": the user navigated or closed the held tab during the wait — their choice, not a failure.
         const outcome = await holdUntilLive(cdp, probe, startUrl ? { url: startUrl } : { newTab: true });

@@ -412,6 +412,8 @@ export function buildHelperApi(): ClearcoteApi {
       if (!f) return { ok: false };
       return rpc("profiles:importData", await f.text());
     },
+    migrateImport: call("migrate:import"),
+    importCookies: call("cookies:import"),
     fp: {
       import: async () => {
         const f = await pickFile(".json,application/json");

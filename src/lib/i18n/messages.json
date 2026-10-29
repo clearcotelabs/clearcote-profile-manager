@@ -35,6 +35,9 @@
   "1 build nothing uses any more.": [
     "src/components/StorageSection.tsx"
   ],
+  "1 cookie added to “{name}”. It goes into the browser at its next launch.": [
+    "app/page.tsx"
+  ],
   "1 copy is in use right now.": [
     "src/components/StorageSection.tsx"
   ],
@@ -97,6 +100,9 @@
   ],
   "A clear coat for your browser identity.": [
     "app/page.tsx"
+  ],
+  "A cookies.txt file, or the JSON a cookie extension (Cookie-Editor, EditThisCookie) or another antidetect browser exports. They go into the browser the next time this profile opens, so you stay signed in.": [
+    "src/components/MigrateDialog.tsx"
   ],
   "A free key runs the same licensed build, one browser at a time. Sign in with GitHub, open Licenses and click Get it free. It lasts 30 days and renews for free.": [
     "src/components/SettingsModal.tsx"
@@ -169,6 +175,9 @@
   ],
   "Ads check — Germany": [
     "src/lib/webPreview.ts"
+  ],
+  "AdsPower, Dolphin Anty, GoLogin, Multilogin, Octo…": [
+    "app/page.tsx"
   ],
   "All settings": [
     "src/components/ProfileEditor.tsx"
@@ -350,6 +359,7 @@
     "src/components/BulkCreateDialog.tsx",
     "src/components/Confirm.tsx",
     "src/components/ExportDialog.tsx",
+    "src/components/MigrateDialog.tsx",
     "src/components/ProfileEditor.tsx",
     "src/components/PromptDialog.tsx",
     "src/components/TemplateDialogs.tsx"
@@ -411,6 +421,9 @@
     "src/components/ProfileEditor.tsx",
     "src/components/SettingsModal.tsx",
     "src/lib/launchTarget.ts"
+  ],
+  "Choose file…": [
+    "src/components/MigrateDialog.tsx"
   ],
   "Choose {exe}…": [
     "src/components/SettingsModal.tsx"
@@ -714,6 +727,7 @@
     "src/lib/proxyReport.ts"
   ],
   "Done": [
+    "src/components/MigrateDialog.tsx",
     "src/components/SettingsModal.tsx",
     "src/components/TemplateDialogs.tsx"
   ],
@@ -872,6 +886,9 @@
   "Fetch Google's Widevine CDM and seed it into this profile, so DRM video plays and the Chrome brand holds up.": [
     "src/lib/fields.ts"
   ],
+  "File contents": [
+    "src/components/MigrateDialog.tsx"
+  ],
   "Fill all four from this display: {width} × {height}, work area {availWidth} × {availHeight}": [
     "src/components/ProfileEditor.tsx"
   ],
@@ -1016,7 +1033,17 @@
     "src/lib/launchError.ts"
   ],
   "Import": [
-    "app/page.tsx"
+    "app/page.tsx",
+    "src/components/MigrateDialog.tsx"
+  ],
+  "Import cookies into “{name}”": [
+    "src/components/MigrateDialog.tsx"
+  ],
+  "Import cookies…": [
+    "src/components/ProfileCard.tsx"
+  ],
+  "Import failed.": [
+    "src/components/MigrateDialog.tsx"
   ],
   "Import failed: {error}": [
     "app/page.tsx"
@@ -1027,10 +1054,16 @@
   "Import runs in the desktop app.": [
     "src/lib/ipc.ts"
   ],
+  "Imported 1 profile with {c} cookies. They go in at its first launch.": [
+    "app/page.tsx"
+  ],
   "Imported 1 profile — {renamed} under a new id, because theirs was already taken.": [
     "app/page.tsx"
   ],
   "Imported 1 profile.": [
+    "app/page.tsx"
+  ],
+  "Imported {n} profiles with {c} cookies. They go in at each one's first launch.": [
     "app/page.tsx"
   ],
   "Imported {n} profiles — {renamed} under a new id, because theirs was already taken.": [
@@ -1039,8 +1072,14 @@
   "Imported {n} profiles.": [
     "app/page.tsx"
   ],
+  "Imported, with notes": [
+    "src/components/MigrateDialog.tsx"
+  ],
   "Importing a fingerprint runs in the desktop app.": [
     "src/lib/ipc.ts"
+  ],
+  "Importing…": [
+    "src/components/MigrateDialog.tsx"
   ],
   "In a dialog": [
     "src/components/ShortcutsDialog.tsx"
@@ -1297,6 +1336,12 @@
   ],
   "Move down": [
     "src/components/GroupHeader.tsx"
+  ],
+  "Move in from another browser": [
+    "src/components/MigrateDialog.tsx"
+  ],
+  "Move in from another browser…": [
+    "app/page.tsx"
   ],
   "Move up": [
     "src/components/GroupHeader.tsx"
@@ -2112,6 +2157,9 @@
   "Test anyway": [
     "src/components/ProfileEditor.tsx"
   ],
+  "That file is over 20 MB — too big to be a cookie file or a profile list.": [
+    "src/components/MigrateDialog.tsx"
+  ],
   "That profile no longer exists.": [
     "src/lib/ipc.ts"
   ],
@@ -2236,6 +2284,9 @@
   "The most coherent option when no captured profile matches the host's real render.": [
     "src/lib/fields.ts"
   ],
+  "The old fingerprint is not copied: each profile gets a persona from a real device with the same operating system. Cookies are added at each profile's first launch.": [
+    "src/components/MigrateDialog.tsx"
+  ],
   "The persona already varies the model with the seed, so profiles no longer all report the same card. If you pick one, the strongest coherence comes from a model of this machine's own GPU maker: driver limits follow the real card, so a claim from another maker can be checked against them. Custom… exposes the raw vendor and renderer strings for a card the list does not have.": [
     "src/lib/fields.ts"
   ],
@@ -2244,6 +2295,9 @@
   ],
   "The platform is Android but touch points are set to 0 — a phone with no touchscreen.": [
     "src/lib/coherence.ts"
+  ],
+  "The profile list exported from AdsPower, Dolphin Anty, GoLogin, Multilogin, Octo or similar, as JSON or CSV — or one cookie file. Names, notes, tags, groups, proxies and cookies come across.": [
+    "src/components/MigrateDialog.tsx"
   ],
   "The profiles could not be moved.": [
     "src/lib/helperBridge.ts"
@@ -2511,6 +2565,12 @@
   ],
   "Unzip it and start it": [
     "src/components/HelperGate.tsx"
+  ],
+  "Update the app to import cookies.": [
+    "app/page.tsx"
+  ],
+  "Update the app to import from another browser.": [
+    "app/page.tsx"
   ],
   "Updates": [
     "src/components/SettingsModal.tsx"
@@ -2799,6 +2859,9 @@
   "import a fingerprint": [
     "src/lib/webPreview.ts"
   ],
+  "import cookies": [
+    "src/lib/webPreview.ts"
+  ],
   "import profiles": [
     "src/lib/webPreview.ts"
   ],
@@ -2877,6 +2940,9 @@
   "optional": [
     "src/components/BulkCreateDialog.tsx",
     "src/lib/fields.ts"
+  ],
+  "or drop it here, or paste below": [
+    "src/components/MigrateDialog.tsx"
   ],
   "persona default": [
     "src/lib/fields.ts"
@@ -2997,6 +3063,9 @@
   ],
   "{n} builds nothing uses any more.": [
     "src/components/StorageSection.tsx"
+  ],
+  "{n} cookies added to “{name}”. They go into the browser at its next launch.": [
+    "app/page.tsx"
   ],
   "{n} copies are in use right now.": [
     "src/components/StorageSection.tsx"

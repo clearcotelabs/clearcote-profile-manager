@@ -22,6 +22,7 @@ import ProfileCard from "@/components/ProfileCard";
 import ShortcutsDialog from "@/components/ShortcutsDialog";
 import UpdateBanner from "@/components/UpdateBanner";
 import ExportDialog from "@/components/ExportDialog";
+import MigrateDialog, { type MigrateMode } from "@/components/MigrateDialog";
 import BulkCreateDialog from "@/components/BulkCreateDialog";
 import Menu from "@/components/Menu";
 import { launchReport, udpLine } from "@/lib/proxyReport";
@@ -180,6 +181,7 @@ function Manager() {
   /** Settings was opened by "Use my Clearcote account": it starts the sign-in itself. */
   const [autoLogin, setAutoLogin] = useState(false);
   const [shortcutsOpen, setShortcutsOpen] = useState(false);
+  const [migrate, setMigrate] = useState<MigrateMode | null>(null);
   const [exportReq, setExportReq] = useState<{ ids?: string[]; single?: string; count: number } | null>(null);
   const [bulkCreateOpen, setBulkCreateOpen] = useState(false);
   // Templates: the profile being saved as one, the manage dialog, and the template the open editor
@@ -661,6 +663,36 @@ function Manager() {
       notify(t("Import failed: {error}", { error: r.error }), { tone: "error" });
     }
   }
+  async function doMigrate(mode: MigrateMode, text: string, filename: string) {
+    if (mode.kind === "cookies") {
+      const r = api.importCookies ? await api.importCookies(mode.id, text) : { ok: false, error: t("Update the app to import cookies.") };
+      if (r.ok) {
+        const n = r.count ?? 0;
+        notify(
+          n === 1
+            ? t("1 cookie added to “{name}”. It goes into the browser at its next launch.", { name: mode.name })
+            : t("{n} cookies added to “{name}”. They go into the browser at its next launch.", { n, name: mode.name }),
+        );
+      }
+      return r;
+    }
+    const r = api.migrateImport ? await api.migrateImport(text, filename) : { ok: false, error: t("Update the app to import from another browser.") };
+    if (r.ok) {
+      await refresh();
+      const n = r.count ?? 0;
+      const c = r.cookies ?? 0;
+      notify(
+        c
+          ? n === 1
+            ? t("Imported 1 profile with {c} cookies. They go in at its first launch.", { c })
+            : t("Imported {n} profiles with {c} cookies. They go in at each one's first launch.", { n, c })
+          : n === 1
+            ? t("Imported 1 profile.")
+            : t("Imported {n} profiles.", { n }),
+      );
+    }
+    return r;
+  }
   async function createMany(list: Profile[], template?: ProfileTemplate) {
     for (const p of list) await api.profiles.save(p);
     setBulkCreateOpen(false);
@@ -1141,6 +1173,9 @@ function Manager() {
             <button className={btnGhost} onClick={doImport}>
               {t("Import")}
             </button>
+            <button className={btnGhost} onClick={() => setMigrate({ kind: "profiles" })} title={t("AdsPower, Dolphin Anty, GoLogin, Multilogin, Octo…")}>
+              {t("Move in from another browser…")}
+            </button>
             <button className={btnGhost} onClick={() => openExport()} disabled={profiles.length === 0}>
               {t("Export")}
             </button>
@@ -1266,6 +1301,7 @@ function Manager() {
                         onSaveTemplate={() => setSaveTplFor(p)}
                         onDelete={() => remove(p)}
                         onExport={() => openExport([p.id])}
+                        onImportCookies={() => setMigrate({ kind: "cookies", id: p.id, name: p.name || p.id })}
                         onOpenData={() => openData(p)}
                         onCheckGeo={() => checkGeo(p)}
                         onClearCache={() => clearCache(p)}
@@ -1362,6 +1398,9 @@ function Manager() {
         />
       )}
       {shortcutsOpen && <ShortcutsDialog onClose={() => setShortcutsOpen(false)} />}
+      {migrate && (
+        <MigrateDialog mode={migrate} onImport={(text, filename) => doMigrate(migrate, text, filename)} onClose={() => setMigrate(null)} />
+      )}
       {exportReq && (
         <ExportDialog count={exportReq.count} single={exportReq.single} onExport={doExport} onClose={() => setExportReq(null)} />
       )}

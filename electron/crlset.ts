@@ -468,6 +468,25 @@ export async function holdUntilLive(
   return outcome;
 }
 
+/** Release the about:blank tab a launch held for its own reasons (imported cookies) without the CRLSet wait. */
+export async function releaseHeldTab(
+  cdp: Pick<PipeCdp, "send">,
+  release: ReleaseTarget,
+  opts: { timeoutMs?: number; pause?: (ms: number) => Promise<unknown> } = {},
+): Promise<void> {
+  const pause = opts.pause ?? sleep;
+  const deadline = Date.now() + (opts.timeoutMs ?? WAIT_TIMEOUT_MS);
+  let hold: TargetInfo | undefined;
+  while (!hold && Date.now() < deadline) {
+    const { targetInfos } = await cdp.send<{ targetInfos: TargetInfo[] }>("Target.getTargets");
+    hold = targetInfos.find((t) => t.type === "page" && t.url === HOLD_URL);
+    if (!hold) await pause(50);
+  }
+  if (!hold) return; // the user already took the tab elsewhere
+  const { sessionId } = await cdp.send<{ sessionId: string }>("Target.attachToTarget", { targetId: hold.targetId, flatten: true });
+  await releaseHold(cdp, hold.targetId, sessionId, release);
+}
+
 async function releaseHold(cdp: Pick<PipeCdp, "send">, holdId: string, sessionId: string, release: ReleaseTarget): Promise<void> {
   if ("url" in release) {
     await cdp.send("Page.navigate", { url: release.url }, sessionId);
