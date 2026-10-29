@@ -151,6 +151,7 @@ describe("launch() — automation off", () => {
     const r = await launcher.launch(profile("plain"));
     expect(r.ok).toBe(true);
     expect(argsOf().some((a) => a.startsWith("--remote-debugging-port"))).toBe(false);
+    expect(argsOf()).not.toContain("--remote-debugging-pipe");
     expect(r.cdp).toBeUndefined();
     expect(launcher.cdpEndpoint("plain")).toBeUndefined();
   });
@@ -162,6 +163,8 @@ describe("launch() — automation on", () => {
     expect(r).toMatchObject({ ok: true, cdp: "http://127.0.0.1:51234" });
     expect(argsOf()).toContain("--remote-debugging-port=0");
     expect(launcher.cdpEndpoint("auto")).toBe("http://127.0.0.1:51234");
+    // nothing to hold (no revocation list, no imported cookies): the port alone, no DevTools pipe
+    expect(argsOf()).not.toContain("--remote-debugging-pipe");
   });
 
   it("the Allow automation setting turns it on for every launch", async () => {

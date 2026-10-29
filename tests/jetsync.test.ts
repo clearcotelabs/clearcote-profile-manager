@@ -346,7 +346,7 @@ describe("a run", () => {
       },
     });
     const run = await finished(h.mgr, startOk(h, { profileIds: ["a"], goal: "x" }));
-    expect(run.rows[0]).toMatchObject({ status: "failed", detail: expect.stringMatching(/too old.*0\.3\.0.*pip install -U clearcote-jet/) });
+    expect(run.rows[0]).toMatchObject({ status: "failed", detail: expect.stringMatching(/too old.*0\.3\.0.*pip install -U git\+https:\/\/github\.com\/clearcotelabs\/clearcote-jet/) });
   });
 
   it("a worker error event fails the row", async () => {
@@ -359,7 +359,7 @@ describe("a run", () => {
     const e = Object.assign(new Error("spawn clearcote-jet ENOENT"), { code: "ENOENT" });
     const h = harness({ spawnError: e });
     const run = await finished(h.mgr, startOk(h, { profileIds: ["a"], goal: "x" }));
-    expect(run.rows[0]).toMatchObject({ status: "failed", detail: expect.stringMatching(/pip install clearcote-jet/) });
+    expect(run.rows[0]).toMatchObject({ status: "failed", detail: expect.stringMatching(/pip install -U git\+https:\/\/github\.com\/clearcotelabs\/clearcote-jet/) });
   });
 });
 

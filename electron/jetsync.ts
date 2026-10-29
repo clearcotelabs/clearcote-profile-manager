@@ -498,7 +498,7 @@ export class SyncManager extends EventEmitter {
 
 /** The oldest Jet with the worker this runner speaks to. */
 export const MIN_JET = "0.3.0";
-const JET_TOO_OLD = `This Jet is too old to run tasks on profiles (it needs ${MIN_JET} or newer). Update it with "pip install -U clearcote-jet".`;
+const JET_TOO_OLD = `This Jet is too old to run tasks on profiles (it needs ${MIN_JET} or newer). Update it with "pip install -U git+https://github.com/clearcotelabs/clearcote-jet".`;
 
 /** An older Jet has no `worker` command: argparse says so on stderr. */
 function tooOld(lines: string[]): boolean {
@@ -513,7 +513,7 @@ function lastLines(lines: string[]): string {
 function notFound(cmd: string, e: unknown): string {
   const code = (e as { code?: string })?.code;
   if (code === "ENOENT") {
-    return `Jet is not installed or not found (${cmd}). Install it with "pip install clearcote-jet", or set the command under Settings → Run a task.`;
+    return `Jet is not installed or not found (${cmd}). Install it with "pip install -U git+https://github.com/clearcotelabs/clearcote-jet", or set the command under Settings → Tasks.`;
   }
   return `Could not start Jet (${cmd}): ${String((e as Error)?.message || e)}`;
 }

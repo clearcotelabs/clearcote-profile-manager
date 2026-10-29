@@ -43,7 +43,7 @@ export default function TasksSection({
           </label>
           <p className="mt-0.5 text-xs leading-relaxed text-fog/45">
             {tRich("Install it once with {cmd}. Leave the command empty to use {bin} from PATH, or give the full command, for example a Python of your own.", {
-              cmd: <span className="font-mono text-fog/70">pip install clearcote-jet</span>,
+              cmd: <span className="font-mono text-fog/70 break-all">pip install -U git+https://github.com/clearcotelabs/clearcote-jet</span>,
               bin: <span className="font-mono text-fog/70">clearcote-jet</span>,
             })}
           </p>

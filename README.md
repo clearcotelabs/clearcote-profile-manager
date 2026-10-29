@@ -178,7 +178,7 @@ different screens, languages or cookie banners still do the right thing.
 - **Ask before a click that can't be undone.** On by default: each profile stops before sending, buying,
   booking or deleting, and the run board lets you approve them one by one or all at once.
 - **Pacing.** How many run at once, and a random wait between starts, so a batch never acts in step.
-- **Setting up Jet.** `pip install clearcote-jet` (0.3.0 or newer), then **Settings → Tasks**: the
+- **Setting up Jet.** `pip install -U git+https://github.com/clearcotelabs/clearcote-jet` (0.3.0 or newer; Jet is installed from GitHub), then **Settings → Tasks**: the
   command to start it (empty = `clearcote-jet` from PATH) and its model key. Only learning a task uses
   the model, about $0.001 a task.
 - **How it connects.** A task's launches open a local DevTools port (`--remote-debugging-port=0`, read
