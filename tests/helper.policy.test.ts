@@ -178,3 +178,34 @@ describe("webPolicy", () => {
     expect(JSON.parse(got[0])[0].userDataDir).toBeUndefined();
   });
 });
+
+describe("run a task stays in the desktop app", () => {
+  const calls: string[] = [];
+  const fake = new Proxy({} as Record<string, (...a: unknown[]) => unknown>, {
+    get: (_t, ch: string) => (..._a: unknown[]) => {
+      calls.push(ch);
+      return ch === "settings:get" ? { jetApiKey: "tsk_live_1234567890abcd" } : { ok: true };
+    },
+  });
+
+  it("refuses starting, steering or clearing runs, and reading a DevTools endpoint", async () => {
+    const h = m.webPolicy(fake as never);
+    for (const ch of ["sync:start", "sync:approve", "sync:cancel", "sync:stop", "sync:clear", "cdp:endpoint"]) {
+      const r = (await h[ch]({ emit: () => {} }, "x")) as { ok: boolean; error: string };
+      expect(r.ok, ch).toBe(false);
+      expect(r.error).toMatch(/desktop app only/);
+    }
+    expect(await h["sync:list"]({ emit: () => {} })).toEqual([]);
+    expect(calls.filter((c) => c.startsWith("sync:") || c === "cdp:endpoint")).toEqual([]);
+  });
+
+  it("cannot change which program Jet is or turn automation on, and sees Jet's key masked", () => {
+    const saved: Settings = { jetCommand: "clearcote-jet", automation: false, jetApiKey: "tsk_live_1234567890abcd" };
+    const out = m.cleanSettings({ jetCommand: "calc.exe", automation: true, jetApiKey: m.maskSettings(saved).jetApiKey } as Settings, saved);
+    expect(out.jetCommand).toBe("clearcote-jet");
+    expect(out.automation).toBe(false);
+    expect(out.jetApiKey).toBe("tsk_live_1234567890abcd");
+    expect(m.maskSettings(saved).jetApiKey).not.toBe(saved.jetApiKey);
+    expect(m.maskSettings(saved).jetApiKey).toContain("••••");
+  });
+});
