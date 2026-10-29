@@ -20,6 +20,9 @@
   "(persona default)": [
     "src/lib/fields.ts"
   ],
+  "+ Add a value": [
+    "src/components/TaskValues.tsx"
+  ],
   "+ Create your first profile": [
     "app/page.tsx"
   ],
@@ -53,6 +56,9 @@
   "1 profile": [
     "app/page.tsx"
   ],
+  "1 profile has no value for every slot and will be skipped:": [
+    "src/components/RunTaskDialog.tsx"
+  ],
   "1 profile without one": [
     "src/components/ProxiesView.tsx"
   ],
@@ -79,6 +85,9 @@
   ],
   "32 — desktop maximum": [
     "src/lib/fields.ts"
+  ],
+  "<b>Ask me before a click that can't be undone</b> — sending, buying, booking, deleting. Each profile waits there; approve them one by one or all at once.": [
+    "src/components/RunTaskDialog.tsx"
   ],
   "<b>Cookies:</b> {what}": [
     "src/components/CloudFields.tsx"
@@ -155,6 +164,9 @@
   "API keys start with cc_live_. A licence key (cc_lic_…) belongs under Licence.": [
     "src/components/SettingsModal.tsx"
   ],
+  "About Jet ↗": [
+    "src/components/TasksSection.tsx"
+  ],
   "Across all categories. Clear the search to go back.": [
     "src/components/ProfileEditor.tsx"
   ],
@@ -197,6 +209,9 @@
   ],
   "All settings": [
     "src/components/ProfileEditor.tsx"
+  ],
+  "Allow automation on every launch": [
+    "src/components/TasksSection.tsx"
   ],
   "Allow list": [
     "src/lib/fields.ts"
@@ -249,6 +264,12 @@
   "Applying a fingerprint runs in the desktop app.": [
     "src/lib/ipc.ts"
   ],
+  "Approve": [
+    "src/components/TaskBoard.tsx"
+  ],
+  "Approve all {n}": [
+    "src/components/TaskBoard.tsx"
+  ],
   "Approve it in the tab that opened. Check that it shows {code}. <a>Open the sign-in page</a>": [
     "src/components/SettingsModal.tsx"
   ],
@@ -266,6 +287,9 @@
   ],
   "At launch, fill any unset timezone, language, geolocation and WebRTC IP from the proxy's exit region.": [
     "src/lib/fields.ts"
+  ],
+  "At the same time": [
+    "src/components/RunTaskDialog.tsx"
   ],
   "Australia": [
     "src/components/CloudFields.tsx"
@@ -382,6 +406,7 @@
     "src/components/MigrateDialog.tsx",
     "src/components/ProfileEditor.tsx",
     "src/components/PromptDialog.tsx",
+    "src/components/RunTaskDialog.tsx",
     "src/components/TemplateDialogs.tsx"
   ],
   "Canvas 2D noise": [
@@ -494,7 +519,8 @@
     "src/components/StorageSection.tsx"
   ],
   "Clear": [
-    "src/components/ProfileEditor.tsx"
+    "src/components/ProfileEditor.tsx",
+    "src/components/TaskBoard.tsx"
   ],
   "Clear cache": [
     "app/page.tsx",
@@ -550,6 +576,9 @@
   ],
   "Close the browsers and quit": [
     "src/components/SettingsModal.tsx"
+  ],
+  "Close the browsers this task opened when it ends": [
+    "src/components/RunTaskDialog.tsx"
   ],
   "Close the side panel": [
     "app/page.tsx"
@@ -806,9 +835,13 @@
   "Doesn't work: {reason}.": [
     "src/lib/proxyReport.ts"
   ],
+  "Don't": [
+    "src/components/TaskBoard.tsx"
+  ],
   "Done": [
     "src/components/MigrateDialog.tsx",
     "src/components/SettingsModal.tsx",
+    "src/components/TaskBoard.tsx",
     "src/components/TemplateDialogs.tsx"
   ],
   "Double-click “Clearcote Helper.cmd”. It runs as an icon next to the clock; right-click it to quit.": [
@@ -860,6 +893,9 @@
   "Each profile keeps its own login unless the new address has one. Their last exit is cleared, since it was measured through the old server.": [
     "app/page.tsx"
   ],
+  "Each profile waits a random time in this range before it starts, so a batch never acts in step. Your licence's browser limit still applies.": [
+    "src/components/RunTaskDialog.tsx"
+  ],
   "Each profile's browser version is downloaded on first use and checked against its SHA-256.": [
     "src/components/SettingsModal.tsx"
   ],
@@ -898,6 +934,9 @@
   "Every bridged readback is a network round-trip on the renderer thread, which is itself a timing signal. Restrict bridging to the origins that actually score canvas coherence.": [
     "src/lib/fields.ts"
   ],
+  "Every browser this app opens gets a local DevTools port, so the SDK, Playwright or Jet can drive it. While a profile runs, any program on this PC can use that port. Running a task turns it on for its own launches only, so this can stay off.": [
+    "src/components/TasksSection.tsx"
+  ],
   "Every profile copies the template's settings with its own seed and the proxy from its line. Group and tags below override the template's.": [
     "src/components/BulkCreateDialog.tsx"
   ],
@@ -912,6 +951,9 @@
   ],
   "Every profile launches {path}, whatever version it asks for. Settings → Browser switches back to managed builds.": [
     "src/lib/launchTarget.ts"
+  ],
+  "Every selected profile has a value for each.": [
+    "src/components/RunTaskDialog.tsx"
   ],
   "Every template needs its own name.": [
     "src/components/TemplateDialogs.tsx"
@@ -962,6 +1004,9 @@
   ],
   "Extra flags": [
     "src/lib/fields.ts"
+  ],
+  "Failed": [
+    "src/components/TaskBoard.tsx"
   ],
   "Failed to apply this profile.": [
     "src/components/LibraryModal.tsx"
@@ -1108,7 +1153,9 @@
     "src/components/ProfileEditor.tsx"
   ],
   "Hide": [
-    "src/components/SettingsModal.tsx"
+    "src/components/SettingsModal.tsx",
+    "src/components/TaskBoard.tsx",
+    "src/components/TasksSection.tsx"
   ],
   "Hide 1 capture with a display too small to contain a browser window (under {w}×{h}) — the window would be bigger than its own screen.": [
     "src/components/LibraryModal.tsx"
@@ -1212,6 +1259,9 @@
   "India": [
     "src/components/CloudFields.tsx"
   ],
+  "Install it once with {cmd}. Leave the command empty to use {bin} from PATH, or give the full command, for example a Python of your own.": [
+    "src/components/TasksSection.tsx"
+  ],
   "Invalid licence.": [
     "src/components/SettingsModal.tsx"
   ],
@@ -1261,6 +1311,18 @@
   ],
   "Japan": [
     "src/components/CloudFields.tsx"
+  ],
+  "Jet": [
+    "src/components/TasksSection.tsx"
+  ],
+  "Jet settings…": [
+    "src/components/RunTaskDialog.tsx"
+  ],
+  "Jet works the task out in the first profile and saves it. The other profiles repeat it without the model, each on its own page with its own mouse movement and timing.": [
+    "src/components/RunTaskDialog.tsx"
+  ],
+  "Jet's decision model (TYPESAFE_API_KEY). Needed only the first time a task is learned, about $0.001 a task; repeating a learned task uses no model. Empty: the key from Jet's own .env or the environment.": [
+    "src/components/TasksSection.tsx"
   ],
   "Keep editing": [
     "app/page.tsx"
@@ -1382,6 +1444,9 @@
     "src/components/ProfileInspector.tsx",
     "src/components/ProfileTable.tsx"
   ],
+  "Learned tasks are saved by Jet on this PC (~/.clearcote-jet/skills). Secret task values are never written into them.": [
+    "src/components/TasksSection.tsx"
+  ],
   "Leave empty. Real Chrome reports what the site uses plus 10 GB.": [
     "src/lib/fields.ts"
   ],
@@ -1438,8 +1503,14 @@
     "src/components/LibraryModal.tsx",
     "src/components/StorageSection.tsx"
   ],
+  "Log in as {{email}} with the password {{password}} and accept the new terms": [
+    "src/components/RunTaskDialog.tsx"
+  ],
   "Logins survive a stop. They are kept in your Clearcote account, separate from this PC's browser data.": [
     "src/components/CloudFields.tsx"
+  ],
+  "Longest wait": [
+    "src/components/RunTaskDialog.tsx"
   ],
   "Looking for the Clearcote helper on this computer…": [
     "src/components/HelperGate.tsx"
@@ -1467,6 +1538,12 @@
   ],
   "Mexico": [
     "src/components/CloudFields.tsx"
+  ],
+  "Missing value": [
+    "src/components/TaskBoard.tsx"
+  ],
+  "Model key": [
+    "src/components/TasksSection.tsx"
   ],
   "More actions for {name}": [
     "src/components/ProfileCard.tsx",
@@ -1511,6 +1588,7 @@
   ],
   "Name": [
     "src/components/ProfileTable.tsx",
+    "src/components/TaskValues.tsx",
     "src/lib/fields.ts",
     "src/lib/profileList.ts"
   ],
@@ -1520,6 +1598,9 @@
   "Needs attention": [
     "app/page.tsx",
     "src/lib/workspace.ts"
+  ],
+  "Needs you": [
+    "src/components/TaskBoard.tsx"
   ],
   "Netherlands": [
     "src/components/CloudFields.tsx"
@@ -1574,6 +1655,9 @@
   ],
   "Newest": [
     "src/lib/profileList.ts"
+  ],
+  "Next: {action}": [
+    "src/components/TaskBoard.tsx"
   ],
   "No HTTP/3 (QUIC)": [
     "src/lib/quickCreate.ts"
@@ -1653,8 +1737,14 @@
   "Not connected to the Clearcote helper.": [
     "src/lib/helperBridge.ts"
   ],
+  "Not done": [
+    "src/components/TaskBoard.tsx"
+  ],
   "Not saved yet — press Save or Enter.": [
     "src/components/SettingsModal.tsx"
+  ],
+  "Not saved yet.": [
+    "src/components/TasksSection.tsx"
   ],
   "Not strictly better than the default: it trades a broad persona for a much narrower surface. In our own lab runs it scored worse on an audit suite. Test it against your target.": [
     "src/lib/fields.ts"
@@ -1757,8 +1847,14 @@
   "Open ⋯ on any profile and choose Save as template": [
     "app/page.tsx"
   ],
+  "Opened in a new tab in each profile. Empty: the task starts on the tab that is open. A saved task is matched to its start page, so keep it the same between runs.": [
+    "src/components/RunTaskDialog.tsx"
+  ],
   "Opened when the browser starts. Only http and https addresses are used — anything else is ignored, so this field can never add a command-line switch. A bare host like example.com gets https:// added.": [
     "src/lib/fields.ts"
+  ],
+  "Opening": [
+    "src/components/TaskBoard.tsx"
   ],
   "Ordinary browsers cannot proxy UDP at all, so WebRTC normally bypasses the proxy. This routes it through the same SOCKS5 endpoint that already carries TCP. It needs a proxy that permits the UDP command — a self-hosted one usually does, a residential vendor usually does not. Many residential proxies move a sticky session to another exit the first time UDP goes through it, and keep it there; with this on, the app sends that first UDP before it looks up the exit (at launch, Resolve from proxy and Check), so the address you see is the one the browser uses.": [
     "src/lib/fields.ts"
@@ -1932,7 +2028,8 @@
     "src/components/CloudViewer.tsx"
   ],
   "Remove": [
-    "src/components/StorageSection.tsx"
+    "src/components/StorageSection.tsx",
+    "src/components/TaskValues.tsx"
   ],
   "Remove build {version}": [
     "src/components/StorageSection.tsx"
@@ -2036,8 +2133,26 @@
   "Right-click “Clearcote Helper.command”, then Open. Keep its window open.": [
     "src/components/HelperGate.tsx"
   ],
+  "Run": [
+    "src/components/RunTaskDialog.tsx"
+  ],
   "Run ./clearcote-helper.sh. Keep its window open.": [
     "src/components/HelperGate.tsx"
+  ],
+  "Run a task": [
+    "src/components/SettingsModal.tsx"
+  ],
+  "Run a task on 1 profile": [
+    "src/components/RunTaskDialog.tsx"
+  ],
+  "Run a task on several profiles and write {{email}} where each profile's own value goes. A secret value is typed only: the run board, exports and Jet's model never see it.": [
+    "src/lib/fields.ts"
+  ],
+  "Run a task on {n} profiles": [
+    "src/components/RunTaskDialog.tsx"
+  ],
+  "Run a task…": [
+    "app/page.tsx"
   ],
   "Run in the cloud": [
     "src/components/ProfileCard.tsx",
@@ -2045,6 +2160,9 @@
   ],
   "Run installer": [
     "src/components/UpdateBanner.tsx"
+  ],
+  "Run one task on many profiles with Jet: it learns the task in the first profile and repeats it on the rest.": [
+    "src/components/SettingsModal.tsx"
   ],
   "Run profiles on Clearcote's servers instead of this PC, paid from your Clearcote balance.": [
     "src/components/SettingsModal.tsx"
@@ -2061,10 +2179,14 @@
   ],
   "Running": [
     "app/page.tsx",
+    "src/components/TaskBoard.tsx",
     "src/lib/workspace.ts"
   ],
   "Running a profile in the cloud": [
     "src/components/SettingsModal.tsx"
+  ],
+  "Running a task needs the desktop app (this is the browser preview).": [
+    "src/lib/syncMock.ts"
   ],
   "Running in the cloud": [
     "src/lib/fields.ts"
@@ -2073,6 +2195,9 @@
     "src/components/ProfileCard.tsx",
     "src/components/ProfileInspector.tsx",
     "src/components/ProfileTable.tsx"
+  ],
+  "Running tasks on profiles is in the desktop app only: it opens each browser's automation port, which a web page must not be able to do.": [
+    "src/components/TasksSection.tsx"
   ],
   "Running this profile on Clearcote's servers instead of this PC: where its traffic leaves, and what it keeps.": [
     "src/lib/fields.ts"
@@ -2084,7 +2209,8 @@
     "src/components/TemplateDialogs.tsx"
   ],
   "Save": [
-    "src/components/SettingsModal.tsx"
+    "src/components/SettingsModal.tsx",
+    "src/components/TasksSection.tsx"
   ],
   "Save & launch": [
     "src/components/ProfileEditor.tsx"
@@ -2128,6 +2254,9 @@
   "Saves their settings to a JSON file. Browser data — cookies, logins, history — is not included; it stays in each profile's data folder.": [
     "src/components/ExportDialog.tsx"
   ],
+  "Say what the task is.": [
+    "src/lib/syncMock.ts"
+  ],
   "Screen dimensions": [
     "src/lib/fields.ts"
   ],
@@ -2156,8 +2285,17 @@
   "Search proxies": [
     "src/components/ProxiesView.tsx"
   ],
+  "Secret": [
+    "src/components/TaskValues.tsx"
+  ],
+  "Secret values are typed only: Jet's model, the run board and the saved task see the name, never the value.": [
+    "src/components/RunTaskDialog.tsx"
+  ],
   "Select all {n}": [
     "app/page.tsx"
+  ],
+  "Select at least one profile.": [
+    "src/lib/syncMock.ts"
   ],
   "Select every profile shown": [
     "src/components/ShortcutsDialog.tsx"
@@ -2228,8 +2366,13 @@
   "Shops": [
     "src/lib/webPreview.ts"
   ],
+  "Shortest wait": [
+    "src/components/RunTaskDialog.tsx"
+  ],
   "Show": [
-    "src/components/SettingsModal.tsx"
+    "src/components/SettingsModal.tsx",
+    "src/components/TaskBoard.tsx",
+    "src/components/TasksSection.tsx"
   ],
   "Show API key": [
     "src/components/SettingsModal.tsx"
@@ -2304,6 +2447,7 @@
     "src/lib/launchError.ts"
   ],
   "Start page": [
+    "src/components/RunTaskDialog.tsx",
     "src/lib/fields.ts"
   ],
   "Starting in the cloud…": [
@@ -2314,13 +2458,15 @@
     "src/lib/helperBridge.ts"
   ],
   "Starting…": [
+    "src/components/RunTaskDialog.tsx",
     "src/components/SettingsModal.tsx"
   ],
   "Stop": [
     "app/page.tsx",
     "src/components/CloudViewer.tsx",
     "src/components/ProfileCard.tsx",
-    "src/components/ProfileTable.tsx"
+    "src/components/ProfileTable.tsx",
+    "src/components/TaskBoard.tsx"
   ],
   "Stop in the cloud": [
     "src/components/ProfileCard.tsx",
@@ -2362,11 +2508,17 @@
   "Stop “{name}” and launch": [
     "src/lib/launchError.ts"
   ],
+  "Stopped": [
+    "src/components/TaskBoard.tsx"
+  ],
   "Stopped 1 browser.": [
     "app/page.tsx"
   ],
   "Stopped {n} browsers.": [
     "app/page.tsx"
+  ],
+  "Stopped.": [
+    "src/lib/syncMock.ts"
   ],
   "Stopping “{name}” in the cloud.": [
     "app/page.tsx"
@@ -2383,6 +2535,9 @@
   ],
   "Storage quota (MB)": [
     "src/lib/fields.ts"
+  ],
+  "Stuck": [
+    "src/components/TaskBoard.tsx"
   ],
   "Sweden": [
     "src/components/CloudFields.tsx"
@@ -2413,6 +2568,18 @@
     "src/components/ProfileTable.tsx",
     "src/components/Sidebar.tsx",
     "src/lib/fields.ts"
+  ],
+  "Task": [
+    "src/components/RunTaskDialog.tsx"
+  ],
+  "Task run": [
+    "src/components/TaskBoard.tsx"
+  ],
+  "Task values": [
+    "src/lib/fields.ts"
+  ],
+  "Tasks": [
+    "src/components/SettingsModal.tsx"
   ],
   "Template": [
     "src/components/BulkCreateDialog.tsx",
@@ -2593,6 +2760,9 @@
   "The shader dialect setting is invalid": [
     "src/lib/launchError.ts"
   ],
+  "The start page must be an http or https address.": [
+    "src/components/RunTaskDialog.tsx"
+  ],
   "The stronger form of a portable profile: you hold the key, so no key material is stored beside the cookies. It wins when both are set. Redacted in the preview and dropped on export — keep your own copy, because a lost key is a lost cookie jar.": [
     "src/lib/fields.ts"
   ],
@@ -2638,6 +2808,9 @@
   "This machine: {gpu} — its maker's models are listed first.": [
     "src/components/ProfileEditor.tsx"
   ],
+  "This name is used twice; the last one wins.": [
+    "src/components/TaskValues.tsx"
+  ],
   "This page is no longer paired with the helper.": [
     "src/lib/helperBridge.ts"
   ],
@@ -2658,6 +2831,9 @@
   ],
   "This profile has no proxy.": [
     "src/components/CloudFields.tsx"
+  ],
+  "This profile has no value for {slots}.": [
+    "src/lib/syncMock.ts"
   ],
   "This profile is already running": [
     "src/lib/launchError.ts"
@@ -2735,6 +2911,9 @@
   ],
   "Too many requests": [
     "src/lib/launchError.ts"
+  ],
+  "Too many steps": [
+    "src/components/TaskBoard.tsx"
   ],
   "Top up ↗": [
     "src/components/SettingsModal.tsx",
@@ -2873,6 +3052,9 @@
   "Use it": [
     "src/components/ProfileEditor.tsx"
   ],
+  "Use letters, digits, _ . or -, starting with a letter.": [
+    "src/components/TaskValues.tsx"
+  ],
   "Use my Clearcote account": [
     "app/page.tsx",
     "src/components/SettingsModal.tsx"
@@ -2899,6 +3081,12 @@
     "app/page.tsx",
     "src/lib/workspace.ts"
   ],
+  "Value": [
+    "src/components/TaskValues.tsx"
+  ],
+  "Values used:": [
+    "src/components/RunTaskDialog.tsx"
+  ],
   "Version {version} is available — see the banner.": [
     "src/components/SettingsModal.tsx"
   ],
@@ -2914,6 +3102,12 @@
   "Wait a minute, then try again.": [
     "src/lib/launchError.ts"
   ],
+  "Wait between starts (seconds)": [
+    "src/components/RunTaskDialog.tsx"
+  ],
+  "Waiting": [
+    "src/components/TaskBoard.tsx"
+  ],
   "WebRTC IP is set to {ip}, which is not this exit: pages will see HTTP from {exit} and WebRTC from {ip}. Clear the field, or click “Resolve from proxy”, to keep them together.": [
     "src/lib/proxyReport.ts"
   ],
@@ -2921,6 +3115,9 @@
     "src/lib/quickCreate.ts"
   ],
   "What WebRTC reports as the public address. “Resolve from proxy” fills it with the proxy's exit, and every launch looks that exit up again while the field still holds it, so a proxy that moves to another address does not leave WebRTC behind. Type an address to pin it.": [
+    "src/lib/fields.ts"
+  ],
+  "What a task's {{name}} slots are filled with on this profile.": [
     "src/lib/fields.ts"
   ],
   "What canvas, WebGL and audio report.": [
@@ -3017,6 +3214,9 @@
   "Workspace": [
     "src/components/Sidebar.tsx"
   ],
+  "Write {slot} for a value that differs per profile: its name, or one of its task values (in the profile's editor, under Identity).": [
+    "src/components/RunTaskDialog.tsx"
+  ],
   "You set this": [
     "src/components/ProfileEditor.tsx"
   ],
@@ -3064,6 +3264,9 @@
   ],
   "an unknown place": [
     "app/page.tsx"
+  ],
+  "and {n} more": [
+    "src/components/RunTaskDialog.tsx"
   ],
   "android — mobile persona": [
     "src/lib/fields.ts"
@@ -3147,6 +3350,9 @@
   "exits in {place} ({ip})": [
     "src/lib/proxyReport.ts"
   ],
+  "finished": [
+    "src/components/TaskBoard.tsx"
+  ],
   "follows the proxy": [
     "src/components/ProfileInspector.tsx"
   ],
@@ -3185,6 +3391,9 @@
   ],
   "launch your profiles": [
     "src/components/HelperGate.tsx"
+  ],
+  "learned": [
+    "src/components/TaskBoard.tsx"
   ],
   "library": [
     "src/components/ProfileEditor.tsx"
@@ -3270,6 +3479,12 @@
   "real gpu": [
     "src/components/ProfileCard.tsx"
   ],
+  "relearned a step": [
+    "src/components/TaskBoard.tsx"
+  ],
+  "replayed": [
+    "src/components/TaskBoard.tsx"
+  ],
   "run a profile in the cloud": [
     "src/lib/webPreview.ts"
   ],
@@ -3284,6 +3499,9 @@
   ],
   "save settings": [
     "src/lib/webPreview.ts"
+  ],
+  "secret": [
+    "src/components/RunTaskDialog.tsx"
   ],
   "supply your own — nothing sensitive is written to disk": [
     "src/lib/fields.ts"
@@ -3351,6 +3569,9 @@
   "{current} (set before)": [
     "src/lib/fields.ts"
   ],
+  "{done} of {n} done": [
+    "src/components/TaskBoard.tsx"
+  ],
   "{error} Reconnecting…": [
     "src/components/CloudViewer.tsx"
   ],
@@ -3409,6 +3630,9 @@
     "app/page.tsx",
     "src/components/ProxiesView.tsx"
   ],
+  "{n} profiles have no value for every slot and will be skipped:": [
+    "src/components/RunTaskDialog.tsx"
+  ],
   "{n} profiles without one": [
     "src/components/ProxiesView.tsx"
   ],
@@ -3435,6 +3659,9 @@
   ],
   "{n} things contradict the rest": [
     "src/components/ProfileInspector.tsx"
+  ],
+  "{n} waiting for you": [
+    "src/components/TaskBoard.tsx"
   ],
   "{proxy} — http and socks5 work in the cloud.": [
     "src/components/CloudFields.tsx"

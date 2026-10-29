@@ -40,6 +40,9 @@ export function buildPreviewApi(mock: ClearcoteApi): ClearcoteApi {
     storage: { ...mock.storage, prefetch: fail(tx("download the browser")) },
     launchTarget: async () => ({ mode: "preview" }),
     launch: fail(tx("launch a browser")),
+    // Tasks run in the desktop app only (it opens each browser's automation port), so the web version has none.
+    sync: undefined,
+    cdpEndpoint: undefined,
     cloud: {
       ...mock.cloud,
       start: fail(tx("run a profile in the cloud")) as ClearcoteApi["cloud"]["start"],

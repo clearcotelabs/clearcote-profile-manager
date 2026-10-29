@@ -135,7 +135,8 @@ export interface FieldDef {
     | "extraArgs"
     | "canvasBridgeAllow"
     | "canvasBridgeDeny"
-    | "gpuModel";
+    | "gpuModel"
+    | "vars";
   /** Rendered INSIDE the named field's bespoke control rather than on its own — the GPU vendor and
    *  renderer strings, which the model picker shows only in its Custom mode. The panel skips such
    *  a field; a search hit or a coherence deep-link lands on the host instead. The field stays in
@@ -190,6 +191,17 @@ export const FIELDS: FieldDef[] = [
   { key: "tags", cat: "identity", label: tx("Tags"), type: "custom", custom: "tags", placeholder: "us, social" },
   { key: "group", cat: "identity", label: tx("Group"), type: "text", placeholder: tx("optional") },
   { key: "notes", cat: "identity", label: tx("Notes"), type: "textarea", full: true, placeholder: tx("anything worth remembering") },
+  {
+    key: "vars",
+    cat: "identity",
+    label: tx("Task values"),
+    type: "custom",
+    custom: "vars",
+    full: true,
+    keywords: "jet task run synchronizer variables email password login {{ }}",
+    hint: tx("What a task's {{name}} slots are filled with on this profile."),
+    why: tx("Run a task on several profiles and write {{email}} where each profile's own value goes. A secret value is typed only: the run board, exports and Jet's model never see it."),
+  },
 
   // ── Browser ───────────────────────────────────────────────────────────────
   {

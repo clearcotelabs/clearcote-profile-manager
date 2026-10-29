@@ -8,9 +8,12 @@ import type { LaunchTarget } from "@/lib/launchTarget";
 import type { ProfileTemplate } from "@/lib/templates";
 import type { CheckOptions, ProxyCheck, UdpVerdict } from "../../electron/proxycheck";
 export type { ProxyCheck, UdpVerdict } from "../../electron/proxycheck";
+import type { StartRequest, SyncRun } from "../../electron/jetsync";
+export type { StartRequest, SyncRun, SyncRow, RowStatus } from "../../electron/jetsync";
 import { buildHelperApi, helper } from "@/lib/helperBridge";
 import { buildPreviewApi, seedExamples, switchable } from "@/lib/webPreview";
 import { t } from "@/lib/i18n";
+import { buildSyncMock } from "@/lib/syncMock";
 
 export type TrashResult = { ok: true; trashId: string } | { ok: false; error: string };
 export type RestoreResult = { ok: true; profile: Profile } | { ok: false; error: string };
@@ -120,6 +123,15 @@ export interface Settings {
   cloudApiBase?: string;
   /** Profile templates (src/lib/templates.ts): starting points for new profiles. */
   templates?: ProfileTemplate[];
+  /** Open a local DevTools port on every launch (Settings → Tasks). */
+  automation?: boolean;
+  /** How to start Jet; empty = `clearcote-jet` from PATH. */
+  jetCommand?: string;
+  /** Jet's decision-model key (TYPESAFE_API_KEY). */
+  jetApiKey?: string;
+  /** Run-a-task defaults. */
+  syncConcurrency?: number;
+  syncStaggerSec?: [number, number];
 }
 export interface LaunchResult {
   ok: boolean;
@@ -293,6 +305,19 @@ export interface UpdateDownloadResult {
   verified?: boolean;
 }
 
+/** Run one task on many profiles with Jet (electron/jetsync.ts). */
+export interface SyncApi {
+  list: () => Promise<SyncRun[]>;
+  start: (req: StartRequest) => Promise<{ ok: true; runId: string } | { ok: false; error: string }>;
+  /** Go ahead with the click a row stopped before; without a profile, every waiting row. Resolves to how many. */
+  approve: (runId: string, profileId?: string) => Promise<number>;
+  cancel: (runId: string, profileId?: string) => Promise<number>;
+  stop: (runId: string, profileId?: string) => Promise<number>;
+  /** Forget finished runs. */
+  clear: () => Promise<void>;
+  onChanged: (cb: (runs: SyncRun[]) => void) => () => void;
+}
+
 export interface ClearcoteApi {
   profiles: {
     list: () => Promise<Profile[]>;
@@ -328,6 +353,10 @@ export interface ClearcoteApi {
   launch: (p: Profile) => Promise<LaunchResult>;
   stop: (id: string) => Promise<StopOutcome>;
   running: () => Promise<string[]>;
+  /** Run one task on many profiles with Jet. Desktop app only: absent in the web version. */
+  sync?: SyncApi;
+  /** A running profile's local DevTools endpoint (launched with automation), or null. */
+  cdpEndpoint?: (id: string) => Promise<string | null>;
   /** Profiles running on Clearcote's servers, and the viewer window that shows one. */
   cloud: {
     list: () => Promise<CloudSession[]>;
@@ -584,6 +613,8 @@ function buildMock(): ClearcoteApi {
     },
     stop: async (id) => (mockRunning.delete(id) ? "graceful" : "gone"),
     running: async () => [...mockRunning],
+    sync: buildSyncMock(read),
+    cdpEndpoint: async () => null,
     cloud: {
       list: async () => cloudRead(),
       start: async (p) => {

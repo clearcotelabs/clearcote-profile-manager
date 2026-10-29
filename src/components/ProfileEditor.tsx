@@ -72,6 +72,7 @@ import {
   withoutScreen,
 } from "@/lib/quickCreate";
 import CloudFields from "./CloudFields";
+import TaskValues from "./TaskValues";
 import { t, tRich } from "@/lib/i18n";
 
 const input =
@@ -698,6 +699,14 @@ export default function ProfileEditor({
           </>
         );
       }
+
+      case "vars":
+        return (
+          <>
+            {labelFor(f)}
+            <TaskValues value={profile.vars} onChange={(v) => set("vars", v as never)} />
+          </>
+        );
 
       case "extraArgs":
         return (

@@ -11,10 +11,11 @@ import { api, type Settings, type LicenseStatus, type CloudAccount } from "@/lib
 import { needsHelper } from "@/lib/webPreview";
 import Dialog, { DialogFooter, DialogHeader } from "./Dialog";
 import StorageSection from "./StorageSection";
+import TasksSection from "./TasksSection";
 import { browserFileName, hostOs } from "@/lib/host";
 import { LOCALES, LOCALE_META, setLocale, t, tRich, tx, useLocale, type Locale } from "@/lib/i18n";
 
-export type Section = "general" | "browser" | "license" | "cloud" | "updates" | "storage";
+export type Section = "general" | "browser" | "license" | "cloud" | "tasks" | "updates" | "storage";
 
 /** Where a free key comes from: sign in with GitHub, Licenses, "Get it free" (the site's own FAQ). */
 export const FREE_KEY_URL = "https://www.clearcotelabs.com/dashboard/licenses";
@@ -46,6 +47,12 @@ const SECTIONS: { id: Section; label: string; title: string; blurb: string }[] =
     label: tx("Cloud"),
     title: tx("Cloud"),
     blurb: tx("Run profiles on Clearcote's servers instead of this PC, paid from your Clearcote balance."),
+  },
+  {
+    id: "tasks",
+    label: tx("Tasks"),
+    title: tx("Run a task"),
+    blurb: tx("Run one task on many profiles with Jet: it learns the task in the first profile and repeats it on the rest."),
   },
   {
     id: "updates",
@@ -695,6 +702,8 @@ export default function SettingsModal({
                 </p>
               </div>
             )}
+
+            {section === "tasks" && <TasksSection settings={settings} onSaveSettings={onSaveSettings} />}
 
             {section === "updates" && (
               <Card>

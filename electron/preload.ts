@@ -14,6 +14,7 @@ import type { TempCopy } from "./cache";
 import type { ProxyCheck } from "./proxycheck";
 import type { CloudSessionState, CloudStartResult, CloudEnded } from "./cloud";
 import type { HostGpu } from "./hostgpu";
+import type { StartRequest, SyncRun } from "./jetsync";
 
 /** Subscribe to a main-process event; returns the unsubscribe function. */
 function on<T>(channel: string, cb: (data: T) => void): () => void {
@@ -63,6 +64,18 @@ const api = {
   launch: (p: Profile): Promise<LaunchResult> => ipcRenderer.invoke("launch", p),
   stop: (id: string): Promise<StopOutcome> => ipcRenderer.invoke("stop", id),
   running: (): Promise<string[]> => ipcRenderer.invoke("running"),
+  /** Run one task on many profiles with Jet (electron/jetsync.ts). */
+  sync: {
+    list: (): Promise<SyncRun[]> => ipcRenderer.invoke("sync:list"),
+    start: (req: StartRequest): Promise<{ ok: true; runId: string } | { ok: false; error: string }> => ipcRenderer.invoke("sync:start", req),
+    approve: (runId: string, profileId?: string): Promise<number> => ipcRenderer.invoke("sync:approve", runId, profileId),
+    cancel: (runId: string, profileId?: string): Promise<number> => ipcRenderer.invoke("sync:cancel", runId, profileId),
+    stop: (runId: string, profileId?: string): Promise<number> => ipcRenderer.invoke("sync:stop", runId, profileId),
+    clear: (): Promise<void> => ipcRenderer.invoke("sync:clear"),
+    onChanged: (cb: (runs: SyncRun[]) => void) => on<SyncRun[]>("sync:changed", cb),
+  },
+  /** A running profile's local DevTools endpoint (launched with automation), or null. */
+  cdpEndpoint: (id: string): Promise<string | null> => ipcRenderer.invoke("cdp:endpoint", id),
   /** Profiles running on Clearcote's servers. The API key never reaches the window: the viewer gets
    *  a 60-second view URL, nothing else. */
   cloud: {

@@ -14,6 +14,7 @@ import {
   type ExitEvent,
   type CloudSession,
   type LaunchResult,
+  type SyncRun,
 } from "@/lib/ipc";
 import ProfileEditor from "@/components/ProfileEditor";
 import SettingsModal, { type Section as SettingsSection } from "@/components/SettingsModal";
@@ -30,6 +31,8 @@ import UpdateBanner from "@/components/UpdateBanner";
 import ExportDialog from "@/components/ExportDialog";
 import MigrateDialog, { type MigrateMode } from "@/components/MigrateDialog";
 import BulkCreateDialog from "@/components/BulkCreateDialog";
+import RunTaskDialog from "@/components/RunTaskDialog";
+import TaskBoard from "@/components/TaskBoard";
 import Menu from "@/components/Menu";
 import { launchReport, udpLine } from "@/lib/proxyReport";
 import { ManageTemplatesDialog, SaveTemplateDialog } from "@/components/TemplateDialogs";
@@ -205,6 +208,9 @@ function Manager() {
   const [migrate, setMigrate] = useState<MigrateMode | null>(null);
   const [exportReq, setExportReq] = useState<{ ids?: string[]; single?: string; count: number } | null>(null);
   const [bulkCreateOpen, setBulkCreateOpen] = useState(false);
+  // Run a task on the selected profiles (Jet): the dialog, and the runs the board shows.
+  const [runTaskOpen, setRunTaskOpen] = useState(false);
+  const [taskRuns, setTaskRuns] = useState<SyncRun[]>([]);
   // Templates: the profile being saved as one, the manage dialog, and the template the open editor
   // was started from (its use is counted when that profile is saved).
   const [saveTplFor, setSaveTplFor] = useState<Profile | null>(null);
@@ -318,6 +324,19 @@ function Manager() {
       alive = false;
       offChanged();
       offEnded();
+    };
+  }, []);
+
+  // Task runs (desktop app only): the list now, every change after.
+  useEffect(() => {
+    const sync = api.sync;
+    if (!sync) return;
+    let alive = true;
+    void sync.list().then((r) => alive && setTaskRuns(r));
+    const off = sync.onChanged((r) => setTaskRuns(r));
+    return () => {
+      alive = false;
+      off();
     };
   }, []);
 
@@ -1686,6 +1705,11 @@ function Manager() {
             <button className={btnGhost} onClick={() => openExport([...selected])}>
               {t("Export…")}
             </button>
+            {api.sync && (
+              <button className={btnGhost} onClick={() => setRunTaskOpen(true)} data-bulk-run-task="1">
+                {t("Run a task…")}
+              </button>
+            )}
             <button className={btnGhost + " text-danger hover:bg-danger/10"} onClick={bulkDelete}>
               {t("Delete…")}
             </button>
@@ -1745,6 +1769,28 @@ function Manager() {
       )}
       {exportReq && (
         <ExportDialog count={exportReq.count} single={exportReq.single} onExport={doExport} onClose={() => setExportReq(null)} />
+      )}
+      {runTaskOpen && api.sync && (
+        <RunTaskDialog
+          profiles={selectedProfiles}
+          settings={settings}
+          onStart={(req) => api.sync!.start(req)}
+          onOpenSettings={() => {
+            setRunTaskOpen(false);
+            setSettingsOpen("tasks");
+          }}
+          onClose={() => setRunTaskOpen(false)}
+        />
+      )}
+      {api.sync && (
+        <TaskBoard
+          runs={taskRuns}
+          raised={selected.size > 0}
+          onApprove={(runId, id) => void api.sync!.approve(runId, id)}
+          onCancel={(runId, id) => void api.sync!.cancel(runId, id)}
+          onStop={(runId, id) => void api.sync!.stop(runId, id)}
+          onClear={() => void api.sync!.clear()}
+        />
       )}
       {bulkCreateOpen && (
         <BulkCreateDialog
