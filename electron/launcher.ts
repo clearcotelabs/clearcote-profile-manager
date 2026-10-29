@@ -288,6 +288,25 @@ export async function prepareProxySession(
 }
 
 /**
+ * Relay UDP on, and the session's first association (pinUdpSession) was REFUSED by the proxy: launch this
+ * time with Relay UDP off, and say so. A relay through a proxy that refuses UDP closes every UDP socket at
+ * once (WebRTC reports an error and no public address, HTTP/3 never starts); with it off the browser behaves
+ * exactly as it does with the toggle off. Anything short of a clear refusal keeps the relay on. The saved
+ * profile is not changed.
+ */
+export function relayUdpAfterPin(
+  p: Profile,
+  udp: { udp: UdpVerdict; detail?: string } | undefined,
+): { profile: Profile; warning?: string } {
+  if (!p.socks5Udp || udp?.udp !== "refused") return { profile: p };
+  return {
+    profile: { ...p, socks5Udp: false },
+    warning: `Relay UDP is off for this launch: the proxy refused UDP${udp.detail ? ` (${udp.detail.replace(/\.$/, "")})` : ""}. ` +
+      "WebRTC and HTTP/3 work as with Relay UDP off. Use a proxy plan that carries UDP to relay it.",
+  };
+}
+
+/**
  * The real launch command line. The fingerprint switches come from the shared builder
  * (electron/fpargs.ts) so this path and the renderer's preview can never drift; only the bits that
  * genuinely differ live here — reading + gzipping the captured profile, the resolved user-data-dir,
@@ -389,7 +408,9 @@ export async function launch(
   // BEFORE buildArgs so the enriched values reach the switches.
   const session = await prepareProxySession(p);
   warnings.push(...session.warnings);
-  p = session.profile;
+  const udpRelay = relayUdpAfterPin(session.profile, session.udp);
+  if (udpRelay.warning) warnings.push(udpRelay.warning);
+  p = udpRelay.profile;
 
   // Acquire the concurrency lease BEFORE launching (so an over-limit / revoked license fails
   // fast and never spawns a browser the gate would just refuse) — but ONLY for a gated launch:
