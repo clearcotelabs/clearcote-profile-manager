@@ -74,8 +74,9 @@ export default function CloudViewer({ profileId }: { profileId: string }) {
     };
   }, [profileId]);
 
-  // The tab title names the profile. Next writes the app's metadata title after the page loads, so
-  // put it back whenever the head changes.
+  // The tab title names the profile. Next writes the app's metadata title after the page loads, and
+  // the dev server streams that <title> into the body rather than the head, so watch the whole
+  // document (structure and text only: frames change an attribute, which is not observed).
   useEffect(() => {
     if (!session?.name) return;
     const want = t("{name} — Cloud", { name: session.name });
@@ -84,7 +85,7 @@ export default function CloudViewer({ profileId }: { profileId: string }) {
     };
     apply();
     const mo = new MutationObserver(apply);
-    mo.observe(document.head, { childList: true, subtree: true, characterData: true });
+    mo.observe(document.documentElement, { childList: true, subtree: true, characterData: true });
     return () => mo.disconnect();
   }, [session?.name, locale]);
 

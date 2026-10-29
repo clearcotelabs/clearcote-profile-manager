@@ -44,6 +44,8 @@ describe.skipIf(!READY)("the UI on a Mac (and the same steps on Windows)", () =>
       Object.defineProperty(Navigator.prototype, "platform", { get: () => p, configurable: true });
       try {
         localStorage.clear();
+        // These steps use the category rail; Simple (the default since 0.23) has none.
+        localStorage.setItem("clearcote.editor.mode", "all");
       } catch {
         /* first load */
       }
