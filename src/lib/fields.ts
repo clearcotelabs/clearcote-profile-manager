@@ -16,6 +16,7 @@
 // keep their category, their search text and their position.
 
 import { newProfile } from "./newProfile";
+import { t, tx } from "./i18n";
 
 export type CategoryId = "identity" | "browser" | "hardware" | "network" | "rendering" | "session" | "cloud";
 
@@ -33,46 +34,46 @@ export interface Category {
 export const CATEGORIES: Category[] = [
   {
     id: "identity",
-    label: "Identity",
-    title: "Identity",
+    label: tx("Identity"),
+    title: tx("Identity"),
     blurb:
-      "Who this profile is. The seed drives a coherent persona; a captured fingerprint replaces it with a real machine's values.",
+      tx("Who this profile is. The seed drives a coherent persona; a captured fingerprint replaces it with a real machine's values."),
   },
   {
     id: "browser",
-    label: "Browser",
-    title: "Browser",
-    blurb: "Which build to launch, and what it claims to be.",
+    label: tx("Browser"),
+    title: tx("Browser"),
+    blurb: tx("Which build to launch, and what it claims to be."),
   },
   {
     id: "hardware",
-    label: "Hardware",
-    title: "Hardware",
-    blurb: "The machine the persona claims. An explicit value beats the persona, which beats the real one.",
+    label: tx("Hardware"),
+    title: tx("Hardware"),
+    blurb: tx("The machine the persona claims. An explicit value beats the persona, which beats the real one."),
   },
   {
     id: "network",
-    label: "Network",
-    title: "Network & locale",
-    blurb: "Where traffic exits, and everything that should agree with it.",
+    label: tx("Network"),
+    title: tx("Network & locale"),
+    blurb: tx("Where traffic exits, and everything that should agree with it."),
   },
   {
     id: "rendering",
-    label: "Rendering",
-    title: "Rendering",
-    blurb: "What canvas, WebGL and audio report.",
+    label: tx("Rendering"),
+    title: tx("Rendering"),
+    blurb: tx("What canvas, WebGL and audio report."),
   },
   {
     id: "session",
-    label: "Session",
-    title: "Session & data",
-    blurb: "What survives a restart, and what moves between machines.",
+    label: tx("Session"),
+    title: tx("Session & data"),
+    blurb: tx("What survives a restart, and what moves between machines."),
   },
   {
     id: "cloud",
-    label: "Cloud",
-    title: "Cloud",
-    blurb: "Running this profile on Clearcote's servers instead of this PC: where its traffic leaves, and what it keeps.",
+    label: tx("Cloud"),
+    title: tx("Cloud"),
+    blurb: tx("Running this profile on Clearcote's servers instead of this PC: where its traffic leaves, and what it keeps."),
   },
 ];
 
@@ -159,75 +160,75 @@ export interface FieldDef {
 /** Both avail fields. The full screen size typed as avail is a screen with no taskbar: not a lie,
  *  but a rare shape that stands out, so the copy points at the real work area instead. */
 const AVAIL_WHY =
-  "The work area: the screen minus the taskbar, e.g. 1920 × 1032 on a 1920 × 1080 Windows 11 screen at 100 %. The full screen size here describes a screen with no taskbar, which is rare and stands out. Left empty under a seed, capture or Light stealth, it is not this display's own value, so matching this display means typing all four fields.";
+  tx("The work area: the screen minus the taskbar, e.g. 1920 × 1032 on a 1920 × 1080 Windows 11 screen at 100 %. The full screen size here describes a screen with no taskbar, which is rare and stands out. Left empty under a seed, capture or Light stealth, it is not this display's own value, so matching this display means typing all four fields.");
 
 export const FIELDS: FieldDef[] = [
   // ── Identity ──────────────────────────────────────────────────────────────
-  { key: "name", cat: "identity", label: "Name", type: "text", full: true, placeholder: "e.g. Acme — US East" },
+  { key: "name", cat: "identity", label: tx("Name"), type: "text", full: true, placeholder: tx("e.g. Acme — US East") },
   {
     key: "fingerprint",
     cat: "identity",
-    label: "Fingerprint seed",
+    label: tx("Fingerprint seed"),
     type: "custom",
     custom: "seed",
     full: true,
     mono: true,
     keywords: "--fingerprint persona random",
-    why: "Drives the whole persona. The same seed always produces the same identity, so keep it to keep the identity.",
+    why: tx("Drives the whole persona. The same seed always produces the same identity, so keep it to keep the identity."),
   },
   {
     key: "fingerprintProfile",
     cat: "identity",
-    label: "Captured fingerprint",
+    label: tx("Captured fingerprint"),
     type: "custom",
     custom: "fingerprintProfile",
     full: true,
     keywords: "--fingerprint-profile library import real machine gpu",
     why:
-      "Adopts a real machine's GPU, screen, fonts, voices and WebGL. Its fields override the seed persona; anything it does not carry falls back to the seed. Strongest coherence comes from a capture whose GPU vendor matches this host.",
+      tx("Adopts a real machine's GPU, screen, fonts, voices and WebGL. Its fields override the seed persona; anything it does not carry falls back to the seed. Strongest coherence comes from a capture whose GPU vendor matches this host."),
   },
-  { key: "tags", cat: "identity", label: "Tags", type: "custom", custom: "tags", placeholder: "us, social" },
-  { key: "group", cat: "identity", label: "Group", type: "text", placeholder: "optional" },
-  { key: "notes", cat: "identity", label: "Notes", type: "textarea", full: true, placeholder: "anything worth remembering" },
+  { key: "tags", cat: "identity", label: tx("Tags"), type: "custom", custom: "tags", placeholder: "us, social" },
+  { key: "group", cat: "identity", label: tx("Group"), type: "text", placeholder: tx("optional") },
+  { key: "notes", cat: "identity", label: tx("Notes"), type: "textarea", full: true, placeholder: tx("anything worth remembering") },
 
   // ── Browser ───────────────────────────────────────────────────────────────
   {
     key: "browserVersion",
     cat: "browser",
-    label: "Browser version",
+    label: tx("Browser version"),
     type: "custom",
     custom: "browserVersion",
     keywords: "pro free 151 150 149 revision r15 pin",
     why:
-      "Latest is the newest of your tier. A Pro build needs a licence key in Settings. Latest and a bare major both follow the current Pro pin, which moves when a rebuild ships — pin a revision for a reproducible run.",
+      tx("Latest is the newest of your tier. A Pro build needs a licence key in Settings. Latest and a bare major both follow the current Pro pin, which moves when a rebuild ships — pin a revision for a reproducible run."),
   },
   {
     key: "platform",
     cat: "browser",
-    label: "Platform",
+    label: tx("Platform"),
     type: "select",
     options: [
       { value: "windows", label: "windows" },
       { value: "linux", label: "linux" },
       { value: "macos", label: "macos" },
-      { value: "android", label: "android — mobile persona" },
+      { value: "android", label: tx("android — mobile persona") },
     ],
-    hint: "Defaults to this host.",
+    hint: tx("Defaults to this host."),
     keywords: "--fingerprint-platform mobile",
     why:
-      "Android is a best-effort phone identity: mobile UA and UA-CH, touch, a phone viewport, portrait orientation, no PDF plugin and a Mali/Adreno GPU.",
+      tx("Android is a best-effort phone identity: mobile UA and UA-CH, touch, a phone viewport, portrait orientation, no PDF plugin and a Mali/Adreno GPU."),
   },
-  { key: "platformVersion", cat: "browser", label: "Platform version", type: "text", placeholder: "15.0.0", keywords: "--fingerprint-platform-version ua-ch" },
+  { key: "platformVersion", cat: "browser", label: tx("Platform version"), type: "text", placeholder: "15.0.0", keywords: "--fingerprint-platform-version ua-ch" },
   {
     defaultOption: "",
     key: "brand",
     cat: "browser",
-    label: "Brand",
+    label: tx("Brand"),
     type: "select",
     options: [
       // Unset is the launcher's own default, which is Chrome — offered explicitly so choosing it
       // stores nothing rather than pinning a value the default would have supplied anyway.
-      { value: "", label: "(default — Chrome)" },
+      { value: "", label: tx("(default — Chrome)") },
       { value: "Chrome", label: "Chrome" },
       { value: "Edge", label: "Edge" },
       { value: "Opera", label: "Opera" },
@@ -236,61 +237,61 @@ export const FIELDS: FieldDef[] = [
     ],
     keywords: "--fingerprint-brand ua-ch google",
     why:
-      "Claiming Google Chrome commits the build to everything Google's ships — including the Widevine CDM. Chromium is what a de-Googled build honestly is, and is held to less.",
+      tx("Claiming Google Chrome commits the build to everything Google's ships — including the Widevine CDM. Chromium is what a de-Googled build honestly is, and is held to less."),
   },
-  { key: "brandVersion", cat: "browser", label: "Brand version", type: "text", placeholder: "151.0.0.0", keywords: "--fingerprint-brand-version" },
+  { key: "brandVersion", cat: "browser", label: tx("Brand version"), type: "text", placeholder: "151.0.0.0", keywords: "--fingerprint-brand-version" },
   {
     defaultOption: "",
     key: "tlsProfile",
     cat: "browser",
-    label: "TLS profile",
+    label: tx("TLS profile"),
     type: "select",
     options: [
-      { value: "", label: "match persona (default)" },
-      { value: "native", label: "native — the build's own TLS" },
+      { value: "", label: tx("match persona (default)") },
+      { value: "native", label: tx("native — the build's own TLS") },
       { value: "chrome-151", label: "chrome-151" },
       { value: "chrome-150", label: "chrome-150" },
       { value: "chrome-149", label: "chrome-149" },
     ],
     keywords: "--fingerprint-tls-profile clienthello ja3",
     why:
-      "Keeps the TLS ClientHello coherent with the Chrome version the persona claims, instead of always emitting the build's native one.",
+      tx("Keeps the TLS ClientHello coherent with the Chrome version the persona claims, instead of always emitting the build's native one."),
   },
   {
     key: "blockThirdPartyCookies",
     cat: "browser",
-    label: "Block third-party cookies",
+    label: tx("Block third-party cookies"),
     type: "check",
-    desc: "Block cookies from other sites embedded in a page.",
-    hint: "Off by default: third-party cookies are allowed, as in Chrome.",
+    desc: tx("Block cookies from other sites embedded in a page."),
+    hint: tx("Off by default: third-party cookies are allowed, as in Chrome."),
     keywords: "--block-third-party-cookies --allow-third-party-cookies 3pc cross-site iframe embedded login sso payment",
     why:
-      "Chrome allows third-party cookies, and embedded sign-in, payment and challenge frames rely on them. Block them only for a site that should not see them. Builds before 154 r36 block them unless told otherwise, so an unticked profile tells them to allow; set a choice here rather than on the browser's own settings page, which this overrides.",
+      tx("Chrome allows third-party cookies, and embedded sign-in, payment and challenge frames rely on them. Block them only for a site that should not see them. Builds before 154 r36 block them unless told otherwise, so an unticked profile tells them to allow; set a choice here rather than on the browser's own settings page, which this overrides."),
   },
 
   // ── Hardware ──────────────────────────────────────────────────────────────
   {
     key: "lightStealth",
     cat: "hardware",
-    label: "Light stealth",
+    label: tx("Light stealth"),
     type: "check",
-    desc: "Spoof only the metadata axes that survive strict checks, through the native switches — no persona, no farbling.",
-    hint: "Rendering, TLS and the real Chrome version are left untouched. Screen is deliberately not spoofed.",
+    desc: tx("Spoof only the metadata axes that survive strict checks, through the native switches — no persona, no farbling."),
+    hint: tx("Rendering, TLS and the real Chrome version are left untouched. Screen is deliberately not spoofed."),
     keywords: "preset narrow surface",
     why:
-      "Not strictly better than the default: it trades a broad persona for a much narrower surface. In our own lab runs it scored worse on an audit suite. Test it against your target.",
+      tx("Not strictly better than the default: it trades a broad persona for a much narrower surface. In our own lab runs it scored worse on an audit suite. Test it against your target."),
   },
   {
     key: "hardwareConcurrency",
     cat: "hardware",
-    label: "CPU cores",
+    label: tx("CPU cores"),
     type: "select",
     numeric: true,
     defaultOption: "",
     // A list, not a free number: real desktops report an even thread count, and a typed 2 or 5 next
     // to a modern GPU is a contradiction nobody meant to make. Unset keeps the persona's own value.
     options: [
-      { value: "", label: "(persona default)" },
+      { value: "", label: tx("(persona default)") },
       { value: "4", label: "4" },
       { value: "6", label: "6" },
       { value: "8", label: "8" },
@@ -303,12 +304,12 @@ export const FIELDS: FieldDef[] = [
     ],
     keywords: "--fingerprint-hardware-concurrency navigator hardwareconcurrency threads cpu",
     why:
-      "navigator.hardwareConcurrency: logical threads. Pick what the machine you claim would have; with Use real GPU on a fast card, 16 or more is typical. A count below this PC's also limits the browser to that many CPUs.",
+      tx("navigator.hardwareConcurrency: logical threads. Pick what the machine you claim would have; with Use real GPU on a fast card, 16 or more is typical. A count below this PC's also limits the browser to that many CPUs."),
   },
   {
     key: "deviceMemory",
     cat: "hardware",
-    label: "Memory (GB)",
+    label: tx("Memory (GB)"),
     type: "select",
     numeric: true,
     defaultOption: "",
@@ -320,40 +321,40 @@ export const FIELDS: FieldDef[] = [
     // range passes straight through to the page — measured: 16 arrives as 16. Offering a text box
     // invited a 64 that no browser can report, so the choice is constrained here instead.
     options: [
-      { value: "", label: "(persona default)" },
-      { value: "1", label: "1 — Android only", when: (p) => String(p.platform) === "android" },
+      { value: "", label: tx("(persona default)") },
+      { value: "1", label: tx("1 — Android only"), when: (p) => String(p.platform) === "android" },
       { value: "2", label: "2" },
       { value: "4", label: "4" },
       { value: "8", label: "8" },
       { value: "16", label: "16" },
-      { value: "32", label: "32 — desktop maximum" },
+      { value: "32", label: tx("32 — desktop maximum") },
     ],
     keywords: "--fingerprint-device-memory navigator devicememory ram",
     why:
-      "navigator.deviceMemory, reported as a power of two. Desktop Chromium clamps it to 2–32 and Android to 1–8, so a machine with 64 GB still reports 32.",
+      tx("navigator.deviceMemory, reported as a power of two. Desktop Chromium clamps it to 2–32 and Android to 1–8, so a machine with 64 GB still reports 32."),
   },
   {
     key: "screenWidth",
     cat: "hardware",
-    label: "Screen width",
+    label: tx("Screen width"),
     type: "number",
-    placeholder: "persona default",
-    group: "Screen dimensions",
+    placeholder: tx("persona default"),
+    group: tx("Screen dimensions"),
     // Static copy, so it has to hold on both sides of 154 r36 (src/lib/coherence.ts,
     // typedScreenReachesCss): before it a typed size under a seed, capture or Light stealth reaches
     // screen.* but not the CSS media queries; from it on both take the typed size.
     groupNote:
-      "Best left empty: the seed or capture supplies a screen that agrees with itself. Before 154 r36, a typed size under a seed, capture or Light stealth can disagree with what CSS media queries report; from r36 on, typing this display's own four values is fine.",
+      tx("Best left empty: the seed or capture supplies a screen that agrees with itself. Before 154 r36, a typed size under a seed, capture or Light stealth can disagree with what CSS media queries report; from r36 on, typing this display's own four values is fine."),
     keywords: "--fingerprint-screen-width display",
     why:
-      "Empty uses the persona's screen, or this display when there is no persona. On builds before 154 r36, with a seed, a captured fingerprint or Light stealth active, a typed size reaches screen.* but not the CSS media queries, so pages read two different screens, even when the size matches your own monitor. From 154 r36 on both report the typed size: typing all four of this display's values is fine, while any other size is still a faked screen the real window cannot match.",
+      tx("Empty uses the persona's screen, or this display when there is no persona. On builds before 154 r36, with a seed, a captured fingerprint or Light stealth active, a typed size reaches screen.* but not the CSS media queries, so pages read two different screens, even when the size matches your own monitor. From 154 r36 on both report the typed size: typing all four of this display's values is fine, while any other size is still a faked screen the real window cannot match."),
   },
-  { group: "Screen dimensions", key: "screenHeight", cat: "hardware", label: "Screen height", type: "number", placeholder: "persona default", keywords: "--fingerprint-screen-height display" },
-  { group: "Screen dimensions", key: "availWidth", cat: "hardware", label: "Avail width", type: "number", placeholder: "persona default", keywords: "--fingerprint-avail-width taskbar", why: AVAIL_WHY },
-  { group: "Screen dimensions", key: "availHeight", cat: "hardware", label: "Avail height", type: "number", placeholder: "persona default", keywords: "--fingerprint-avail-height taskbar", why: AVAIL_WHY },
-  { stepAny: true, key: "colorDepth", cat: "hardware", label: "Colour depth", type: "number", placeholder: "24", keywords: "--fingerprint-color-depth" },
-  { stepAny: true, key: "devicePixelRatio", cat: "hardware", label: "Pixel ratio", type: "number", placeholder: "1", keywords: "--fingerprint-device-pixel-ratio dpr scaling" },
-  { stepAny: true, key: "maxTouchPoints", cat: "hardware", label: "Touch points", type: "number", placeholder: "0", keywords: "--fingerprint-max-touch-points touchscreen", why: "0 is a real value — a mouse-only desktop — not an empty one." },
+  { group: tx("Screen dimensions"), key: "screenHeight", cat: "hardware", label: tx("Screen height"), type: "number", placeholder: tx("persona default"), keywords: "--fingerprint-screen-height display" },
+  { group: tx("Screen dimensions"), key: "availWidth", cat: "hardware", label: tx("Avail width"), type: "number", placeholder: tx("persona default"), keywords: "--fingerprint-avail-width taskbar", why: AVAIL_WHY },
+  { group: tx("Screen dimensions"), key: "availHeight", cat: "hardware", label: tx("Avail height"), type: "number", placeholder: tx("persona default"), keywords: "--fingerprint-avail-height taskbar", why: AVAIL_WHY },
+  { stepAny: true, key: "colorDepth", cat: "hardware", label: tx("Colour depth"), type: "number", placeholder: "24", keywords: "--fingerprint-color-depth" },
+  { stepAny: true, key: "devicePixelRatio", cat: "hardware", label: tx("Pixel ratio"), type: "number", placeholder: "1", keywords: "--fingerprint-device-pixel-ratio dpr scaling" },
+  { stepAny: true, key: "maxTouchPoints", cat: "hardware", label: tx("Touch points"), type: "number", placeholder: "0", keywords: "--fingerprint-max-touch-points touchscreen", why: tx("0 is a real value — a mouse-only desktop — not an empty one.") },
   {
     // A view over the two stored strings below, not a key of its own: picking a model writes both
     // of them in the form the persona's platform prints, so no profile schema changed and every
@@ -363,63 +364,63 @@ export const FIELDS: FieldDef[] = [
     reads: ["gpuVendor", "gpuRenderer"],
     key: "gpuModel",
     cat: "hardware",
-    label: "GPU model",
+    label: tx("GPU model"),
     type: "custom",
     custom: "gpuModel",
     full: true,
     keywords: "--fingerprint-gpu-vendor --fingerprint-gpu-renderer webgl unmasked angle graphics card nvidia intel amd geforce radeon random",
-    hint: "Which graphics card this profile reports to WebGL. Leave it on the persona default unless you need a particular card.",
+    hint: tx("Which graphics card this profile reports to WebGL. Leave it on the persona default unless you need a particular card."),
     why:
-      "The persona already varies the model with the seed, so profiles no longer all report the same card. If you pick one, the strongest coherence comes from a model of this machine's own GPU maker: driver limits follow the real card, so a claim from another maker can be checked against them. Custom… exposes the raw vendor and renderer strings for a card the list does not have.",
+      tx("The persona already varies the model with the seed, so profiles no longer all report the same card. If you pick one, the strongest coherence comes from a model of this machine's own GPU maker: driver limits follow the real card, so a claim from another maker can be checked against them. Custom… exposes the raw vendor and renderer strings for a card the list does not have."),
   },
-  { hostedBy: "gpuModel", disabledBy: "disableGpuFingerprint", key: "gpuVendor", cat: "hardware", label: "GPU vendor", type: "text", placeholder: "persona default", keywords: "--fingerprint-gpu-vendor webgl unmasked" },
-  { hostedBy: "gpuModel", disabledBy: "disableGpuFingerprint", key: "gpuRenderer", cat: "hardware", label: "GPU renderer", type: "text", placeholder: "persona default", keywords: "--fingerprint-gpu-renderer webgl angle unmasked" },
+  { hostedBy: "gpuModel", disabledBy: "disableGpuFingerprint", key: "gpuVendor", cat: "hardware", label: tx("GPU vendor"), type: "text", placeholder: tx("persona default"), keywords: "--fingerprint-gpu-vendor webgl unmasked" },
+  { hostedBy: "gpuModel", disabledBy: "disableGpuFingerprint", key: "gpuRenderer", cat: "hardware", label: tx("GPU renderer"), type: "text", placeholder: tx("persona default"), keywords: "--fingerprint-gpu-renderer webgl angle unmasked" },
   {
     key: "storageQuota",
     cat: "hardware",
-    label: "Storage quota (MB)",
+    label: tx("Storage quota (MB)"),
     type: "number",
-    placeholder: "real (about 10 GB)",
-    hint: "Leave empty. Real Chrome reports what the site uses plus 10 GB.",
+    placeholder: tx("real (about 10 GB)"),
+    hint: tx("Leave empty. Real Chrome reports what the site uses plus 10 GB."),
     keywords: "--fingerprint-storage-quota navigator.storage estimate",
     why:
-      "navigator.storage.estimate().quota. Chrome reports a fixed quota: the site's own usage plus 10 GB, in normal and incognito windows alike, so an empty field already matches it. A number here replaces that, and a large one describes a value real Chrome never reports.",
+      tx("navigator.storage.estimate().quota. Chrome reports a fixed quota: the site's own usage plus 10 GB, in normal and incognito windows alike, so an empty field already matches it. A number here replaces that, and a large one describes a value real Chrome never reports."),
   },
 
   // ── Network ───────────────────────────────────────────────────────────────
   {
     key: "proxy",
     cat: "network",
-    label: "Proxy",
+    label: tx("Proxy"),
     type: "custom",
     custom: "proxy",
     full: true,
     mono: true,
     keywords: "socks5 http https credentials relay egress",
     why:
-      "One string, credentials inline. An authenticated http/https proxy is served through a local auth-injecting relay, so the browser never prompts. An authenticated socks5 proxy is authenticated by the engine itself (RFC 1929), which stock Chromium cannot do at all — it needs build 151.",
+      tx("One string, credentials inline. An authenticated http/https proxy is served through a local auth-injecting relay, so the browser never prompts. An authenticated socks5 proxy is authenticated by the engine itself (RFC 1929), which stock Chromium cannot do at all — it needs build 151."),
   },
   {
     key: "socks5Udp",
     cat: "network",
-    label: "Relay UDP through the proxy",
+    label: tx("Relay UDP through the proxy"),
     type: "check",
-    desc: "Send WebRTC's UDP through the SOCKS5 proxy too, instead of letting it go direct.",
-    hint: "Most residential proxies refuse UDP; when they do, the browser quietly falls back.",
+    desc: tx("Send WebRTC's UDP through the SOCKS5 proxy too, instead of letting it go direct."),
+    hint: tx("Most residential proxies refuse UDP; when they do, the browser quietly falls back."),
     keywords: "--socks5-udp webrtc voice video associate rfc1928 datagram",
     why:
-      "Ordinary browsers cannot proxy UDP at all, so WebRTC normally bypasses the proxy. This routes it through the same SOCKS5 endpoint that already carries TCP. It needs a proxy that permits the UDP command — a self-hosted one usually does, a residential vendor usually does not. Many residential proxies move a sticky session to another exit the first time UDP goes through it, and keep it there; with this on, the app sends that first UDP before it looks up the exit (at launch, Resolve from proxy and Check), so the address you see is the one the browser uses.",
+      tx("Ordinary browsers cannot proxy UDP at all, so WebRTC normally bypasses the proxy. This routes it through the same SOCKS5 endpoint that already carries TCP. It needs a proxy that permits the UDP command — a self-hosted one usually does, a residential vendor usually does not. Many residential proxies move a sticky session to another exit the first time UDP goes through it, and keep it there; with this on, the app sends that first UDP before it looks up the exit (at launch, Resolve from proxy and Check), so the address you see is the one the browser uses."),
   },
   {
     key: "transparentProxy",
     cat: "network",
-    label: "Transparent proxy",
+    label: tx("Transparent proxy"),
     type: "check",
-    desc: "Hide the proxy from request headers and connection timing.",
-    hint: "Only does something with a proxy set. Needs build 152 r22 or newer.",
+    desc: tx("Hide the proxy from request headers and connection timing."),
+    hint: tx("Only does something with a proxy set. Needs build 152 r22 or newer."),
     keywords: "--transparent-proxy proxy-connection header timing hide proxy detection",
     why:
-      "Through an HTTP proxy a browser sends a Proxy-Connection header on plain-HTTP requests, and every proxied connection shows proxy-shaped connect and TLS timing. This sends Connection instead and reports the timing like a reused connection.",
+      tx("Through an HTTP proxy a browser sends a Proxy-Connection header on plain-HTTP requests, and every proxied connection shows proxy-shaped connect and TLS timing. This sends Connection instead and reports the timing like a reused connection."),
   },
   {
     onValue: true,
@@ -428,31 +429,31 @@ export const FIELDS: FieldDef[] = [
     cat: "network",
     label: "geoip",
     type: "check",
-    desc: "At launch, fill any unset timezone, language, geolocation and WebRTC IP from the proxy's exit region.",
-    hint: "On by default, and switched on automatically when you add a proxy. Values you set yourself always win.",
+    desc: tx("At launch, fill any unset timezone, language, geolocation and WebRTC IP from the proxy's exit region."),
+    hint: tx("On by default, and switched on automatically when you add a proxy. Values you set yourself always win."),
     keywords: "auto match exit region",
     why:
-      "Without this, and without a geolocation set, the Geolocation API reports the host's real position — the proxy alone does not move it.",
+      tx("Without this, and without a geolocation set, the Geolocation API reports the host's real position — the proxy alone does not move it."),
   },
-  { key: "timezone", cat: "network", label: "Timezone", type: "text", placeholder: "America/New_York", keywords: "--timezone iana", why: "Unset, a timezone coherent with the locale is derived, rather than leaking the host's (often UTC on a server)." },
+  { key: "timezone", cat: "network", label: tx("Timezone"), type: "text", placeholder: "America/New_York", keywords: "--timezone iana", why: tx("Unset, a timezone coherent with the locale is derived, rather than leaking the host's (often UTC on a server).") },
   { key: "acceptLanguage", cat: "network", label: "Accept-Language", type: "text", placeholder: "en-US,en", keywords: "--accept-lang navigator.languages locale" },
   {
     key: "location",
     cat: "network",
-    label: "Geolocation",
+    label: tx("Geolocation"),
     type: "text",
-    placeholder: "lat,lng",
+    placeholder: tx("lat,lng"),
     keywords: "--fingerprint-location gps coordinates position",
-    why: "What the Geolocation API reports, once a page has permission. Unset and with geoip off, that is your real position.",
+    why: tx("What the Geolocation API reports, once a page has permission. Unset and with geoip off, that is your real position."),
   },
   {
     key: "webrtcIp",
     cat: "network",
     label: "WebRTC IP",
     type: "text",
-    placeholder: "proxy egress IP",
+    placeholder: tx("proxy egress IP"),
     keywords: "--webrtc-ip srflx stun leak",
-    why: "What WebRTC reports as the public address. “Resolve from proxy” fills it with the proxy's exit, and every launch looks that exit up again while the field still holds it, so a proxy that moves to another address does not leave WebRTC behind. Type an address to pin it.",
+    why: tx("What WebRTC reports as the public address. “Resolve from proxy” fills it with the proxy's exit, and every launch looks that exit up again while the field still holds it, so a proxy that moves to another address does not leave WebRTC behind. Type an address to pin it."),
   },
   {
     defaultOption: "on",
@@ -461,12 +462,12 @@ export const FIELDS: FieldDef[] = [
     label: "WebRTC mDNS",
     type: "select",
     options: [
-      { value: "on", label: "on — hide local IPs (default)" },
-      { value: "off", label: "off — expose the LAN IP" },
+      { value: "on", label: tx("on — hide local IPs (default)") },
+      { value: "off", label: tx("off — expose the LAN IP") },
     ],
     keywords: "mdns local candidates lan",
     why:
-      "Real Chrome hides local host candidates behind a .local name, and so does this by default. Switching it off re-exposes your private IP to every page.",
+      tx("Real Chrome hides local host candidates behind a .local name, and so does this by default. Switching it off re-exposes your private IP to every page."),
   },
 
   // ── Rendering ─────────────────────────────────────────────────────────────
@@ -475,113 +476,113 @@ export const FIELDS: FieldDef[] = [
     offValue: false,
     key: "fingerprintNoise",
     cat: "rendering",
-    label: "Farbling noise",
+    label: tx("Farbling noise"),
     type: "check",
     defaultOn: true,
-    desc: "Per-site noise on canvas, WebGL, audio and client rects. On by default.",
-    hint: "Turn it off for natural, unperturbed surfaces — best paired with a captured profile.",
+    desc: tx("Per-site noise on canvas, WebGL, audio and client rects. On by default."),
+    hint: tx("Turn it off for natural, unperturbed surfaces — best paired with a captured profile."),
     keywords: "--disable-fingerprint-noise farble canvas audio",
-    why: "Identity spoofs (UA, screen, GPU, persona) stay on either way; this only affects the noised surfaces.",
+    why: tx("Identity spoofs (UA, screen, GPU, persona) stay on either way; this only affects the noised surfaces."),
   },
   {
     key: "disableGpuFingerprint",
     cat: "rendering",
-    label: "Use real GPU",
+    label: tx("Use real GPU"),
     type: "check",
-    desc: "Report this host's actual GPU and WebGL instead of a spoofed one.",
+    desc: tx("Report this host's actual GPU and WebGL instead of a spoofed one."),
     keywords: "--disable-gpu-fingerprint webgl real",
-    why: "The most coherent option when no captured profile matches the host's real render.",
+    why: tx("The most coherent option when no captured profile matches the host's real render."),
   },
   // The two NARROW halves of the switches above, for when the broad one costs more coherence than
   // it buys. Both read as "on by default, and only meaningful when switched off".
   {
     key: "gpuStringSpoof",
     cat: "rendering",
-    label: "Spoof GPU strings",
+    label: tx("Spoof GPU strings"),
     type: "check",
     defaultOn: true,
     onValue: true,
     offValue: false,
-    desc: "Report the persona's WebGL vendor and renderer. On by default. Off reports the host's real strings while the limits, extensions and readback stay on the persona.",
-    hint: "Turning this off is the narrow half of “use real GPU”. Needs 150 r12 or newer.",
+    desc: tx("Report the persona's WebGL vendor and renderer. On by default. Off reports the host's real strings while the limits, extensions and readback stay on the persona."),
+    hint: tx("Turning this off is the narrow half of “use real GPU”. Needs 150 r12 or newer."),
     keywords: "--disable-gpu-string-spoof unmasked vendor renderer real software rasterise swiftshader",
     why:
-      "Turn off for a host that rasterises in software, where a spoofed GPU string cannot be backed by the render. navigator.gpu still follows the wide switch, so WebGPU keeps describing the persona.",
+      tx("Turn off for a host that rasterises in software, where a spoofed GPU string cannot be backed by the render. navigator.gpu still follows the wide switch, so WebGPU keeps describing the persona."),
   },
   {
     key: "canvasNoise",
     cat: "rendering",
-    label: "Canvas 2D noise",
+    label: tx("Canvas 2D noise"),
     type: "check",
     defaultOn: true,
     onValue: true,
     offValue: false,
-    desc: "Per-site farble on 2D canvas readback. On by default.",
-    hint: "Turning this off leaves WebGL and audio noised — narrower than switching farbling off entirely. Needs 150 r12 or newer.",
+    desc: tx("Per-site farble on 2D canvas readback. On by default."),
+    hint: tx("Turning this off leaves WebGL and audio noised — narrower than switching farbling off entirely. Needs 150 r12 or newer."),
     keywords: "--disable-canvas-noise getImageData toDataURL farble 2d",
     why:
-      "Some sites hash a 2D canvas and reject anything perturbed, while still wanting the other surfaces noised. This unfarbles that one surface rather than the whole process.",
+      tx("Some sites hash a 2D canvas and reject anything perturbed, while still wanting the other surfaces noised. This unfarbles that one surface rather than the whole process."),
   },
   {
     onValue: "hlsl",
     key: "shaderDialect",
     cat: "rendering",
-    label: "HLSL shader dialect",
+    label: tx("HLSL shader dialect"),
     type: "check",
-    desc: "Re-translate shaders to HLSL for a Windows persona running on a Linux host.",
-    hint: "No effect on a Windows host. Needs build 151.",
+    desc: tx("Re-translate shaders to HLSL for a Windows persona running on a Linux host."),
+    hint: tx("No effect on a Windows host. Needs build 151."),
     keywords: "CLEARCOTE_SHADER_DIALECT angle spirv vulkan d3d11 getTranslatedShaderSource",
     why:
-      "A Windows persona claims a Direct3D11 renderer, but on Linux the Vulkan backend answers with SPIR-V, and the two contradict each other. Off by default: the re-translation is a different code path from the one that drew, so a shader it cannot translate falls back to the honest answer.",
+      tx("A Windows persona claims a Direct3D11 renderer, but on Linux the Vulkan backend answers with SPIR-V, and the two contradict each other. Off by default: the re-translation is a different code path from the one that drew, so a shader it cannot translate falls back to the honest answer."),
   },
   {
     key: "canvasBridgeUrl",
     cat: "rendering",
-    group: "Canvas bridge",
-    groupNote: "Experimental — needs a bridge host and a build with bridge support. Forces --no-sandbox.",
-    label: "Canvas bridge URL",
+    group: tx("Canvas bridge"),
+    groupNote: tx("Experimental — needs a bridge host and a build with bridge support. Forces --no-sandbox."),
+    label: tx("Canvas bridge URL"),
     type: "text",
     full: true,
     mono: true,
     placeholder: "ws://host:port/path",
     keywords: "--canvas-bridge-url remote gpu readback experimental",
     why:
-      "Forwards canvas and WebGL readback to a remote real-GPU host, so pixel hashes match the claimed GPU. Needs a bridge host and a build with bridge support, and forces --no-sandbox.",
+      tx("Forwards canvas and WebGL readback to a remote real-GPU host, so pixel hashes match the claimed GPU. Needs a bridge host and a build with bridge support, and forces --no-sandbox."),
   },
-  { group: "Canvas bridge", showWhen: (p) => !!p.canvasBridgeUrl, key: "canvasBridgeAuth", cat: "rendering", label: "Bridge credentials", type: "password", placeholder: "user:secret", keywords: "--canvas-bridge-auth basic" },
+  { group: tx("Canvas bridge"), showWhen: (p) => !!p.canvasBridgeUrl, key: "canvasBridgeAuth", cat: "rendering", label: tx("Bridge credentials"), type: "password", placeholder: "user:secret", keywords: "--canvas-bridge-auth basic" },
   {
-    group: "Canvas bridge",
+    group: tx("Canvas bridge"),
     showWhen: (p) => !!p.canvasBridgeUrl,
     defaultOption: "",
     key: "canvasBridgeMode",
     cat: "rendering",
-    label: "Origin policy",
+    label: tx("Origin policy"),
     type: "select",
     options: [
-      { value: "", label: "unset" },
-      { value: "off", label: "off" },
-      { value: "all", label: "all — bridge everything" },
-      { value: "allow", label: "allow list" },
-      { value: "deny", label: "deny list" },
+      { value: "", label: tx("unset") },
+      { value: "off", label: tx("off") },
+      { value: "all", label: tx("all — bridge everything") },
+      { value: "allow", label: tx("allow list") },
+      { value: "deny", label: tx("deny list") },
     ],
     keywords: "--canvas-bridge-mode per-origin",
     why:
-      "Every bridged readback is a network round-trip on the renderer thread, which is itself a timing signal. Restrict bridging to the origins that actually score canvas coherence.",
+      tx("Every bridged readback is a network round-trip on the renderer thread, which is itself a timing signal. Restrict bridging to the origins that actually score canvas coherence."),
   },
-  { group: "Canvas bridge", showWhen: (p) => !!p.canvasBridgeUrl && p.canvasBridgeMode === "allow", key: "canvasBridgeAllow", cat: "rendering", label: "Allow list", type: "custom", custom: "canvasBridgeAllow", placeholder: "example.com, other.com", keywords: "--canvas-bridge-allow" },
-  { group: "Canvas bridge", showWhen: (p) => !!p.canvasBridgeUrl && p.canvasBridgeMode === "deny", key: "canvasBridgeDeny", cat: "rendering", label: "Deny list", type: "custom", custom: "canvasBridgeDeny", placeholder: "example.com", keywords: "--canvas-bridge-deny" },
+  { group: tx("Canvas bridge"), showWhen: (p) => !!p.canvasBridgeUrl && p.canvasBridgeMode === "allow", key: "canvasBridgeAllow", cat: "rendering", label: tx("Allow list"), type: "custom", custom: "canvasBridgeAllow", placeholder: "example.com, other.com", keywords: "--canvas-bridge-allow" },
+  { group: tx("Canvas bridge"), showWhen: (p) => !!p.canvasBridgeUrl && p.canvasBridgeMode === "deny", key: "canvasBridgeDeny", cat: "rendering", label: tx("Deny list"), type: "custom", custom: "canvasBridgeDeny", placeholder: "example.com", keywords: "--canvas-bridge-deny" },
   {
-    group: "Canvas bridge",
+    group: tx("Canvas bridge"),
     showWhen: (p) => !!p.canvasBridgeUrl,
     defaultOption: "",
     key: "canvasBridgeFallback",
     cat: "rendering",
-    label: "Cache miss",
+    label: tx("Cache miss"),
     type: "select",
     options: [
-      { value: "", label: "unset" },
-      { value: "block", label: "block — wait for the bridge (default)" },
-      { value: "local", label: "local — never stall, render here" },
+      { value: "", label: tx("unset") },
+      { value: "block", label: tx("block — wait for the bridge (default)") },
+      { value: "local", label: tx("local — never stall, render here") },
     ],
     keywords: "--canvas-bridge-fallback cold",
   },
@@ -590,65 +591,65 @@ export const FIELDS: FieldDef[] = [
   {
     key: "widevine",
     cat: "session",
-    label: "Widevine (DRM)",
+    label: tx("Widevine (DRM)"),
     type: "check",
-    desc: "Fetch Google's Widevine CDM and seed it into this profile, so DRM video plays and the Chrome brand holds up.",
-    hint: "On for new profiles. Downloaded once from Google's own component server, SHA-256 verified, then shared by every profile that uses it.",
+    desc: tx("Fetch Google's Widevine CDM and seed it into this profile, so DRM video plays and the Chrome brand holds up."),
+    hint: tx("On for new profiles. Downloaded once from Google's own component server, SHA-256 verified, then shared by every profile that uses it."),
     keywords: "eme drm cdm com.widevine.alpha media keys",
     why:
-      "This build compiles the EME plumbing but cannot bundle Google's proprietary CDM. A browser claiming the Google Chrome brand and then rejecting com.widevine.alpha describes a browser Google does not ship.",
+      tx("This build compiles the EME plumbing but cannot bundle Google's proprietary CDM. A browser claiming the Google Chrome brand and then rejecting com.widevine.alpha describes a browser Google does not ship."),
   },
   {
     disabledBy: "encryptionKey",
     key: "portableProfile",
     cat: "session",
-    label: "Portable profile",
+    label: tx("Portable profile"),
     type: "check",
-    desc: "Keep the cookie encryption key inside the profile folder, so it can be copied to another machine with sessions intact.",
-    hint: "The cookie database is then effectively unencrypted at rest. Needs build 151.",
+    desc: tx("Keep the cookie encryption key inside the profile folder, so it can be copied to another machine with sessions intact."),
+    hint: tx("The cookie database is then effectively unencrypted at rest. Needs build 151."),
     keywords: "--portable-profile cookies move copy machine",
     why:
-      "Everything else in a profile already survives a copy. Cookies do not, because they are sealed with a key the OS keychain holds for the machine that created them.",
+      tx("Everything else in a profile already survives a copy. Cookies do not, because they are sealed with a key the OS keychain holds for the machine that created them."),
   },
   {
     key: "encryptionKey",
     cat: "session",
-    label: "Cookie encryption key",
+    label: tx("Cookie encryption key"),
     type: "password",
     full: true,
-    placeholder: "supply your own — nothing sensitive is written to disk",
+    placeholder: tx("supply your own — nothing sensitive is written to disk"),
     keywords: "--profile-encryption-key cookies portable",
     why:
-      "The stronger form of a portable profile: you hold the key, so no key material is stored beside the cookies. It wins when both are set. Redacted in the preview and dropped on export — keep your own copy, because a lost key is a lost cookie jar.",
+      tx("The stronger form of a portable profile: you hold the key, so no key material is stored beside the cookies. It wins when both are set. Redacted in the preview and dropped on export — keep your own copy, because a lost key is a lost cookie jar."),
   },
   {
     key: "startUrl",
     cat: "session",
-    label: "Start page",
+    label: tx("Start page"),
     type: "text",
     full: true,
     mono: true,
     placeholder: "https://example.com",
     keywords: "homepage url open at launch start page first tab",
-    why: "Opened when the browser starts. Only http and https addresses are used — anything else is ignored, so this field can never add a command-line switch. A bare host like example.com gets https:// added.",
+    why: tx("Opened when the browser starts. Only http and https addresses are used — anything else is ignored, so this field can never add a command-line switch. A bare host like example.com gets https:// added."),
   },
-  { key: "userDataDir", cat: "session", label: "Data directory", type: "text", full: true, mono: true, placeholder: "profiles/<id>/userdata", keywords: "--user-data-dir storage path" },
+  { key: "userDataDir", cat: "session", label: tx("Data directory"), type: "text", full: true, mono: true, placeholder: "profiles/<id>/userdata", keywords: "--user-data-dir storage path" },
   {
     key: "extraArgs",
     cat: "session",
-    label: "Extra flags",
+    label: tx("Extra flags"),
     type: "custom",
     custom: "extraArgs",
     full: true,
     mono: true,
     placeholder: "--foo --bar=1",
     keywords: "raw chrome switches append",
-    why: "Appended verbatim, after everything else — so a switch here wins where Chromium takes the last occurrence.",
+    why: tx("Appended verbatim, after everything else — so a switch here wins where Chromium takes the last occurrence."),
   },
   {
     key: "cloud",
     cat: "cloud",
-    label: "Running in the cloud",
+    label: tx("Running in the cloud"),
     type: "custom",
     custom: "cloud",
     full: true,
@@ -669,7 +670,7 @@ export function selectOptions(
 ): { value: string; label: string }[] {
   const all = f.options ?? [];
   const shown = all.filter((o) => !o.when || o.when(profile) || o.value === current);
-  if (current !== "" && !shown.some((o) => o.value === current)) shown.push({ value: current, label: `${current} (set before)` });
+  if (current !== "" && !shown.some((o) => o.value === current)) shown.push({ value: current, label: t("{current} (set before)", { current }) });
   return shown.map(({ value, label }) => ({ value, label }));
 }
 
@@ -721,11 +722,13 @@ export function hostFieldFor(key: string): FieldDef | undefined {
 export function searchFields(query: string): FieldDef[] {
   const q = query.trim().toLowerCase();
   if (!q) return [];
-  return FIELDS.filter((f) =>
-    `${f.label} ${f.desc ?? ""} ${f.hint ?? ""} ${f.why ?? ""} ${f.keywords ?? ""} ${f.key}`
-      .toLowerCase()
-      .includes(q),
-  );
+  // The English text and, in another language, what the panel shows: a search matches either.
+  const shown = (s?: string) => (s ? t(s) : "");
+  return FIELDS.filter((f) => {
+    const english = `${f.label} ${f.desc ?? ""} ${f.hint ?? ""} ${f.why ?? ""} ${f.keywords ?? ""} ${f.key}`;
+    const local = `${shown(f.label)} ${shown(f.desc)} ${shown(f.hint)} ${shown(f.why)}`;
+    return english.toLowerCase().includes(q) || local.toLowerCase().includes(q);
+  });
 }
 
 /**

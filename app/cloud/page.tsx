@@ -7,8 +7,10 @@
 import { useEffect, useState } from "react";
 import CloudViewer from "@/components/CloudViewer";
 import { ConfirmProvider } from "@/components/Confirm";
+import { t, useLocale } from "@/lib/i18n";
 
 export default function CloudPage() {
+  useLocale();
   const [id, setId] = useState<string | null | undefined>(undefined);
   useEffect(() => {
     setId(new URLSearchParams(window.location.search).get("id"));
@@ -17,7 +19,7 @@ export default function CloudPage() {
   if (!id) {
     return (
       <main className="flex h-screen items-center justify-center p-6 text-sm text-fog/60">
-        No profile was given. Open a cloud browser from its card in the Profile Manager.
+        {t("No profile was given. Open a cloud browser from its card in the Profile Manager.")}
       </main>
     );
   }

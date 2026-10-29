@@ -4,31 +4,32 @@
 import type { ProxyCheck, UdpVerdict } from "./ipc";
 import type { LastGeo, Profile } from "@/types/profile";
 import { webrtcIpFollowsProxy } from "../../electron/proxyargs";
+import { t, tx } from "./i18n";
 
 export type Tone = "ok" | "warn" | "bad";
 
 /** "exits in Amsterdam, Netherlands (81.2.3.4)", or "exits at 81.2.3.4" when the place is not known. */
 const exitsAt = (g: { country?: string; city?: string; ip?: string }) => {
   const place = [g.city, g.country].filter(Boolean).join(", ");
-  return place ? `exits in ${place} (${g.ip ?? "?"})` : `exits at ${g.ip ?? "an unknown address"}`;
+  return place ? t("exits in {place} ({ip})", { place, ip: g.ip ?? "?" }) : t("exits at {ip}", { ip: g.ip ?? t("an unknown address") });
 };
 
 /** One line on UDP: what the result means for "Relay UDP through the proxy" and for WebRTC. */
 export function udpLine(v: UdpVerdict | undefined, detail?: string): { tone: Tone; text: string } | null {
   switch (v) {
     case "works":
-      return { tone: "ok", text: "UDP passes through this proxy, so “Relay UDP through the proxy” will work." };
+      return { tone: "ok", text: t("UDP passes through this proxy, so “Relay UDP through the proxy” will work.") };
     case "refused":
       return {
         tone: "warn",
-        text: "UDP: this proxy refuses it. WebRTC stays blocked, which is safe; “Relay UDP through the proxy” does nothing here.",
+        text: t("UDP: this proxy refuses it. WebRTC stays blocked, which is safe; “Relay UDP through the proxy” does nothing here."),
       };
     case "no-reply":
-      return { tone: "warn", text: "UDP: the proxy accepted it, but nothing came back. Treat it as not working; WebRTC stays blocked (safe)." };
+      return { tone: "warn", text: t("UDP: the proxy accepted it, but nothing came back. Treat it as not working; WebRTC stays blocked (safe).") };
     case "not-socks":
-      return { tone: "warn", text: "UDP: an HTTP proxy cannot carry it. WebRTC stays blocked, which is safe." };
+      return { tone: "warn", text: t("UDP: an HTTP proxy cannot carry it. WebRTC stays blocked, which is safe.") };
     case "error":
-      return { tone: "warn", text: `UDP could not be tested${detail ? `: ${detail.replace(/\.$/, "")}` : ""}.` };
+      return { tone: "warn", text: detail ? t("UDP could not be tested: {detail}.", { detail: detail.replace(/\.$/, "") }) : t("UDP could not be tested.") };
     default:
       return null;
   }
@@ -42,32 +43,36 @@ export function webrtcIpLine(stored: Pick<Profile, "webrtcIp" | "lastGeo"> | und
   const ip = stored?.webrtcIp;
   if (!ip || !exit || ip === exit) return null;
   if (webrtcIpFollowsProxy(stored)) {
-    return { tone: "ok", text: `The exit has moved since “Resolve from proxy” stored ${ip} as the WebRTC IP. Each launch looks it up again, so the browser will report ${exit}.` };
+    return { tone: "ok", text: t("The exit has moved since “Resolve from proxy” stored {ip} as the WebRTC IP. Each launch looks it up again, so the browser will report {exit}.", { ip, exit }) };
   }
   return {
     tone: "warn",
-    text: `WebRTC IP is set to ${ip}, which is not this exit: pages will see HTTP from ${exit} and WebRTC from ${ip}. Clear the field, or click “Resolve from proxy”, to keep them together.`,
+    text: t("WebRTC IP is set to {ip}, which is not this exit: pages will see HTTP from {exit} and WebRTC from {ip}. Clear the field, or click “Resolve from proxy”, to keep them together.", { ip, exit }),
   };
 }
 
 /** Check with Relay UDP off: why UDP was left alone. The editor offers "Test UDP" next to it. */
 export const UDP_NOT_TESTED =
-  "UDP not tested: with “Relay UDP through the proxy” off the browser sends none through this proxy, and a test can move a sticky session to another exit.";
+  tx("UDP not tested: with “Relay UDP through the proxy” off the browser sends none through this proxy, and a test can move a sticky session to another exit.");
 
 /** The warning the editor shows before an explicit UDP test. */
 export const UDP_TEST_WARNING =
-  "Many residential proxies move a sticky session to another exit the first time UDP goes through it, and keep it there. Test anyway?";
+  tx("Many residential proxies move a sticky session to another exit the first time UDP goes through it, and keep it there. Test anyway?");
 
 /** The editor's "Check" result. `stored` is the profile being edited, for the WebRTC IP comparison. */
 export function describeCheck(c: ProxyCheck, stored?: Pick<Profile, "webrtcIp" | "lastGeo">): { tone: Tone; lines: string[] } {
-  if (!c.ok || !c.geo?.ok) return { tone: "bad", lines: [`Doesn't work: ${c.error || c.geo?.error || "no answer through this proxy"}.`.replace(/\.\.$/, ".")] };
+  if (!c.ok || !c.geo?.ok) return { tone: "bad", lines: [t("Doesn't work: {reason}.", { reason: c.error || c.geo?.error || t("no answer through this proxy") }).replace(/\.\.$/, ".")] };
   const g = c.geo;
-  const speed = c.ms != null ? ` · answered in ${(c.ms / 1000).toFixed(1)} s` : "";
-  const lines = [`Works · ${exitsAt(g)}${speed}`];
+  const exit = exitsAt(g);
+  const lines = [
+    c.ms != null
+      ? t("Works · {exit} · answered in {s} s", { exit, s: (c.ms / 1000).toFixed(1) })
+      : t("Works · {exit}", { exit }),
+  ];
   const u = udpLine(c.udp, c.udpDetail);
   if (u) lines.push(u.text);
-  if (c.udpSkipped) lines.push(UDP_NOT_TESTED);
-  if (c.moved) lines.push(`The UDP test moved this session from ${c.moved.from} to ${c.moved.to}. It stays on ${c.moved.to} from now on.`);
+  if (c.udpSkipped) lines.push(t(UDP_NOT_TESTED));
+  if (c.moved) lines.push(t("The UDP test moved this session from {from} to {to}. It stays on {to} from now on.", { from: c.moved.from, to: c.moved.to }));
   const w = webrtcIpLine(stored, g.ip);
   if (w) lines.push(w.text);
   return { tone: w?.tone === "warn" ? "warn" : "ok", lines };
@@ -76,15 +81,15 @@ export function describeCheck(c: ProxyCheck, stored?: Pick<Profile, "webrtcIp" |
 /** The message after a launch: where the profile exits, whether its region follows the proxy, and
  *  a typed WebRTC IP that does not match the exit. */
 export function launchReport(p: Pick<Profile, "proxy" | "geoip" | "timezone" | "acceptLanguage" | "webrtcIp" | "lastGeo">, name: string, last?: LastGeo): string {
-  if (!p.proxy) return `Launched “${name}” · no proxy: it uses this computer's own connection.`;
-  const exit = last?.ip ? exitsAt(last) : "through its proxy";
+  if (!p.proxy) return t("Launched “{name}” · no proxy: it uses this computer's own connection.", { name });
+  const exit = last?.ip ? exitsAt(last) : t("through its proxy");
   const region =
     p.geoip !== false
       ? p.timezone && p.acceptLanguage
-        ? " · time zone and language as you set them"
-        : " · time zone and language follow the proxy"
+        ? t(" · time zone and language as you set them")
+        : t(" · time zone and language follow the proxy")
       : "";
   const w = webrtcIpLine(p, last?.ip);
-  const webrtc = w?.tone === "warn" ? ` · WebRTC reports ${p.webrtcIp}, not this exit` : "";
-  return `Launched “${name}” · ${exit}${region}${webrtc}.`;
+  const webrtc = w?.tone === "warn" ? t(" · WebRTC reports {ip}, not this exit", { ip: String(p.webrtcIp) }) : "";
+  return t("Launched “{name}” · {exit}{region}{webrtc}.", { name, exit, region, webrtc });
 }

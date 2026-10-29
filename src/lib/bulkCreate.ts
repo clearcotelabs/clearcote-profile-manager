@@ -9,6 +9,7 @@
 
 import type { Platform, Profile } from "@/types/profile";
 import { normalizeProxy, parseProxy } from "../../electron/proxyargs";
+import { t } from "./i18n";
 
 export interface BulkOptions {
   /** "{n}" is the running number, "{host}" the proxy host. Without "{n}", " {n}" is appended so
@@ -58,7 +59,7 @@ export function profilesFromProxyList(
   const profiles: Profile[] = [];
   let duplicates = 0;
   let n = opts.startAt ?? 1;
-  const pattern = opts.namePattern.trim() || "Profile {n}";
+  const pattern = opts.namePattern.trim() || t("Profile {n}");
   const withNumber = pattern.includes("{n}") ? pattern : `${pattern} {n}`;
 
   text.split(/\r?\n/).forEach((rawLine, i) => {
@@ -93,7 +94,7 @@ export function profilesFromProxyList(
       updatedAt: now,
     };
     if (opts.group?.trim()) p.group = opts.group.trim();
-    const tags = (opts.tags ?? []).map((t) => t.trim()).filter(Boolean);
+    const tags = (opts.tags ?? []).map((x) => x.trim()).filter(Boolean);
     if (tags.length) p.tags = tags;
     profiles.push(p);
     n++;

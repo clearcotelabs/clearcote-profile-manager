@@ -6,6 +6,7 @@
 // progress and "a browser closed" arrive on one long-lived /v1/events stream.
 
 import type { ClearcoteApi } from "./ipc";
+import { t } from "./i18n";
 
 /** helper/main.ts PORTS. */
 export const HELPER_PORTS = [47821, 47822, 47823];
@@ -147,7 +148,7 @@ export function takeJustPaired(): string | null {
 
 async function rpc<T>(channel: string, ...args: unknown[]): Promise<T> {
   const c = helper.conn;
-  if (!c) throw new Error("Not connected to the Clearcote helper.");
+  if (!c) throw new Error(t("Not connected to the Clearcote helper."));
   let r: Response;
   try {
     r = await fetch(`${base(c.port)}/v1/rpc`, {
@@ -157,23 +158,23 @@ async function rpc<T>(channel: string, ...args: unknown[]): Promise<T> {
     });
   } catch {
     helper.onLost?.("gone");
-    throw new Error("The Clearcote helper is not answering. Is its window still open?");
+    throw new Error(t("The Clearcote helper is not answering. Is its window still open?"));
   }
   if (r.status === 401) {
     helper.forget();
     helper.onLost?.("unpaired");
-    throw new Error("This page is no longer paired with the helper.");
+    throw new Error(t("This page is no longer paired with the helper."));
   }
   const j = await r.json().catch(() => null);
-  if (!j || !r.ok) throw new Error(j?.error || `The helper answered ${r.status}.`);
-  if (!j.ok) throw new Error(j.error || "The helper could not do that.");
+  if (!j || !r.ok) throw new Error(j?.error || t("The helper answered {status}.", { status: r.status }));
+  if (!j.ok) throw new Error(j.error || t("The helper could not do that."));
   return j.result as T;
 }
 
 /** Profiles made in the preview, saved on the computer (ids already taken get new ones). */
 export async function importToHelper(list: unknown[]): Promise<number> {
   const r = await rpc<{ ok: boolean; count?: number; error?: string }>("profiles:importData", JSON.stringify(list));
-  if (!r.ok) throw new Error(r.error || "The profiles could not be moved.");
+  if (!r.ok) throw new Error(r.error || t("The profiles could not be moved."));
   return r.count ?? 0;
 }
 
@@ -285,9 +286,9 @@ function holdViewerTab(id: string): Window | null {
   if (!w) return null;
   try {
     if (w.location.href === "about:blank") {
-      w.document.title = "Starting the cloud browser…";
+      w.document.title = t("Starting the cloud browser…");
       w.document.body.style.cssText = "margin:0;background:#07080a;color:#e6e9ee;font:15px Inter,system-ui,sans-serif;display:flex;align-items:center;justify-content:center;height:100vh";
-      w.document.body.textContent = "Starting the cloud browser…";
+      w.document.body.textContent = t("Starting the cloud browser…");
     }
   } catch {
     /* a viewer of this profile is already open there: it is reused */
@@ -384,7 +385,7 @@ export function buildHelperApi(): ClearcoteApi {
     // The web version is always the newest; the helper has its own downloads.
     update: {
       check: async () => null,
-      download: async () => ({ ok: false, error: "Updates come with the web page." }) as never,
+      download: async () => ({ ok: false, error: t("Updates come with the web page.") }) as never,
       run: async () => {},
       reveal: async () => {},
       openReleases: async (url) => void window.open(url, "_blank", "noopener,noreferrer"),
@@ -394,7 +395,7 @@ export function buildHelperApi(): ClearcoteApi {
     // Which program the helper runs is never a web page's choice (helper/policy.ts).
     pickBinary: async () => {
       window.alert(
-        "The web version always uses the verified Clearcote download. To run your own browser build, choose it in the desktop app on this computer: the helper uses the same setting.",
+        t("The web version always uses the verified Clearcote download. To run your own browser build, choose it in the desktop app on this computer: the helper uses the same setting."),
       );
       return null;
     },

@@ -9,6 +9,7 @@
 // PURE: no React, no `node:` imports, no Electron. The editor and the tests import it.
 
 import { findModel, modelsForVendor, randomModel, stringsFor, GPU_MODELS, type GpuModel, type GpuVendor } from "./gpuModels";
+import { t } from "./i18n";
 
 export type HostGpuVendor = GpuVendor | "unknown";
 
@@ -95,7 +96,7 @@ export function pickerGroups(host: HostGpuVendor): PickerGroup[] {
     .map((vendor) => ({
       vendor,
       host: vendor === host,
-      label: vendor === host ? `${VENDOR_LABEL[vendor]} — this machine's GPU maker` : VENDOR_LABEL[vendor],
+      label: vendor === host ? t("{vendor} — this machine's GPU maker", { vendor: VENDOR_LABEL[vendor] }) : VENDOR_LABEL[vendor],
       models: modelsForVendor(vendor),
     }))
     .filter((g) => g.models.length > 0);

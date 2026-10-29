@@ -10,6 +10,7 @@ import type { CheckOptions, ProxyCheck, UdpVerdict } from "../../electron/proxyc
 export type { ProxyCheck, UdpVerdict } from "../../electron/proxycheck";
 import { buildHelperApi, helper } from "@/lib/helperBridge";
 import { buildPreviewApi, seedExamples, switchable } from "@/lib/webPreview";
+import { t } from "@/lib/i18n";
 
 export type TrashResult = { ok: true; trashId: string } | { ok: false; error: string };
 export type RestoreResult = { ok: true; profile: Profile } | { ok: false; error: string };
@@ -457,7 +458,7 @@ function buildMock(): ClearcoteApi {
       // Same trash semantics as the desktop app, so Undo works in the browser preview too.
       remove: async (id) => {
         const p = read().find((x) => x.id === id);
-        if (!p) return { ok: false, error: "That profile no longer exists." };
+        if (!p) return { ok: false, error: t("That profile no longer exists.") };
         const trashId = `${id}__${Date.now()}`;
         mockTrash.set(trashId, p);
         write(read().filter((x) => x.id !== id));
@@ -465,16 +466,16 @@ function buildMock(): ClearcoteApi {
       },
       restore: async (trashId) => {
         const p = mockTrash.get(trashId);
-        if (!p) return { ok: false, error: "It can no longer be restored." };
+        if (!p) return { ok: false, error: t("It can no longer be restored.") };
         if (read().some((x) => x.id === p.id)) return { ok: false, error: `A profile named “${p.id}” exists again.` };
         mockTrash.delete(trashId);
         write([...read(), p]);
         return { ok: true, profile: p };
       },
-      openData: async () => ({ ok: false, error: "Browser data lives in the desktop app." }),
+      openData: async () => ({ ok: false, error: t("Browser data lives in the desktop app.") }),
       clearCache: async (id) =>
         mockRunning.has(id)
-          ? { ok: false, error: "Stop this profile's browser first — it has its cache open." }
+          ? { ok: false, error: t("Stop this profile's browser first — it has its cache open.") }
           : { ok: true, freedBytes: readJson<MockStorage>(STORAGE_KEY, {}).sizes?.[id] ?? 0 },
       renameGroup: async (from, to) => {
         const key = from.trim().toLowerCase();
@@ -491,7 +492,7 @@ function buildMock(): ClearcoteApi {
         return n;
       },
     },
-    checkProfileGeo: async () => ({ ok: false, error: "IP / geo check runs in the desktop app." }),
+    checkProfileGeo: async () => ({ ok: false, error: t("IP / geo check runs in the desktop app.") }),
     onBrowserExited: (cb) => {
       exitListeners.add(cb);
       return () => exitListeners.delete(cb);
@@ -510,14 +511,14 @@ function buildMock(): ClearcoteApi {
         const st = readJson<MockStorage>(STORAGE_KEY, {});
         const temp = st.temp ?? [];
         localStorage.setItem(STORAGE_KEY, JSON.stringify({ ...st, temp: [] }));
-        return { removed: temp.length, inUse: 0, freedBytes: temp.reduce((a, t) => a + t.sizeBytes, 0) };
+        return { removed: temp.length, inUse: 0, freedBytes: temp.reduce((a, x) => a + x.sizeBytes, 0) };
       },
       profileSizes: async () => {
         const sizes = readJson<MockStorage>(STORAGE_KEY, {}).sizes ?? {};
         return read().map((p) => ({ id: p.id, name: p.name?.trim() || p.id, bytes: sizes[p.id] ?? 0, running: mockRunning.has(p.id) }));
       },
       prefetch: async () => {
-        if (localStorage.getItem("clearcote.mock.prefetch") !== "ok") return { ok: false, error: "Downloading builds runs in the desktop app." };
+        if (localStorage.getItem("clearcote.mock.prefetch") !== "ok") return { ok: false, error: t("Downloading builds runs in the desktop app.") };
         for (const pct of [25, 50, 75, 100]) {
           prefetchListeners.forEach((l) => l({ pct, seenMB: pct * 2, totalMB: 200, version: "153.0.8010.36" }));
           await new Promise((r) => setTimeout(r, 60));
@@ -544,7 +545,7 @@ function buildMock(): ClearcoteApi {
       }
       if (mockRunning.has(p.id)) return { ok: false, error: "This profile is already running." };
       if (localStorage.getItem("clearcote.mock.limit") === "1" && mockRunning.size >= 1) {
-        return { ok: false, error: "Concurrency limit reached: 1 of 1 browsers in use.", code: "CONCURRENCY_LIMIT_EXCEEDED" };
+        return { ok: false, error: t("Concurrency limit reached: 1 of 1 browsers in use."), code: "CONCURRENCY_LIMIT_EXCEEDED" };
       }
       mockRunning.add(p.id);
       write(read().map((x) => (x.id === p.id ? { ...x, lastLaunchedAt: new Date().toISOString() } : x)));
@@ -558,7 +559,7 @@ function buildMock(): ClearcoteApi {
       list: async () => cloudRead(),
       start: async (p) => {
         const mode = localStorage.getItem("clearcote.mock.cloud");
-        if (!mode) return { ok: false, error: "Cloud sessions run in the desktop app (this is the browser preview).", code: "PREVIEW" };
+        if (!mode) return { ok: false, error: t("Cloud sessions run in the desktop app (this is the browser preview)."), code: "PREVIEW" };
         if (mode !== "ok") {
           const e = readJson<{ error?: string; code?: string; status?: number }>("clearcote.mock.cloud", {});
           return { ok: false, error: e.error ?? "Failed.", code: e.code, status: e.status };
@@ -569,10 +570,10 @@ function buildMock(): ClearcoteApi {
         } catch {
           key = undefined;
         }
-        if (!key) return { ok: false, error: "Add your Clearcote API key in Settings → Cloud to run profiles in the cloud.", code: "NO_KEY" };
-        if (cloudRead().some((s) => s.profileId === p.id)) return { ok: false, error: "This profile is already running in the cloud.", code: "ALREADY_RUNNING" };
+        if (!key) return { ok: false, error: t("Add your Clearcote API key in Settings → Cloud to run profiles in the cloud."), code: "NO_KEY" };
+        if (cloudRead().some((s) => s.profileId === p.id)) return { ok: false, error: t("This profile is already running in the cloud."), code: "ALREADY_RUNNING" };
         if (mockRunning.has(p.id)) {
-          return { ok: false, error: "This profile's browser is open on this PC. Stop it first: a profile runs in one place at a time.", code: "RUNNING_LOCALLY" };
+          return { ok: false, error: t("This profile's browser is open on this PC. Stop it first: a profile runs in one place at a time."), code: "RUNNING_LOCALLY" };
         }
         const country = p.cloud?.country?.toUpperCase();
         const exit = p.cloud?.exit === "managed" || !p.proxy ? `${country ? `${country} · ` : ""}included IP` : redactProxyString(p.proxy);
@@ -609,11 +610,11 @@ function buildMock(): ClearcoteApi {
         return true;
       },
       viewUrl: async (id) => {
-        if (!cloudRead().some((s) => s.profileId === id)) return { ok: false, error: "This profile is not running in the cloud.", ended: true };
+        if (!cloudRead().some((s) => s.profileId === id)) return { ok: false, error: t("This profile is not running in the cloud."), ended: true };
         const url = localStorage.getItem("clearcote.mock.cloud.view");
-        return url ? { ok: true, viewUrl: url, interactive: true } : { ok: false, error: "The live view runs in the desktop app." };
+        return url ? { ok: true, viewUrl: url, interactive: true } : { ok: false, error: t("The live view runs in the desktop app.") };
       },
-      account: async () => readJson<CloudAccount>("clearcote.mock.cloud.account", { ok: false, error: "The key check runs in the desktop app." }),
+      account: async () => readJson<CloudAccount>("clearcote.mock.cloud.account", { ok: false, error: t("The key check runs in the desktop app.") }),
       onChanged: (cb) => {
         cloudChanged.add(cb);
         return () => cloudChanged.delete(cb);
@@ -650,7 +651,7 @@ function buildMock(): ClearcoteApi {
         if (!force && s.updateCheck === false) return null;
         return fake;
       },
-      download: async () => ({ ok: false, error: "Updating only works in the desktop app." }),
+      download: async () => ({ ok: false, error: t("Updating only works in the desktop app.") }),
       run: async () => {},
       reveal: async () => {},
       openReleases: async (url: string) => {
@@ -674,16 +675,16 @@ function buildMock(): ClearcoteApi {
     },
     license: {
       // localStorage["clearcote.mock.license"] plays the licence service's answer.
-      check: async () => readJson<LicenseStatus>("clearcote.mock.license", { ok: false, error: "License check runs in the desktop app." }),
+      check: async () => readJson<LicenseStatus>("clearcote.mock.license", { ok: false, error: t("License check runs in the desktop app.") }),
     },
     resolveBinary: async () => null,
     pickBinary: async () => null,
     // localStorage["clearcote.mock.geocheck"] plays Resolve from proxy's answer (tests, design review).
-    geoCheck: async () => readJson<GeoResult>("clearcote.mock.geocheck", { ok: false, error: "IP / geo check runs in the desktop app." }),
+    geoCheck: async () => readJson<GeoResult>("clearcote.mock.geocheck", { ok: false, error: t("IP / geo check runs in the desktop app.") }),
     // localStorage["clearcote.mock.proxycheck"] plays the check's answer (tests, design review).
     // UDP is part of the answer only with Relay UDP on or when asked, as in the desktop app.
     proxyCheck: async (p, opts) => {
-      const c = readJson<ProxyCheck>("clearcote.mock.proxycheck", { ok: false, error: "Checking a proxy runs in the desktop app." });
+      const c = readJson<ProxyCheck>("clearcote.mock.proxycheck", { ok: false, error: t("Checking a proxy runs in the desktop app.") });
       if (!c.ok || c.udp === "not-socks" || opts?.udp || p.socks5Udp) return c;
       const { udp: _u, udpDetail: _d, moved: _m, ...rest } = c;
       return { ...rest, udpSkipped: true };
@@ -707,9 +708,9 @@ function buildMock(): ClearcoteApi {
       URL.revokeObjectURL(url);
       return { ok: true, count: list.length };
     },
-    importProfiles: async () => ({ ok: false, error: "Import runs in the desktop app." }),
+    importProfiles: async () => ({ ok: false, error: t("Import runs in the desktop app.") }),
     fp: {
-      import: async () => ({ ok: false, error: "Importing a fingerprint runs in the desktop app." }),
+      import: async () => ({ ok: false, error: t("Importing a fingerprint runs in the desktop app.") }),
       library: async () => {
         const RAW = "https://raw.githubusercontent.com/clearcotelabs/clearcote-profiles/main/samples";
         try {
@@ -750,7 +751,7 @@ function buildMock(): ClearcoteApi {
           return { ok: false, error: String(e) };
         }
       },
-      use: async () => ({ ok: false, error: "Applying a fingerprint runs in the desktop app." }),
+      use: async () => ({ ok: false, error: t("Applying a fingerprint runs in the desktop app.") }),
     },
   };
 }

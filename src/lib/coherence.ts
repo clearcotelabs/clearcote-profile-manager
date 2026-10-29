@@ -14,6 +14,7 @@
 
 import { isAuthenticatedSocks, parseProxy } from "../../electron/proxyargs";
 import { claimedVendor, VENDOR_LABEL, type HostGpuVendor } from "./gpuPicker";
+import { t, tx } from "./i18n";
 
 export type Severity = "error" | "warn";
 
@@ -137,8 +138,8 @@ export function coherenceIssues(
       severity: "error",
       field: "widevine",
       message:
-        'This profile reports the "Google Chrome" brand but seeds no Widevine CDM, which Google\'s build always ships.',
-      fix: "Enable Widevine (DRM) in Session, or set the brand to Chromium — which is what this build honestly is.",
+        t('This profile reports the "Google Chrome" brand but seeds no Widevine CDM, which Google\'s build always ships.'),
+      fix: t("Enable Widevine (DRM) in Session, or set the brand to Chromium — which is what this build honestly is."),
     });
   }
 
@@ -150,8 +151,8 @@ export function coherenceIssues(
       id: "socks5-auth-needs-151",
       severity: "error",
       field: "browserVersion",
-      message: `An authenticated SOCKS5 proxy needs Clearcote ${MIN_MAJOR_151} (r14+); build ${ctx.major} cannot authenticate to one and will fail to load pages.`,
-      fix: `Set the browser version to ${MIN_MAJOR_151}, or use an http/https proxy instead.`,
+      message: t("An authenticated SOCKS5 proxy needs Clearcote {need} (r14+); build {major} cannot authenticate to one and will fail to load pages.", { need: MIN_MAJOR_151, major: String(ctx.major) }),
+      fix: t("Set the browser version to {need}, or use an http/https proxy instead.", { need: MIN_MAJOR_151 }),
     });
   }
 
@@ -162,8 +163,8 @@ export function coherenceIssues(
       severity: "warn",
       field: "geoip",
       message:
-        "A proxy is set but no geolocation is — the Geolocation API will report this machine's real position, not the proxy's region.",
-      fix: "Turn on geoip to fill it from the proxy's exit region at launch, or set a geolocation by hand.",
+        t("A proxy is set but no geolocation is — the Geolocation API will report this machine's real position, not the proxy's region."),
+      fix: t("Turn on geoip to fill it from the proxy's exit region at launch, or set a geolocation by hand."),
     });
   }
 
@@ -179,30 +180,30 @@ export function coherenceIssues(
   // its advice, leave the fields empty, is right on both sides.
   const screenSpoofed = isSet(profile.screenWidth) || isSet(profile.screenHeight);
   const screenSource = profile.lightStealth
-    ? "Light stealth"
+    ? tx("Light stealth")
     : isSet(profile.fingerprintProfile)
-      ? "the captured fingerprint"
+      ? tx("the captured fingerprint")
       : isSet(profile.fingerprint)
-        ? "the seed"
+        ? tx("the seed")
         : null;
   const reachesCss = typedScreenReachesCss(ctx);
   if (screenSpoofed && screenSource && reachesCss !== true) {
-    const gap = `a typed screen size can disagree with the screen CSS media queries report while ${screenSource} is active, so a page reads two different screens. Typing your own monitor's size does not avoid it.`;
+    const source = t(screenSource);
     const fix =
       screenSource === "Light stealth"
-        ? "Leave the four screen fields empty: Light stealth keeps the real screen, which is coherent."
-        : "Leave the four screen fields empty: the seed or capture supplies a screen that agrees with itself. For a particular size, try other seeds.";
+        ? t("Leave the four screen fields empty: Light stealth keeps the real screen, which is coherent.")
+        : t("Leave the four screen fields empty: the seed or capture supplies a screen that agrees with itself. For a particular size, try other seeds.");
     out.push({
       id: "screen-spoofed-by-hand",
       severity: "warn",
       field: "screenWidth",
       message:
         reachesCss === false
-          ? gap.charAt(0).toUpperCase() + gap.slice(1)
-          : `On builds before ${MIN_MAJOR_SCREEN_CSS} r${MIN_REVISION_SCREEN_CSS}, ${gap}`,
+          ? t("A typed screen size can disagree with the screen CSS media queries report while {source} is active, so a page reads two different screens. Typing your own monitor's size does not avoid it.", { source })
+          : t("On builds before {major} r{revision}, a typed screen size can disagree with the screen CSS media queries report while {source} is active, so a page reads two different screens. Typing your own monitor's size does not avoid it.", { major: MIN_MAJOR_SCREEN_CSS, revision: MIN_REVISION_SCREEN_CSS, source }),
       fix:
         reachesCss === false && ctx.tier !== "free"
-          ? `${fix} ${MIN_MAJOR_SCREEN_CSS} r${MIN_REVISION_SCREEN_CSS} and newer report the typed size to both.`
+          ? t("{fix} {major} r{revision} and newer report the typed size to both.", { fix, major: MIN_MAJOR_SCREEN_CSS, revision: MIN_REVISION_SCREEN_CSS })
           : fix,
     });
   } else if (screenSpoofed && !typedScreenIsHost(profile, ctx.hostScreen, screenSource === null)) {
@@ -211,13 +212,13 @@ export function coherenceIssues(
       severity: "warn",
       field: "screenWidth",
       message:
-        "Screen dimensions are spoofed by hand. A faked screen cannot be reconciled with the real window and render surface, which strict anti-bots check.",
+        t("Screen dimensions are spoofed by hand. A faked screen cannot be reconciled with the real window and render surface, which strict anti-bots check."),
       fix:
         screenSource === null
-          ? "Set it only when it matches this host's real display, or leave it empty so the real screen is reported."
-          : `Type all four to match this host's real display, or leave them empty so ${
-              screenSource === "Light stealth" ? "Light stealth reports the real screen" : `${screenSource} supplies the screen`
-            }.`,
+          ? t("Set it only when it matches this host's real display, or leave it empty so the real screen is reported.")
+          : screenSource === "Light stealth"
+            ? t("Type all four to match this host's real display, or leave them empty so Light stealth reports the real screen.")
+            : t("Type all four to match this host's real display, or leave them empty so {source} supplies the screen.", { source: t(screenSource) }),
     });
   }
 
@@ -227,8 +228,8 @@ export function coherenceIssues(
       id: "transparent-proxy-without-proxy",
       severity: "warn",
       field: "transparentProxy",
-      message: "Transparent proxy is on but this profile has no proxy, so the setting does nothing.",
-      fix: "Add a proxy, or turn Transparent proxy off.",
+      message: t("Transparent proxy is on but this profile has no proxy, so the setting does nothing."),
+      fix: t("Add a proxy, or turn Transparent proxy off."),
     });
   }
 
@@ -243,8 +244,8 @@ export function coherenceIssues(
         id: "transparent-proxy-needs-152",
         severity: "warn",
         field: "transparentProxy",
-        message: `Transparent proxy needs Clearcote ${MIN_MAJOR_152} (r22+); build ${ctx.major} ignores it.`,
-        fix: `Set the browser version to ${MIN_MAJOR_152} or newer.`,
+        message: t("Transparent proxy needs Clearcote {need} (r22+); build {major} ignores it.", { need: MIN_MAJOR_152, major: String(ctx.major) }),
+        fix: t("Set the browser version to {need} or newer.", { need: MIN_MAJOR_152 }),
       });
     }
   }
@@ -256,8 +257,8 @@ export function coherenceIssues(
       severity: "warn",
       field: "fingerprintProfile",
       message:
-        "This capture was taken on a display too small to contain a normal browser window, so the window would be larger than the screen it claims to sit on.",
-      fix: "Pick a capture from a larger display, or set an explicit smaller window size.",
+        t("This capture was taken on a display too small to contain a normal browser window, so the window would be larger than the screen it claims to sit on."),
+      fix: t("Pick a capture from a larger display, or set an explicit smaller window size."),
     });
   }
 
@@ -268,8 +269,8 @@ export function coherenceIssues(
       severity: "warn",
       field: "disableGpuFingerprint",
       message:
-        "The canvas bridge and the real-GPU switch are both on: pixels come from the remote host while the GPU strings come from this one, so they describe different machines.",
-      fix: "Turn off the real GPU when bridging, so the reported GPU and the rendered pixels agree.",
+        t("The canvas bridge and the real-GPU switch are both on: pixels come from the remote host while the GPU strings come from this one, so they describe different machines."),
+      fix: t("Turn off the real GPU when bridging, so the reported GPU and the rendered pixels agree."),
     });
   }
 
@@ -286,8 +287,8 @@ export function coherenceIssues(
       severity: "warn",
       field: "gpuModel",
       message:
-        "GPU claim does not match this machine's GPU maker; driver limits follow the real GPU, so a cross-vendor claim is falsifiable.",
-      fix: `Pick a model from the ${VENDOR_LABEL[host]} group — this machine's GPU maker — or leave the GPU model on the persona default.`,
+        t("GPU claim does not match this machine's GPU maker; driver limits follow the real GPU, so a cross-vendor claim is falsifiable."),
+      fix: t("Pick a model from the {vendor} group — this machine's GPU maker — or leave the GPU model on the persona default.", { vendor: VENDOR_LABEL[host] }),
     });
   }
 
@@ -300,8 +301,8 @@ export function coherenceIssues(
       severity: "warn",
       field: "gpuStringSpoof",
       message:
-        "Turning off “Spoof GPU strings” is redundant here — “use real GPU” already reports the real vendor and renderer, along with everything else.",
-      fix: "Turn off the wide switch if you only wanted the strings, or leave this one on.",
+        t("Turning off “Spoof GPU strings” is redundant here — “use real GPU” already reports the real vendor and renderer, along with everything else."),
+      fix: t("Turn off the wide switch if you only wanted the strings, or leave this one on."),
     });
   }
   if (profile.fingerprintNoise === false && profile.canvasNoise === false) {
@@ -309,8 +310,8 @@ export function coherenceIssues(
       id: "canvas-noise-under-noise-off",
       severity: "warn",
       field: "canvasNoise",
-      message: "Farbling is already off process-wide, so switching canvas 2D noise off as well changes nothing.",
-      fix: "Turn farbling back on if you only wanted the 2D canvas unfarbled.",
+      message: t("Farbling is already off process-wide, so switching canvas 2D noise off as well changes nothing."),
+      fix: t("Turn farbling back on if you only wanted the 2D canvas unfarbled."),
     });
   }
 
@@ -321,16 +322,16 @@ export function coherenceIssues(
       severity: "warn",
       field: "shaderDialect",
       message:
-        "The HLSL shader dialect has no effect on a Windows host — ANGLE's D3D11 backend already reports HLSL.",
-      fix: "Leave it off here. It is for running a Windows persona on a Linux host.",
+        t("The HLSL shader dialect has no effect on a Windows host — ANGLE's D3D11 backend already reports HLSL."),
+      fix: t("Leave it off here. It is for running a Windows persona on a Linux host."),
     });
   } else if (profile.shaderDialect && ctx.major !== undefined && ctx.major < MIN_MAJOR_151) {
     out.push({
       id: "shader-dialect-needs-151",
       severity: "warn",
       field: "shaderDialect",
-      message: `The HLSL shader dialect needs Clearcote ${MIN_MAJOR_151} (r15+); build ${ctx.major} ignores it.`,
-      fix: `Set the browser version to ${MIN_MAJOR_151}.`,
+      message: t("The HLSL shader dialect needs Clearcote {need} (r15+); build {major} ignores it.", { need: MIN_MAJOR_151, major: String(ctx.major) }),
+      fix: t("Set the browser version to {need}.", { need: MIN_MAJOR_151 }),
     });
   }
 
@@ -339,8 +340,8 @@ export function coherenceIssues(
       id: "portable-profile-needs-151",
       severity: "warn",
       field: "portableProfile",
-      message: `A portable profile needs Clearcote ${MIN_MAJOR_151} (r14+); build ${ctx.major} ignores it, so cookies stay machine-bound.`,
-      fix: `Set the browser version to ${MIN_MAJOR_151}.`,
+      message: t("A portable profile needs Clearcote {need} (r14+); build {major} ignores it, so cookies stay machine-bound.", { need: MIN_MAJOR_151, major: String(ctx.major) }),
+      fix: t("Set the browser version to {need}.", { need: MIN_MAJOR_151 }),
     });
   }
 
@@ -355,8 +356,8 @@ export function coherenceIssues(
       severity: "warn",
       field: "socks5Udp",
       message:
-        "UDP relaying is on but this profile has no SOCKS5 proxy, so the setting does nothing — an http/https proxy cannot carry UDP.",
-      fix: "Use a socks5:// proxy, or turn UDP relaying off so the profile does not claim something it is not doing.",
+        t("UDP relaying is on but this profile has no SOCKS5 proxy, so the setting does nothing — an http/https proxy cannot carry UDP."),
+      fix: t("Use a socks5:// proxy, or turn UDP relaying off so the profile does not claim something it is not doing."),
     });
   }
 
@@ -369,8 +370,8 @@ export function coherenceIssues(
       severity: "warn",
       field: "lightStealth",
       message:
-        "Light stealth emits no persona, but a captured fingerprint is also set — the capture's values apply while the persona they were meant to refine does not.",
-      fix: "Use one or the other: light stealth for a narrow metadata-only surface, or a captured profile for a full identity.",
+        t("Light stealth emits no persona, but a captured fingerprint is also set — the capture's values apply while the persona they were meant to refine does not."),
+      fix: t("Use one or the other: light stealth for a narrow metadata-only surface, or a captured profile for a full identity."),
     });
   }
 
@@ -380,8 +381,8 @@ export function coherenceIssues(
       id: "android-without-touch",
       severity: "warn",
       field: "maxTouchPoints",
-      message: "The platform is Android but touch points are set to 0 — a phone with no touchscreen.",
-      fix: "Leave touch points unset so the mobile persona supplies them, or set a realistic value such as 5.",
+      message: t("The platform is Android but touch points are set to 0 — a phone with no touchscreen."),
+      fix: t("Leave touch points unset so the mobile persona supplies them, or set a realistic value such as 5."),
     });
   }
 
@@ -396,8 +397,8 @@ export function coherenceIssues(
       id: "persona-platform-on-mac",
       severity: "warn",
       field: "platform",
-      message: `This is a Mac, so the browser's fonts and text measurements are macOS's own, but the persona claims ${claimedPlatform} — a mismatch any font check reads.`,
-      fix: `Set Platform to macos on a Mac, or import a fingerprint captured on ${claimedPlatform}.`,
+      message: t("This is a Mac, so the browser's fonts and text measurements are macOS's own, but the persona claims {platform} — a mismatch any font check reads.", { platform: claimedPlatform }),
+      fix: t("Set Platform to macos on a Mac, or import a fingerprint captured on {platform}.", { platform: claimedPlatform }),
     });
   }
   // The GPU model table has Windows (Direct3D) and Linux (OpenGL) strings only. A macOS persona with
@@ -408,8 +409,8 @@ export function coherenceIssues(
       id: "gpu-direct3d-on-macos",
       severity: "warn",
       field: "gpuModel",
-      message: "The persona is macOS but its GPU renderer is a Direct3D string — macOS draws through Metal, never Direct3D.",
-      fix: "Set the GPU model back to Persona default, or enter a Metal renderer under Custom….",
+      message: t("The persona is macOS but its GPU renderer is a Direct3D string — macOS draws through Metal, never Direct3D."),
+      fix: t("Set the GPU model back to Persona default, or enter a Metal renderer under Custom…."),
     });
   }
 

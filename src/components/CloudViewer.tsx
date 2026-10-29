@@ -14,6 +14,7 @@ import { framePoint, keyEvent, modifiers, mouseButton, navTo, parseLiveText, rec
 import { endReasonText, formatBytes, formatDuration, formatEur } from "../../electron/cloudtext";
 import { useConfirm } from "./Confirm";
 import { hostOs, shortcutLabel } from "@/lib/host";
+import { t, useLocale } from "@/lib/i18n";
 
 type Phase = "connecting" | "live" | "reconnecting" | "ended" | "missing";
 
@@ -21,6 +22,7 @@ const iconBtn =
   "flex h-7 w-7 shrink-0 items-center justify-center rounded-md text-fog/60 hover:bg-elevate hover:text-fog disabled:opacity-30 disabled:hover:bg-transparent";
 
 export default function CloudViewer({ profileId }: { profileId: string }) {
+  const locale = useLocale();
   const confirm = useConfirm();
   const [session, setSession] = useState<CloudSession | null>(null);
   const [phase, setPhase] = useState<Phase>("connecting");
@@ -76,7 +78,7 @@ export default function CloudViewer({ profileId }: { profileId: string }) {
   // put it back whenever the head changes.
   useEffect(() => {
     if (!session?.name) return;
-    const want = `${session.name} — Cloud`;
+    const want = t("{name} — Cloud", { name: session.name });
     const apply = () => {
       if (document.title !== want) document.title = want;
     };
@@ -84,7 +86,7 @@ export default function CloudViewer({ profileId }: { profileId: string }) {
     const mo = new MutationObserver(apply);
     mo.observe(document.head, { childList: true, subtree: true, characterData: true });
     return () => mo.disconnect();
-  }, [session?.name]);
+  }, [session?.name, locale]);
 
   // ── the live view socket, reconnecting with a fresh URL while the session lives ─────────────────
   useEffect(() => {
@@ -118,9 +120,9 @@ export default function CloudViewer({ profileId }: { profileId: string }) {
       };
       sock.onmessage = (e) => {
         if (typeof e.data === "string") {
-          const t = parseLiveText(e.data);
-          if (t.kind === "hello") setControl(t.control && r.interactive);
-          else if (t.kind === "meta") setMeta(t);
+          const msg = parseLiveText(e.data);
+          if (msg.kind === "hello") setControl(msg.control && r.interactive);
+          else if (msg.kind === "meta") setMeta(msg);
           return;
         }
         const url = URL.createObjectURL(e.data as Blob);
@@ -220,31 +222,31 @@ export default function CloudViewer({ profileId }: { profileId: string }) {
 
   async function stop() {
     const ok = await confirm({
-      title: "Stop this cloud browser?",
-      body: "It closes on Clearcote's servers. Its cookies are kept when the profile keeps them; anything open is lost.",
-      confirmLabel: "Stop",
+      title: t("Stop this cloud browser?"),
+      body: t("It closes on Clearcote's servers. Its cookies are kept when the profile keeps them; anything open is lost."),
+      confirmLabel: t("Stop"),
       tone: "danger",
     });
     if (!ok) return;
     setStopping(true);
     const r = await api.cloud.stop(profileId);
     setStopping(false);
-    if (!r.ok) setError(r.error ?? "It could not be stopped. Try again.");
+    if (!r.ok) setError(r.error ?? t("It could not be stopped. Try again."));
   }
 
   // ── what is shown ──────────────────────────────────────────────────────────────────────────────
   if (phase === "missing") {
     return (
       <Centered>
-        <p className="text-sm text-fog/70">This profile is not running in the cloud.</p>
+        <p className="text-sm text-fog/70">{t("This profile is not running in the cloud.")}</p>
         <button className="mt-3 rounded-lg border border-line-strong px-3 py-1.5 text-xs font-medium text-fog/80 hover:bg-elevate" onClick={() => window.close()}>
-          Close window
+          {t("Close window")}
         </button>
       </Centered>
     );
   }
 
-  const usage = session ? `${session.exit ?? "cloud"} · ${formatBytes(session.bytes)} · ${formatEur(session.costEur)}${session.seconds ? ` · ${formatDuration(session.seconds)}` : ""}` : "";
+  const usage = session ? `${session.exit ?? t("cloud")} · ${formatBytes(session.bytes)} · ${formatEur(session.costEur)}${session.seconds ? ` · ${formatDuration(session.seconds)}` : ""}` : "";
 
   return (
     <div className="flex h-screen flex-col bg-ink text-fog">
@@ -253,13 +255,13 @@ export default function CloudViewer({ profileId }: { profileId: string }) {
           aria-hidden
           className={`mx-1 h-2 w-2 shrink-0 rounded-full ${phase === "live" ? "animate-pulse bg-danger" : phase === "ended" ? "bg-fog/30" : "bg-warn"}`}
         />
-        <button type="button" className={iconBtn} aria-label="Back" disabled={!control} onClick={() => send({ t: "nav", a: "back" })}>
+        <button type="button" className={iconBtn} aria-label={t("Back")} disabled={!control} onClick={() => send({ t: "nav", a: "back" })}>
           ←
         </button>
-        <button type="button" className={iconBtn} aria-label="Forward" disabled={!control} onClick={() => send({ t: "nav", a: "forward" })}>
+        <button type="button" className={iconBtn} aria-label={t("Forward")} disabled={!control} onClick={() => send({ t: "nav", a: "forward" })}>
           →
         </button>
-        <button type="button" className={iconBtn} aria-label="Reload" disabled={!control} onClick={() => send({ t: "nav", a: "reload" })}>
+        <button type="button" className={iconBtn} aria-label={t("Reload")} disabled={!control} onClick={() => send({ t: "nav", a: "reload" })}>
           ↻
         </button>
         <form onSubmit={go} className="min-w-0 flex-1">
@@ -268,15 +270,15 @@ export default function CloudViewer({ profileId }: { profileId: string }) {
             onChange={(e) => setAddress(e.target.value)}
             onFocus={() => setEditingAddress(true)}
             onBlur={() => setEditingAddress(false)}
-            aria-label="Address"
+            aria-label={t("Address")}
             spellCheck={false}
             disabled={!control}
-            placeholder={phase === "live" ? "" : "Connecting…"}
+            placeholder={phase === "live" ? "" : t("Connecting…")}
             className="h-7 w-full rounded-md border border-line bg-ink/70 px-2 font-mono text-[12px] text-fog outline-none focus:border-accent/60"
           />
         </form>
-        {meta && meta.tabs > 1 && <span className="shrink-0 px-1 text-fog/45">{meta.tabs} tabs</span>}
-        <span data-cloud-viewer-usage className="hidden shrink-0 truncate px-2 text-fog/50 md:inline" title={session ? `Cloud session ${session.sid}` : undefined}>
+        {meta && meta.tabs > 1 && <span className="shrink-0 px-1 text-fog/45">{t("{n} tabs", { n: meta.tabs })}</span>}
+        <span data-cloud-viewer-usage className="hidden shrink-0 truncate px-2 text-fog/50 md:inline" title={session ? t("Cloud session {sid}", { sid: session.sid }) : undefined}>
           {usage}
         </span>
         <button
@@ -285,19 +287,19 @@ export default function CloudViewer({ profileId }: { profileId: string }) {
           disabled={stopping || phase === "ended" || session?.status === "stopping"}
           className="shrink-0 rounded-md border border-line-strong px-2.5 py-1 font-semibold text-fog/85 hover:bg-elevate disabled:opacity-40"
         >
-          {stopping || session?.status === "stopping" ? "Stopping…" : "Stop"}
+          {stopping || session?.status === "stopping" ? t("Stopping…") : t("Stop")}
         </button>
       </header>
 
       {phase !== "ended" &&
         (session?.status === "stopping" ? (
           <p role="status" className="border-b border-line bg-warn/10 px-3 py-1.5 text-xs text-warn">
-            Stopping. Its server closes it within a few seconds.
+            {t("Stopping. Its server closes it within a few seconds.")}
           </p>
         ) : (
           (error || phase === "reconnecting") && (
             <p role="status" className="border-b border-line bg-warn/10 px-3 py-1.5 text-xs text-warn">
-              {error ? `${error} Reconnecting…` : "The live view dropped. Reconnecting…"}
+              {error ? t("{error} Reconnecting…", { error }) : t("The live view dropped. Reconnecting…")}
             </p>
           )
         ))}
@@ -317,29 +319,29 @@ export default function CloudViewer({ profileId }: { profileId: string }) {
       >
         {src ? (
           // eslint-disable-next-line @next/next/no-img-element
-          <img ref={img} src={src} alt={meta?.title ? `Cloud browser showing ${meta.title}` : "Cloud browser"} draggable={false} className="h-full w-full select-none object-contain" />
+          <img ref={img} src={src} alt={meta?.title ? t("Cloud browser showing {title}", { title: meta.title }) : t("Cloud browser")} draggable={false} className="h-full w-full select-none object-contain" />
         ) : (
           phase !== "ended" && (
             <Centered>
-              <span className="text-sm text-fog/55">{phase === "reconnecting" ? "Reconnecting to the cloud browser…" : "Connecting to the cloud browser…"}</span>
+              <span className="text-sm text-fog/55">{phase === "reconnecting" ? t("Reconnecting to the cloud browser…") : t("Connecting to the cloud browser…")}</span>
             </Centered>
           )
         )}
         {phase === "ended" && (
           <div role="status" className="absolute inset-0 flex items-center justify-center bg-ink/80 p-6">
             <div className="max-w-md rounded-xl border border-line bg-surface p-5 text-sm">
-              <p className="font-semibold text-fog">The cloud browser ended</p>
-              <p className="mt-1.5 text-fog/65">{endReasonText(ended?.reason ?? null, ended?.status)}</p>
+              <p className="font-semibold text-fog">{t("The cloud browser ended")}</p>
+              <p className="mt-1.5 text-fog/65">{t(endReasonText(ended?.reason ?? null, ended?.status))}</p>
               {ended && (ended.bytes != null || ended.costEur != null) && (
                 <p className="mt-1 text-fog/50">
-                  It used {formatBytes(ended.bytes)} and cost {formatEur(ended.costEur)}.
+                  {t("It used {bytes} and cost {cost}.", { bytes: formatBytes(ended.bytes), cost: formatEur(ended.costEur) })}
                 </p>
               )}
               <button
                 className="mt-4 rounded-lg border border-line-strong px-3 py-1.5 text-xs font-medium text-fog/85 hover:bg-elevate"
                 onClick={() => window.close()}
               >
-                Close window
+                {t("Close window")}
               </button>
             </div>
           </div>
@@ -347,7 +349,9 @@ export default function CloudViewer({ profileId }: { profileId: string }) {
       </div>
       {control && phase === "live" && (
         <p className="border-t border-line bg-surface/60 px-3 py-1 text-[11px] text-fog/40">
-          Click the page to type into it. Paste with {shortcutLabel("V", hostOs())}. Closing this window does not stop the cloud browser.
+          {t("Click the page to type into it. Paste with {keys}. Closing this window does not stop the cloud browser.", {
+            keys: shortcutLabel("V", hostOs()),
+          })}
         </p>
       )}
     </div>

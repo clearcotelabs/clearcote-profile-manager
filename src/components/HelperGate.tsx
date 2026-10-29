@@ -32,6 +32,7 @@ import {
   type HelperRelease,
 } from "@/lib/helperRelease";
 import { LogoMark } from "./LogoMark";
+import { t, tRich, tx, useLocale } from "@/lib/i18n";
 
 const SOURCE =
   "https://github.com/clearcotelabs/clearcote-profile-manager/tree/main/helper";
@@ -87,11 +88,13 @@ export default function HelperGate({
 }: {
   children: React.ReactNode;
 }) {
+  useLocale();
   if (!isWeb) return <>{children}</>;
   return <WebShell>{children}</WebShell>;
 }
 
 function WebShell({ children }: { children: React.ReactNode }) {
+  useLocale();
   // Always the preview first: it is what the prerendered page (and a search engine) shows, so the
   // first render matches it. A saved pairing is then checked, and the app switches when it holds.
   const [mode, setMode] = useState<Mode>("preview");
@@ -119,7 +122,7 @@ function WebShell({ children }: { children: React.ReactNode }) {
 
   useEffect(() => {
     const open = (e: Event) =>
-      setWhy(String((e as CustomEvent).detail || "use this computer"));
+      setWhy(String((e as CustomEvent).detail || tx("use this computer")));
     window.addEventListener(NEED_HELPER_EVENT, open);
     helper.onLost = () => {
       setLost(true);
@@ -154,7 +157,7 @@ function WebShell({ children }: { children: React.ReactNode }) {
     if (mode === "live") return <>{children}</>;
     return (
       <main className="flex min-h-screen items-center justify-center bg-ink px-6 text-center text-sm text-fog/70">
-        {checked ? "This cloud browser opens from the Clearcote profile manager, on a computer connected to it." : "Connecting to the Clearcote helper…"}
+        {checked ? t("This cloud browser opens from the Clearcote profile manager, on a computer connected to it.") : t("Connecting to the Clearcote helper…")}
       </main>
     );
   }
@@ -166,28 +169,32 @@ function WebShell({ children }: { children: React.ReactNode }) {
           <div className="mx-auto flex max-w-6xl flex-wrap items-center gap-x-4 gap-y-2 px-4 py-2.5 text-sm">
             <span className="flex-1 basis-[280px] text-fog/80">
               {checking ? (
-                <>Connecting to the Clearcote helper on this computer…</>
+                <>{t("Connecting to the Clearcote helper on this computer…")}</>
               ) : lost ? (
                 <>
-                  The Clearcote helper stopped answering, so this is the preview
-                  again. Start it, then connect.
+                  {t(
+                    "The Clearcote helper stopped answering, so this is the preview again. Start it, then connect.",
+                  )}
                 </>
               ) : (
                 <>
-                  <strong className="font-semibold text-fog">
-                    Preview with example profiles.
-                  </strong>{" "}
-                  Connect this computer to launch real browsers. Your profiles
-                  stay on your computer.
+                  {tRich(
+                    "<b>Preview with example profiles.</b> Connect this computer to launch real browsers. Your profiles stay on your computer.",
+                    {
+                      b: (s) => (
+                        <strong className="font-semibold text-fog">{s}</strong>
+                      ),
+                    },
+                  )}
                 </>
               )}
             </span>
             <button
               type="button"
-              onClick={() => setWhy("launch your profiles")}
+              onClick={() => setWhy(tx("launch your profiles"))}
               className="min-h-[40px] rounded-xl bg-fog px-4 text-sm font-semibold text-ink hover:opacity-90"
             >
-              Connect this computer
+              {t("Connect this computer")}
             </button>
           </div>
         </div>
@@ -196,15 +203,21 @@ function WebShell({ children }: { children: React.ReactNode }) {
         <div role="status" className="mx-auto mt-3 max-w-6xl px-4">
           <div className="flex items-center justify-between gap-3 rounded-lg border border-ok/30 bg-ok/10 px-3 py-2 text-sm text-ok">
             <span>
-              Connected. {moved} profile{moved === 1 ? "" : "s"} you made in the
-              preview moved to this computer.
+              {moved === 1
+                ? t(
+                    "Connected. 1 profile you made in the preview moved to this computer.",
+                  )
+                : t(
+                    "Connected. {n} profiles you made in the preview moved to this computer.",
+                    { n: moved },
+                  )}
             </span>
             <button
               type="button"
               className="min-h-[32px] px-2 text-xs underline"
               onClick={() => setMoved(null)}
             >
-              Dismiss
+              {t("Dismiss")}
             </button>
           </div>
         </div>
@@ -231,6 +244,7 @@ function ConnectDialog({
   onClose: () => void;
   onPaired: () => void;
 }) {
+  useLocale();
   const [phase, setPhase] = useState<Phase>({ k: "looking" });
   const timer = useRef<ReturnType<typeof setTimeout> | null>(null);
   // For `clearcote connect CODE`: shown while there is no helper. A helper that then appears was most
@@ -332,7 +346,7 @@ function ConnectDialog({
       >
         <button
           type="button"
-          aria-label="Close"
+          aria-label={t("Close")}
           onClick={onClose}
           className="absolute right-3 top-3 flex h-10 w-10 items-center justify-center rounded-lg text-fog/60 hover:bg-elevate hover:text-fog"
         >
@@ -356,12 +370,12 @@ function ConnectDialog({
         </div>
 
         <h1 id="connect-title" className="mb-4 pr-8 text-xl font-semibold">
-          To {why}, connect this computer
+          {t("To {why}, connect this computer", { why: t(why) })}
         </h1>
 
         {phase.k === "looking" && (
           <p className="text-sm text-fog/70">
-            Looking for the Clearcote helper on this computer…
+            {t("Looking for the Clearcote helper on this computer…")}
           </p>
         )}
 
@@ -372,16 +386,17 @@ function ConnectDialog({
         {phase.k === "found" && (
           <section className="space-y-4">
             <p className="text-sm leading-relaxed text-fog/75">
-              The helper (version {phase.probe.version}) is running. Pair once,
-              and this page can start your Clearcote browsers. The helper will
-              open a page where you approve it.
+              {t(
+                "The helper (version {version}) is running. Pair once, and this page can start your Clearcote browsers. The helper will open a page where you approve it.",
+                { version: phase.probe.version },
+              )}
             </p>
             <button
               type="button"
               onClick={() => void pair(phase.probe)}
               className="min-h-[44px] rounded-xl bg-fog px-5 text-sm font-semibold text-ink hover:opacity-90"
             >
-              Pair this browser
+              {t("Pair this browser")}
             </button>
           </section>
         )}
@@ -389,28 +404,35 @@ function ConnectDialog({
         {phase.k === "pairing" && (
           <section className="space-y-4">
             <p className="text-sm leading-relaxed text-fog/75">
-              A tab from the helper (127.0.0.1) just opened. Check that it shows
-              this code, then press <strong>Codes match: approve</strong>.
+              {tRich(
+                "A tab from the helper (127.0.0.1) just opened. Check that it shows this code, then press <b>Codes match: approve</b>.",
+                { b: (s) => <strong>{s}</strong> },
+              )}
             </p>
             <div className="rounded-xl border border-line bg-elevate p-5">
               <div className="text-xs font-semibold uppercase tracking-wider text-fog/60">
-                Pairing code
+                {t("Pairing code")}
               </div>
               <div className="mt-1 font-mono text-4xl font-semibold tracking-[0.08em]">
                 {phase.req.code}
               </div>
             </div>
             <p className="text-xs text-fog/60">
-              No tab?{" "}
-              <a
-                className="text-accent underline"
-                href={phase.req.approveUrl}
-                target="_blank"
-                rel="noreferrer"
-              >
-                Open the approval page
-              </a>
-              . The request expires in two minutes.
+              {tRich(
+                "No tab? <a>Open the approval page</a>. The request expires in two minutes.",
+                {
+                  a: (s) => (
+                    <a
+                      className="text-accent underline"
+                      href={phase.req.approveUrl}
+                      target="_blank"
+                      rel="noreferrer"
+                    >
+                      {s}
+                    </a>
+                  ),
+                },
+              )}
             </p>
           </section>
         )}
@@ -419,16 +441,15 @@ function ConnectDialog({
           <section className="space-y-4">
             <p className="text-sm text-fog/75">
               {phase.why === "denied"
-                ? "Pairing was denied."
-                : "The request expired."}{" "}
-              Nothing was paired.
+                ? t("Pairing was denied. Nothing was paired.")
+                : t("The request expired. Nothing was paired.")}
             </p>
             <button
               type="button"
               onClick={() => void pair(phase.probe)}
               className="min-h-[44px] rounded-xl bg-fog px-5 text-sm font-semibold text-ink hover:opacity-90"
             >
-              Try again
+              {t("Try again")}
             </button>
           </section>
         )}
@@ -439,7 +460,7 @@ function ConnectDialog({
             onClick={onClose}
             className="min-h-[40px] px-2 text-sm text-fog/70 hover:text-fog"
           >
-            Keep looking around
+            {t("Keep looking around")}
           </button>
         </div>
       </div>
@@ -459,6 +480,7 @@ function savedWay(): "download" | "sdk" {
 }
 
 function Missing({ blocked, code }: { blocked: boolean; code: string }) {
+  useLocale();
   const [way, setWay] = useState<"download" | "sdk">("sdk");
   useEffect(() => setWay(savedWay()), []);
   const pick = (w: "download" | "sdk") => {
@@ -483,27 +505,27 @@ function Missing({ blocked, code }: { blocked: boolean; code: string }) {
   return (
     <section className="space-y-5">
       <p className="text-sm leading-relaxed text-fog/75">
-        Your profiles stay on your computer. To open them from this page,
-        Clearcote needs a small helper running there. It is open source and you
-        can rebuild it yourself and check it byte for byte.
+        {t(
+          "Your profiles stay on your computer. To open them from this page, Clearcote needs a small helper running there. It is open source and you can rebuild it yourself and check it byte for byte.",
+        )}
       </p>
       {blocked && (
         <p className="rounded-lg border border-warn/30 bg-warn/10 px-3 py-2 text-sm text-warn">
-          This browser is blocking the page from reaching apps on this computer.
-          Allow “Local network access” for this site (the icon left of the
-          address), then reload.
+          {t(
+            "This browser is blocking the page from reaching apps on this computer. Allow “Local network access” for this site (the icon left of the address), then reload.",
+          )}
         </p>
       )}
       <div
         role="tablist"
-        aria-label="How to start the helper"
+        aria-label={t("How to start the helper")}
         className="flex gap-1 rounded-xl border border-line bg-elevate p-1"
       >
-        {tab("sdk", "I use the Clearcote SDK")}
-        {tab("download", "Download the helper")}
+        {tab("sdk", t("I use the Clearcote SDK"))}
+        {tab("download", t("Download the helper"))}
       </div>
       {way === "download" ? <DownloadSteps /> : <SdkSteps code={code} />}
-      <p className="text-xs text-fog/50">Looking for the helper…</p>
+      <p className="text-xs text-fog/50">{t("Looking for the helper…")}</p>
     </section>
   );
 }
@@ -529,7 +551,7 @@ function Copyable({ text }: { text: string }) {
         }
         className="min-h-[32px] flex-none rounded-md px-2 text-xs font-semibold text-fog/70 hover:bg-elevate hover:text-fog"
       >
-        {copied ? "Copied" : "Copy"}
+        {copied ? t("Copied") : t("Copy")}
       </button>
     </div>
   );
@@ -539,9 +561,9 @@ function SdkSteps({ code }: { code: string }) {
   return (
     <div className="space-y-4 text-sm">
       <p className="leading-relaxed text-fog/75">
-        Run this in a terminal on this computer, with Node.js or Python. It
-        downloads the same helper (checked against its SHA-256) and starts it.
-        This tab connects by itself: the code is how the helper knows it is you.
+        {t(
+          "Run this in a terminal on this computer, with Node.js or Python. It downloads the same helper (checked against its SHA-256) and starts it. This tab connects by itself: the code is how the helper knows it is you.",
+        )}
       </p>
       <div className="space-y-1.5">
         <div className="text-xs font-semibold uppercase tracking-wider text-fog/60">
@@ -549,17 +571,21 @@ function SdkSteps({ code }: { code: string }) {
         </div>
         <Copyable text={`npx clearcote@latest connect ${code}`} />
         <div className="text-xs text-fog/60">
-          Nothing to install first: npx fetches the SDK. Needs Node.js 20 or
-          newer (
-          <a
-            className="text-accent underline"
-            href="https://nodejs.org/"
-            target="_blank"
-            rel="noreferrer"
-          >
-            nodejs.org
-          </a>
-          ).
+          {tRich(
+            "Nothing to install first: npx fetches the SDK. Needs Node.js 20 or newer (<a>nodejs.org</a>).",
+            {
+              a: (s) => (
+                <a
+                  className="text-accent underline"
+                  href="https://nodejs.org/"
+                  target="_blank"
+                  rel="noreferrer"
+                >
+                  {s}
+                </a>
+              ),
+            },
+          )}
         </div>
       </div>
       <div className="space-y-1.5">
@@ -567,15 +593,16 @@ function SdkSteps({ code }: { code: string }) {
           Python
         </div>
         <div className="text-xs text-fog/60">
-          1. Install or update the SDK (Python 3.8 or newer):
+          {t("1. Install or update the SDK (Python 3.8 or newer):")}
         </div>
         <Copyable text="pip install -U clearcote" />
-        <div className="text-xs text-fog/60">2. Start the helper:</div>
+        <div className="text-xs text-fog/60">{t("2. Start the helper:")}</div>
         <Copyable text={`clearcote connect ${code}`} />
       </div>
       <p className="text-xs text-fog/60">
-        Keep the terminal open while you use the profile manager. Ctrl+C closes
-        the helper and its browsers.
+        {t(
+          "Keep the terminal open while you use the profile manager. Ctrl+C closes the helper and its browsers.",
+        )}
       </p>
     </div>
   );
@@ -600,7 +627,9 @@ function DownloadSteps() {
           1
         </span>
         <div className="space-y-2">
-          <div className="pt-1 font-semibold">Download the helper for {os}</div>
+          <div className="pt-1 font-semibold">
+            {t("Download the helper for {os}", { os })}
+          </div>
           <a
             href={mine?.url ?? rel?.page ?? RELEASES_FALLBACK}
             target={mine ? undefined : "_blank"}
@@ -608,25 +637,30 @@ function DownloadSteps() {
             className="inline-flex min-h-[44px] items-center rounded-xl bg-fog px-5 font-semibold text-ink hover:opacity-90"
           >
             {mine
-              ? `Download for ${mine.label}${mine.sizeMB ? ` (${mine.sizeMB} MB)` : ""}`
-              : "Get Clearcote Helper"}
+              ? mine.sizeMB
+                ? t("Download for {label} ({size} MB)", {
+                    label: t(mine.label),
+                    size: mine.sizeMB,
+                  })
+                : t("Download for {label}", { label: t(mine.label) })
+              : t("Get Clearcote Helper")}
           </a>
           <div className="text-xs text-fog/60">
             {rel ? (
               <>
-                Version {rel.version}.{" "}
+                {t("Version {version}.", { version: rel.version })}{" "}
                 <a
                   className="text-accent underline"
                   href={rel.page}
                   target="_blank"
                   rel="noreferrer"
                 >
-                  Other systems and checksums
+                  {t("Other systems and checksums")}
                 </a>
                 {" · "}
               </>
             ) : (
-              <>Pick the file for {os} on the releases page. </>
+              <>{t("Pick the file for {os} on the releases page.", { os })} </>
             )}
             <a
               className="text-accent underline"
@@ -634,7 +668,7 @@ function DownloadSteps() {
               target="_blank"
               rel="noreferrer"
             >
-              Read its source and how to verify it
+              {t("Read its source and how to verify it")}
             </a>
             .
           </div>
@@ -645,13 +679,17 @@ function DownloadSteps() {
           2
         </span>
         <div className="pt-1">
-          <div className="font-semibold">Unzip it and start it</div>
+          <div className="font-semibold">{t("Unzip it and start it")}</div>
           <div className="text-fog/65">
             {os === "Windows"
-              ? "Double-click “Clearcote Helper.cmd”. It runs as an icon next to the clock; right-click it to quit."
-              : (os === "macOS"
-                  ? "Right-click “Clearcote Helper.command”, then Open."
-                  : "Run ./clearcote-helper.sh.") + " Keep its window open."}
+              ? t(
+                  "Double-click “Clearcote Helper.cmd”. It runs as an icon next to the clock; right-click it to quit.",
+                )
+              : os === "macOS"
+                ? t(
+                    "Right-click “Clearcote Helper.command”, then Open. Keep its window open.",
+                  )
+                : t("Run ./clearcote-helper.sh. Keep its window open.")}
           </div>
         </div>
       </li>
@@ -660,10 +698,11 @@ function DownloadSteps() {
           3
         </span>
         <div className="pt-1">
-          <div className="font-semibold">Come back to this tab</div>
+          <div className="font-semibold">{t("Come back to this tab")}</div>
           <div className="text-fog/65">
-            It finds the helper by itself. Your browser may ask to let this site
-            reach devices on your local network: allow it, that is the helper.
+            {t(
+              "It finds the helper by itself. Your browser may ask to let this site reach devices on your local network: allow it, that is the helper.",
+            )}
           </div>
         </div>
       </li>

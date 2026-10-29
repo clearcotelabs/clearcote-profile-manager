@@ -17,6 +17,7 @@
 //   - the page behind does not scroll while any dialog is open
 
 import { useEffect, useRef } from "react";
+import { t } from "@/lib/i18n";
 
 /** Open dialogs, innermost last. Module-level because stacked dialogs are separate components. */
 const stack: symbol[] = [];
@@ -177,7 +178,7 @@ export function DialogHeader({
       </h2>
       {children}
       <span className="flex-1" />
-      <button className="shrink-0 rounded-md px-1 text-fog/40 hover:text-fog" onClick={onClose} aria-label="Close">
+      <button className="shrink-0 rounded-md px-1 text-fog/40 hover:text-fog" onClick={onClose} aria-label={t("Close")}>
         ✕
       </button>
     </div>

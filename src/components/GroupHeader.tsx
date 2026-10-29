@@ -5,6 +5,7 @@
 // dissolves it.
 
 import Menu, { type MenuItem } from "./Menu";
+import { t } from "@/lib/i18n";
 
 export default function GroupHeader({
   name,
@@ -34,14 +35,14 @@ export default function GroupHeader({
   onMove: (dir: -1 | 1) => void;
   onUngroup: () => void;
 }) {
-  const items: (MenuItem | "separator")[] = [{ label: "Show only this group", onSelect: onFilter }];
+  const items: (MenuItem | "separator")[] = [{ label: t("Show only this group"), onSelect: onFilter }];
   if (isGroup) {
     items.push(
-      { label: "Rename group…", onSelect: onRename },
-      { label: "Move up", onSelect: () => onMove(-1), disabled: !canMoveUp },
-      { label: "Move down", onSelect: () => onMove(1), disabled: !canMoveDown },
+      { label: t("Rename group…"), onSelect: onRename },
+      { label: t("Move up"), onSelect: () => onMove(-1), disabled: !canMoveUp },
+      { label: t("Move down"), onSelect: () => onMove(1), disabled: !canMoveDown },
       "separator",
-      { label: "Ungroup these profiles", onSelect: onUngroup },
+      { label: t("Ungroup these profiles"), onSelect: onUngroup },
     );
   }
   return (
@@ -61,11 +62,11 @@ export default function GroupHeader({
           </span>
           <span className="font-normal normal-case tracking-normal text-fog/30">
             {count}
-            {running > 0 && <span className="text-accent/80"> · {running} running</span>}
+            {running > 0 && <span className="text-accent/80"> · {t("{n} running", { n: running })}</span>}
           </span>
         </button>
       </h2>
-      <Menu quiet align="left" label={`Group ${name}`} items={items} />
+      <Menu quiet align="left" label={t("Group {name}", { name })} items={items} />
     </div>
   );
 }

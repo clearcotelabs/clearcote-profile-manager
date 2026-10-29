@@ -6,6 +6,7 @@ import { useEffect, useId, useMemo, useState } from "react";
 import { api, type FingerprintMeta, type LibraryProfile } from "@/lib/ipc";
 import { MIN_PROFILE_SCREEN_HEIGHT, MIN_PROFILE_SCREEN_WIDTH } from "@/types/profile";
 import Dialog, { DialogHeader } from "./Dialog";
+import { t, tRich } from "@/lib/i18n";
 
 export default function LibraryModal({
   onApply,
@@ -20,14 +21,14 @@ export default function LibraryModal({
   const [busy, setBusy] = useState<string | null>(null);
   const [vendor, setVendor] = useState<string>("all");
   useEffect(() => {
-    api.fp.library().then((r) => (r.ok ? setList(r.profiles || []) : setErr(r.error || "Failed to load library.")));
+    api.fp.library().then((r) => (r.ok ? setList(r.profiles || []) : setErr(r.error || t("Failed to load library."))));
   }, []);
   async function pick(p: LibraryProfile) {
     setBusy(p.name);
     const r = await api.fp.use(p);
     setBusy(null);
     if (r.ok && r.file) onApply(r.file, r.meta);
-    else setErr(r.error || "Failed to apply this profile.");
+    else setErr(r.error || t("Failed to apply this profile."));
   }
   const vendors = useMemo(
     () => Array.from(new Set((list || []).map((p) => p.gpuVendor).filter(Boolean) as string[])).sort(),
@@ -45,16 +46,17 @@ export default function LibraryModal({
     // "fit": sized to its content; on a very short window the whole frame scrolls, and the list keeps
     // a usable minimum instead of collapsing to a sliver (it measured 25px at 420px tall).
     <Dialog onClose={onClose} labelledBy={titleId} variant="fit" layer="top" className="max-w-lg sm:max-h-[80vh]">
-      <DialogHeader id={titleId} title="clearcote-profiles library" onClose={onClose} />
+      <DialogHeader id={titleId} title={t("clearcote-profiles library")} onClose={onClose} />
       <div className="flex min-h-0 flex-1 flex-col px-5 pb-5 pt-3">
         <p className="text-xs text-fog/45">
-          Curated real-GPU desktop fingerprints.{" "}
-          <span className="text-fog/65">Pick one whose GPU vendor matches your host</span> so the imported GPU stays
-          coherent with the real render.
+          {tRich(
+            "Curated real-GPU desktop fingerprints. <em>Pick one whose GPU vendor matches your host</em> so the imported GPU stays coherent with the real render.",
+            { em: (s) => <span className="text-fog/65">{s}</span> },
+          )}
         </p>
         {err && <div className="mt-3 rounded-lg border border-warn/30 bg-warn/5 px-3 py-2 text-xs text-warn">{err}</div>}
         {vendors.length > 0 && (
-          <div className="mt-3 flex flex-wrap gap-1.5" role="group" aria-label="Filter by GPU vendor">
+          <div className="mt-3 flex flex-wrap gap-1.5" role="group" aria-label={t("Filter by GPU vendor")}>
             {["all", ...vendors].map((v) => (
               <button
                 key={v}
@@ -62,14 +64,14 @@ export default function LibraryModal({
                 aria-pressed={vendor === v}
                 className={`rounded-md px-2 py-1 text-[11px] ${vendor === v ? "bg-accent/15 text-accent" : "bg-elevate text-fog/55 hover:text-fog/80"}`}
               >
-                {v}
+                {v === "all" ? t("all") : v}
                 {v !== "all" && <span className="ml-1 text-fog/30">{(list || []).filter((p) => p.gpuVendor === v).length}</span>}
               </button>
             ))}
           </div>
         )}
         <div className="mt-3 min-h-[160px] flex-1 overflow-y-auto rounded-lg border border-line">
-          {!list && !err && <div className="p-4 text-sm text-fog/40">Loading…</div>}
+          {!list && !err && <div className="p-4 text-sm text-fog/40">{t("Loading…")}</div>}
           {shown.map((p) => (
             <button
               key={p.name}
@@ -90,23 +92,33 @@ export default function LibraryModal({
                   {[p.gpuVendor, p.screen, p.name.replace(/\.json$/, "")].filter(Boolean).join("  ·  ")}
                 </span>
               </span>
-              <span className="ml-2 shrink-0 text-[11px] text-accent">{busy === p.name ? "applying…" : "Use →"}</span>
+              <span className="ml-2 shrink-0 text-[11px] text-accent">{busy === p.name ? t("applying…") : t("Use →")}</span>
             </button>
           ))}
-          {list && shown.length === 0 && <div className="p-4 text-sm text-fog/40">No profiles for this vendor.</div>}
+          {list && shown.length === 0 && <div className="p-4 text-sm text-fog/40">{t("No profiles for this vendor.")}</div>}
         </div>
         {smallCount > 0 && (
           <label className="mt-2 flex items-center gap-2 text-[11px] text-fog/45">
             <input type="checkbox" className="accent-[#38e0d6]" checked={hideSmall} onChange={(e) => setHideSmall(e.target.checked)} />
             <span>
-              Hide {smallCount} capture{smallCount === 1 ? "" : "s"} with a display too small to contain a browser window
-              (under {MIN_PROFILE_SCREEN_WIDTH}×{MIN_PROFILE_SCREEN_HEIGHT}) — the window would be bigger than its own screen.
+              {smallCount === 1
+                ? t("Hide 1 capture with a display too small to contain a browser window (under {w}×{h}) — the window would be bigger than its own screen.", {
+                    w: MIN_PROFILE_SCREEN_WIDTH,
+                    h: MIN_PROFILE_SCREEN_HEIGHT,
+                  })
+                : t("Hide {n} captures with a display too small to contain a browser window (under {w}×{h}) — the window would be bigger than its own screen.", {
+                    n: smallCount,
+                    w: MIN_PROFILE_SCREEN_WIDTH,
+                    h: MIN_PROFILE_SCREEN_HEIGHT,
+                  })}
             </span>
           </label>
         )}
         <p className="mt-3 text-[11px] text-fog/35">
-          From <span className="font-mono">github.com/clearcotelabs/clearcote-profiles</span> · or use{" "}
-          <span className="font-mono">Import from file…</span> for your own capture.
+          {tRich("From {repo} · or use <mono>Import from file…</mono> for your own capture.", {
+            repo: <span className="font-mono">github.com/clearcotelabs/clearcote-profiles</span>,
+            mono: (s) => <span className="font-mono">{s}</span>,
+          })}
         </p>
       </div>
     </Dialog>

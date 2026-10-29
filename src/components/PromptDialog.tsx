@@ -5,6 +5,7 @@
 
 import { useId, useRef, useState } from "react";
 import Dialog from "./Dialog";
+import { t } from "@/lib/i18n";
 
 export default function PromptDialog({
   title,
@@ -73,7 +74,7 @@ export default function PromptDialog({
         </div>
         <div className="flex flex-none justify-end gap-2 border-t border-line bg-ink/40 px-5 py-3">
           <button type="button" className="rounded-lg border border-line-strong px-3.5 py-1.5 text-sm text-fog/80 hover:bg-elevate" onClick={onClose}>
-            Cancel
+            {t("Cancel")}
           </button>
           <button
             type="submit"

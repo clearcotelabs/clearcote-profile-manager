@@ -72,6 +72,7 @@ import {
   withoutScreen,
 } from "@/lib/quickCreate";
 import CloudFields from "./CloudFields";
+import { t, tRich } from "@/lib/i18n";
 
 const input =
   "w-full rounded-lg border border-line bg-ink/60 px-3 py-1.5 text-sm text-fog outline-none placeholder:text-fog/25 focus:border-accent/60";
@@ -338,9 +339,9 @@ export default function ProfileEditor({
     try {
       const found = proxyFromText(await navigator.clipboard.readText());
       if (found) setProxy(found);
-      else setPasteMsg("The clipboard doesn't hold a proxy address (host:port, with or without a login).");
+      else setPasteMsg(t("The clipboard doesn't hold a proxy address (host:port, with or without a login)."));
     } catch {
-      setPasteMsg("The clipboard can't be read here. Paste into the field with Ctrl+V instead.");
+      setPasteMsg(t("The clipboard can't be read here. Paste into the field with Ctrl+V instead."));
     }
   }
 
@@ -399,7 +400,7 @@ export default function ProfileEditor({
             <path d="M8 11V7a4 4 0 0 1 8 0v4" />
           </svg>
           <span className="text-fog/60">
-            <span className="font-medium text-fog">{s.title}.</span> {s.why}{" "}
+            <span className="font-medium text-fog">{t(s.title)}.</span> {t(s.why)}{" "}
             <code className="font-mono text-[10px] text-fog/40">{s.arg}</code>
           </span>
         </li>
@@ -422,8 +423,8 @@ export default function ProfileEditor({
     return (
       <button
         type="button"
-        title={f.why}
-        aria-label={`Why: ${f.label}`}
+        title={t(f.why)}
+        aria-label={t("Why: {label}", { label: t(f.label) })}
         className="ml-1 h-[13px] w-[13px] shrink-0 rounded-full border border-line text-[9px] leading-none text-fog/40 hover:border-accent hover:text-accent"
       >
         ?
@@ -435,9 +436,9 @@ export default function ProfileEditor({
     return (
       <span className={label + " flex items-center gap-1.5"}>
         {isFieldSet(profile as unknown as Record<string, unknown>, f) && (
-          <span className="h-1.5 w-1.5 shrink-0 rounded-full bg-iris" title="You set this" />
+          <span className="h-1.5 w-1.5 shrink-0 rounded-full bg-iris" title={t("You set this")} />
         )}
-        {f.label}
+        {t(f.label)}
         {why(f)}
       </span>
     );
@@ -476,10 +477,10 @@ export default function ProfileEditor({
             }
           />
           <span>
-            <span className="font-medium text-fog">{f.label}</span>
-            {f.desc ? <> — {f.desc}</> : null}
+            <span className="font-medium text-fog">{t(f.label)}</span>
+            {f.desc ? <> — {t(f.desc)}</> : null}
             {f.why ? why(f) : null}
-            {f.hint ? <span className="mt-1 block text-[11px] text-fog/40">{f.hint}</span> : null}
+            {f.hint ? <span className="mt-1 block text-[11px] text-fog/40">{t(f.hint)}</span> : null}
           </span>
         </label>
       );
@@ -510,11 +511,11 @@ export default function ProfileEditor({
           >
             {options.map((o) => (
               <option key={o.value} value={o.value}>
-                {o.label}
+                {t(o.label)}
               </option>
             ))}
           </select>
-          {f.hint ? <p className="mt-1 text-[11px] text-fog/40">{f.hint}</p> : null}
+          {f.hint ? <p className="mt-1 text-[11px] text-fog/40">{t(f.hint)}</p> : null}
         </>
       );
     }
@@ -526,7 +527,7 @@ export default function ProfileEditor({
           <textarea
             className={cls + " min-h-[60px] resize-y"}
             value={textValue(f)}
-            placeholder={f.placeholder}
+            placeholder={f.placeholder ? t(f.placeholder) : undefined}
             onChange={(e) => storeText(f, e.target.value)}
           />
         </>
@@ -542,13 +543,13 @@ export default function ProfileEditor({
             type="number"
             step={f.stepAny ? "any" : undefined}
             value={textValue(f)}
-            placeholder={f.placeholder}
+            placeholder={f.placeholder ? t(f.placeholder) : undefined}
             disabled={disabled}
             // Compared against "" rather than tested for truthiness, so a real 0 survives —
             // maxTouchPoints: 0 is a mouse-only desktop, not an empty field.
             onChange={(e) => set(f.key as keyof Profile, (e.target.value === "" ? undefined : Number(e.target.value)) as never)}
           />
-          {f.hint ? <p className="mt-1 text-[11px] text-fog/40">{f.hint}</p> : null}
+          {f.hint ? <p className="mt-1 text-[11px] text-fog/40">{t(f.hint)}</p> : null}
         </>
       );
     }
@@ -561,11 +562,11 @@ export default function ProfileEditor({
           type={f.type === "password" ? "password" : "text"}
           autoComplete={f.type === "password" ? "off" : undefined}
           value={textValue(f)}
-          placeholder={f.placeholder}
+          placeholder={f.placeholder ? t(f.placeholder) : undefined}
           disabled={disabled}
           onChange={(e) => storeText(f, e.target.value)}
         />
-        {f.hint ? <p className="mt-1 text-[11px] text-fog/40">{f.hint}</p> : null}
+        {f.hint ? <p className="mt-1 text-[11px] text-fog/40">{t(f.hint)}</p> : null}
       </>
     );
   }
@@ -585,9 +586,9 @@ export default function ProfileEditor({
         const custom = isCustom(profile, gpuCustom);
         const hostLine =
           hostGpu && hostGpu.vendor !== "unknown"
-            ? `This machine: ${hostGpu.name || VENDOR_LABEL[hostGpu.vendor]} — its maker's models are listed first.`
+            ? t("This machine: {gpu} — its maker's models are listed first.", { gpu: hostGpu.name || VENDOR_LABEL[hostGpu.vendor] })
             : hostGpu
-              ? "This machine's GPU maker could not be detected, so every vendor is listed."
+              ? t("This machine's GPU maker could not be detected, so every vendor is listed.")
               : null;
         return (
           <>
@@ -597,17 +598,17 @@ export default function ProfileEditor({
                 type="button"
                 className={btnGhost + " -mt-1 py-1 text-xs disabled:opacity-40"}
                 disabled={disabled}
-                title="A random model of this machine's GPU maker, never the one already chosen"
+                title={t("A random model of this machine's GPU maker, never the one already chosen")}
                 onClick={() => {
                   onChange(randomGpu(profile, hostVendor));
                   setGpuCustom(false);
                 }}
               >
-                Pick one at random
+                {t("Pick one at random")}
               </button>
             </div>
             <select
-              aria-label={f.label}
+              aria-label={t(f.label)}
               className={input + (disabled ? " opacity-40" : "")}
               value={value}
               disabled={disabled}
@@ -617,9 +618,9 @@ export default function ProfileEditor({
                 setGpuCustom(r.forceCustom);
               }}
             >
-              <option value={PICKER_DEFAULT}>Persona default (engine chooses)</option>
+              <option value={PICKER_DEFAULT}>{t("Persona default (engine chooses)")}</option>
               {pickerGroups(hostVendor).map((g) => (
-                <optgroup key={g.vendor} label={g.label}>
+                <optgroup key={g.vendor} label={t(g.label)}>
                   {g.models.map((m) => (
                     <option key={modelOptionValue(m)} value={modelOptionValue(m)}>
                       {m.name}
@@ -627,12 +628,12 @@ export default function ProfileEditor({
                   ))}
                 </optgroup>
               ))}
-              <option value={PICKER_CUSTOM}>Custom…</option>
+              <option value={PICKER_CUSTOM}>{t("Custom…")}</option>
             </select>
-            {f.hint ? <p className="mt-1 text-[11px] text-fog/40">{f.hint}</p> : null}
+            {f.hint ? <p className="mt-1 text-[11px] text-fog/40">{t(f.hint)}</p> : null}
             {profile.platform === "macos" ? (
               <p className="mt-0.5 text-[11px] text-warn/80" data-gpu-macos="1">
-                The list has Windows and Linux strings only, so a macOS persona keeps Persona default.
+                {t("The list has Windows and Linux strings only, so a macOS persona keeps Persona default.")}
               </p>
             ) : null}
             {hostLine ? (
@@ -658,7 +659,7 @@ export default function ProfileEditor({
                 value={profile.fingerprint}
                 onChange={(e) => set("fingerprint", e.target.value)}
               />
-              <button className={btnGhost} onClick={() => set("fingerprint", randomSeed())} title="Randomize">
+              <button className={btnGhost} onClick={() => set("fingerprint", randomSeed())} title={t("Randomize")}>
                 ↻
               </button>
             </div>
@@ -672,7 +673,7 @@ export default function ProfileEditor({
             <input
               className={input}
               value={(profile.tags || []).join(", ")}
-              placeholder={f.placeholder}
+              placeholder={f.placeholder ? t(f.placeholder) : undefined}
               onChange={(e) => set("tags", e.target.value.split(",").map((s) => s.trim()).filter(Boolean))}
             />
           </>
@@ -688,7 +689,7 @@ export default function ProfileEditor({
             <input
               className={input + " font-mono"}
               value={list.join(", ")}
-              placeholder={f.placeholder}
+              placeholder={f.placeholder ? t(f.placeholder) : undefined}
               onChange={(e) => {
                 const v = e.target.value.split(",").map((s) => s.trim()).filter(Boolean);
                 set(key, (v.length ? v : undefined) as never);
@@ -713,7 +714,7 @@ export default function ProfileEditor({
                 set("extraArgs", (v.length ? v : undefined) as never);
               }}
             />
-            <p className="mt-1 text-[11px] text-fog/40">One flag per line. Appended verbatim, after everything else.</p>
+            <p className="mt-1 text-[11px] text-fog/40">{t("One flag per line. Appended verbatim, after everything else.")}</p>
           </>
         );
 
@@ -728,29 +729,29 @@ export default function ProfileEditor({
               value={profile.browserVersion || "latest"}
               onChange={(e) => set("browserVersion", e.target.value === "latest" ? undefined : e.target.value)}
             >
-              <option value="latest">Latest (recommended)</option>
+              <option value="latest">{t("Latest (recommended)")}</option>
               {versions.map((v) => (
                 <option key={v.version} value={String(v.major)}>
-                  {v.major} · {v.tier === "pro" ? "Pro" : "Free"} ({v.version})
+                  {v.major} · {v.tier === "pro" ? "Pro" : t("Free")} ({v.version})
                 </option>
               ))}
               {revisions.length > 0 && (
-                <optgroup label="Pin an exact Pro rebuild">
+                <optgroup label={t("Pin an exact Pro rebuild")}>
                   {revisions.map((r, i) => (
                     <option key={r} value={r}>
                       {r}
-                      {i === 0 ? " · current" : ""}
+                      {i === 0 ? " · " + t("current") : ""}
                     </option>
                   ))}
                 </optgroup>
               )}
               {/* A pin that is no longer published must not silently read as "Latest". */}
-              {orphan && <option value={profile.browserVersion}>{profile.browserVersion} · pinned</option>}
+              {orphan && <option value={profile.browserVersion}>{t("{version} · pinned", { version: profile.browserVersion ?? "" })}</option>}
             </select>
             <p className="mt-1 text-[11px] text-fog/40">
-              Latest is the newest of your tier. A Pro build needs a license key in Settings.
+              {t("Latest is the newest of your tier. A Pro build needs a license key in Settings.")}
               {revisions.length > 0
-                ? " Latest and a bare major both follow the current Pro pin, which moves when a rebuild ships — pin a revision for reproducible runs."
+                ? " " + t("Latest and a bare major both follow the current Pro pin, which moves when a rebuild ships — pin a revision for reproducible runs.")
                 : ""}
             </p>
           </>
@@ -765,7 +766,7 @@ export default function ProfileEditor({
               <span className="-mt-1 flex gap-1.5">
                 {!profile.proxy && (
                   <button type="button" className={btnGhost + " py-1 text-xs"} onClick={pasteProxy} data-proxy-paste="1">
-                    Paste
+                    {t("Paste")}
                   </button>
                 )}
                 {profile.proxy && api.proxyCheck && (
@@ -774,15 +775,15 @@ export default function ProfileEditor({
                     className={btnGhost + " py-1 text-xs"}
                     onClick={() => void checkProxyNow()}
                     disabled={checking}
-                    title={profile.socks5Udp ? "Does it work, where does it exit, and does it carry UDP? Changes nothing in the profile." : "Does it work and where does it exit? Changes nothing. UDP is tested only when you ask."}
+                    title={profile.socks5Udp ? t("Does it work, where does it exit, and does it carry UDP? Changes nothing in the profile.") : t("Does it work and where does it exit? Changes nothing. UDP is tested only when you ask.")}
                     data-proxy-check-btn="1"
                   >
-                    {checking ? "Checking…" : "Check"}
+                    {checking ? t("Checking…") : t("Check")}
                   </button>
                 )}
                 {profile.proxy && (
                   <button className={btnGhost + " py-1 text-xs"} onClick={resolveGeo} disabled={resolving}>
-                    {resolving ? "Resolving…" : "Resolve from proxy →"}
+                    {resolving ? t("Resolving…") : t("Resolve from proxy →")}
                   </button>
                 )}
               </span>
@@ -815,13 +816,13 @@ export default function ProfileEditor({
             />
             {proxyProblem(profile.proxy) && (
               <p className="mt-1 text-[11px] text-danger" role="alert" data-proxy-problem="1">
-                {proxyProblem(profile.proxy)}
+                {t(proxyProblem(profile.proxy) ?? "")}
               </p>
             )}
             {pasteMsg && !profile.proxy && <p className="mt-1 text-[11px] text-warn">{pasteMsg}</p>}
             {checking && (
               <p className="mt-1 text-[11px] text-fog/50" role="status">
-                {profile.socks5Udp ? "Checking the proxy and whether it carries UDP… (a few seconds)" : "Checking the proxy… (a few seconds)"}
+                {profile.socks5Udp ? t("Checking the proxy and whether it carries UDP… (a few seconds)") : t("Checking the proxy… (a few seconds)")}
               </p>
             )}
             {check &&
@@ -838,24 +839,24 @@ export default function ProfileEditor({
                   <div className={"mt-1.5 rounded-lg border px-3 py-2 text-[11px] leading-relaxed " + box} role="status" data-proxy-check={d.tone}>
                     {d.lines.map((l, i) => (
                       <p key={i} className={i === 0 ? "font-medium " + head : "mt-0.5"}>
-                        {l}
+                        {t(l)}
                       </p>
                     ))}
                     {check.ok && check.udpSkipped && (
                       <div className="mt-1.5 flex flex-wrap items-center gap-2" data-udp-test={confirmUdp ? "confirm" : "offer"}>
                         {confirmUdp ? (
                           <>
-                            <span className="text-warn">{UDP_TEST_WARNING}</span>
+                            <span className="text-warn">{t(UDP_TEST_WARNING)}</span>
                             <button className={btnGhost + " py-0.5 text-[11px]"} onClick={() => void checkProxyNow(true)} data-udp-test-go="1">
-                              Test anyway
+                              {t("Test anyway")}
                             </button>
                             <button className={btnGhost + " py-0.5 text-[11px]"} onClick={() => setConfirmUdp(false)}>
-                              Cancel
+                              {t("Cancel")}
                             </button>
                           </>
                         ) : (
                           <button className={btnGhost + " py-0.5 text-[11px]"} onClick={() => setConfirmUdp(true)} data-udp-test-btn="1">
-                            Test UDP…
+                            {t("Test UDP…")}
                           </button>
                         )}
                       </div>
@@ -865,14 +866,18 @@ export default function ProfileEditor({
               })()}
             {autoGeoip && profile.geoip && (
               <p className="mt-1 text-[11px] text-accent">
-                geoip switched on — timezone, language and position will follow this proxy&apos;s exit region at
-                launch. Untick it below if you don&apos;t want that.
+                {t("geoip switched on — timezone, language and position will follow this proxy's exit region at launch. Untick it below if you don't want that.")}
               </p>
             )}
             {geo && (
               <p className={"mt-1 text-[11px] " + (geo.ok ? "text-accent" : "text-amber-500")}>
                 {geo.ok
-                  ? `egress ${geo.ip} · ${geo.country ?? "?"} · ${geo.timezone ?? "?"} · ${geo.acceptLanguage ?? "?"}`
+                  ? t("egress {ip} · {country} · {timezone} · {language}", {
+                      ip: String(geo.ip),
+                      country: geo.country ?? "?",
+                      timezone: geo.timezone ?? "?",
+                      language: geo.acceptLanguage ?? "?",
+                    })
                   : geo.error}
               </p>
             )}
@@ -890,7 +895,7 @@ export default function ProfileEditor({
                   className={btnGhost + " -mt-1 py-1 text-xs"}
                   onClick={() => onChange({ ...profile, fingerprintProfile: undefined, fingerprintProfileMeta: undefined })}
                 >
-                  Clear
+                  {t("Clear")}
                 </button>
               )}
             </div>
@@ -901,12 +906,12 @@ export default function ProfileEditor({
                     <span className="h-1.5 w-1.5 rounded-full bg-accent" />
                     <span className="font-medium">
                       {meta?.label || profile.fingerprintProfile}
-                      {meta?.source === "library" ? " · library" : ""}
+                      {meta?.source === "library" ? " · " + t("library") : ""}
                     </span>
                   </div>
-                  <p className="mt-1 font-mono text-[11px] text-fog/50">{meta?.renderer || "captured profile"}</p>
+                  <p className="mt-1 font-mono text-[11px] text-fog/50">{meta?.renderer || t("captured profile")}</p>
                   <p className="mt-0.5 text-[11px] text-fog/40">
-                    {[meta?.cores ? `${meta.cores} cores` : null, meta?.memory ? `${meta.memory} GB` : null, meta?.screen]
+                    {[meta?.cores ? t("{n} cores", { n: meta.cores }) : null, meta?.memory ? t("{n} GB", { n: meta.memory }) : null, meta?.screen]
                       .filter(Boolean)
                       .join("  ·  ")}
                   </p>
@@ -918,15 +923,15 @@ export default function ProfileEditor({
                 </>
               ) : (
                 <p className="text-[11px] text-fog/40">
-                  Load a real machine&apos;s GPU, screen, fonts, voices and WebGL. Its values override the seed persona.
+                  {t("Load a real machine's GPU, screen, fonts, voices and WebGL. Its values override the seed persona.")}
                 </p>
               )}
               <div className="mt-3 flex gap-2">
                 <button className={btnGhost + " py-1 text-xs"} onClick={importFp}>
-                  Import from file…
+                  {t("Import from file…")}
                 </button>
                 <button className={btnGhost + " py-1 text-xs"} onClick={() => setLibOpen(true)}>
-                  Browse library…
+                  {t("Browse library…")}
                 </button>
               </div>
               {fpMsg && <p className="mt-2 text-[11px] text-amber-500">{fpMsg}</p>}
@@ -955,7 +960,7 @@ export default function ProfileEditor({
         {f.type === "custom" ? renderCustom(f) : renderPlain(f)}
         {f.key === "name" && dupName && (
           <p className="mt-1 text-[11px] text-warn" role="status">
-            Another profile is already called “{profile.name.trim()}”. A different name keeps the two apart in the list.
+            {t("Another profile is already called “{name}”. A different name keeps the two apart in the list.", { name: profile.name.trim() })}
           </p>
         )}
       </div>
@@ -981,19 +986,24 @@ export default function ProfileEditor({
       out.push(
         <div key={"g-" + groupName} className="sm:col-span-2 rounded-lg border border-line/70 bg-ink/30 p-3">
           <div className="flex items-center justify-between gap-2">
-            <p className="text-[10px] font-medium uppercase tracking-wider text-fog/40">{groupName}</p>
+            <p className="text-[10px] font-medium uppercase tracking-wider text-fog/40">{t(groupName)}</p>
             {groupName === "Screen dimensions" && (
               <span className="flex flex-wrap items-center justify-end gap-1.5" data-screen-source={screenFrom}>
-                {screenFrom === "host" && <span className="text-[11px] text-ok">✓ This display</span>}
+                {screenFrom === "host" && <span className="text-[11px] text-ok">{t("✓ This display")}</span>}
                 {host && screenFrom !== "host" && (
                   <button
                     type="button"
                     className={btnGhost + " py-1 text-xs"}
                     onClick={() => onChange(withHostScreen(profile, host))}
-                    title={`Fill all four from this display: ${host.width} × ${host.height}, work area ${host.availWidth} × ${host.availHeight}`}
+                    title={t("Fill all four from this display: {width} × {height}, work area {availWidth} × {availHeight}", {
+                      width: host.width,
+                      height: host.height,
+                      availWidth: host.availWidth,
+                      availHeight: host.availHeight,
+                    })}
                     data-use-display="1"
                   >
-                    Use this display ({host.width} × {host.height})
+                    {t("Use this display ({width} × {height})", { width: host.width, height: host.height })}
                   </button>
                 )}
                 {screenFrom !== "empty" && (
@@ -1001,15 +1011,15 @@ export default function ProfileEditor({
                     type="button"
                     className={btnGhost + " py-1 text-xs"}
                     onClick={() => onChange(withoutScreen(profile))}
-                    title="Empty all four: the seed or capture brings a screen that agrees with itself"
+                    title={t("Empty all four: the seed or capture brings a screen that agrees with itself")}
                   >
-                    Clear
+                    {t("Clear")}
                   </button>
                 )}
               </span>
             )}
           </div>
-          {note && <p className="mb-3 mt-1 text-[11px] text-fog/40">{note}</p>}
+          {note && <p className="mb-3 mt-1 text-[11px] text-fog/40">{t(note)}</p>}
           <div className={"grid grid-cols-1 gap-3 sm:grid-cols-2 " + (note ? "" : "mt-3")}>
             {members.map((m) => renderField(m))}
           </div>
@@ -1025,17 +1035,17 @@ export default function ProfileEditor({
     <>
       <Dialog onClose={onCancel} labelledBy={titleId} className="max-h-[720px] max-w-4xl">
           {/* Header — pinned, so Save is never a scroll away. */}
-          <DialogHeader id={titleId} title={profile.id ? "Edit profile" : "New profile"} onClose={onCancel}>
-            <span className="min-w-0 truncate text-sm text-fog/40">{profile.name || "Untitled"}</span>
+          <DialogHeader id={titleId} title={profile.id ? t("Edit profile") : t("New profile")} onClose={onCancel}>
+            <span className="min-w-0 truncate text-sm text-fog/40">{profile.name || t("Untitled")}</span>
             <span className="flex-1" />
-            <div className="flex rounded-lg border border-line p-0.5 text-xs" role="group" aria-label="How much to show" data-editor-mode={simple ? "simple" : "all"}>
+            <div className="flex rounded-lg border border-line p-0.5 text-xs" role="group" aria-label={t("How much to show")} data-editor-mode={simple ? "simple" : "all"}>
               <button
                 type="button"
                 aria-pressed={simple}
                 onClick={() => chooseMode(true)}
                 className={"rounded-md px-2.5 py-1 " + (simple ? "bg-accent/15 font-semibold text-accent" : "text-fog/55 hover:text-fog")}
               >
-                Simple
+                {t("Simple")}
               </button>
               <button
                 type="button"
@@ -1043,7 +1053,7 @@ export default function ProfileEditor({
                 onClick={() => chooseMode(false)}
                 className={"rounded-md px-2.5 py-1 " + (!simple ? "bg-accent/15 font-semibold text-accent" : "text-fog/55 hover:text-fog")}
               >
-                All settings
+                {t("All settings")}
               </button>
             </div>
             <button
@@ -1059,8 +1069,10 @@ export default function ProfileEditor({
               }
             >
               {summary.ok
-                ? "✓ coherent"
-                : `▲ ${issues.length} ${issues.length === 1 ? "issue" : "issues"}`}
+                ? t("✓ coherent")
+                : issues.length === 1
+                  ? t("▲ 1 issue")
+                  : t("▲ {n} issues", { n: issues.length })}
             </button>
           </DialogHeader>
 
@@ -1068,7 +1080,7 @@ export default function ProfileEditor({
           {cohOpen && (
             <div className="flex-none border-b border-line bg-ink/40 px-5 py-3">
               {issues.length === 0 ? (
-                <p className="text-xs text-accent">✓ Nothing on this profile contradicts anything else.</p>
+                <p className="text-xs text-accent">{t("✓ Nothing on this profile contradicts anything else.")}</p>
               ) : (
                 <div className="flex flex-col gap-2">
                   {issues.map((i: Issue) => (
@@ -1084,10 +1096,10 @@ export default function ProfileEditor({
                         }
                       />
                       <span className="flex-1 text-fog/70">
-                        {i.message}
-                        <span className="mt-0.5 block text-fog/40">{i.fix}</span>
+                        {t(i.message)}
+                        <span className="mt-0.5 block text-fog/40">{t(i.fix)}</span>
                       </span>
-                      <span className="shrink-0 text-[11px] text-fog/30">Fix →</span>
+                      <span className="shrink-0 text-[11px] text-fog/30">{t("Fix →")}</span>
                     </button>
                   ))}
                 </div>
@@ -1102,8 +1114,8 @@ export default function ProfileEditor({
               <div className="flex-none p-2.5">
                 <input
                   className={input + " py-1 text-xs"}
-                  placeholder="Find a setting…"
-                  aria-label="Find a setting"
+                  placeholder={t("Find a setting…")}
+                  aria-label={t("Find a setting")}
                   value={query}
                   onChange={(e) => setQuery(e.target.value)}
                   onKeyDown={(e) => {
@@ -1132,9 +1144,9 @@ export default function ProfileEditor({
                           (on ? "bg-accent/10 font-semibold text-accent" : "text-fog/60 hover:bg-elevate hover:text-fog")
                         }
                       >
-                        {c.label}
+                        {t(c.label)}
                         {hasIssue ? (
-                          <span className="ml-auto text-[11px] text-rose-400" title="Has a coherence issue">
+                          <span className="ml-auto text-[11px] text-rose-400" title={t("Has a coherence issue")}>
                             ▲
                           </span>
                         ) : n ? (
@@ -1143,7 +1155,7 @@ export default function ProfileEditor({
                               "ml-auto rounded-full px-1.5 text-[10px] font-semibold tabular-nums " +
                               (on ? "bg-accent text-ink" : "bg-iris/80 text-ink")
                             }
-                            title={`${n} set here`}
+                            title={t("{n} set here", { n })}
                           >
                             {n}
                           </span>
@@ -1164,7 +1176,10 @@ export default function ProfileEditor({
                   role="status"
                   data-from-template={fromTemplate.name}
                 >
-                  From template <span className="font-semibold text-fog">{fromTemplate.name}</span> · new seed · {fromTemplate.detail}
+                  {tRich("From template {name} · new seed · {detail}", {
+                    name: <span className="font-semibold text-fog">{fromTemplate.name}</span>,
+                    detail: fromTemplate.detail,
+                  })}
                 </p>
               )}
               {/* Above every category: a new profile opens on Identity, the proxy lives under Network. */}
@@ -1175,60 +1190,66 @@ export default function ProfileEditor({
                   data-clip-proxy="1"
                 >
                   <span className="min-w-0 flex-1 truncate text-fog/80">
-                    Proxy on your clipboard: <span className="font-mono text-fog">{proxyLabel(clipProxy)}</span>
+                    {tRich("Proxy on your clipboard: {proxy}", {
+                      proxy: <span className="font-mono text-fog">{proxyLabel(clipProxy)}</span>,
+                    })}
                   </span>
                   <button
                     type="button"
                     className="rounded-md bg-accent px-2.5 py-1 font-semibold text-ink"
                     onClick={() => setProxy(clipProxy)}
                   >
-                    Use it
+                    {t("Use it")}
                   </button>
                   <button type="button" className="text-fog/50 hover:text-fog" onClick={() => setClipProxy(null)}>
-                    Dismiss
+                    {t("Dismiss")}
                   </button>
                 </div>
               )}
               {(simple || cat === "network") && !results && protectedList.length > 0 && (
                 <div className="mb-4 rounded-lg border border-line/70 bg-ink/30 p-3" data-protected="1">
-                  <p className="text-[10px] font-medium uppercase tracking-wider text-fog/40">Always on while a proxy is set</p>
+                  <p className="text-[10px] font-medium uppercase tracking-wider text-fog/40">{t("Always on while a proxy is set")}</p>
                   {protectedView}
                 </div>
               )}
               {results ? (
                 <>
                   <h3 className="text-[15px] font-semibold">
-                    {results.length} {results.length === 1 ? "setting matches" : "settings match"} “{query.trim()}”
+                    {results.length === 1
+                      ? t("1 setting matches “{query}”", { query: query.trim() })
+                      : t("{n} settings match “{query}”", { n: results.length, query: query.trim() })}
                   </h3>
-                  <p className="mb-4 mt-0.5 text-xs text-fog/40">Across all categories. Clear the search to go back.</p>
+                  <p className="mb-4 mt-0.5 text-xs text-fog/40">{t("Across all categories. Clear the search to go back.")}</p>
                 </>
               ) : simple ? (
                 <>
-                  <h3 className="text-[15px] font-semibold">Essentials</h3>
+                  <h3 className="text-[15px] font-semibold">{t("Essentials")}</h3>
                   <p className="mb-4 mt-0.5 max-w-[62ch] text-xs text-fog/40">
-                    What most profiles need. Everything else keeps its default
-                    {hiddenSet ? (
-                      <>
-                        {" "}
-                        —{" "}
-                        <button type="button" className="text-accent hover:underline" onClick={() => chooseMode(false)} data-hidden-set={hiddenSet}>
-                          {hiddenSet} more {hiddenSet === 1 ? "setting" : "settings"} you set {hiddenSet === 1 ? "is" : "are"} in All settings
-                        </button>
-                      </>
-                    ) : (
-                      <>; All settings has the rest.</>
-                    )}
+                    {hiddenSet
+                      ? (() => {
+                          const btn = (s: string) => (
+                            <button type="button" className="text-accent hover:underline" onClick={() => chooseMode(false)} data-hidden-set={hiddenSet}>
+                              {s}
+                            </button>
+                          );
+                          return hiddenSet === 1
+                            ? tRich("What most profiles need. Everything else keeps its default — <b>1 more setting you set is in All settings</b>", { b: btn })
+                            : tRich("What most profiles need. Everything else keeps its default — <b>{n} more settings you set are in All settings</b>", {
+                                b: (s) => btn(s.replace("{n}", String(hiddenSet))),
+                              });
+                        })()
+                      : t("What most profiles need. Everything else keeps its default; All settings has the rest.")}
                   </p>
                 </>
               ) : (
                 <>
-                  <h3 className="text-[15px] font-semibold">{category.title}</h3>
-                  <p className="mb-4 mt-0.5 max-w-[62ch] text-xs text-fog/40">{category.blurb}</p>
+                  <h3 className="text-[15px] font-semibold">{t(category.title)}</h3>
+                  <p className="mb-4 mt-0.5 max-w-[62ch] text-xs text-fog/40">{t(category.blurb)}</p>
                 </>
               )}
               <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">{renderFields(shown)}</div>
               {results && results.length === 0 && (
-                <p className="text-xs text-fog/40">No setting matches that. Try a switch name, like “socks5”.</p>
+                <p className="text-xs text-fog/40">{t("No setting matches that. Try a switch name, like “socks5”.")}</p>
               )}
             </div>
           </div>
@@ -1241,40 +1262,44 @@ export default function ProfileEditor({
                 onClick={() => setPrevOpen((v) => !v)}
                 aria-expanded={prevOpen}
               >
-                <span className={"transition-transform " + (prevOpen ? "rotate-90" : "")}>›</span> Launch command
+                <span className={"transition-transform " + (prevOpen ? "rotate-90" : "")}>›</span> {t("Launch command")}
               </button>
               <span className="flex-1" />
               {dirty && (
                 <span className="flex items-center gap-1.5 whitespace-nowrap text-[11px] text-fog/45" role="status">
-                  <span className="h-1.5 w-1.5 rounded-full bg-iris" /> Unsaved changes
+                  <span className="h-1.5 w-1.5 rounded-full bg-iris" /> {t("Unsaved changes")}
                 </span>
               )}
               <button className={btnGhost} onClick={onCancel}>
-                Cancel
+                {t("Cancel")}
               </button>
               <button
                 className="whitespace-nowrap rounded-lg bg-sheen px-4 py-1.5 text-sm font-semibold text-[#07080a] disabled:opacity-40"
                 disabled={!canSave}
                 onClick={() => onSave(profile)}
-                title={`Save (${shortcutLabel("S", hostPlatform())})`}
+                title={t("Save ({shortcut})", { shortcut: shortcutLabel("S", hostPlatform()) })}
               >
-                Save profile
+                {t("Save profile")}
               </button>
               {onSaveAndLaunch && (
                 <button
                   className="whitespace-nowrap rounded-lg border border-accent/60 px-4 py-1.5 text-sm font-semibold text-accent hover:bg-accent/10 disabled:opacity-40"
                   disabled={!canSave}
                   onClick={() => onSaveAndLaunch(profile)}
-                  title={`${profile.id ? "Save" : "Create"} and launch (${shortcutLabel("Enter", hostPlatform())})`}
+                  title={
+                    profile.id
+                      ? t("Save and launch ({shortcut})", { shortcut: shortcutLabel("Enter", hostPlatform()) })
+                      : t("Create and launch ({shortcut})", { shortcut: shortcutLabel("Enter", hostPlatform()) })
+                  }
                   data-save-launch="1"
                 >
-                  {profile.id ? "Save & launch" : "Create & launch"}
+                  {profile.id ? t("Save & launch") : t("Create & launch")}
                 </button>
               )}
             </div>
             {prevOpen && protectedList.length > 0 && (
               <div className="px-5 pb-2" data-protected-launch="1">
-                <p className="text-[10px] font-medium uppercase tracking-wider text-fog/40">Added because a proxy is set</p>
+                <p className="text-[10px] font-medium uppercase tracking-wider text-fog/40">{t("Added because a proxy is set")}</p>
                 {protectedView}
               </div>
             )}

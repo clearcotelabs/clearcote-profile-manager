@@ -28,7 +28,8 @@
     "web:build": "cross-env NEXT_PUBLIC_PM_TARGET=web next build",
     "lint": "next lint",
     "typecheck": "tsc --noEmit && tsc -p electron --noEmit && tsc -p helper",
-    "test": "vitest run"
+    "test": "vitest run",
+    "i18n:extract": "node scripts/i18n-extract.mjs"
   },
   "devDependencies": {
     "@types/node": "^22.10.0",

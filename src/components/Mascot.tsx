@@ -4,6 +4,7 @@
 // it's blending, bobs on its branch (animate-bob), and blinks (animate-blink).
 // Ported verbatim from the official site mascot for brand consistency.
 
+import { t } from "@/lib/i18n";
 export function Mascot({ className = "h-auto w-full", animate = true }: { className?: string; animate?: boolean }) {
   const fb = { transformBox: "fill-box", transformOrigin: "center" } as const;
   return (
@@ -13,7 +14,7 @@ export function Mascot({ className = "h-auto w-full", animate = true }: { classN
       xmlns="http://www.w3.org/2000/svg"
       className={className}
       role="img"
-      aria-label="Clyde, the Clearcote chameleon"
+      aria-label={t("Clyde, the Clearcote chameleon")}
     >
       <defs>
         <linearGradient id="m-body" x1="60" y1="70" x2="200" y2="170" gradientUnits="userSpaceOnUse">

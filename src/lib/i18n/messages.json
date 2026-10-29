@@ -1,0 +1,3115 @@
+{
+  " as {ip}": [
+    "src/lib/profileList.ts"
+  ],
+  " · WebRTC reports {ip}, not this exit": [
+    "src/lib/proxyReport.ts"
+  ],
+  " · time zone and language as you set them": [
+    "src/lib/proxyReport.ts"
+  ],
+  " · time zone and language follow the proxy": [
+    "src/lib/proxyReport.ts"
+  ],
+  "(default — Chrome)": [
+    "src/lib/fields.ts"
+  ],
+  "(none found)": [
+    "src/components/SettingsModal.tsx"
+  ],
+  "(persona default)": [
+    "src/lib/fields.ts"
+  ],
+  "+ Create your first profile": [
+    "app/page.tsx"
+  ],
+  "+ New profile": [
+    "app/page.tsx"
+  ],
+  ", checked {when}": [
+    "src/lib/profileList.ts"
+  ],
+  "0 is a real value — a mouse-only desktop — not an empty one.": [
+    "src/lib/fields.ts"
+  ],
+  "1 build nothing uses any more.": [
+    "src/components/StorageSection.tsx"
+  ],
+  "1 copy is in use right now.": [
+    "src/components/StorageSection.tsx"
+  ],
+  "1 copy, {size} — launch copies that work around a Windows first-launch problem, and leftovers from the SDK. Made again when needed.": [
+    "src/components/StorageSection.tsx"
+  ],
+  "1 duplicate skipped": [
+    "src/components/BulkCreateDialog.tsx"
+  ],
+  "1 line not understood": [
+    "src/components/BulkCreateDialog.tsx"
+  ],
+  "1 profile": [
+    "app/page.tsx"
+  ],
+  "1 running profile is left alone.": [
+    "app/page.tsx"
+  ],
+  "1 setting matches “{query}”": [
+    "src/components/ProfileEditor.tsx"
+  ],
+  "1 — Android only": [
+    "src/lib/fields.ts"
+  ],
+  "1. Install or update the SDK (Python 3.8 or newer):": [
+    "src/components/HelperGate.tsx"
+  ],
+  "2. Start the helper:": [
+    "src/components/HelperGate.tsx"
+  ],
+  "32 — desktop maximum": [
+    "src/lib/fields.ts"
+  ],
+  "<b>Cookies:</b> {what}": [
+    "src/components/CloudFields.tsx"
+  ],
+  "<b>Device:</b> the same one every session, from the seed {seed}.": [
+    "src/components/CloudFields.tsx"
+  ],
+  "<b>Leaves through:</b> {where}": [
+    "src/components/CloudFields.tsx"
+  ],
+  "<b>Match each proxy's location</b> — timezone, language and position follow the proxy's exit region at launch.": [
+    "src/components/BulkCreateDialog.tsx"
+  ],
+  "<b>Not used in the cloud:</b> {list}.": [
+    "src/components/CloudFields.tsx"
+  ],
+  "<b>Preview with example profiles.</b> Connect this computer to launch real browsers. Your profiles stay on your computer.": [
+    "src/components/HelperGate.tsx"
+  ],
+  "<b>Remove old builds automatically</b> — after a newer build downloads. The build Latest uses, pinned builds and running ones always stay.": [
+    "src/components/StorageSection.tsx"
+  ],
+  "<ok>✓ Verified</ok> against the checksum published with the release.": [
+    "src/components/UpdateBanner.tsx"
+  ],
+  "A Windows persona claims a Direct3D11 renderer, but on Linux the Vulkan backend answers with SPIR-V, and the two contradict each other. Off by default: the re-translation is a different code path from the one that drew, so a shader it cannot translate falls back to the honest answer.": [
+    "src/lib/fields.ts"
+  ],
+  "A clear coat for your browser identity.": [
+    "app/page.tsx"
+  ],
+  "A free key runs the same licensed build, one browser at a time. Sign in with GitHub, open Licenses and click Get it free. It lasts 30 days and renews for free.": [
+    "src/components/SettingsModal.tsx"
+  ],
+  "A home connection in the country you pick, included in the per-GB price.": [
+    "src/components/CloudFields.tsx"
+  ],
+  "A key unlocks the licence-gated browser. It is only sent to the licence service, and only when a key is set.": [
+    "src/components/SettingsModal.tsx"
+  ],
+  "A portable profile needs Clearcote {need} (r14+); build {major} ignores it, so cookies stay machine-bound.": [
+    "src/lib/coherence.ts"
+  ],
+  "A proxy carries ordinary connections only. HTTP/3 would go around it, straight from your real IP. Real Chrome behind a proxy never uses it either.": [
+    "src/lib/quickCreate.ts"
+  ],
+  "A proxy is set but no geolocation is — the Geolocation API will report this machine's real position, not the proxy's region.": [
+    "src/lib/coherence.ts"
+  ],
+  "A random model of this machine's GPU maker, never the one already chosen": [
+    "src/components/ProfileEditor.tsx"
+  ],
+  "A saved key is checked straight away. The check briefly takes one browser slot, so while every slot is in use it can only confirm the key is valid.": [
+    "src/components/SettingsModal.tsx"
+  ],
+  "A tab from the helper (127.0.0.1) just opened. Check that it shows this code, then press <b>Codes match: approve</b>.": [
+    "src/components/HelperGate.tsx"
+  ],
+  "A typed screen size can disagree with the screen CSS media queries report while {source} is active, so a page reads two different screens. Typing your own monitor's size does not avoid it.": [
+    "src/lib/coherence.ts"
+  ],
+  "API key": [
+    "src/components/SettingsModal.tsx"
+  ],
+  "API key set": [
+    "src/components/SettingsModal.tsx"
+  ],
+  "API keys start with cc_live_. A licence key (cc_lic_…) belongs under Licence.": [
+    "src/components/SettingsModal.tsx"
+  ],
+  "Across all categories. Clear the search to go back.": [
+    "src/components/ProfileEditor.tsx"
+  ],
+  "Add a proxy, or turn Transparent proxy off.": [
+    "src/lib/coherence.ts"
+  ],
+  "Add tag": [
+    "app/page.tsx"
+  ],
+  "Add tag…": [
+    "app/page.tsx"
+  ],
+  "Add your API key to run in the cloud": [
+    "src/lib/launchError.ts"
+  ],
+  "Add your Clearcote API key in Settings → Cloud to run profiles in the cloud.": [
+    "src/lib/ipc.ts"
+  ],
+  "Added because a proxy is set": [
+    "src/components/ProfileEditor.tsx"
+  ],
+  "Added because a proxy is set.": [
+    "src/lib/quickCreate.ts"
+  ],
+  "Address": [
+    "src/components/CloudViewer.tsx"
+  ],
+  "Adopts a real machine's GPU, screen, fonts, voices and WebGL. Its fields override the seed persona; anything it does not carry falls back to the seed. Strongest coherence comes from a capture whose GPU vendor matches this host.": [
+    "src/lib/fields.ts"
+  ],
+  "Ads check — Germany": [
+    "src/lib/webPreview.ts"
+  ],
+  "All settings": [
+    "src/components/ProfileEditor.tsx"
+  ],
+  "Allow list": [
+    "src/lib/fields.ts"
+  ],
+  "Also accepts {f1}, {f2} and {f3}, with a scheme like socks5:// in front or without (then http). Blank lines and lines starting with # are skipped.": [
+    "src/components/BulkCreateDialog.tsx"
+  ],
+  "Always on while a proxy is set": [
+    "src/components/ProfileEditor.tsx"
+  ],
+  "An AppImage needs its executable bit set (chmod +x) before it runs.": [
+    "src/components/UpdateBanner.tsx"
+  ],
+  "An authenticated SOCKS5 proxy needs Clearcote {need} (r14+); build {major} cannot authenticate to one and will fail to load pages.": [
+    "src/lib/coherence.ts"
+  ],
+  "An example. Launch it to see a real browser start on your computer.": [
+    "src/lib/webPreview.ts"
+  ],
+  "Android is a best-effort phone identity: mobile UA and UA-CH, touch, a phone viewport, portrait orientation, no PDF plugin and a Mali/Adreno GPU.": [
+    "src/lib/fields.ts"
+  ],
+  "Another browser took this licence's only slot.": [
+    "src/lib/launchError.ts"
+  ],
+  "Another browser window is using the same data folder. Close it, then launch again.": [
+    "src/lib/launchError.ts"
+  ],
+  "Another cloud browser is saving this profile's cookies: one started from another PC or from the dashboard, or one that is still closing.": [
+    "src/lib/launchError.ts"
+  ],
+  "Another profile is already called “{name}”. A different name keeps the two apart in the list.": [
+    "src/components/ProfileEditor.tsx"
+  ],
+  "Any country": [
+    "src/components/CloudFields.tsx"
+  ],
+  "Anyone with this file can use your proxies and read cookies copied with the data folder. Don't share it.": [
+    "src/components/ExportDialog.tsx"
+  ],
+  "Anywhere": [
+    "src/components/ShortcutsDialog.tsx"
+  ],
+  "App updates": [
+    "src/components/SettingsModal.tsx"
+  ],
+  "Appended verbatim, after everything else — so a switch here wins where Chromium takes the last occurrence.": [
+    "src/lib/fields.ts"
+  ],
+  "Applying a fingerprint runs in the desktop app.": [
+    "src/lib/ipc.ts"
+  ],
+  "Approve it in the tab that opened. Check that it shows {code}. <a>Open the sign-in page</a>": [
+    "src/components/SettingsModal.tsx"
+  ],
+  "Ask each time": [
+    "src/components/TemplateDialogs.tsx"
+  ],
+  "Ask me each time": [
+    "src/components/SettingsModal.tsx"
+  ],
+  "Ask proxy": [
+    "src/components/TemplateDialogs.tsx"
+  ],
+  "Asks again next time the app starts. Settings → Updates turns this off.": [
+    "src/components/UpdateBanner.tsx"
+  ],
+  "At launch, fill any unset timezone, language, geolocation and WebRTC IP from the proxy's exit region.": [
+    "src/lib/fields.ts"
+  ],
+  "Australia": [
+    "src/components/CloudFields.tsx"
+  ],
+  "Automatic": [
+    "src/components/SettingsModal.tsx"
+  ],
+  "Avail height": [
+    "src/lib/fields.ts"
+  ],
+  "Avail width": [
+    "src/lib/fields.ts"
+  ],
+  "Back": [
+    "src/components/CloudViewer.tsx"
+  ],
+  "Balance": [
+    "src/components/SettingsModal.tsx"
+  ],
+  "Before you run it": [
+    "src/components/UpdateBanner.tsx"
+  ],
+  "Best left empty: the seed or capture supplies a screen that agrees with itself. Before 154 r36, a typed size under a seed, capture or Light stealth can disagree with what CSS media queries report; from r36 on, typing this display's own four values is fine.": [
+    "src/lib/fields.ts"
+  ],
+  "Block ads and trackers": [
+    "src/components/CloudFields.tsx"
+  ],
+  "Block certificates Chrome has revoked": [
+    "src/components/SettingsModal.tsx"
+  ],
+  "Block cookies from other sites embedded in a page.": [
+    "src/lib/fields.ts"
+  ],
+  "Block third-party cookies": [
+    "src/lib/fields.ts"
+  ],
+  "Brand": [
+    "src/lib/fields.ts"
+  ],
+  "Brand version": [
+    "src/lib/fields.ts"
+  ],
+  "Brazil": [
+    "src/components/CloudFields.tsx"
+  ],
+  "Bridge credentials": [
+    "src/lib/fields.ts"
+  ],
+  "Browse library…": [
+    "src/components/ProfileEditor.tsx"
+  ],
+  "Browser": [
+    "src/components/SettingsModal.tsx",
+    "src/lib/fields.ts"
+  ],
+  "Browser binary set.": [
+    "app/page.tsx"
+  ],
+  "Browser builds": [
+    "src/components/StorageSection.tsx"
+  ],
+  "Browser copies in the temp folder": [
+    "src/components/StorageSection.tsx"
+  ],
+  "Browser data lives in the desktop app.": [
+    "src/lib/ipc.ts"
+  ],
+  "Browser preview": [
+    "src/lib/launchTarget.ts"
+  ],
+  "Browser preview — profiles are stored locally in this browser and launching is disabled. Run the desktop app for the full experience.": [
+    "app/page.tsx"
+  ],
+  "Browser settings": [
+    "src/lib/launchError.ts"
+  ],
+  "Browser version": [
+    "src/lib/fields.ts"
+  ],
+  "Build {major} — what profiles on Latest launch — isn't downloaded yet, so the first launch will wait for it.": [
+    "src/components/StorageSection.tsx"
+  ],
+  "Build {version} is in use by a running browser — stop it first.": [
+    "src/components/StorageSection.tsx"
+  ],
+  "Build {version} is ready — the next launch starts straight away.": [
+    "src/components/StorageSection.tsx"
+  ],
+  "Builds you already downloaded keep working.": [
+    "src/lib/launchError.ts"
+  ],
+  "CPU cores": [
+    "src/lib/fields.ts"
+  ],
+  "Cache miss": [
+    "src/lib/fields.ts"
+  ],
+  "Cached pages, scripts and shaders are removed; they rebuild as you browse. Cookies, logins, saved site data, history and extensions stay.": [
+    "app/page.tsx",
+    "src/components/StorageSection.tsx"
+  ],
+  "Canada": [
+    "src/components/CloudFields.tsx"
+  ],
+  "Cancel": [
+    "src/components/BulkCreateDialog.tsx",
+    "src/components/Confirm.tsx",
+    "src/components/ExportDialog.tsx",
+    "src/components/ProfileEditor.tsx",
+    "src/components/PromptDialog.tsx",
+    "src/components/TemplateDialogs.tsx"
+  ],
+  "Canvas 2D noise": [
+    "src/lib/fields.ts"
+  ],
+  "Canvas bridge": [
+    "src/lib/fields.ts"
+  ],
+  "Canvas bridge URL": [
+    "src/lib/fields.ts"
+  ],
+  "Captured fingerprint": [
+    "src/components/ProfileCard.tsx",
+    "src/lib/fields.ts"
+  ],
+  "Chameleons blend in to stay unseen. Spin up a profile — a saved fingerprint seed, proxy, and persistent session — and launch it any time.": [
+    "app/page.tsx"
+  ],
+  "Change version": [
+    "src/lib/launchError.ts"
+  ],
+  "Changes save as you make them — the licence key saves with Save.": [
+    "src/components/SettingsModal.tsx"
+  ],
+  "Check": [
+    "src/components/ProfileEditor.tsx",
+    "src/components/SettingsModal.tsx"
+  ],
+  "Check for updates when the app starts": [
+    "src/components/SettingsModal.tsx"
+  ],
+  "Check it in Settings → Licence.": [
+    "src/lib/launchError.ts"
+  ],
+  "Check now": [
+    "src/components/SettingsModal.tsx"
+  ],
+  "Check proxy location": [
+    "src/components/ProfileCard.tsx"
+  ],
+  "Check your internet connection, and any system proxy or firewall, then try again.": [
+    "src/lib/launchError.ts"
+  ],
+  "Checking a proxy runs in the desktop app.": [
+    "src/lib/ipc.ts"
+  ],
+  "Checking the proxy and whether it carries UDP… (a few seconds)": [
+    "src/components/ProfileEditor.tsx"
+  ],
+  "Checking the proxy… (a few seconds)": [
+    "src/components/ProfileEditor.tsx"
+  ],
+  "Checking where “{name}” exits…": [
+    "app/page.tsx"
+  ],
+  "Checking…": [
+    "src/components/ProfileEditor.tsx",
+    "src/components/SettingsModal.tsx",
+    "src/lib/launchTarget.ts"
+  ],
+  "Choose {exe}…": [
+    "src/components/SettingsModal.tsx"
+  ],
+  "Chrome allows third-party cookies, and embedded sign-in, payment and challenge frames rely on them. Block them only for a site that should not see them. Builds before 154 r36 block them unless told otherwise, so an unticked profile tells them to allow; set a choice here rather than on the browser's own settings page, which this overrides.": [
+    "src/lib/fields.ts"
+  ],
+  "Claiming Google Chrome commits the build to everything Google's ships — including the Widevine CDM. Chromium is what a de-Googled build honestly is, and is held to less.": [
+    "src/lib/fields.ts"
+  ],
+  "Clean up": [
+    "src/components/StorageSection.tsx"
+  ],
+  "Cleaned up {size}.": [
+    "src/components/StorageSection.tsx"
+  ],
+  "Cleaning…": [
+    "src/components/StorageSection.tsx"
+  ],
+  "Clear": [
+    "src/components/ProfileEditor.tsx"
+  ],
+  "Clear cache": [
+    "app/page.tsx",
+    "src/components/StorageSection.tsx"
+  ],
+  "Clear cache (keeps logins)…": [
+    "src/components/ProfileCard.tsx"
+  ],
+  "Clear cache of {name}": [
+    "src/components/StorageSection.tsx"
+  ],
+  "Clear search and filters": [
+    "app/page.tsx"
+  ],
+  "Clear selection": [
+    "app/page.tsx"
+  ],
+  "Clear the cache of “{name}”?": [
+    "app/page.tsx",
+    "src/components/StorageSection.tsx"
+  ],
+  "Clear the selection": [
+    "src/components/ShortcutsDialog.tsx"
+  ],
+  "Cleared {size} from “{name}”.": [
+    "src/components/StorageSection.tsx"
+  ],
+  "Cleared {size} of cache from “{name}”.": [
+    "app/page.tsx"
+  ],
+  "Clearing…": [
+    "src/components/StorageSection.tsx"
+  ],
+  "Click the page to type into it. Paste with {keys}. Closing this window does not stop the cloud browser.": [
+    "src/components/CloudViewer.tsx"
+  ],
+  "Close": [
+    "src/components/Dialog.tsx",
+    "src/components/HelperGate.tsx"
+  ],
+  "Close a browser that is using this licence — here or on another machine — and launch again.": [
+    "src/lib/launchError.ts"
+  ],
+  "Close the browsers and quit": [
+    "src/components/SettingsModal.tsx"
+  ],
+  "Close window": [
+    "src/components/CloudViewer.tsx"
+  ],
+  "Close — asks first if there are unsaved changes": [
+    "src/components/ShortcutsDialog.tsx"
+  ],
+  "Closed by the licence check": [
+    "src/lib/launchError.ts"
+  ],
+  "Closed from outside the app": [
+    "src/lib/launchError.ts"
+  ],
+  "Cloud": [
+    "src/components/ProfileCard.tsx",
+    "src/components/SettingsModal.tsx",
+    "src/lib/fields.ts"
+  ],
+  "Cloud browser": [
+    "src/components/CloudViewer.tsx"
+  ],
+  "Cloud browser showing {title}": [
+    "src/components/CloudViewer.tsx"
+  ],
+  "Cloud browsers are billed per GB of traffic from your Clearcote balance. Prices are on the dashboard.": [
+    "src/components/SettingsModal.tsx"
+  ],
+  "Cloud browsers are paid from your Clearcote balance with an API key (cc_live_…), from the dashboard's API keys page. It is not the licence key.": [
+    "src/lib/launchError.ts"
+  ],
+  "Cloud exit country": [
+    "src/components/CloudFields.tsx"
+  ],
+  "Cloud session {sid}": [
+    "src/components/CloudViewer.tsx",
+    "src/components/ProfileCard.tsx"
+  ],
+  "Cloud sessions run in the desktop app (this is the browser preview).": [
+    "src/lib/ipc.ts"
+  ],
+  "Cloud sessions run in the desktop app.": [
+    "src/lib/launchError.ts"
+  ],
+  "Cloud settings": [
+    "src/lib/launchError.ts"
+  ],
+  "Cloud traffic cap in GB": [
+    "src/components/CloudFields.tsx"
+  ],
+  "Clyde, the Clearcote chameleon": [
+    "src/components/Mascot.tsx"
+  ],
+  "Colour depth": [
+    "src/lib/fields.ts"
+  ],
+  "Come back to this tab": [
+    "src/components/HelperGate.tsx"
+  ],
+  "Concurrency limit reached: 1 of 1 browsers in use.": [
+    "src/lib/ipc.ts"
+  ],
+  "Connect this computer": [
+    "src/components/HelperGate.tsx"
+  ],
+  "Connect this computer first.": [
+    "src/lib/webPreview.ts"
+  ],
+  "Connect this computer to launch browsers.": [
+    "src/lib/launchTarget.ts"
+  ],
+  "Connected. 1 profile you made in the preview moved to this computer.": [
+    "src/components/HelperGate.tsx"
+  ],
+  "Connected. {n} profiles you made in the preview moved to this computer.": [
+    "src/components/HelperGate.tsx"
+  ],
+  "Connecting to the Clearcote helper on this computer…": [
+    "src/components/HelperGate.tsx"
+  ],
+  "Connecting to the Clearcote helper…": [
+    "src/components/HelperGate.tsx"
+  ],
+  "Connecting to the cloud browser…": [
+    "src/components/CloudViewer.tsx"
+  ],
+  "Connecting…": [
+    "src/components/CloudViewer.tsx"
+  ],
+  "Cookie encryption key": [
+    "src/lib/fields.ts"
+  ],
+  "Copied": [
+    "src/components/HelperGate.tsx"
+  ],
+  "Copied to the clipboard.": [
+    "app/page.tsx"
+  ],
+  "Copy": [
+    "src/components/HelperGate.tsx"
+  ],
+  "Copy details": [
+    "src/components/ProfileCard.tsx"
+  ],
+  "Could not clear the cache.": [
+    "app/page.tsx",
+    "src/components/StorageSection.tsx"
+  ],
+  "Could not copy to the clipboard.": [
+    "app/page.tsx"
+  ],
+  "Could not reach GitHub.": [
+    "src/components/SettingsModal.tsx"
+  ],
+  "Couldn't reach Clearcote's servers": [
+    "src/lib/launchError.ts"
+  ],
+  "Couldn't reach the version catalog. Launching tries again, and builds you already downloaded still work.": [
+    "src/lib/launchTarget.ts"
+  ],
+  "Couldn't reach the version list, so nothing is marked unused right now.": [
+    "src/components/StorageSection.tsx"
+  ],
+  "Couldn't start in the cloud": [
+    "src/lib/launchError.ts"
+  ],
+  "Country": [
+    "src/components/CloudFields.tsx"
+  ],
+  "Create": [
+    "src/components/BulkCreateDialog.tsx"
+  ],
+  "Create & launch": [
+    "src/components/ProfileEditor.tsx"
+  ],
+  "Create 1 profile": [
+    "src/components/BulkCreateDialog.tsx"
+  ],
+  "Create an API key ↗": [
+    "src/components/SettingsModal.tsx"
+  ],
+  "Create and launch ({shortcut})": [
+    "src/components/ProfileEditor.tsx"
+  ],
+  "Create one on the dashboard's API keys page. It is not the licence key: the licence runs browsers on this PC, the API key pays for browsers on Clearcote's servers.": [
+    "src/components/SettingsModal.tsx"
+  ],
+  "Create profiles from a proxy list": [
+    "src/components/BulkCreateDialog.tsx"
+  ],
+  "Create {n} profiles": [
+    "src/components/BulkCreateDialog.tsx"
+  ],
+  "Created 1 profile from “{template}”.": [
+    "app/page.tsx"
+  ],
+  "Created 1 profile.": [
+    "app/page.tsx"
+  ],
+  "Created {n} profiles from “{template}”.": [
+    "app/page.tsx"
+  ],
+  "Created {n} profiles.": [
+    "app/page.tsx"
+  ],
+  "Creating…": [
+    "src/components/BulkCreateDialog.tsx"
+  ],
+  "Curated real-GPU desktop fingerprints. <em>Pick one whose GPU vendor matches your host</em> so the imported GPU stays coherent with the real render.": [
+    "src/components/LibraryModal.tsx"
+  ],
+  "Custom binary": [
+    "src/components/SettingsModal.tsx",
+    "src/lib/launchTarget.ts"
+  ],
+  "Custom…": [
+    "src/components/ProfileEditor.tsx"
+  ],
+  "Data directory": [
+    "src/lib/fields.ts"
+  ],
+  "Defaults to this host.": [
+    "src/lib/fields.ts"
+  ],
+  "Delete": [
+    "app/page.tsx",
+    "src/components/TemplateDialogs.tsx"
+  ],
+  "Delete (can be undone)": [
+    "src/components/ShortcutsDialog.tsx"
+  ],
+  "Delete 1 profile?": [
+    "app/page.tsx"
+  ],
+  "Delete {n} profiles?": [
+    "app/page.tsx"
+  ],
+  "Delete “{name}”?": [
+    "app/page.tsx"
+  ],
+  "Deleted 1 profile.": [
+    "app/page.tsx"
+  ],
+  "Deleted {n} profiles.": [
+    "app/page.tsx"
+  ],
+  "Deleted “{name}”.": [
+    "app/page.tsx"
+  ],
+  "Delete…": [
+    "app/page.tsx",
+    "src/components/ProfileCard.tsx"
+  ],
+  "Deny list": [
+    "src/lib/fields.ts"
+  ],
+  "Discard": [
+    "app/page.tsx"
+  ],
+  "Discard your changes?": [
+    "app/page.tsx"
+  ],
+  "Dismiss": [
+    "app/page.tsx",
+    "src/components/HelperGate.tsx",
+    "src/components/ProfileCard.tsx",
+    "src/components/ProfileEditor.tsx"
+  ],
+  "Does it work and where does it exit? Changes nothing. UDP is tested only when you ask.": [
+    "src/components/ProfileEditor.tsx"
+  ],
+  "Does it work, where does it exit, and does it carry UDP? Changes nothing in the profile.": [
+    "src/components/ProfileEditor.tsx"
+  ],
+  "Doesn't work: {reason}.": [
+    "src/lib/proxyReport.ts"
+  ],
+  "Done": [
+    "src/components/SettingsModal.tsx",
+    "src/components/TemplateDialogs.tsx"
+  ],
+  "Double-click “Clearcote Helper.cmd”. It runs as an icon next to the clock; right-click it to quit.": [
+    "src/components/HelperGate.tsx"
+  ],
+  "Download": [
+    "src/components/UpdateBanner.tsx"
+  ],
+  "Download failed.": [
+    "app/page.tsx"
+  ],
+  "Download for {label}": [
+    "src/components/HelperGate.tsx"
+  ],
+  "Download for {label} ({size} MB)": [
+    "src/components/HelperGate.tsx"
+  ],
+  "Download now": [
+    "src/components/StorageSection.tsx"
+  ],
+  "Download the helper": [
+    "src/components/HelperGate.tsx"
+  ],
+  "Download the helper for {os}": [
+    "src/components/HelperGate.tsx"
+  ],
+  "Downloaded, but the release published no checksums, so nothing could be verified. Check it by hand before running it.": [
+    "src/components/UpdateBanner.tsx"
+  ],
+  "Downloading build {n}…": [
+    "src/components/ProfileCard.tsx"
+  ],
+  "Downloading builds runs in the desktop app.": [
+    "src/lib/ipc.ts"
+  ],
+  "Downloading…": [
+    "src/components/StorageSection.tsx",
+    "src/components/UpdateBanner.tsx"
+  ],
+  "Drag the app to Applications. macOS blocks it on first open — then choose System Settings → Privacy & Security → Open Anyway.": [
+    "src/components/UpdateBanner.tsx"
+  ],
+  "Drives the whole persona. The same seed always produces the same identity, so keep it to keep the identity.": [
+    "src/lib/fields.ts"
+  ],
+  "Duplicate": [
+    "src/components/ProfileCard.tsx"
+  ],
+  "Each profile's browser version is downloaded on first use and checked against its SHA-256.": [
+    "src/components/SettingsModal.tsx"
+  ],
+  "Each profile's cookies, logins and cache. Clearing the cache keeps you signed in.": [
+    "src/components/StorageSection.tsx"
+  ],
+  "Each time the app starts, it asks {host} whether a newer release exists and suggests upgrading. This build is unsigned, so nothing is installed behind your back — you download and run the installer yourself, and its checksum is verified first.": [
+    "src/components/SettingsModal.tsx"
+  ],
+  "Edit": [
+    "src/components/ProfileCard.tsx",
+    "src/components/ShortcutsDialog.tsx"
+  ],
+  "Edit profile": [
+    "src/components/ProfileEditor.tsx",
+    "src/lib/launchError.ts"
+  ],
+  "Empty all four: the seed or capture brings a screen that agrees with itself": [
+    "src/components/ProfileEditor.tsx"
+  ],
+  "Empty uses the persona's screen, or this display when there is no persona. On builds before 154 r36, with a seed, a captured fingerprint or Light stealth active, a typed size reaches screen.* but not the CSS media queries, so pages read two different screens, even when the size matches your own monitor. From 154 r36 on both report the typed size: typing all four of this display's values is fine, while any other size is still a faked screen the real window cannot match.": [
+    "src/lib/fields.ts"
+  ],
+  "Enable Widevine (DRM) in Session, or set the brand to Chromium — which is what this build honestly is.": [
+    "src/lib/coherence.ts"
+  ],
+  "Essentials": [
+    "src/components/ProfileEditor.tsx"
+  ],
+  "Every bridged readback is a network round-trip on the renderer thread, which is itself a timing signal. Restrict bridging to the origins that actually score canvas coherence.": [
+    "src/lib/fields.ts"
+  ],
+  "Every profile copies the template's settings with its own seed and the proxy from its line. Group and tags below override the template's.": [
+    "src/components/BulkCreateDialog.tsx"
+  ],
+  "Every profile in the group moves with it.": [
+    "app/page.tsx"
+  ],
+  "Every profile launches a custom binary, whatever version it asks for. Settings → Browser switches back to managed builds.": [
+    "src/lib/launchTarget.ts"
+  ],
+  "Every profile launches this file, whatever version it asks for.": [
+    "src/components/SettingsModal.tsx"
+  ],
+  "Every profile launches {path}, whatever version it asks for. Settings → Browser switches back to managed builds.": [
+    "src/lib/launchTarget.ts"
+  ],
+  "Every template needs its own name.": [
+    "src/components/TemplateDialogs.tsx"
+  ],
+  "Everything else in a profile already survives a copy. Cookies do not, because they are sealed with a key the OS keychain holds for the machine that created them.": [
+    "src/lib/fields.ts"
+  ],
+  "Exits via {proxy}{ip}{country}{checked}.": [
+    "src/lib/profileList.ts"
+  ],
+  "Experimental — needs a bridge host and a build with bridge support. Forces --no-sandbox.": [
+    "src/lib/fields.ts"
+  ],
+  "Export": [
+    "app/page.tsx"
+  ],
+  "Export 1 profile": [
+    "src/components/ExportDialog.tsx"
+  ],
+  "Export {n} profiles": [
+    "src/components/ExportDialog.tsx"
+  ],
+  "Export “{name}”": [
+    "src/components/ExportDialog.tsx"
+  ],
+  "Exported 1 profile — proxy passwords and encryption keys left out.": [
+    "app/page.tsx"
+  ],
+  "Exported 1 profile — with proxy passwords and encryption keys. Keep the file private.": [
+    "app/page.tsx"
+  ],
+  "Exported {n} profiles — proxy passwords and encryption keys left out.": [
+    "app/page.tsx"
+  ],
+  "Exported {n} profiles — with proxy passwords and encryption keys. Keep the file private.": [
+    "app/page.tsx"
+  ],
+  "Export…": [
+    "app/page.tsx",
+    "src/components/ExportDialog.tsx",
+    "src/components/ProfileCard.tsx"
+  ],
+  "Extra flags": [
+    "src/lib/fields.ts"
+  ],
+  "Failed to apply this profile.": [
+    "src/components/LibraryModal.tsx"
+  ],
+  "Failed to load library.": [
+    "src/components/LibraryModal.tsx"
+  ],
+  "Fallback when offline": [
+    "src/components/SettingsModal.tsx"
+  ],
+  "Farbling is already off process-wide, so switching canvas 2D noise off as well changes nothing.": [
+    "src/lib/coherence.ts"
+  ],
+  "Farbling noise": [
+    "src/lib/fields.ts"
+  ],
+  "Fetch Google's Widevine CDM and seed it into this profile, so DRM video plays and the Chrome brand holds up.": [
+    "src/lib/fields.ts"
+  ],
+  "Fill all four from this display: {width} × {height}, work area {availWidth} × {availHeight}": [
+    "src/components/ProfileEditor.tsx"
+  ],
+  "Filter by GPU vendor": [
+    "src/components/LibraryModal.tsx"
+  ],
+  "Find a setting": [
+    "src/components/ProfileEditor.tsx"
+  ],
+  "Find a setting…": [
+    "src/components/ProfileEditor.tsx"
+  ],
+  "Fingerprint seed": [
+    "src/lib/fields.ts"
+  ],
+  "Fingerprint seed {seed}": [
+    "src/components/ProfileCard.tsx"
+  ],
+  "Fix →": [
+    "src/components/ProfileEditor.tsx"
+  ],
+  "For moving to another computer you control.": [
+    "src/components/ExportDialog.tsx"
+  ],
+  "Forward": [
+    "src/components/CloudViewer.tsx"
+  ],
+  "Forwards canvas and WebGL readback to a remote real-GPU host, so pixel hashes match the claimed GPU. Needs a bridge host and a build with bridge support, and forces --no-sandbox.": [
+    "src/lib/fields.ts"
+  ],
+  "France": [
+    "src/components/CloudFields.tsx"
+  ],
+  "Free": [
+    "src/components/ProfileEditor.tsx"
+  ],
+  "Free plan": [
+    "src/lib/launchTarget.ts"
+  ],
+  "From a proxy list…": [
+    "app/page.tsx"
+  ],
+  "From proxy list…": [
+    "app/page.tsx"
+  ],
+  "From template {name} · new seed · {detail}": [
+    "src/components/ProfileEditor.tsx"
+  ],
+  "From the template": [
+    "src/components/BulkCreateDialog.tsx"
+  ],
+  "From {repo} · or use <mono>Import from file…</mono> for your own capture.": [
+    "src/components/LibraryModal.tsx"
+  ],
+  "GPU claim does not match this machine's GPU maker; driver limits follow the real GPU, so a cross-vendor claim is falsifiable.": [
+    "src/lib/coherence.ts"
+  ],
+  "GPU model": [
+    "src/lib/fields.ts"
+  ],
+  "GPU renderer": [
+    "src/lib/fields.ts"
+  ],
+  "GPU vendor": [
+    "src/lib/fields.ts"
+  ],
+  "General": [
+    "src/components/SettingsModal.tsx"
+  ],
+  "Geolocation": [
+    "src/lib/fields.ts"
+  ],
+  "Germany": [
+    "src/components/CloudFields.tsx"
+  ],
+  "Get Clearcote Helper": [
+    "src/components/HelperGate.tsx"
+  ],
+  "Get a free key ↗": [
+    "src/components/SettingsModal.tsx"
+  ],
+  "Gives every profile Chrome's revocation list, which the browser never downloads by itself, so it refuses the certificates Google has revoked or distrusted, as Chrome does. The list comes from {host}, directly from this PC rather than through a profile's proxy, and is refreshed every 6 hours. The first tab waits on a blank page for a few seconds until the list is active, then opens the start page.": [
+    "src/components/SettingsModal.tsx"
+  ],
+  "Group": [
+    "app/page.tsx",
+    "src/components/BulkCreateDialog.tsx",
+    "src/lib/fields.ts"
+  ],
+  "Group {name}": [
+    "src/components/GroupHeader.tsx"
+  ],
+  "HLSL shader dialect": [
+    "src/lib/fields.ts"
+  ],
+  "Hardware": [
+    "src/lib/fields.ts"
+  ],
+  "Has a coherence issue": [
+    "src/components/ProfileEditor.tsx"
+  ],
+  "Hide": [
+    "src/components/SettingsModal.tsx"
+  ],
+  "Hide 1 capture with a display too small to contain a browser window (under {w}×{h}) — the window would be bigger than its own screen.": [
+    "src/components/LibraryModal.tsx"
+  ],
+  "Hide API key": [
+    "src/components/SettingsModal.tsx"
+  ],
+  "Hide key": [
+    "src/components/SettingsModal.tsx"
+  ],
+  "Hide the proxy from request headers and connection timing.": [
+    "src/lib/fields.ts"
+  ],
+  "Hide {n} captures with a display too small to contain a browser window (under {w}×{h}) — the window would be bigger than its own screen.": [
+    "src/components/LibraryModal.tsx"
+  ],
+  "How much to show": [
+    "src/components/ProfileEditor.tsx"
+  ],
+  "How the app behaves.": [
+    "src/components/SettingsModal.tsx"
+  ],
+  "How to start the helper": [
+    "src/components/HelperGate.tsx"
+  ],
+  "I use the Clearcote SDK": [
+    "src/components/HelperGate.tsx"
+  ],
+  "IP / geo check runs in the desktop app.": [
+    "src/lib/ipc.ts"
+  ],
+  "Identity": [
+    "src/lib/fields.ts"
+  ],
+  "Identity spoofs (UA, screen, GPU, persona) stay on either way; this only affects the noised surfaces.": [
+    "src/lib/fields.ts"
+  ],
+  "If you set a custom browser binary in Settings, check that the file still exists.": [
+    "src/lib/launchError.ts"
+  ],
+  "Import": [
+    "app/page.tsx"
+  ],
+  "Import failed: {error}": [
+    "app/page.tsx"
+  ],
+  "Import from file…": [
+    "src/components/ProfileEditor.tsx"
+  ],
+  "Import runs in the desktop app.": [
+    "src/lib/ipc.ts"
+  ],
+  "Imported 1 profile — {renamed} under a new id, because theirs was already taken.": [
+    "app/page.tsx"
+  ],
+  "Imported 1 profile.": [
+    "app/page.tsx"
+  ],
+  "Imported {n} profiles — {renamed} under a new id, because theirs was already taken.": [
+    "app/page.tsx"
+  ],
+  "Imported {n} profiles.": [
+    "app/page.tsx"
+  ],
+  "Importing a fingerprint runs in the desktop app.": [
+    "src/lib/ipc.ts"
+  ],
+  "In a dialog": [
+    "src/components/ShortcutsDialog.tsx"
+  ],
+  "Include proxy passwords and encryption keys": [
+    "src/components/ExportDialog.tsx"
+  ],
+  "India": [
+    "src/components/CloudFields.tsx"
+  ],
+  "Invalid licence.": [
+    "src/components/SettingsModal.tsx"
+  ],
+  "It can no longer be restored.": [
+    "src/lib/ipc.ts"
+  ],
+  "It closes on Clearcote's servers. Its cookies are kept when the profile keeps them; anything open is lost.": [
+    "src/components/CloudViewer.tsx"
+  ],
+  "It could not be stopped. Try again.": [
+    "app/page.tsx",
+    "src/components/CloudViewer.tsx"
+  ],
+  "It ended with {code}.": [
+    "src/lib/launchError.ts"
+  ],
+  "It finds the helper by itself. Your browser may ask to let this site reach devices on your local network: allow it, that is the helper.": [
+    "src/components/HelperGate.tsx"
+  ],
+  "It is no longer running in the cloud.": [
+    "app/page.tsx"
+  ],
+  "It may have been revoked, or copied incompletely. Check it in Settings → Cloud.": [
+    "src/lib/launchError.ts"
+  ],
+  "It used {bytes} and cost {cost}.": [
+    "src/components/CloudViewer.tsx",
+    "src/lib/launchError.ts"
+  ],
+  "It was discarded without being used. Launching again downloads it afresh.": [
+    "src/lib/launchError.ts"
+  ],
+  "Italy": [
+    "src/components/CloudFields.tsx"
+  ],
+  "Its card's Cloud button starts it on Clearcote's servers and opens a window here where you watch and drive it. Its seed gives it the same device every time, the included IP stays the same for up to a day, and its cookies are kept between cloud sessions. Change where its traffic leaves, or set a traffic cap, under Cloud in the profile's editor.": [
+    "src/components/SettingsModal.tsx"
+  ],
+  "Its last message: {said}": [
+    "src/lib/launchError.ts"
+  ],
+  "Its licence stopped renewing: the key was revoked or expired, or the browser was over its plan's limit. On the free plan this also happens a few minutes after the app is closed.": [
+    "src/lib/launchError.ts"
+  ],
+  "Japan": [
+    "src/components/CloudFields.tsx"
+  ],
+  "Keep editing": [
+    "app/page.tsx"
+  ],
+  "Keep its cookies between cloud sessions": [
+    "src/components/CloudFields.tsx"
+  ],
+  "Keep looking around": [
+    "src/components/HelperGate.tsx"
+  ],
+  "Keep running in the tray": [
+    "src/components/SettingsModal.tsx"
+  ],
+  "Keep the cookie encryption key inside the profile folder, so it can be copied to another machine with sessions intact.": [
+    "src/lib/fields.ts"
+  ],
+  "Keep the terminal open while you use the profile manager. Ctrl+C closes the helper and its browsers.": [
+    "src/components/HelperGate.tsx"
+  ],
+  "Keeps the TLS ClientHello coherent with the Chrome version the persona claims, instead of always emitting the build's native one.": [
+    "src/lib/fields.ts"
+  ],
+  "Key set": [
+    "src/components/SettingsModal.tsx"
+  ],
+  "Keyboard shortcuts": [
+    "app/page.tsx",
+    "src/components/ShortcutsDialog.tsx"
+  ],
+  "Keyboard shortcuts (?)": [
+    "app/page.tsx"
+  ],
+  "Know when a new version of this app is out. Nothing is installed without you.": [
+    "src/components/SettingsModal.tsx"
+  ],
+  "Language": [
+    "src/components/SettingsModal.tsx"
+  ],
+  "Last checked {when}.": [
+    "src/components/SettingsModal.tsx"
+  ],
+  "Last launched {when}": [
+    "src/components/ProfileCard.tsx"
+  ],
+  "Later": [
+    "src/components/UpdateBanner.tsx"
+  ],
+  "Latest (recommended)": [
+    "src/components/ProfileEditor.tsx"
+  ],
+  "Latest and a bare major both follow the current Pro pin, which moves when a rebuild ships — pin a revision for reproducible runs.": [
+    "src/components/ProfileEditor.tsx"
+  ],
+  "Latest is the newest of your tier. A Pro build needs a licence key in Settings. Latest and a bare major both follow the current Pro pin, which moves when a rebuild ships — pin a revision for a reproducible run.": [
+    "src/lib/fields.ts"
+  ],
+  "Latest is the newest of your tier. A Pro build needs a license key in Settings.": [
+    "src/components/ProfileEditor.tsx"
+  ],
+  "Launch": [
+    "app/page.tsx",
+    "src/components/ProfileCard.tsx",
+    "src/components/ShortcutsDialog.tsx"
+  ],
+  "Launch command": [
+    "src/components/ProfileEditor.tsx"
+  ],
+  "Launch failed": [
+    "src/lib/launchError.ts"
+  ],
+  "Launched 1 profile.": [
+    "app/page.tsx"
+  ],
+  "Launched {n} profiles.": [
+    "app/page.tsx"
+  ],
+  "Launched {n}, then reached your plan's browser limit.": [
+    "app/page.tsx"
+  ],
+  "Launched {when}": [
+    "src/components/ProfileCard.tsx"
+  ],
+  "Launched “{name}” · no proxy: it uses this computer's own connection.": [
+    "src/lib/proxyReport.ts"
+  ],
+  "Launched “{name}” · {exit}{region}{webrtc}.": [
+    "src/lib/proxyReport.ts"
+  ],
+  "Launched, with a warning": [
+    "src/lib/launchError.ts"
+  ],
+  "Launched, with {n} warnings": [
+    "src/lib/launchError.ts"
+  ],
+  "Launches the newest build for your licence.": [
+    "src/components/ProfileCard.tsx"
+  ],
+  "Launches this build rather than the latest.": [
+    "src/components/ProfileCard.tsx"
+  ],
+  "Launching works in the desktop app.": [
+    "src/lib/launchTarget.ts"
+  ],
+  "Launching…": [
+    "src/components/ProfileCard.tsx"
+  ],
+  "Leave empty. Real Chrome reports what the site uses plus 10 GB.": [
+    "src/lib/fields.ts"
+  ],
+  "Leave it empty to take them out of any group.": [
+    "app/page.tsx"
+  ],
+  "Leave it off here. It is for running a Windows persona on a Linux host.": [
+    "src/lib/coherence.ts"
+  ],
+  "Leave the four screen fields empty: Light stealth keeps the real screen, which is coherent.": [
+    "src/lib/coherence.ts"
+  ],
+  "Leave the four screen fields empty: the seed or capture supplies a screen that agrees with itself. For a particular size, try other seeds.": [
+    "src/lib/coherence.ts"
+  ],
+  "Leave touch points unset so the mobile persona supplies them, or set a realistic value such as 5.": [
+    "src/lib/coherence.ts"
+  ],
+  "Less": [
+    "src/components/UpdateBanner.tsx"
+  ],
+  "Licence": [
+    "src/components/SettingsModal.tsx"
+  ],
+  "Licence key": [
+    "src/components/SettingsModal.tsx"
+  ],
+  "Licence settings": [
+    "src/lib/launchError.ts"
+  ],
+  "License check runs in the desktop app.": [
+    "src/lib/ipc.ts"
+  ],
+  "Licensed": [
+    "src/lib/launchTarget.ts"
+  ],
+  "Light stealth": [
+    "src/lib/coherence.ts",
+    "src/lib/fields.ts"
+  ],
+  "Light stealth emits no persona, but a captured fingerprint is also set — the capture's values apply while the persona they were meant to refine does not.": [
+    "src/lib/coherence.ts"
+  ],
+  "Line {line} is not a proxy address: {text}": [
+    "src/components/BulkCreateDialog.tsx"
+  ],
+  "Load a real machine's GPU, screen, fonts, voices and WebGL. Its values override the seed persona.": [
+    "src/components/ProfileEditor.tsx"
+  ],
+  "Loading…": [
+    "src/components/LibraryModal.tsx",
+    "src/components/StorageSection.tsx"
+  ],
+  "Logins survive a stop. They are kept in your Clearcote account, separate from this PC's browser data.": [
+    "src/components/CloudFields.tsx"
+  ],
+  "Looking for the Clearcote helper on this computer…": [
+    "src/components/HelperGate.tsx"
+  ],
+  "Looking for the helper…": [
+    "src/components/HelperGate.tsx"
+  ],
+  "Manage templates…": [
+    "app/page.tsx"
+  ],
+  "Managed": [
+    "src/components/SettingsModal.tsx"
+  ],
+  "Many residential proxies move a sticky session to another exit the first time UDP goes through it, and keep it there. Test anyway?": [
+    "src/lib/proxyReport.ts"
+  ],
+  "Marketing": [
+    "src/lib/webPreview.ts"
+  ],
+  "Meet Clyde — your first identity awaits": [
+    "app/page.tsx"
+  ],
+  "Memory (GB)": [
+    "src/lib/fields.ts"
+  ],
+  "Mexico": [
+    "src/components/CloudFields.tsx"
+  ],
+  "More actions for {name}": [
+    "src/components/ProfileCard.tsx"
+  ],
+  "Most residential proxies refuse UDP; when they do, the browser quietly falls back.": [
+    "src/lib/fields.ts"
+  ],
+  "Move between profiles": [
+    "src/components/ShortcutsDialog.tsx"
+  ],
+  "Move down": [
+    "src/components/GroupHeader.tsx"
+  ],
+  "Move up": [
+    "src/components/GroupHeader.tsx"
+  ],
+  "Moved 1 profile to “{group}”.": [
+    "app/page.tsx"
+  ],
+  "Moved {n} profiles to “{group}”.": [
+    "app/page.tsx"
+  ],
+  "Name": [
+    "src/lib/fields.ts",
+    "src/lib/profileList.ts"
+  ],
+  "Names": [
+    "src/components/BulkCreateDialog.tsx"
+  ],
+  "Netherlands": [
+    "src/components/CloudFields.tsx"
+  ],
+  "Network": [
+    "src/lib/fields.ts"
+  ],
+  "Network & locale": [
+    "src/lib/fields.ts"
+  ],
+  "Never launched": [
+    "src/components/ProfileCard.tsx"
+  ],
+  "New GPU": [
+    "src/components/TemplateDialogs.tsx"
+  ],
+  "New from a template": [
+    "app/page.tsx"
+  ],
+  "New name": [
+    "app/page.tsx"
+  ],
+  "New profile": [
+    "src/components/ProfileEditor.tsx",
+    "src/components/ShortcutsDialog.tsx"
+  ],
+  "New profile ({shortcut})": [
+    "app/page.tsx"
+  ],
+  "New profile from the last-used template": [
+    "src/components/ShortcutsDialog.tsx"
+  ],
+  "New profiles are named {name} 1, {name} 2, …": [
+    "src/components/TemplateDialogs.tsx"
+  ],
+  "New profiles copy the settings of “{name}”. Each one gets its own new seed and empty browser data.": [
+    "src/components/TemplateDialogs.tsx"
+  ],
+  "New random GPU": [
+    "src/components/TemplateDialogs.tsx"
+  ],
+  "Newest": [
+    "src/lib/profileList.ts"
+  ],
+  "No HTTP/3 (QUIC)": [
+    "src/lib/quickCreate.ts"
+  ],
+  "No browser for this Mac": [
+    "src/lib/launchTarget.ts"
+  ],
+  "No cloud browser is free right now": [
+    "src/lib/launchError.ts"
+  ],
+  "No download matched this installation — pick the right one on the release page.": [
+    "src/components/UpdateBanner.tsx"
+  ],
+  "No effect on a Windows host. Needs build 151.": [
+    "src/lib/fields.ts"
+  ],
+  "No group": [
+    "app/page.tsx"
+  ],
+  "No key yet?": [
+    "src/components/SettingsModal.tsx"
+  ],
+  "No licence key yet: use your Clearcote account": [
+    "app/page.tsx"
+  ],
+  "No licence key, so profiles launch the open build, Clearcote {version} — it downloads on the first launch that needs it.": [
+    "src/lib/launchTarget.ts"
+  ],
+  "No licence key, so profiles launch the open build, Clearcote {version}.": [
+    "src/lib/launchTarget.ts"
+  ],
+  "No matches": [
+    "app/page.tsx"
+  ],
+  "No matching download — use the release page": [
+    "src/components/UpdateBanner.tsx"
+  ],
+  "No profile was given. Open a cloud browser from its card in the Profile Manager.": [
+    "app/cloud/page.tsx"
+  ],
+  "No profiles for this vendor.": [
+    "src/components/LibraryModal.tsx"
+  ],
+  "No profiles yet.": [
+    "src/components/StorageSection.tsx"
+  ],
+  "No reason was given.": [
+    "src/lib/launchError.ts"
+  ],
+  "No setting matches that. Try a switch name, like “socks5”.": [
+    "src/components/ProfileEditor.tsx"
+  ],
+  "No tab? <a>Open the approval page</a>. The request expires in two minutes.": [
+    "src/components/HelperGate.tsx"
+  ],
+  "No templates yet": [
+    "app/page.tsx"
+  ],
+  "No templates yet. Open the <b>⋯</b> menu on any profile and choose <b>Save as template</b>.": [
+    "src/components/TemplateDialogs.tsx"
+  ],
+  "None — default settings": [
+    "src/components/BulkCreateDialog.tsx"
+  ],
+  "None.": [
+    "src/components/StorageSection.tsx"
+  ],
+  "Not checked yet.": [
+    "src/components/SettingsModal.tsx"
+  ],
+  "Not connected to the Clearcote helper.": [
+    "src/lib/helperBridge.ts"
+  ],
+  "Not saved yet — press Save or Enter.": [
+    "src/components/SettingsModal.tsx"
+  ],
+  "Not strictly better than the default: it trades a broad persona for a much narrower surface. In our own lab runs it scored worse on an audit suite. Test it against your target.": [
+    "src/lib/fields.ts"
+  ],
+  "Notes": [
+    "src/lib/fields.ts"
+  ],
+  "Nothing downloaded yet.": [
+    "src/components/StorageSection.tsx"
+  ],
+  "Nothing is running": [
+    "app/page.tsx"
+  ],
+  "Nothing to install first: npx fetches the SDK. Needs Node.js 20 or newer (<a>nodejs.org</a>).": [
+    "src/components/HelperGate.tsx"
+  ],
+  "Nothing to remove": [
+    "src/components/StorageSection.tsx"
+  ],
+  "OK": [
+    "src/components/Confirm.tsx"
+  ],
+  "Off by default: third-party cookies are allowed, as in Chrome.": [
+    "src/lib/fields.ts"
+  ],
+  "On a focused profile": [
+    "src/components/ShortcutsDialog.tsx"
+  ],
+  "On builds before {major} r{revision}, a typed screen size can disagree with the screen CSS media queries report while {source} is active, so a page reads two different screens. Typing your own monitor's size does not avoid it.": [
+    "src/lib/coherence.ts"
+  ],
+  "On by default, and switched on automatically when you add a proxy. Values you set yourself always win.": [
+    "src/lib/fields.ts"
+  ],
+  "On for new profiles. Downloaded once from Google's own component server, SHA-256 verified, then shared by every profile that uses it.": [
+    "src/lib/fields.ts"
+  ],
+  "One flag per line. Appended verbatim, after everything else.": [
+    "src/components/ProfileEditor.tsx"
+  ],
+  "One profile per proxy": [
+    "app/page.tsx"
+  ],
+  "One string, credentials inline. An authenticated http/https proxy is served through a local auth-injecting relay, so the browser never prompts. An authenticated socks5 proxy is authenticated by the engine itself (RFC 1929), which stock Chromium cannot do at all — it needs build 151.": [
+    "src/lib/fields.ts"
+  ],
+  "Online shop — seller account": [
+    "src/lib/webPreview.ts"
+  ],
+  "Only builds something still uses.": [
+    "src/components/StorageSection.tsx"
+  ],
+  "Only does something with a proxy set. Needs build 152 r22 or newer.": [
+    "src/lib/fields.ts"
+  ],
+  "Open build": [
+    "src/lib/launchTarget.ts"
+  ],
+  "Open cloud window": [
+    "src/components/ProfileCard.tsx"
+  ],
+  "Open data folder": [
+    "src/components/ProfileCard.tsx"
+  ],
+  "Open disk image": [
+    "src/components/UpdateBanner.tsx"
+  ],
+  "Open window": [
+    "src/components/ProfileCard.tsx"
+  ],
+  "Open ⋯ on any profile and choose Save as template": [
+    "app/page.tsx"
+  ],
+  "Opened when the browser starts. Only http and https addresses are used — anything else is ignored, so this field can never add a command-line switch. A bare host like example.com gets https:// added.": [
+    "src/lib/fields.ts"
+  ],
+  "Ordinary browsers cannot proxy UDP at all, so WebRTC normally bypasses the proxy. This routes it through the same SOCKS5 endpoint that already carries TCP. It needs a proxy that permits the UDP command — a self-hosted one usually does, a residential vendor usually does not. Many residential proxies move a sticky session to another exit the first time UDP goes through it, and keep it there; with this on, the app sends that first UDP before it looks up the exit (at launch, Resolve from proxy and Check), so the address you see is the one the browser uses.": [
+    "src/lib/fields.ts"
+  ],
+  "Origin policy": [
+    "src/lib/fields.ts"
+  ],
+  "Other systems and checksums": [
+    "src/components/HelperGate.tsx"
+  ],
+  "Override": [
+    "src/components/SettingsModal.tsx"
+  ],
+  "Pair this browser": [
+    "src/components/HelperGate.tsx"
+  ],
+  "Pairing code": [
+    "src/components/HelperGate.tsx"
+  ],
+  "Pairing was denied. Nothing was paired.": [
+    "src/components/HelperGate.tsx"
+  ],
+  "Paste": [
+    "src/components/ProfileEditor.tsx"
+  ],
+  "Paste some proxies to see what will be created.": [
+    "src/components/BulkCreateDialog.tsx"
+  ],
+  "Path": [
+    "src/components/SettingsModal.tsx"
+  ],
+  "Per-site farble on 2D canvas readback. On by default.": [
+    "src/lib/fields.ts"
+  ],
+  "Per-site noise on canvas, WebGL, audio and client rects. On by default.": [
+    "src/lib/fields.ts"
+  ],
+  "Persona default": [
+    "src/components/TemplateDialogs.tsx"
+  ],
+  "Persona default (engine chooses)": [
+    "src/components/ProfileEditor.tsx"
+  ],
+  "Pick Latest, or one of the versions listed, for this profile's browser version.": [
+    "src/lib/launchError.ts"
+  ],
+  "Pick a capture from a larger display, or set an explicit smaller window size.": [
+    "src/lib/coherence.ts"
+  ],
+  "Pick a model from the {vendor} group — this machine's GPU maker — or leave the GPU model on the persona default.": [
+    "src/lib/coherence.ts"
+  ],
+  "Pick a version from the list instead.": [
+    "src/lib/launchError.ts"
+  ],
+  "Pick one at random": [
+    "src/components/ProfileEditor.tsx"
+  ],
+  "Pick one to give every profile the settings of a template.": [
+    "src/components/BulkCreateDialog.tsx"
+  ],
+  "Pick the file for {os} on the releases page.": [
+    "src/components/HelperGate.tsx"
+  ],
+  "Pin an exact Pro rebuild": [
+    "src/components/ProfileEditor.tsx"
+  ],
+  "Pinned builds need Pro": [
+    "src/lib/launchError.ts"
+  ],
+  "Pixel ratio": [
+    "src/lib/fields.ts"
+  ],
+  "Platform": [
+    "src/components/BulkCreateDialog.tsx",
+    "src/lib/fields.ts"
+  ],
+  "Platform version": [
+    "src/lib/fields.ts"
+  ],
+  "Point at a local {exe} to test your own build. The {env} environment variable does the same.": [
+    "src/components/SettingsModal.tsx"
+  ],
+  "Poland": [
+    "src/components/CloudFields.tsx"
+  ],
+  "Portable profile": [
+    "src/lib/fields.ts"
+  ],
+  "Preview": [
+    "src/components/BulkCreateDialog.tsx",
+    "src/lib/launchTarget.ts"
+  ],
+  "Profile Manager": [
+    "app/page.tsx"
+  ],
+  "Profile data": [
+    "src/components/StorageSection.tsx"
+  ],
+  "Profile {n}": [
+    "src/lib/bulkCreate.ts"
+  ],
+  "Profiles": [
+    "app/page.tsx"
+  ],
+  "Profiles launch the licence-gated browser (downloaded and SHA-256 verified), and each running browser holds one of your plan's slots. The free plan always runs the latest build.": [
+    "src/components/SettingsModal.tsx"
+  ],
+  "Profiles launch the open build, and the app never contacts the licence service.": [
+    "src/components/SettingsModal.tsx"
+  ],
+  "Profiles set to Latest launch Clearcote {version} — it downloads on the first launch that needs it.": [
+    "src/lib/launchTarget.ts"
+  ],
+  "Profiles set to Latest launch Clearcote {version}.": [
+    "src/lib/launchTarget.ts"
+  ],
+  "Proxies — one per line": [
+    "src/components/BulkCreateDialog.tsx"
+  ],
+  "Proxy": [
+    "src/components/TemplateDialogs.tsx",
+    "src/lib/fields.ts"
+  ],
+  "Proxy (credentials hidden). Check proxy location in the ⋯ menu shows where it exits.": [
+    "src/components/ProfileCard.tsx"
+  ],
+  "Proxy on your clipboard: {proxy}": [
+    "src/components/ProfileEditor.tsx"
+  ],
+  "Randomize": [
+    "src/components/ProfileEditor.tsx"
+  ],
+  "Re-translate shaders to HLSL for a Windows persona running on a Linux host.": [
+    "src/lib/fields.ts"
+  ],
+  "Read its source and how to verify it": [
+    "src/components/HelperGate.tsx"
+  ],
+  "Real Chrome hides local host candidates behind a .local name, and so does this by default. Switching it off re-exposes your private IP to every page.": [
+    "src/lib/fields.ts"
+  ],
+  "Recently used": [
+    "src/lib/profileList.ts"
+  ],
+  "Reconnecting to the cloud browser…": [
+    "src/components/CloudViewer.tsx"
+  ],
+  "Record a video of each session": [
+    "src/components/CloudFields.tsx"
+  ],
+  "Refused before they load, so their traffic is never billed. A few sites notice.": [
+    "src/components/CloudFields.tsx"
+  ],
+  "Relay UDP through the proxy": [
+    "src/lib/fields.ts"
+  ],
+  "Reload": [
+    "src/components/CloudViewer.tsx"
+  ],
+  "Remove": [
+    "src/components/StorageSection.tsx"
+  ],
+  "Remove build {version}": [
+    "src/components/StorageSection.tsx"
+  ],
+  "Remove build {version}?": [
+    "src/components/StorageSection.tsx"
+  ],
+  "Remove old builds automatically": [
+    "src/components/StorageSection.tsx"
+  ],
+  "Remove the group filter {name}": [
+    "app/page.tsx"
+  ],
+  "Remove the tag filter #{tag}": [
+    "app/page.tsx"
+  ],
+  "Remove unused · frees {size}": [
+    "src/components/StorageSection.tsx"
+  ],
+  "Removed 1 build — {size} freed.": [
+    "src/components/StorageSection.tsx"
+  ],
+  "Removed build {version}.": [
+    "src/components/StorageSection.tsx"
+  ],
+  "Removed {n} builds — {size} freed.": [
+    "src/components/StorageSection.tsx"
+  ],
+  "Removing…": [
+    "src/components/StorageSection.tsx"
+  ],
+  "Rename": [
+    "app/page.tsx"
+  ],
+  "Rename group…": [
+    "src/components/GroupHeader.tsx"
+  ],
+  "Rename “{name}”": [
+    "app/page.tsx"
+  ],
+  "Renamed the group to “{name}” (1 profile).": [
+    "app/page.tsx"
+  ],
+  "Renamed the group to “{name}” ({n} profiles).": [
+    "app/page.tsx"
+  ],
+  "Rendering": [
+    "src/lib/fields.ts"
+  ],
+  "Rendering, TLS and the real Chrome version are left untouched. Screen is deliberately not spoofed.": [
+    "src/lib/fields.ts"
+  ],
+  "Replace template": [
+    "src/components/TemplateDialogs.tsx"
+  ],
+  "Replaced the template “{name}”. Use it from the ▾ next to New profile.": [
+    "app/page.tsx"
+  ],
+  "Replaces the template “{name}” (its use count stays).": [
+    "src/components/TemplateDialogs.tsx"
+  ],
+  "Replay it from the dashboard afterwards.": [
+    "src/components/CloudFields.tsx"
+  ],
+  "Report the persona's WebGL vendor and renderer. On by default. Off reports the host's real strings while the limits, extensions and readback stay on the persona.": [
+    "src/lib/fields.ts"
+  ],
+  "Report this host's actual GPU and WebGL instead of a spoofed one.": [
+    "src/lib/fields.ts"
+  ],
+  "Research": [
+    "src/lib/webPreview.ts"
+  ],
+  "Resolve from proxy →": [
+    "src/components/ProfileEditor.tsx"
+  ],
+  "Resolving…": [
+    "src/components/ProfileEditor.tsx"
+  ],
+  "Restored 1 profile.": [
+    "app/page.tsx"
+  ],
+  "Restored {n} profiles.": [
+    "app/page.tsx"
+  ],
+  "Restored “{name}”.": [
+    "app/page.tsx"
+  ],
+  "Right-click “Clearcote Helper.command”, then Open. Keep its window open.": [
+    "src/components/HelperGate.tsx"
+  ],
+  "Run ./clearcote-helper.sh. Keep its window open.": [
+    "src/components/HelperGate.tsx"
+  ],
+  "Run in the cloud": [
+    "src/components/ProfileCard.tsx"
+  ],
+  "Run installer": [
+    "src/components/UpdateBanner.tsx"
+  ],
+  "Run profiles on Clearcote's servers instead of this PC, paid from your Clearcote balance.": [
+    "src/components/SettingsModal.tsx"
+  ],
+  "Run this in a terminal on this computer, with Node.js or Python. It downloads the same helper (checked against its SHA-256) and starts it. This tab connects by itself: the code is how the helper knows it is you.": [
+    "src/components/HelperGate.tsx"
+  ],
+  "Run this profile on Clearcote's servers instead of this PC. Billed per GB of traffic.": [
+    "src/components/ProfileCard.tsx"
+  ],
+  "Run {name} in the cloud": [
+    "src/components/ProfileCard.tsx"
+  ],
+  "Running": [
+    "app/page.tsx"
+  ],
+  "Running a profile in the cloud": [
+    "src/components/SettingsModal.tsx"
+  ],
+  "Running in the cloud": [
+    "src/lib/fields.ts"
+  ],
+  "Running on Clearcote's servers": [
+    "src/components/ProfileCard.tsx"
+  ],
+  "Running this profile on Clearcote's servers instead of this PC: where its traffic leaves, and what it keeps.": [
+    "src/lib/fields.ts"
+  ],
+  "Same GPU": [
+    "src/components/TemplateDialogs.tsx"
+  ],
+  "Same proxy": [
+    "src/components/TemplateDialogs.tsx"
+  ],
+  "Save": [
+    "src/components/SettingsModal.tsx"
+  ],
+  "Save & launch": [
+    "src/components/ProfileEditor.tsx"
+  ],
+  "Save ({shortcut})": [
+    "src/components/ProfileEditor.tsx"
+  ],
+  "Save and launch ({shortcut})": [
+    "src/components/ProfileEditor.tsx"
+  ],
+  "Save as template": [
+    "src/components/TemplateDialogs.tsx"
+  ],
+  "Save as template…": [
+    "src/components/ProfileCard.tsx"
+  ],
+  "Save changes": [
+    "src/components/TemplateDialogs.tsx"
+  ],
+  "Save profile": [
+    "src/components/ProfileEditor.tsx"
+  ],
+  "Save template": [
+    "src/components/TemplateDialogs.tsx"
+  ],
+  "Save the profile": [
+    "src/components/ShortcutsDialog.tsx"
+  ],
+  "Saved the template “{name}”. Use it from the ▾ next to New profile.": [
+    "app/page.tsx"
+  ],
+  "Saved without a proxy, so it can only ask": [
+    "src/components/TemplateDialogs.tsx"
+  ],
+  "Saved “{name}”.": [
+    "app/page.tsx"
+  ],
+  "Saves its settings to a JSON file. Browser data — cookies, logins, history — is not included; it stays in each profile's data folder.": [
+    "src/components/ExportDialog.tsx"
+  ],
+  "Saves their settings to a JSON file. Browser data — cookies, logins, history — is not included; it stays in each profile's data folder.": [
+    "src/components/ExportDialog.tsx"
+  ],
+  "Screen dimensions": [
+    "src/lib/fields.ts"
+  ],
+  "Screen dimensions are spoofed by hand. A faked screen cannot be reconciled with the real window and render surface, which strict anti-bots check.": [
+    "src/lib/coherence.ts"
+  ],
+  "Screen height": [
+    "src/lib/fields.ts"
+  ],
+  "Screen width": [
+    "src/lib/fields.ts"
+  ],
+  "Search ({shortcut} or /)": [
+    "app/page.tsx"
+  ],
+  "Search names, groups, tags, proxies…": [
+    "app/page.tsx"
+  ],
+  "Search profiles": [
+    "app/page.tsx",
+    "src/components/ShortcutsDialog.tsx"
+  ],
+  "Select all {n}": [
+    "app/page.tsx"
+  ],
+  "Select every profile shown": [
+    "src/components/ShortcutsDialog.tsx"
+  ],
+  "Select it (Shift for a range)": [
+    "src/components/ShortcutsDialog.tsx"
+  ],
+  "Select {name}": [
+    "src/components/ProfileCard.tsx"
+  ],
+  "Selected profiles": [
+    "app/page.tsx"
+  ],
+  "Send WebRTC's UDP through the SOCKS5 proxy too, instead of letting it go direct.": [
+    "src/lib/fields.ts"
+  ],
+  "Session": [
+    "src/lib/fields.ts"
+  ],
+  "Session & data": [
+    "src/lib/fields.ts"
+  ],
+  "Set Platform to macos on a Mac, or import a fingerprint captured on {platform}.": [
+    "src/lib/coherence.ts"
+  ],
+  "Set group": [
+    "app/page.tsx"
+  ],
+  "Set group…": [
+    "app/page.tsx"
+  ],
+  "Set it only when it matches this host's real display, or leave it empty so the real screen is reported.": [
+    "src/lib/coherence.ts"
+  ],
+  "Set its browser version to Latest to launch it.": [
+    "src/lib/launchError.ts"
+  ],
+  "Set the GPU model back to Persona default, or enter a Metal renderer under Custom….": [
+    "src/lib/coherence.ts"
+  ],
+  "Set the browser version to {need} or newer.": [
+    "src/lib/coherence.ts"
+  ],
+  "Set the browser version to {need}, or use an http/https proxy instead.": [
+    "src/lib/coherence.ts"
+  ],
+  "Set the browser version to {need}.": [
+    "src/lib/coherence.ts"
+  ],
+  "Set the group of 1 profile": [
+    "app/page.tsx"
+  ],
+  "Set the group of {n} profiles": [
+    "app/page.tsx"
+  ],
+  "Settings": [
+    "app/page.tsx",
+    "src/components/SettingsModal.tsx",
+    "src/components/ShortcutsDialog.tsx"
+  ],
+  "Settings ({shortcut})": [
+    "app/page.tsx"
+  ],
+  "Shops": [
+    "src/lib/webPreview.ts"
+  ],
+  "Show": [
+    "src/components/SettingsModal.tsx"
+  ],
+  "Show API key": [
+    "src/components/SettingsModal.tsx"
+  ],
+  "Show in Finder": [
+    "src/components/UpdateBanner.tsx"
+  ],
+  "Show in folder": [
+    "src/components/UpdateBanner.tsx"
+  ],
+  "Show key": [
+    "src/components/SettingsModal.tsx"
+  ],
+  "Show only profiles tagged #{tag}": [
+    "src/components/ProfileCard.tsx"
+  ],
+  "Show only profiles whose browser is open": [
+    "app/page.tsx"
+  ],
+  "Show only this group": [
+    "src/components/GroupHeader.tsx"
+  ],
+  "Showing": [
+    "app/page.tsx"
+  ],
+  "Sign in on clearcotelabs.com and approve. The key of the plan you pay for (or your free one) is filled in here. Nothing to copy.": [
+    "src/components/SettingsModal.tsx"
+  ],
+  "Sign in on clearcotelabs.com and approve: your licence key is filled in for you": [
+    "app/page.tsx"
+  ],
+  "Simple": [
+    "src/components/ProfileEditor.tsx"
+  ],
+  "Some sites hash a 2D canvas and reject anything perturbed, while still wanting the other surfaces noised. This unfarbles that one surface rather than the whole process.": [
+    "src/lib/fields.ts"
+  ],
+  "Something other than this app ended the browser ({code}) — Task Manager, a script, or the system.": [
+    "src/lib/launchError.ts"
+  ],
+  "Sort": [
+    "app/page.tsx"
+  ],
+  "Spain": [
+    "src/components/CloudFields.tsx"
+  ],
+  "Spoof GPU strings": [
+    "src/lib/fields.ts"
+  ],
+  "Spoof only the metadata axes that survive strict checks, through the native switches — no persona, no farbling.": [
+    "src/lib/fields.ts"
+  ],
+  "Start in the cloud again": [
+    "src/lib/launchError.ts"
+  ],
+  "Start page": [
+    "src/lib/fields.ts"
+  ],
+  "Starting in the cloud…": [
+    "src/components/ProfileCard.tsx"
+  ],
+  "Starting the cloud browser…": [
+    "src/lib/helperBridge.ts"
+  ],
+  "Starting…": [
+    "src/components/SettingsModal.tsx"
+  ],
+  "Stop": [
+    "app/page.tsx",
+    "src/components/CloudViewer.tsx",
+    "src/components/ProfileCard.tsx"
+  ],
+  "Stop in the cloud": [
+    "src/components/ProfileCard.tsx"
+  ],
+  "Stop it first — its browser has the data open.": [
+    "src/components/ProfileCard.tsx"
+  ],
+  "Stop it first — the browser has its cache open.": [
+    "src/components/ProfileCard.tsx"
+  ],
+  "Stop it there first: a profile runs in one place at a time.": [
+    "src/lib/launchError.ts"
+  ],
+  "Stop it there, or wait for it to close, then start this one again.": [
+    "src/lib/launchError.ts"
+  ],
+  "Stop its browser first — it has the cache open.": [
+    "src/components/StorageSection.tsx"
+  ],
+  "Stop its cloud browser first.": [
+    "src/components/ProfileCard.tsx"
+  ],
+  "Stop one of them, then start this one again.": [
+    "src/lib/launchError.ts"
+  ],
+  "Stop their browsers first — running profiles can't be deleted.": [
+    "app/page.tsx"
+  ],
+  "Stop this cloud browser?": [
+    "src/components/CloudViewer.tsx"
+  ],
+  "Stop this profile's browser first — it has its cache open.": [
+    "src/lib/ipc.ts"
+  ],
+  "Stop “{name}” and launch": [
+    "src/lib/launchError.ts"
+  ],
+  "Stopped 1 browser.": [
+    "app/page.tsx"
+  ],
+  "Stopped {n} browsers.": [
+    "app/page.tsx"
+  ],
+  "Stopping “{name}” in the cloud.": [
+    "app/page.tsx"
+  ],
+  "Stopping. Its server closes it within a few seconds.": [
+    "src/components/CloudViewer.tsx"
+  ],
+  "Stopping…": [
+    "src/components/CloudViewer.tsx",
+    "src/components/ProfileCard.tsx"
+  ],
+  "Storage": [
+    "src/components/SettingsModal.tsx"
+  ],
+  "Storage quota (MB)": [
+    "src/lib/fields.ts"
+  ],
+  "Sweden": [
+    "src/components/CloudFields.tsx"
+  ],
+  "TLS profile": [
+    "src/lib/fields.ts"
+  ],
+  "Tag": [
+    "app/page.tsx"
+  ],
+  "Tag 1 profile": [
+    "app/page.tsx"
+  ],
+  "Tag {n} profiles": [
+    "app/page.tsx"
+  ],
+  "Tagged 1 profile #{tag}.": [
+    "app/page.tsx"
+  ],
+  "Tagged {n} profiles #{tag}.": [
+    "app/page.tsx"
+  ],
+  "Tags": [
+    "src/components/BulkCreateDialog.tsx",
+    "src/lib/fields.ts"
+  ],
+  "Template": [
+    "src/components/BulkCreateDialog.tsx",
+    "src/lib/templates.ts"
+  ],
+  "Template name": [
+    "src/components/TemplateDialogs.tsx"
+  ],
+  "Templates": [
+    "src/components/TemplateDialogs.tsx"
+  ],
+  "Templates saved.": [
+    "app/page.tsx"
+  ],
+  "Test UDP…": [
+    "src/components/ProfileEditor.tsx"
+  ],
+  "Test anyway": [
+    "src/components/ProfileEditor.tsx"
+  ],
+  "That profile no longer exists.": [
+    "src/lib/ipc.ts"
+  ],
+  "That version can't be pinned": [
+    "src/lib/launchError.ts"
+  ],
+  "The Clearcote helper is not answering. Is its window still open?": [
+    "src/lib/helperBridge.ts"
+  ],
+  "The Clearcote helper stopped answering, so this is the preview again. Start it, then connect.": [
+    "src/components/HelperGate.tsx"
+  ],
+  "The HLSL shader dialect has no effect on a Windows host — ANGLE's D3D11 backend already reports HLSL.": [
+    "src/lib/coherence.ts"
+  ],
+  "The HLSL shader dialect needs Clearcote {need} (r15+); build {major} ignores it.": [
+    "src/lib/coherence.ts"
+  ],
+  "The UDP test moved this session from {from} to {to}. It stays on {to} from now on.": [
+    "src/lib/proxyReport.ts"
+  ],
+  "The app keeps each browser's licence renewed. If it quits, a browser on the free plan stops by itself within a few minutes.": [
+    "src/components/SettingsModal.tsx"
+  ],
+  "The browser couldn't be started": [
+    "src/lib/launchError.ts"
+  ],
+  "The browser crashed": [
+    "src/lib/launchError.ts"
+  ],
+  "The browser download was damaged": [
+    "src/lib/launchError.ts"
+  ],
+  "The browser engine updates itself, but with this off the app can sit on already-fixed bugs.": [
+    "src/components/SettingsModal.tsx"
+  ],
+  "The browser stopped unexpectedly": [
+    "src/lib/launchError.ts"
+  ],
+  "The canvas bridge and the real-GPU switch are both on: pixels come from the remote host while the GPU strings come from this one, so they describe different machines.": [
+    "src/lib/coherence.ts"
+  ],
+  "The checksum proves the file is intact; it is not a signature, and this app is not code-signed.": [
+    "src/components/UpdateBanner.tsx"
+  ],
+  "The clipboard can't be read here. Paste into the field with Ctrl+V instead.": [
+    "src/components/ProfileEditor.tsx"
+  ],
+  "The clipboard doesn't hold a proxy address (host:port, with or without a login).": [
+    "src/components/ProfileEditor.tsx"
+  ],
+  "The cloud API address is invalid": [
+    "src/lib/launchError.ts"
+  ],
+  "The cloud browser didn't start": [
+    "src/lib/launchError.ts"
+  ],
+  "The cloud browser ended": [
+    "src/components/CloudViewer.tsx",
+    "src/lib/launchError.ts"
+  ],
+  "The cloud can't run this right now": [
+    "src/lib/launchError.ts"
+  ],
+  "The cloud doesn't have this browser version": [
+    "src/lib/launchError.ts"
+  ],
+  "The cookie database is then effectively unencrypted at rest. Needs build 151.": [
+    "src/lib/fields.ts"
+  ],
+  "The download failed.": [
+    "src/components/StorageSection.tsx"
+  ],
+  "The exit has moved since “Resolve from proxy” stored {ip} as the WebRTC IP. Each launch looks it up again, so the browser will report {exit}.": [
+    "src/lib/proxyReport.ts"
+  ],
+  "The free plan only runs the latest build, so this pin will be refused. Change it to Latest, or use a Pro key.": [
+    "src/components/ProfileCard.tsx"
+  ],
+  "The helper (version {version}) is running. Pair once, and this page can start your Clearcote browsers. The helper will open a page where you approve it.": [
+    "src/components/HelperGate.tsx"
+  ],
+  "The helper answered {status}.": [
+    "src/lib/helperBridge.ts"
+  ],
+  "The helper could not do that.": [
+    "src/lib/helperBridge.ts"
+  ],
+  "The included residential IP": [
+    "src/components/CloudFields.tsx"
+  ],
+  "The key check runs in the desktop app.": [
+    "src/lib/ipc.ts"
+  ],
+  "The key could not be checked.": [
+    "src/components/SettingsModal.tsx"
+  ],
+  "The key is sent only to clearcotelabs.com, and only when a cloud browser is started, checked or followed.": [
+    "src/components/SettingsModal.tsx"
+  ],
+  "The language of this app on this device.": [
+    "src/components/SettingsModal.tsx"
+  ],
+  "The licence is no longer active.": [
+    "src/lib/launchError.ts"
+  ],
+  "The licence service rejected the key in Settings.": [
+    "src/lib/launchError.ts"
+  ],
+  "The list has Windows and Linux strings only, so a macOS persona keeps Persona default.": [
+    "src/components/ProfileEditor.tsx"
+  ],
+  "The live view dropped. Reconnecting…": [
+    "src/components/CloudViewer.tsx"
+  ],
+  "The live view runs in the desktop app.": [
+    "src/lib/ipc.ts"
+  ],
+  "The machine the persona claims. An explicit value beats the persona, which beats the real one.": [
+    "src/lib/fields.ts"
+  ],
+  "The most coherent option when no captured profile matches the host's real render.": [
+    "src/lib/fields.ts"
+  ],
+  "The persona already varies the model with the seed, so profiles no longer all report the same card. If you pick one, the strongest coherence comes from a model of this machine's own GPU maker: driver limits follow the real card, so a claim from another maker can be checked against them. Custom… exposes the raw vendor and renderer strings for a card the list does not have.": [
+    "src/lib/fields.ts"
+  ],
+  "The persona is macOS but its GPU renderer is a Direct3D string — macOS draws through Metal, never Direct3D.": [
+    "src/lib/coherence.ts"
+  ],
+  "The platform is Android but touch points are set to 0 — a phone with no touchscreen.": [
+    "src/lib/coherence.ts"
+  ],
+  "The profiles could not be moved.": [
+    "src/lib/helperBridge.ts"
+  ],
+  "The proxy location could not be checked.": [
+    "app/page.tsx"
+  ],
+  "The request expired. Nothing was paired.": [
+    "src/components/HelperGate.tsx"
+  ],
+  "The session stops when its traffic reaches this, so it can never cost more.": [
+    "src/components/CloudFields.tsx"
+  ],
+  "The shader dialect setting is invalid": [
+    "src/lib/launchError.ts"
+  ],
+  "The stronger form of a portable profile: you hold the key, so no key material is stored beside the cookies. It wins when both are set. Redacted in the preview and dropped on export — keep your own copy, because a lost key is a lost cookie jar.": [
+    "src/lib/fields.ts"
+  ],
+  "The web version always uses the verified Clearcote download. To run your own browser build, choose it in the desktop app on this computer: the helper uses the same setting.": [
+    "src/lib/helperBridge.ts"
+  ],
+  "The work area: the screen minus the taskbar, e.g. 1920 × 1032 on a 1920 × 1080 Windows 11 screen at 100 %. The full screen size here describes a screen with no taskbar, which is rare and stands out. Left empty under a seed, capture or Light stealth, it is not this display's own value, so matching this display means typing all four fields.": [
+    "src/lib/fields.ts"
+  ],
+  "There's no build “{version}”": [
+    "src/lib/launchError.ts"
+  ],
+  "This Mac has no Clearcote build to launch.": [
+    "src/lib/launchTarget.ts"
+  ],
+  "This browser is blocking the page from reaching apps on this computer. Allow “Local network access” for this site (the icon left of the address), then reload.": [
+    "src/components/HelperGate.tsx"
+  ],
+  "This build compiles the EME plumbing but cannot bundle Google's proprietary CDM. A browser claiming the Google Chrome brand and then rejecting com.widevine.alpha describes a browser Google does not ship.": [
+    "src/lib/fields.ts"
+  ],
+  "This capture was taken on a display too small to contain a normal browser window, so the window would be larger than the screen it claims to sit on.": [
+    "src/lib/coherence.ts"
+  ],
+  "This cloud browser opens from the Clearcote profile manager, on a computer connected to it.": [
+    "src/components/HelperGate.tsx"
+  ],
+  "This frees {size}. It downloads again, and is verified again, on the next launch that needs it.": [
+    "src/components/StorageSection.tsx"
+  ],
+  "This is a Mac, so the browser's fonts and text measurements are macOS's own, but the persona claims {platform} — a mismatch any font check reads.": [
+    "src/lib/coherence.ts"
+  ],
+  "This list": [
+    "src/components/ShortcutsDialog.tsx"
+  ],
+  "This machine's GPU maker could not be detected, so every vendor is listed.": [
+    "src/components/ProfileEditor.tsx"
+  ],
+  "This machine: {gpu} — its maker's models are listed first.": [
+    "src/components/ProfileEditor.tsx"
+  ],
+  "This page is no longer paired with the helper.": [
+    "src/lib/helperBridge.ts"
+  ],
+  "This passes quickly: try again in a moment.": [
+    "src/lib/launchError.ts"
+  ],
+  "This profile": [
+    "app/page.tsx"
+  ],
+  "This profile asks for a specific build, and the free plan always runs the latest one.": [
+    "src/lib/launchError.ts"
+  ],
+  "This profile asks for build {pin}, and the free plan always runs the latest one.": [
+    "src/lib/launchError.ts"
+  ],
+  "This profile can't run in the cloud as set": [
+    "src/lib/launchError.ts"
+  ],
+  "This profile has no proxy.": [
+    "src/components/CloudFields.tsx"
+  ],
+  "This profile is already running": [
+    "src/lib/launchError.ts"
+  ],
+  "This profile is already running in the cloud": [
+    "src/lib/launchError.ts"
+  ],
+  "This profile is already running in the cloud.": [
+    "src/lib/ipc.ts"
+  ],
+  "This profile is not running in the cloud.": [
+    "src/components/CloudViewer.tsx",
+    "src/lib/ipc.ts"
+  ],
+  "This profile is open on this PC": [
+    "src/lib/launchError.ts"
+  ],
+  "This profile is running in the cloud": [
+    "src/lib/launchError.ts"
+  ],
+  "This profile is still saving in the cloud": [
+    "src/lib/launchError.ts"
+  ],
+  "This profile is still stopping in the cloud": [
+    "src/lib/launchError.ts"
+  ],
+  "This profile needs a licence key": [
+    "src/lib/launchError.ts"
+  ],
+  "This profile reports the \"Google Chrome\" brand but seeds no Widevine CDM, which Google's build always ships.": [
+    "src/lib/coherence.ts"
+  ],
+  "This profile's browser is open on this PC. Stop it first: a profile runs in one place at a time.": [
+    "src/lib/ipc.ts"
+  ],
+  "This profile's data is already open": [
+    "src/lib/launchError.ts"
+  ],
+  "This profile's proxy": [
+    "src/components/CloudFields.tsx"
+  ],
+  "This removes the profile <em>and its saved browser data</em> — cookies, logins, history and extensions. You can undo it for a few seconds.": [
+    "app/page.tsx"
+  ],
+  "This removes them <em>and their saved browser data</em> — cookies, logins, history and extensions. You can undo it for a few seconds.": [
+    "app/page.tsx"
+  ],
+  "Through an HTTP proxy a browser sends a Proxy-Connection header on plain-HTTP requests, and every proxied connection shows proxy-shaped connect and TLS timing. This sends Connection instead and reports the timing like a reused connection.": [
+    "src/lib/fields.ts"
+  ],
+  "Timezone": [
+    "src/lib/fields.ts"
+  ],
+  "Timezone, language and location follow the proxy's exit region": [
+    "src/components/ProfileCard.tsx"
+  ],
+  "To change a template's other settings, edit a profile and save it as a template again under the same name.": [
+    "src/components/TemplateDialogs.tsx"
+  ],
+  "To {why}, connect this computer": [
+    "src/components/HelperGate.tsx"
+  ],
+  "Today's download limit is reached": [
+    "src/lib/launchError.ts"
+  ],
+  "Toggle light / dark theme": [
+    "app/page.tsx"
+  ],
+  "Toggle light or dark theme": [
+    "app/page.tsx"
+  ],
+  "Too many cloud browsers at once": [
+    "src/lib/launchError.ts"
+  ],
+  "Too many requests": [
+    "src/lib/launchError.ts"
+  ],
+  "Top up ↗": [
+    "src/components/SettingsModal.tsx",
+    "src/lib/launchError.ts"
+  ],
+  "Touch points": [
+    "src/lib/fields.ts"
+  ],
+  "Traffic cap (GB)": [
+    "src/components/CloudFields.tsx"
+  ],
+  "Transparent proxy": [
+    "src/lib/fields.ts"
+  ],
+  "Transparent proxy is on but this profile has no proxy, so the setting does nothing.": [
+    "src/lib/coherence.ts"
+  ],
+  "Transparent proxy needs Clearcote {need} (r22+); build {major} ignores it.": [
+    "src/lib/coherence.ts"
+  ],
+  "Try a different search or filter.": [
+    "app/page.tsx"
+  ],
+  "Try again": [
+    "src/components/HelperGate.tsx",
+    "src/lib/launchError.ts"
+  ],
+  "Turn farbling back on if you only wanted the 2D canvas unfarbled.": [
+    "src/lib/coherence.ts"
+  ],
+  "Turn it off for natural, unperturbed surfaces — best paired with a captured profile.": [
+    "src/lib/fields.ts"
+  ],
+  "Turn off for a host that rasterises in software, where a spoofed GPU string cannot be backed by the render. navigator.gpu still follows the wide switch, so WebGPU keeps describing the persona.": [
+    "src/lib/fields.ts"
+  ],
+  "Turn off the real GPU when bridging, so the reported GPU and the rendered pixels agree.": [
+    "src/lib/coherence.ts"
+  ],
+  "Turn off the wide switch if you only wanted the strings, or leave this one on.": [
+    "src/lib/coherence.ts"
+  ],
+  "Turn on geoip to fill it from the proxy's exit region at launch, or set a geolocation by hand.": [
+    "src/lib/coherence.ts"
+  ],
+  "Turning off “Spoof GPU strings” is redundant here — “use real GPU” already reports the real vendor and renderer, along with everything else.": [
+    "src/lib/coherence.ts"
+  ],
+  "Turning this off is the narrow half of “use real GPU”. Needs 150 r12 or newer.": [
+    "src/lib/fields.ts"
+  ],
+  "Turning this off leaves WebGL and audio noised — narrower than switching farbling off entirely. Needs 150 r12 or newer.": [
+    "src/lib/fields.ts"
+  ],
+  "Type all four to match this host's real display, or leave them empty so Light stealth reports the real screen.": [
+    "src/lib/coherence.ts"
+  ],
+  "Type all four to match this host's real display, or leave them empty so {source} supplies the screen.": [
+    "src/lib/coherence.ts"
+  ],
+  "UDP could not be tested.": [
+    "src/lib/proxyReport.ts"
+  ],
+  "UDP could not be tested: {detail}.": [
+    "src/lib/proxyReport.ts"
+  ],
+  "UDP not tested: with “Relay UDP through the proxy” off the browser sends none through this proxy, and a test can move a sticky session to another exit.": [
+    "src/lib/proxyReport.ts"
+  ],
+  "UDP passes through this proxy, so “Relay UDP through the proxy” will work.": [
+    "src/lib/proxyReport.ts"
+  ],
+  "UDP relaying is on but this profile has no SOCKS5 proxy, so the setting does nothing — an http/https proxy cannot carry UDP.": [
+    "src/lib/coherence.ts"
+  ],
+  "UDP: an HTTP proxy cannot carry it. WebRTC stays blocked, which is safe.": [
+    "src/lib/proxyReport.ts"
+  ],
+  "UDP: the proxy accepted it, but nothing came back. Treat it as not working; WebRTC stays blocked (safe).": [
+    "src/lib/proxyReport.ts"
+  ],
+  "UDP: this proxy refuses it. WebRTC stays blocked, which is safe; “Relay UDP through the proxy” does nothing here.": [
+    "src/lib/proxyReport.ts"
+  ],
+  "Undo": [
+    "app/page.tsx"
+  ],
+  "Ungroup these profiles": [
+    "src/components/GroupHeader.tsx"
+  ],
+  "Ungrouped 1 profile.": [
+    "app/page.tsx"
+  ],
+  "Ungrouped {n} profiles.": [
+    "app/page.tsx"
+  ],
+  "United Kingdom": [
+    "src/components/CloudFields.tsx"
+  ],
+  "United States": [
+    "src/components/CloudFields.tsx"
+  ],
+  "Unsaved changes": [
+    "src/components/ProfileEditor.tsx"
+  ],
+  "Unset, a timezone coherent with the locale is derived, rather than leaking the host's (often UTC on a server).": [
+    "src/lib/fields.ts"
+  ],
+  "Untitled": [
+    "src/components/ProfileEditor.tsx"
+  ],
+  "Unzip it and start it": [
+    "src/components/HelperGate.tsx"
+  ],
+  "Updates": [
+    "src/components/SettingsModal.tsx"
+  ],
+  "Updates come with the web page.": [
+    "src/lib/helperBridge.ts"
+  ],
+  "Updating only works in the desktop app.": [
+    "src/lib/ipc.ts"
+  ],
+  "Use a socks5:// proxy, or turn UDP relaying off so the profile does not claim something it is not doing.": [
+    "src/lib/coherence.ts"
+  ],
+  "Use automatic": [
+    "src/components/SettingsModal.tsx"
+  ],
+  "Use it": [
+    "src/components/ProfileEditor.tsx"
+  ],
+  "Use my Clearcote account": [
+    "app/page.tsx",
+    "src/components/SettingsModal.tsx"
+  ],
+  "Use my account ↗": [
+    "src/components/SettingsModal.tsx"
+  ],
+  "Use one or the other: light stealth for a narrow metadata-only surface, or a captured profile for a full identity.": [
+    "src/lib/coherence.ts"
+  ],
+  "Use real GPU": [
+    "src/lib/fields.ts"
+  ],
+  "Use this display ({width} × {height})": [
+    "src/components/ProfileEditor.tsx"
+  ],
+  "Use →": [
+    "src/components/LibraryModal.tsx"
+  ],
+  "Version {version} is available — see the banner.": [
+    "src/components/SettingsModal.tsx"
+  ],
+  "Version {version}.": [
+    "src/components/HelperGate.tsx"
+  ],
+  "Version {v} is available": [
+    "src/components/UpdateBanner.tsx"
+  ],
+  "Video, voice and WebRTC checks can't reach a site from your real IP. \"Relay UDP through the proxy\" still works on top of this when the proxy allows UDP.": [
+    "src/lib/quickCreate.ts"
+  ],
+  "Wait a minute, then try again.": [
+    "src/lib/launchError.ts"
+  ],
+  "WebRTC IP is set to {ip}, which is not this exit: pages will see HTTP from {exit} and WebRTC from {ip}. Clear the field, or click “Resolve from proxy”, to keep them together.": [
+    "src/lib/proxyReport.ts"
+  ],
+  "WebRTC only through the proxy": [
+    "src/lib/quickCreate.ts"
+  ],
+  "What WebRTC reports as the public address. “Resolve from proxy” fills it with the proxy's exit, and every launch looks that exit up again while the field still holds it, so a proxy that moves to another address does not leave WebRTC behind. Type an address to pin it.": [
+    "src/lib/fields.ts"
+  ],
+  "What canvas, WebGL and audio report.": [
+    "src/lib/fields.ts"
+  ],
+  "What most profiles need. Everything else keeps its default — <b>1 more setting you set is in All settings</b>": [
+    "src/components/ProfileEditor.tsx"
+  ],
+  "What most profiles need. Everything else keeps its default — <b>{n} more settings you set are in All settings</b>": [
+    "src/components/ProfileEditor.tsx"
+  ],
+  "What most profiles need. Everything else keeps its default; All settings has the rest.": [
+    "src/components/ProfileEditor.tsx"
+  ],
+  "What survives a restart, and what moves between machines.": [
+    "src/lib/fields.ts"
+  ],
+  "What the Geolocation API reports, once a page has permission. Unset and with geoip off, that is your real position.": [
+    "src/lib/fields.ts"
+  ],
+  "What the app keeps on disk, what each part is for, and what can go.": [
+    "src/components/SettingsModal.tsx"
+  ],
+  "What's new": [
+    "src/components/UpdateBanner.tsx"
+  ],
+  "When it stops": [
+    "src/components/SettingsModal.tsx"
+  ],
+  "When you close the window while browsers are running": [
+    "src/components/SettingsModal.tsx"
+  ],
+  "When you press Stop, when you quit the app, or after 30 minutes with nobody watching or typing. Closing its window, or keeping the app in the tray, does not stop it.": [
+    "src/components/SettingsModal.tsx"
+  ],
+  "Where its traffic leaves": [
+    "src/components/CloudFields.tsx"
+  ],
+  "Where traffic exits, and everything that should agree with it.": [
+    "src/lib/fields.ts"
+  ],
+  "Which Clearcote build profiles launch with.": [
+    "src/components/SettingsModal.tsx"
+  ],
+  "Which build to launch, and what it claims to be.": [
+    "src/lib/fields.ts"
+  ],
+  "Which graphics card this profile reports to WebGL. Leave it on the persona default unless you need a particular card.": [
+    "src/lib/fields.ts"
+  ],
+  "Who this profile is. The seed drives a coherent persona; a captured fingerprint replaces it with a real machine's values.": [
+    "src/lib/fields.ts"
+  ],
+  "Why does Windows warn?": [
+    "src/components/UpdateBanner.tsx"
+  ],
+  "Why does macOS warn?": [
+    "src/components/UpdateBanner.tsx"
+  ],
+  "Why: {label}": [
+    "src/components/ProfileEditor.tsx"
+  ],
+  "Widevine (DRM)": [
+    "src/lib/fields.ts"
+  ],
+  "Windows on Arm": [
+    "src/lib/helperRelease.ts"
+  ],
+  "Windows will warn on first run — choose More info → Run anyway.": [
+    "src/components/UpdateBanner.tsx"
+  ],
+  "With a key": [
+    "src/components/SettingsModal.tsx"
+  ],
+  "With this off, profiles accept certificates Chrome has revoked, such as those of a certificate authority whose keys were compromised.": [
+    "src/components/SettingsModal.tsx"
+  ],
+  "Without a key": [
+    "src/components/SettingsModal.tsx"
+  ],
+  "Without this, and without a geolocation set, the Geolocation API reports the host's real position — the proxy alone does not move it.": [
+    "src/lib/fields.ts"
+  ],
+  "Working out which browser build launches.": [
+    "src/lib/launchTarget.ts"
+  ],
+  "Works · {exit}": [
+    "src/lib/proxyReport.ts"
+  ],
+  "Works · {exit} · answered in {s} s": [
+    "src/lib/proxyReport.ts"
+  ],
+  "You set this": [
+    "src/components/ProfileEditor.tsx"
+  ],
+  "You're up to date ({version}).": [
+    "src/components/SettingsModal.tsx"
+  ],
+  "Your API key wasn't accepted": [
+    "src/lib/launchError.ts"
+  ],
+  "Your Clearcote helper is older than this feature. Download the newest helper and start it again.": [
+    "src/components/SettingsModal.tsx"
+  ],
+  "Your cloud balance is too low": [
+    "src/lib/launchError.ts"
+  ],
+  "Your licence isn't active": [
+    "src/lib/launchError.ts"
+  ],
+  "Your licence key wasn't accepted": [
+    "src/lib/launchError.ts"
+  ],
+  "Your plan's browser limit is reached": [
+    "src/lib/launchError.ts"
+  ],
+  "Your profiles stay on your computer. To open them from this page, Clearcote needs a small helper running there. It is open source and you can rebuild it yourself and check it byte for byte.": [
+    "src/components/HelperGate.tsx"
+  ],
+  "a 2-letter country code": [
+    "src/components/CloudFields.tsx"
+  ],
+  "a model from this computer's maker": [
+    "src/components/TemplateDialogs.tsx"
+  ],
+  "all": [
+    "src/components/LibraryModal.tsx"
+  ],
+  "all — bridge everything": [
+    "src/lib/fields.ts"
+  ],
+  "allow list": [
+    "src/lib/fields.ts"
+  ],
+  "an unknown address": [
+    "src/lib/proxyReport.ts"
+  ],
+  "an unknown place": [
+    "app/page.tsx"
+  ],
+  "android — mobile persona": [
+    "src/lib/fields.ts"
+  ],
+  "any": [
+    "src/components/CloudFields.tsx"
+  ],
+  "anything worth remembering": [
+    "src/lib/fields.ts"
+  ],
+  "applying…": [
+    "src/components/LibraryModal.tsx"
+  ],
+  "asks proxy": [
+    "src/lib/templates.ts"
+  ],
+  "block — wait for the bridge (default)": [
+    "src/lib/fields.ts"
+  ],
+  "bridge": [
+    "src/components/ProfileCard.tsx"
+  ],
+  "build {n}": [
+    "src/lib/profileList.ts"
+  ],
+  "captured fp": [
+    "src/components/ProfileCard.tsx"
+  ],
+  "captured profile": [
+    "src/components/ProfileEditor.tsx"
+  ],
+  "check a proxy": [
+    "src/lib/webPreview.ts"
+  ],
+  "check where a proxy exits": [
+    "src/lib/webPreview.ts"
+  ],
+  "check your API key": [
+    "src/lib/webPreview.ts"
+  ],
+  "check your licence": [
+    "src/lib/webPreview.ts"
+  ],
+  "choose a browser": [
+    "src/lib/webPreview.ts"
+  ],
+  "clear a profile's cache": [
+    "src/lib/webPreview.ts"
+  ],
+  "clearcote-profiles library": [
+    "src/components/LibraryModal.tsx"
+  ],
+  "cloud": [
+    "src/components/CloudViewer.tsx",
+    "src/components/ProfileCard.tsx"
+  ],
+  "comma, separated": [
+    "src/components/BulkCreateDialog.tsx"
+  ],
+  "current": [
+    "src/components/ProfileEditor.tsx"
+  ],
+  "deny list": [
+    "src/lib/fields.ts"
+  ],
+  "download the browser": [
+    "src/lib/webPreview.ts"
+  ],
+  "e.g. Acme — US East": [
+    "src/lib/fields.ts"
+  ],
+  "egress {ip} · {country} · {timezone} · {language}": [
+    "src/components/ProfileEditor.tsx"
+  ],
+  "exits at {ip}": [
+    "src/lib/proxyReport.ts"
+  ],
+  "exits in {place} ({ip})": [
+    "src/lib/proxyReport.ts"
+  ],
+  "from “{name}”": [
+    "src/components/TemplateDialogs.tsx"
+  ],
+  "geoip switched on — timezone, language and position will follow this proxy's exit region at launch. Untick it below if you don't want that.": [
+    "src/components/ProfileEditor.tsx"
+  ],
+  "import a fingerprint": [
+    "src/lib/webPreview.ts"
+  ],
+  "import profiles": [
+    "src/lib/webPreview.ts"
+  ],
+  "just now": [
+    "src/lib/profileList.ts"
+  ],
+  "kept in the cloud profile {name}.": [
+    "src/components/CloudFields.tsx"
+  ],
+  "lat,lng": [
+    "src/lib/fields.ts"
+  ],
+  "latest build": [
+    "src/lib/profileList.ts"
+  ],
+  "launch a browser": [
+    "src/lib/webPreview.ts"
+  ],
+  "launch your profiles": [
+    "src/components/HelperGate.tsx"
+  ],
+  "library": [
+    "src/components/ProfileEditor.tsx"
+  ],
+  "local — never stall, render here": [
+    "src/lib/fields.ts"
+  ],
+  "macOS, Apple Silicon": [
+    "src/lib/helperRelease.ts"
+  ],
+  "macOS, Intel": [
+    "src/lib/helperRelease.ts"
+  ],
+  "match persona (default)": [
+    "src/lib/fields.ts"
+  ],
+  "native — the build's own TLS": [
+    "src/lib/fields.ts"
+  ],
+  "navigator.deviceMemory, reported as a power of two. Desktop Chromium clamps it to 2–32 and Android to 1–8, so a machine with 64 GB still reports 32.": [
+    "src/lib/fields.ts"
+  ],
+  "navigator.hardwareConcurrency: logical threads. Pick what the machine you claim would have; with Use real GPU on a fast card, 16 or more is typical. A count below this PC's also limits the browser to that many CPUs.": [
+    "src/lib/fields.ts"
+  ],
+  "navigator.storage.estimate().quota. Chrome reports a fixed quota: the site's own usage plus 10 GB, in normal and incognito windows alike, so an empty field already matches it. A number here replaces that, and a large one describes a value real Chrome never reports.": [
+    "src/lib/fields.ts"
+  ],
+  "new GPU": [
+    "src/lib/templates.ts"
+  ],
+  "no answer through this proxy": [
+    "src/lib/proxyReport.ts"
+  ],
+  "no cap": [
+    "src/components/CloudFields.tsx"
+  ],
+  "noise off": [
+    "src/components/ProfileCard.tsx"
+  ],
+  "not kept; every session starts empty.": [
+    "src/components/CloudFields.tsx"
+  ],
+  "off": [
+    "src/lib/fields.ts"
+  ],
+  "off — expose the LAN IP": [
+    "src/lib/fields.ts"
+  ],
+  "on — hide local IPs (default)": [
+    "src/lib/fields.ts"
+  ],
+  "open a profile's browser data": [
+    "src/lib/webPreview.ts"
+  ],
+  "optional": [
+    "src/components/BulkCreateDialog.tsx",
+    "src/lib/fields.ts"
+  ],
+  "persona default": [
+    "src/lib/fields.ts"
+  ],
+  "pinned {version}": [
+    "src/lib/profileList.ts"
+  ],
+  "proxy egress IP": [
+    "src/lib/fields.ts"
+  ],
+  "real (about 10 GB)": [
+    "src/lib/fields.ts"
+  ],
+  "real gpu": [
+    "src/components/ProfileCard.tsx"
+  ],
+  "run a profile in the cloud": [
+    "src/lib/webPreview.ts"
+  ],
+  "running": [
+    "src/components/ProfileCard.tsx"
+  ],
+  "same GPU": [
+    "src/lib/templates.ts"
+  ],
+  "same proxy": [
+    "src/lib/templates.ts"
+  ],
+  "save settings": [
+    "src/lib/webPreview.ts"
+  ],
+  "supply your own — nothing sensitive is written to disk": [
+    "src/lib/fields.ts"
+  ],
+  "the captured fingerprint": [
+    "src/lib/coherence.ts"
+  ],
+  "the included residential IP in {country}, the same one for up to a day.": [
+    "src/components/CloudFields.tsx"
+  ],
+  "the included residential IP, any country, the same one for up to a day.": [
+    "src/components/CloudFields.tsx"
+  ],
+  "the seed": [
+    "src/lib/coherence.ts"
+  ],
+  "this profile has none": [
+    "src/components/TemplateDialogs.tsx"
+  ],
+  "through its proxy": [
+    "src/lib/proxyReport.ts"
+  ],
+  "time zone and language follow it": [
+    "src/components/TemplateDialogs.tsx"
+  ],
+  "unset": [
+    "src/lib/fields.ts"
+  ],
+  "unused": [
+    "src/components/StorageSection.tsx"
+  ],
+  "use a library fingerprint": [
+    "src/lib/webPreview.ts"
+  ],
+  "use this computer": [
+    "src/components/HelperGate.tsx"
+  ],
+  "use your Clearcote account": [
+    "src/lib/webPreview.ts"
+  ],
+  "used {n}×": [
+    "src/lib/templates.ts"
+  ],
+  "you have {v}": [
+    "src/components/UpdateBanner.tsx"
+  ],
+  "{builds} browser builds · {copies} copies · {profiles} profile data": [
+    "src/components/StorageSection.tsx"
+  ],
+  "{code}. The profile's data is not affected; launch it again.": [
+    "src/lib/launchError.ts"
+  ],
+  "{count} profile will be created": [
+    "src/components/BulkCreateDialog.tsx"
+  ],
+  "{count} profiles will be created": [
+    "src/components/BulkCreateDialog.tsx"
+  ],
+  "{current} (set before)": [
+    "src/lib/fields.ts"
+  ],
+  "{error} Reconnecting…": [
+    "src/components/CloudViewer.tsx"
+  ],
+  "{fix} {major} r{revision} and newer report the typed size to both.": [
+    "src/lib/coherence.ts"
+  ],
+  "{label} (selected)": [
+    "src/components/ProfileCard.tsx"
+  ],
+  "{name} (running in the cloud)": [
+    "src/components/ProfileCard.tsx"
+  ],
+  "{name} (running)": [
+    "src/components/ProfileCard.tsx"
+  ],
+  "{name} — Cloud": [
+    "src/components/CloudViewer.tsx"
+  ],
+  "{name} — {code}. The profile's data is not affected; launch it again.": [
+    "src/lib/launchError.ts"
+  ],
+  "{num} numbers them, {hostvar} is the proxy host.": [
+    "src/components/BulkCreateDialog.tsx"
+  ],
+  "{n} GB": [
+    "src/components/ProfileEditor.tsx"
+  ],
+  "{n} builds nothing uses any more.": [
+    "src/components/StorageSection.tsx"
+  ],
+  "{n} copies are in use right now.": [
+    "src/components/StorageSection.tsx"
+  ],
+  "{n} copies, {size} — launch copies that work around a Windows first-launch problem, and leftovers from the SDK. Made again when needed.": [
+    "src/components/StorageSection.tsx"
+  ],
+  "{n} cores": [
+    "src/components/ProfileEditor.tsx"
+  ],
+  "{n} duplicates skipped": [
+    "src/components/BulkCreateDialog.tsx"
+  ],
+  "{n} in use right now, left for later.": [
+    "src/components/StorageSection.tsx"
+  ],
+  "{n} lines not understood": [
+    "src/components/BulkCreateDialog.tsx"
+  ],
+  "{n} profiles": [
+    "app/page.tsx"
+  ],
+  "{n} running": [
+    "src/components/GroupHeader.tsx"
+  ],
+  "{n} running profiles are left alone.": [
+    "app/page.tsx"
+  ],
+  "{n} selected": [
+    "app/page.tsx"
+  ],
+  "{n} set here": [
+    "src/components/ProfileEditor.tsx"
+  ],
+  "{n} settings match “{query}”": [
+    "src/components/ProfileEditor.tsx"
+  ],
+  "{n} tabs": [
+    "src/components/CloudViewer.tsx"
+  ],
+  "{proxy} — http and socks5 work in the cloud.": [
+    "src/components/CloudFields.tsx"
+  ],
+  "{shown} of {total}": [
+    "app/page.tsx"
+  ],
+  "{used}/unlimited browsers in use": [
+    "src/components/SettingsModal.tsx"
+  ],
+  "{used}/{limit} browsers in use": [
+    "src/components/SettingsModal.tsx"
+  ],
+  "{vendor} — this machine's GPU maker": [
+    "src/lib/gpuPicker.ts"
+  ],
+  "{version} · pinned": [
+    "src/components/ProfileEditor.tsx"
+  ],
+  "{who} · offline": [
+    "src/lib/launchTarget.ts"
+  ],
+  "“{name}” exits in {place} as {ip}.": [
+    "app/page.tsx"
+  ],
+  "“{name}” exits in {place}.": [
+    "app/page.tsx"
+  ],
+  "“{name}” has changes that are not saved.": [
+    "app/page.tsx"
+  ],
+  "“{name}” is running in the cloud.": [
+    "app/page.tsx"
+  ],
+  "… and {n} more": [
+    "src/components/BulkCreateDialog.tsx"
+  ],
+  "▲ 1 issue": [
+    "src/components/ProfileEditor.tsx"
+  ],
+  "▲ {n} issues": [
+    "src/components/ProfileEditor.tsx"
+  ],
+  "✓ Accepted · balance €{amount}": [
+    "src/components/SettingsModal.tsx"
+  ],
+  "✓ Key saved ({plan} plan) from {account}.": [
+    "src/components/SettingsModal.tsx"
+  ],
+  "✓ Key saved ({plan} plan).": [
+    "src/components/SettingsModal.tsx"
+  ],
+  "✓ Key saved from {account}.": [
+    "src/components/SettingsModal.tsx"
+  ],
+  "✓ Key saved.": [
+    "src/components/SettingsModal.tsx"
+  ],
+  "✓ Nothing on this profile contradicts anything else.": [
+    "src/components/ProfileEditor.tsx"
+  ],
+  "✓ This display": [
+    "src/components/ProfileEditor.tsx"
+  ],
+  "✓ Valid": [
+    "src/components/SettingsModal.tsx"
+  ],
+  "✓ Valid — every browser slot is in use right now, so the check could not take one.": [
+    "src/components/SettingsModal.tsx"
+  ],
+  "✓ Valid — {plan} plan": [
+    "src/components/SettingsModal.tsx"
+  ],
+  "✓ coherent": [
+    "src/components/ProfileEditor.tsx"
+  ]
+}

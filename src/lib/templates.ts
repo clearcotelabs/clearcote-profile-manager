@@ -7,6 +7,7 @@
 
 import { randomGpu, type HostGpuVendor } from "./gpuPicker";
 import type { Profile } from "@/types/profile";
+import { t } from "./i18n";
 
 export interface ProfileTemplate {
   id: string;
@@ -53,7 +54,7 @@ function strip(p: Partial<Profile>, keys: readonly string[]): Partial<Profile> {
 export function suggestTemplateName(p: Profile): string {
   const g = p.group?.trim();
   if (g) return g;
-  return (p.name || "").replace(/\s*(copy|\d+)\s*$/i, "").trim() || "Template";
+  return (p.name || "").replace(/\s*(copy|\d+)\s*$/i, "").trim() || t("Template");
 }
 
 export function templateFromProfile(
@@ -77,11 +78,11 @@ export function templateFromProfile(
 
 /** Add a template, or replace the one with the same name (any case) — saving again under a name is
  *  how a template's settings are changed. A replaced template keeps its id and its use count. */
-export function upsertTemplate(list: ProfileTemplate[], t: ProfileTemplate, now: string): ProfileTemplate[] {
-  const same = list.find((x) => x.name.trim().toLowerCase() === t.name.trim().toLowerCase());
-  if (!same) return [...list, t];
+export function upsertTemplate(list: ProfileTemplate[], tpl: ProfileTemplate, now: string): ProfileTemplate[] {
+  const same = list.find((x) => x.name.trim().toLowerCase() === tpl.name.trim().toLowerCase());
+  if (!same) return [...list, tpl];
   const merged: ProfileTemplate = {
-    ...t,
+    ...tpl,
     id: same.id,
     createdAt: same.createdAt,
     updatedAt: now,
@@ -97,8 +98,8 @@ export function findTemplateByName(list: ProfileTemplate[], name: string): Profi
 }
 
 /** The next free number for "<template> <n>" among existing profile names. */
-export function nextNumber(t: Pick<ProfileTemplate, "name">, names: string[]): number {
-  const esc = t.name.trim().replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+export function nextNumber(tpl: Pick<ProfileTemplate, "name">, names: string[]): number {
+  const esc = tpl.name.trim().replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
   const re = new RegExp(`^${esc}\\s+(\\d+)$`, "i");
   let max = 0;
   for (const n of names) {
@@ -117,19 +118,19 @@ const gpuPlatform = (p: Partial<Profile>) => !p.platform || p.platform === "wind
  * a random GPU.
  */
 export function profileFromTemplate(
-  t: ProfileTemplate,
+  tpl: ProfileTemplate,
   opts: { seed: string; now: string; number: number; hostVendor?: HostGpuVendor; rnd?: () => number },
 ): Profile {
   let p: Profile = {
-    ...(t.base as Profile),
+    ...(tpl.base as Profile),
     id: "",
-    name: `${t.name.trim()} ${opts.number}`,
+    name: `${tpl.name.trim()} ${opts.number}`,
     fingerprint: opts.seed,
     createdAt: opts.now,
     updatedAt: opts.now,
   };
-  if (t.proxy === "ask") p = { ...(strip(p, FROM_PROXY) as Profile), geoip: true };
-  if (t.gpu === "fresh" && gpuPlatform(p)) p = randomGpu(p, opts.hostVendor ?? "unknown", opts.rnd);
+  if (tpl.proxy === "ask") p = { ...(strip(p, FROM_PROXY) as Profile), geoip: true };
+  if (tpl.gpu === "fresh" && gpuPlatform(p)) p = randomGpu(p, opts.hostVendor ?? "unknown", opts.rnd);
   return p;
 }
 
@@ -140,11 +141,11 @@ export function profileFromTemplate(
  */
 export function applyTemplate(
   listed: Profile,
-  t: ProfileTemplate,
+  tpl: ProfileTemplate,
   opts: { hostVendor?: HostGpuVendor; rnd?: () => number } = {},
 ): Profile {
   let p: Profile = {
-    ...(strip(t.base, FROM_PROXY) as Profile),
+    ...(strip(tpl.base, FROM_PROXY) as Profile),
     id: listed.id,
     name: listed.name,
     fingerprint: listed.fingerprint,
@@ -155,13 +156,13 @@ export function applyTemplate(
   };
   if (listed.group) p.group = listed.group;
   if (listed.tags?.length) p.tags = listed.tags;
-  if (t.gpu === "fresh" && gpuPlatform(p)) p = randomGpu(p, opts.hostVendor ?? "unknown", opts.rnd);
+  if (tpl.gpu === "fresh" && gpuPlatform(p)) p = randomGpu(p, opts.hostVendor ?? "unknown", opts.rnd);
   return p;
 }
 
 /** Count `by` new profiles made from the template (a proxy list makes several at once). */
 export function markUsed(list: ProfileTemplate[], id: string, now: string, by = 1): ProfileTemplate[] {
-  return list.map((t) => (t.id === id ? { ...t, usedCount: (t.usedCount ?? 0) + by, lastUsedAt: now } : t));
+  return list.map((x) => (x.id === id ? { ...x, usedCount: (x.usedCount ?? 0) + by, lastUsedAt: now } : x));
 }
 
 /** Most recently used first, then most used, then by name — the order of the New profile menu. */
@@ -175,9 +176,9 @@ export function sortTemplates(list: ProfileTemplate[]): ProfileTemplate[] {
 }
 
 /** What a template does, in a few words: "asks proxy · new GPU · used 3×". */
-export function describeTemplate(t: ProfileTemplate): string {
-  const parts = [t.proxy === "ask" ? "asks proxy" : "same proxy", t.gpu === "fresh" ? "new GPU" : "same GPU"];
-  if (t.usedCount) parts.push(`used ${t.usedCount}×`);
+export function describeTemplate(tpl: ProfileTemplate): string {
+  const parts = [tpl.proxy === "ask" ? t("asks proxy") : t("same proxy"), tpl.gpu === "fresh" ? t("new GPU") : t("same GPU")];
+  if (tpl.usedCount) parts.push(t("used {n}×", { n: tpl.usedCount }));
   return parts.join(" · ");
 }
 
@@ -185,12 +186,12 @@ export function describeTemplate(t: ProfileTemplate): string {
 export function readTemplates(raw: unknown): ProfileTemplate[] {
   if (!Array.isArray(raw)) return [];
   return raw.filter(
-    (t): t is ProfileTemplate =>
-      !!t &&
-      typeof t === "object" &&
-      typeof (t as ProfileTemplate).id === "string" &&
-      typeof (t as ProfileTemplate).name === "string" &&
-      !!(t as ProfileTemplate).base &&
-      typeof (t as ProfileTemplate).base === "object",
-  ).map((t) => ({ ...t, proxy: t.proxy === "keep" ? "keep" : "ask", gpu: t.gpu === "fresh" ? "fresh" : "keep" }));
+    (x): x is ProfileTemplate =>
+      !!x &&
+      typeof x === "object" &&
+      typeof (x as ProfileTemplate).id === "string" &&
+      typeof (x as ProfileTemplate).name === "string" &&
+      !!(x as ProfileTemplate).base &&
+      typeof (x as ProfileTemplate).base === "object",
+  ).map((x) => ({ ...x, proxy: x.proxy === "keep" ? "keep" : "ask", gpu: x.gpu === "fresh" ? "fresh" : "keep" }));
 }

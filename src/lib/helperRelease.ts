@@ -3,6 +3,8 @@
 // desktop app's) and GitHub's release search finds nothing useful, so the links are built from the
 // release this page was built with; GitHub's API, when the browser may use it, only adds a newer one.
 
+import { tx } from "./i18n";
+
 export const REPO = "clearcotelabs/clearcote-profile-manager";
 /** The newest helper release when this page was built (next.config.mjs); "" when none existed. */
 export const BUILT_HELPER_VERSION = process.env.NEXT_PUBLIC_HELPER_VERSION || "";
@@ -42,9 +44,9 @@ export interface HelperRelease {
 
 const TARGET: Record<string, { os: HelperOs; arch: HelperArch; label: string }> = {
   "win-x64": { os: "Windows", arch: "x64", label: "Windows" },
-  "win-arm64": { os: "Windows", arch: "arm64", label: "Windows on Arm" },
-  "mac-arm64": { os: "macOS", arch: "arm64", label: "macOS, Apple Silicon" },
-  "mac-x64": { os: "macOS", arch: "x64", label: "macOS, Intel" },
+  "win-arm64": { os: "Windows", arch: "arm64", label: tx("Windows on Arm") },
+  "mac-arm64": { os: "macOS", arch: "arm64", label: tx("macOS, Apple Silicon") },
+  "mac-x64": { os: "macOS", arch: "x64", label: tx("macOS, Intel") },
   "linux-x64": { os: "Linux", arch: "x64", label: "Linux x64" },
   "linux-arm64": { os: "Linux", arch: "arm64", label: "Linux arm64" },
 };

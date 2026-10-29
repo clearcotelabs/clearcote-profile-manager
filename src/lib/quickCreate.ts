@@ -5,6 +5,7 @@
 import { parseProxy } from "../../electron/proxyargs";
 import { proxyEgressArgs } from "../../electron/fpargs";
 import type { Profile } from "@/types/profile";
+import { t, tx } from "./i18n";
 
 export interface HostScreen {
   width: number;
@@ -72,20 +73,20 @@ export interface ProtectedSwitch {
 
 const PROTECTED_TEXT: Record<string, Omit<ProtectedSwitch, "arg">> = {
   "--disable-quic": {
-    title: "No HTTP/3 (QUIC)",
-    why: "A proxy carries ordinary connections only. HTTP/3 would go around it, straight from your real IP. Real Chrome behind a proxy never uses it either.",
+    title: tx("No HTTP/3 (QUIC)"),
+    why: tx("A proxy carries ordinary connections only. HTTP/3 would go around it, straight from your real IP. Real Chrome behind a proxy never uses it either."),
   },
   "--webrtc-ip-handling-policy=disable_non_proxied_udp": {
-    title: "WebRTC only through the proxy",
-    why: "Video, voice and WebRTC checks can't reach a site from your real IP. \"Relay UDP through the proxy\" still works on top of this when the proxy allows UDP.",
+    title: tx("WebRTC only through the proxy"),
+    why: tx("Video, voice and WebRTC checks can't reach a site from your real IP. \"Relay UDP through the proxy\" still works on top of this when the proxy allows UDP."),
   },
 };
 
 /** The switches added because a proxy is set, each with a sentence on why — the ones people find
  *  in the launch command and ask about. Empty without a proxy. */
 export function protectedSwitches(p: Profile): ProtectedSwitch[] {
-  return proxyEgressArgs(!!parseProxy(p.proxy), p.extraArgs).map((arg) => ({
-    arg,
-    ...(PROTECTED_TEXT[arg] ?? { title: arg, why: "Added because a proxy is set." }),
-  }));
+  return proxyEgressArgs(!!parseProxy(p.proxy), p.extraArgs).map((arg) => {
+    const known = PROTECTED_TEXT[arg];
+    return { arg, ...(known ? { title: t(known.title), why: t(known.why) } : { title: arg, why: t("Added because a proxy is set.") }) };
+  });
 }

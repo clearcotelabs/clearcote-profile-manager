@@ -3,35 +3,36 @@
 import { useId } from "react";
 import Dialog, { DialogHeader } from "./Dialog";
 import { hostOs, keysLabel } from "@/lib/host";
+import { t, tx } from "@/lib/i18n";
 
 const GROUPS: { title: string; keys: [string, string][] }[] = [
   {
-    title: "Anywhere",
+    title: tx("Anywhere"),
     keys: [
-      ["Ctrl N", "New profile"],
-      ["Ctrl Shift N", "New profile from the last-used template"],
-      ["Ctrl F  or  /", "Search profiles"],
-      ["Ctrl ,", "Settings"],
-      ["Ctrl A", "Select every profile shown"],
-      ["Esc", "Clear the selection"],
-      ["?", "This list"],
+      ["Ctrl N", tx("New profile")],
+      ["Ctrl Shift N", tx("New profile from the last-used template")],
+      ["Ctrl F  or  /", tx("Search profiles")],
+      ["Ctrl ,", tx("Settings")],
+      ["Ctrl A", tx("Select every profile shown")],
+      ["Esc", tx("Clear the selection")],
+      ["?", tx("This list")],
     ],
   },
   {
-    title: "On a focused profile",
+    title: tx("On a focused profile"),
     keys: [
-      ["Enter", "Launch"],
-      ["E", "Edit"],
-      ["Delete", "Delete (can be undone)"],
-      ["Space", "Select it (Shift for a range)"],
-      ["← ↑ → ↓", "Move between profiles"],
+      ["Enter", tx("Launch")],
+      ["E", tx("Edit")],
+      ["Delete", tx("Delete (can be undone)")],
+      ["Space", tx("Select it (Shift for a range)")],
+      ["← ↑ → ↓", tx("Move between profiles")],
     ],
   },
   {
-    title: "In a dialog",
+    title: tx("In a dialog"),
     keys: [
-      ["Ctrl S", "Save the profile"],
-      ["Esc", "Close — asks first if there are unsaved changes"],
+      ["Ctrl S", tx("Save the profile")],
+      ["Esc", tx("Close — asks first if there are unsaved changes")],
     ],
   },
 ];
@@ -41,15 +42,15 @@ export default function ShortcutsDialog({ onClose }: { onClose: () => void }) {
   const host = hostOs();
   return (
     <Dialog onClose={onClose} labelledBy={titleId} variant="fit" className="max-w-md">
-      <DialogHeader id={titleId} title="Keyboard shortcuts" onClose={onClose} />
+      <DialogHeader id={titleId} title={t("Keyboard shortcuts")} onClose={onClose} />
       <div className="space-y-4 px-5 py-4">
         {GROUPS.map((g) => (
           <section key={g.title}>
-            <h3 className="mb-1.5 text-[11px] font-medium uppercase tracking-wide text-fog/40">{g.title}</h3>
+            <h3 className="mb-1.5 text-[11px] font-medium uppercase tracking-wide text-fog/40">{t(g.title)}</h3>
             <dl className="divide-y divide-line rounded-lg border border-line">
               {g.keys.map(([k, what]) => (
                 <div key={k} className="flex items-center justify-between gap-4 px-3 py-1.5 text-[13px]">
-                  <dt className="text-fog/70">{what}</dt>
+                  <dt className="text-fog/70">{t(what)}</dt>
                   <dd>
                     <kbd className="whitespace-nowrap rounded border border-line-strong bg-ink/60 px-1.5 py-0.5 font-sans text-[11px] text-fog/70">
                       {keysLabel(k, host)}

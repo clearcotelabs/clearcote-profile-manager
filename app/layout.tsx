@@ -1,6 +1,7 @@
 import type { Metadata, Viewport } from "next";
 import "./globals.css";
 import HelperGate from "@/components/HelperGate";
+import { I18nBoot } from "@/lib/i18n";
 
 /** The web version's address. Link previews and the canonical URL point here. */
 const SITE = "https://app.clearcotelabs.com";
@@ -63,6 +64,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
         <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: jsonLd }} />
       </head>
       <body className="font-sans antialiased bg-ink text-fog">
+        <I18nBoot />
         <HelperGate>{children}</HelperGate>
       </body>
     </html>

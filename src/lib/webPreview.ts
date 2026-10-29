@@ -7,12 +7,13 @@
 import type { ClearcoteApi } from "./ipc";
 import type { Profile } from "@/types/profile";
 import { newProfile } from "./newProfile";
+import { t, tx } from "./i18n";
 
 /** A result's code when the preview could not do it: the UI skips its own error for these. */
 export const NEEDS_HELPER = "NEEDS_HELPER";
 export const NEED_HELPER_EVENT = "clearcote:need-helper";
 /** The reason the account sign-in gives when it needs the helper: after pairing, it carries on. */
-export const ACCOUNT_WHY = "use your Clearcote account";
+export const ACCOUNT_WHY = tx("use your Clearcote account");
 
 export function askForHelper(why: string) {
   window.dispatchEvent(new CustomEvent(NEED_HELPER_EVENT, { detail: why }));
@@ -26,41 +27,41 @@ export function buildPreviewApi(mock: ClearcoteApi): ClearcoteApi {
     (why: string) =>
     async (..._a: unknown[]) => {
       askForHelper(why);
-      return { ok: false as const, error: "Connect this computer first.", code: NEEDS_HELPER };
+      return { ok: false as const, error: t("Connect this computer first."), code: NEEDS_HELPER };
     };
   return {
     ...mock,
     profiles: {
       ...mock.profiles,
-      openData: fail("open a profile's browser data"),
-      clearCache: fail("clear a profile's cache"),
+      openData: fail(tx("open a profile's browser data")),
+      clearCache: fail(tx("clear a profile's cache")),
     },
-    checkProfileGeo: fail("check where a proxy exits") as ClearcoteApi["checkProfileGeo"],
-    storage: { ...mock.storage, prefetch: fail("download the browser") },
+    checkProfileGeo: fail(tx("check where a proxy exits")) as ClearcoteApi["checkProfileGeo"],
+    storage: { ...mock.storage, prefetch: fail(tx("download the browser")) },
     launchTarget: async () => ({ mode: "preview" }),
-    launch: fail("launch a browser"),
+    launch: fail(tx("launch a browser")),
     cloud: {
       ...mock.cloud,
-      start: fail("run a profile in the cloud") as ClearcoteApi["cloud"]["start"],
-      account: fail("check your API key"),
+      start: fail(tx("run a profile in the cloud")) as ClearcoteApi["cloud"]["start"],
+      account: fail(tx("check your API key")),
     },
     // Keys never go into this browser's storage: settings are saved on the computer.
     settings: {
       get: mock.settings.get,
       set: async () => {
-        askForHelper("save settings");
+        askForHelper(tx("save settings"));
         return mock.settings.get();
       },
     },
-    license: { check: fail("check your licence"), loginStart: fail(ACCOUNT_WHY), loginPoll: fail(ACCOUNT_WHY) as never },
+    license: { check: fail(tx("check your licence")), loginStart: fail(ACCOUNT_WHY), loginPoll: fail(ACCOUNT_WHY) as never },
     pickBinary: async () => {
-      askForHelper("choose a browser");
+      askForHelper(tx("choose a browser"));
       return null;
     },
-    geoCheck: fail("check where a proxy exits"),
-    proxyCheck: fail("check a proxy"),
-    importProfiles: fail("import profiles"),
-    fp: { ...mock.fp, import: fail("import a fingerprint"), use: fail("use a library fingerprint") },
+    geoCheck: fail(tx("check where a proxy exits")),
+    proxyCheck: fail(tx("check a proxy")),
+    importProfiles: fail(tx("import profiles")),
+    fp: { ...mock.fp, import: fail(tx("import a fingerprint")), use: fail(tx("use a library fingerprint")) },
   };
 }
 
@@ -92,9 +93,9 @@ export function seedExamples(profilesKey: string) {
     const have = JSON.parse(localStorage.getItem(profilesKey) || "[]") as Profile[];
     if (!have.length) {
       const list = [
-        example("shop", "Online shop — seller account", "windows", { group: "Shops", notes: "An example. Launch it to see a real browser start on your computer." }),
-        example("ads", "Ads check — Germany", "windows", { group: "Marketing", timezone: "Europe/Berlin", acceptLanguage: "de-DE,de;q=0.9,en;q=0.8" }),
-        example("research", "Research", "macos", { group: "Research" }),
+        example("shop", t("Online shop — seller account"), "windows", { group: t("Shops"), notes: t("An example. Launch it to see a real browser start on your computer.") }),
+        example("ads", t("Ads check — Germany"), "windows", { group: t("Marketing"), timezone: "Europe/Berlin", acceptLanguage: "de-DE,de;q=0.9,en;q=0.8" }),
+        example("research", t("Research"), "macos", { group: t("Research") }),
       ];
       localStorage.setItem(profilesKey, JSON.stringify(list));
     }

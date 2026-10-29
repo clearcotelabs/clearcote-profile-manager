@@ -7,6 +7,7 @@ import { useId, useRef, useState } from "react";
 import Dialog, { DialogHeader } from "./Dialog";
 import { describeTemplate, findTemplateByName, suggestTemplateName, type ProfileTemplate } from "@/lib/templates";
 import type { Profile } from "@/types/profile";
+import { t, tRich } from "@/lib/i18n";
 
 const input =
   "w-full rounded-lg border border-line bg-ink/70 px-3 py-2 text-sm text-fog outline-none placeholder:text-fog/30 focus:border-accent/60 focus:ring-1 focus:ring-accent/40";
@@ -78,7 +79,7 @@ export function SaveTemplateDialog({
   const [proxy, setProxy] = useState<ProfileTemplate["proxy"]>(existing?.proxy ?? "ask");
   const [gpu, setGpu] = useState<ProfileTemplate["gpu"]>(existing?.gpu ?? "keep");
   const [busy, setBusy] = useState(false);
-  const gpuName = profile.gpuRenderer?.replace(/^ANGLE \([^,]*,\s*/, "").replace(/\s*(Direct3D|\(0x).*$/, "") || "Persona default";
+  const gpuName = profile.gpuRenderer?.replace(/^ANGLE \([^,]*,\s*/, "").replace(/\s*(Direct3D|\(0x).*$/, "") || t("Persona default");
 
   async function save() {
     if (!name.trim()) return;
@@ -92,13 +93,15 @@ export function SaveTemplateDialog({
 
   return (
     <Dialog onClose={onClose} labelledBy={titleId} className="max-w-xl" initialFocus={nameRef}>
-      <DialogHeader id={titleId} title="Save as template" onClose={onClose} />
+      <DialogHeader id={titleId} title={t("Save as template")} onClose={onClose} />
       <div className="min-h-0 flex-1 overflow-y-auto px-5 py-4" data-save-template="1">
         <p className="text-xs leading-relaxed text-fog/55">
-          New profiles copy the settings of “{profile.name || profile.id}”. Each one gets its own new seed and empty browser data.
+          {t("New profiles copy the settings of “{name}”. Each one gets its own new seed and empty browser data.", {
+            name: profile.name || profile.id,
+          })}
         </p>
         <label htmlFor={nameId} className={label + " mt-4"}>
-          Template name
+          {t("Template name")}
         </label>
         <input
           id={nameId}
@@ -112,16 +115,16 @@ export function SaveTemplateDialog({
         />
         <p className="mt-1 text-[11px] text-fog/40">
           {existing
-            ? `Replaces the template “${existing.name}” (its use count stays).`
-            : `New profiles are named ${name.trim() || "…"} 1, ${name.trim() || "…"} 2, …`}
+            ? t("Replaces the template “{name}” (its use count stays).", { name: existing.name })
+            : t("New profiles are named {name} 1, {name} 2, …", { name: name.trim() || "…" })}
         </p>
         <Choice
-          legend="Proxy"
+          legend={t("Proxy")}
           value={proxy}
           onChange={setProxy}
           options={[
-            { value: "ask", title: "Ask each time", sub: "time zone and language follow it" },
-            { value: "keep", title: "Same proxy", sub: proxyLabel(profile.proxy) || "this profile has none" },
+            { value: "ask", title: t("Ask each time"), sub: t("time zone and language follow it") },
+            { value: "keep", title: t("Same proxy"), sub: proxyLabel(profile.proxy) || t("this profile has none") },
           ]}
         />
         <Choice
@@ -129,17 +132,17 @@ export function SaveTemplateDialog({
           value={gpu}
           onChange={setGpu}
           options={[
-            { value: "keep", title: "Same GPU", sub: gpuName },
-            { value: "fresh", title: "New random GPU", sub: "a model from this computer's maker" },
+            { value: "keep", title: t("Same GPU"), sub: gpuName },
+            { value: "fresh", title: t("New random GPU"), sub: t("a model from this computer's maker") },
           ]}
         />
       </div>
       <div className="flex flex-none items-center justify-end gap-2 border-t border-line bg-ink/40 px-5 py-2.5">
         <button className={btnGhost} onClick={onClose}>
-          Cancel
+          {t("Cancel")}
         </button>
         <button className={btnPrimary} disabled={!name.trim() || busy} onClick={save} data-save-template-confirm="1">
-          {existing ? "Replace template" : "Save template"}
+          {existing ? t("Replace template") : t("Save template")}
         </button>
       </div>
     </Dialog>
@@ -161,13 +164,13 @@ export function ManageTemplatesDialog({
   const names = rows.map((r) => r.name.trim().toLowerCase());
   const clash = names.some((n, i) => !n || names.indexOf(n) !== i);
   const changed = JSON.stringify(rows) !== JSON.stringify(templates);
-  const set = (id: string, patch: Partial<ProfileTemplate>) => setRows((r) => r.map((t) => (t.id === id ? { ...t, ...patch } : t)));
+  const set = (id: string, patch: Partial<ProfileTemplate>) => setRows((r) => r.map((tpl) => (tpl.id === id ? { ...tpl, ...patch } : tpl)));
 
   async function done() {
     if (!changed) return onClose();
     setBusy(true);
     try {
-      await onSave(rows.map((t) => ({ ...t, name: t.name.trim() })));
+      await onSave(rows.map((tpl) => ({ ...tpl, name: tpl.name.trim() })));
     } finally {
       setBusy(false);
     }
@@ -175,75 +178,76 @@ export function ManageTemplatesDialog({
 
   return (
     <Dialog onClose={onClose} labelledBy={titleId} className="max-h-[720px] max-w-2xl">
-      <DialogHeader id={titleId} title="Templates" onClose={onClose} />
+      <DialogHeader id={titleId} title={t("Templates")} onClose={onClose} />
       <div className="min-h-0 flex-1 overflow-y-auto px-5 py-4" data-manage-templates="1">
         {rows.length === 0 ? (
           <p className="text-sm text-fog/60">
-            No templates yet. Open the <span className="font-semibold text-fog">⋯</span> menu on any profile and choose{" "}
-            <span className="font-semibold text-fog">Save as template</span>.
+            {tRich("No templates yet. Open the <b>⋯</b> menu on any profile and choose <b>Save as template</b>.", {
+              b: (s) => <span className="font-semibold text-fog">{s}</span>,
+            })}
           </p>
         ) : (
           <>
             <p className="mb-3 text-xs text-fog/55">
-              To change a template&apos;s other settings, edit a profile and save it as a template again under the same name.
+              {t("To change a template's other settings, edit a profile and save it as a template again under the same name.")}
             </p>
             <ul className="flex flex-col gap-2">
-              {rows.map((t) => (
-                <li key={t.id} className="rounded-lg border border-line p-3" data-template-row={t.name}>
+              {rows.map((tpl) => (
+                <li key={tpl.id} className="rounded-lg border border-line p-3" data-template-row={tpl.name}>
                   <div className="grid grid-cols-1 gap-2 sm:grid-cols-[minmax(0,1.4fr)_minmax(0,1fr)_minmax(0,1fr)_auto]">
                     <input
-                      aria-label="Template name"
+                      aria-label={t("Template name")}
                       className={input}
-                      value={t.name}
-                      onChange={(e) => set(t.id, { name: e.target.value })}
+                      value={tpl.name}
+                      onChange={(e) => set(tpl.id, { name: e.target.value })}
                     />
                     <select
-                      aria-label="Proxy"
+                      aria-label={t("Proxy")}
                       className={input}
-                      value={t.proxy}
-                      onChange={(e) => set(t.id, { proxy: e.target.value as ProfileTemplate["proxy"] })}
-                      disabled={!t.base.proxy && t.proxy === "ask"}
-                      title={!t.base.proxy && t.proxy === "ask" ? "Saved without a proxy, so it can only ask" : undefined}
+                      value={tpl.proxy}
+                      onChange={(e) => set(tpl.id, { proxy: e.target.value as ProfileTemplate["proxy"] })}
+                      disabled={!tpl.base.proxy && tpl.proxy === "ask"}
+                      title={!tpl.base.proxy && tpl.proxy === "ask" ? t("Saved without a proxy, so it can only ask") : undefined}
                     >
-                      <option value="ask">Ask proxy</option>
-                      <option value="keep">Same proxy</option>
+                      <option value="ask">{t("Ask proxy")}</option>
+                      <option value="keep">{t("Same proxy")}</option>
                     </select>
                     <select
                       aria-label="GPU"
                       className={input}
-                      value={t.gpu}
-                      onChange={(e) => set(t.id, { gpu: e.target.value as ProfileTemplate["gpu"] })}
+                      value={tpl.gpu}
+                      onChange={(e) => set(tpl.id, { gpu: e.target.value as ProfileTemplate["gpu"] })}
                     >
-                      <option value="keep">Same GPU</option>
-                      <option value="fresh">New GPU</option>
+                      <option value="keep">{t("Same GPU")}</option>
+                      <option value="fresh">{t("New GPU")}</option>
                     </select>
                     <button
                       className="rounded-lg border border-danger/50 px-3 py-1.5 text-sm text-danger hover:bg-danger/10"
-                      onClick={() => setRows((r) => r.filter((x) => x.id !== t.id))}
+                      onClick={() => setRows((r) => r.filter((x) => x.id !== tpl.id))}
                     >
-                      Delete
+                      {t("Delete")}
                     </button>
                   </div>
                   <p className="mt-1.5 text-[11px] text-fog/40">
-                    {describeTemplate(t)}
-                    {t.sourceName ? ` · from “${t.sourceName}”` : ""}
-                    {t.base.platform ? ` · ${t.base.platform}` : ""}
+                    {t(describeTemplate(tpl))}
+                    {tpl.sourceName ? " · " + t("from “{name}”", { name: tpl.sourceName }) : ""}
+                    {tpl.base.platform ? ` · ${tpl.base.platform}` : ""}
                   </p>
                 </li>
               ))}
             </ul>
-            {clash && <p className="mt-2 text-xs text-warn">Every template needs its own name.</p>}
+            {clash && <p className="mt-2 text-xs text-warn">{t("Every template needs its own name.")}</p>}
           </>
         )}
       </div>
       <div className="flex flex-none items-center justify-end gap-2 border-t border-line bg-ink/40 px-5 py-2.5">
         {changed && (
           <button className={btnGhost} onClick={onClose}>
-            Cancel
+            {t("Cancel")}
           </button>
         )}
         <button className={btnPrimary} disabled={busy || clash} onClick={done} data-manage-done="1">
-          {changed ? "Save changes" : "Done"}
+          {changed ? t("Save changes") : t("Done")}
         </button>
       </div>
     </Dialog>

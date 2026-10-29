@@ -14,6 +14,7 @@ import type { Profile } from "@/types/profile";
 import { actionLabel, type LaunchNotice, type NoticeAction } from "@/lib/launchError";
 import { displayName, geoLabel, pinRefusedOnFree, proxySummary, relativeTime, versionInfo } from "@/lib/profileList";
 import Menu from "./Menu";
+import { t } from "@/lib/i18n";
 
 export interface CardProps {
   profile: Profile;
@@ -124,7 +125,14 @@ export default function ProfileCard(props: CardProps) {
     <article
       data-card={p.id}
       tabIndex={0}
-      aria-label={`${name}${running ? " (running)" : inCloud ? " (running in the cloud)" : ""}${props.selected ? " (selected)" : ""}`}
+      aria-label={(() => {
+        const base = running
+          ? t("{name} (running)", { name })
+          : inCloud
+            ? t("{name} (running in the cloud)", { name })
+            : name;
+        return props.selected ? t("{label} (selected)", { label: base }) : base;
+      })()}
       onKeyDown={onKeyDown}
       className={
         // focus-within:z-20 — an open ⋯ menu holds focus, and without raising its card the NEXT card
@@ -141,7 +149,7 @@ export default function ProfileCard(props: CardProps) {
       <div className="flex items-start justify-between gap-2">
         <input
           type="checkbox"
-          aria-label={`Select ${name}`}
+          aria-label={t("Select {name}", { name })}
           checked={props.selected}
           onChange={() => {}}
           onClick={(e) => props.onToggleSelect({ range: e.shiftKey })}
@@ -157,30 +165,30 @@ export default function ProfileCard(props: CardProps) {
           <div className="mt-0.5 flex min-w-0 items-center gap-1.5 text-[11px] text-fog/40">
             <span
               className="shrink-0"
-              title={p.lastLaunchedAt ? `Last launched ${new Date(p.lastLaunchedAt).toLocaleString()}` : undefined}
+              title={p.lastLaunchedAt ? t("Last launched {when}", { when: new Date(p.lastLaunchedAt).toLocaleString() }) : undefined}
             >
-              {launched ? `Launched ${launched}` : "Never launched"}
+              {launched ? t("Launched {when}", { when: launched }) : t("Never launched")}
             </span>
             <span aria-hidden className="text-fog/20">
               ·
             </span>
-            <span className="truncate font-mono" title={`Fingerprint seed ${p.fingerprint}`}>
+            <span className="truncate font-mono" title={t("Fingerprint seed {seed}", { seed: p.fingerprint })}>
               {p.fingerprint}
             </span>
           </div>
         </div>
         {running && (
           <span className="inline-flex shrink-0 items-center gap-1 rounded-full border border-accent/30 bg-accent/10 px-2 py-0.5 text-[10px] text-accent">
-            <span className="h-1.5 w-1.5 animate-pulse rounded-full bg-accent" /> running
+            <span className="h-1.5 w-1.5 animate-pulse rounded-full bg-accent" /> {t("running")}
           </span>
         )}
         {inCloud && (
           <span
             data-cloud-badge
             className="inline-flex shrink-0 items-center gap-1 rounded-full border border-iris/30 bg-iris/10 px-2 py-0.5 text-[10px] text-iris"
-            title="Running on Clearcote's servers"
+            title={t("Running on Clearcote's servers")}
           >
-            <CloudGlyph className="h-3 w-3" /> {cloud!.status === "running" ? "cloud" : cloud!.status}
+            <CloudGlyph className="h-3 w-3" /> {cloud!.status === "running" ? t("cloud") : cloud!.status}
           </span>
         )}
       </div>
@@ -190,46 +198,46 @@ export default function ProfileCard(props: CardProps) {
           tone={pinWarn ? "warn" : version.kind === "latest" ? "plain" : "iris"}
           title={
             pinWarn
-              ? "The free plan only runs the latest build, so this pin will be refused. Change it to Latest, or use a Pro key."
+              ? t("The free plan only runs the latest build, so this pin will be refused. Change it to Latest, or use a Pro key.")
               : version.kind === "latest"
-                ? "Launches the newest build for your licence."
-                : "Launches this build rather than the latest."
+                ? t("Launches the newest build for your licence.")
+                : t("Launches this build rather than the latest.")
           }
         >
           {pinWarn ? "▲ " : ""}
-          {version.label}
+          {t(version.label)}
         </Chip>
         {geo ? (
-          <Chip tone="accent" title={geo.title}>
+          <Chip tone="accent" title={t(geo.title)}>
             {geo.text}
           </Chip>
         ) : (
-          proxy && <Chip title="Proxy (credentials hidden). Check proxy location in the ⋯ menu shows where it exits.">{proxy}</Chip>
+          proxy && <Chip title={t("Proxy (credentials hidden). Check proxy location in the ⋯ menu shows where it exits.")}>{proxy}</Chip>
         )}
         {p.platform && <Chip>{p.platform}</Chip>}
         {p.timezone && <Chip>{p.timezone}</Chip>}
         {p.geoip && (
-          <Chip tone="accent" title="Timezone, language and location follow the proxy's exit region">
+          <Chip tone="accent" title={t("Timezone, language and location follow the proxy's exit region")}>
             geoip
           </Chip>
         )}
         {p.fingerprintProfile && (
-          <Chip tone="accent" title={p.fingerprintProfileMeta?.label || "Captured fingerprint"}>
-            captured fp
+          <Chip tone="accent" title={p.fingerprintProfileMeta?.label || t("Captured fingerprint")}>
+            {t("captured fp")}
           </Chip>
         )}
-        {p.fingerprintNoise === false && <Chip>noise off</Chip>}
-        {p.disableGpuFingerprint && <Chip>real gpu</Chip>}
-        {p.canvasBridgeUrl && <Chip tone="accent">bridge</Chip>}
-        {(p.tags || []).map((t) => (
+        {p.fingerprintNoise === false && <Chip>{t("noise off")}</Chip>}
+        {p.disableGpuFingerprint && <Chip>{t("real gpu")}</Chip>}
+        {p.canvasBridgeUrl && <Chip tone="accent">{t("bridge")}</Chip>}
+        {(p.tags || []).map((tag) => (
           <button
-            key={t}
+            key={tag}
             type="button"
-            onClick={() => props.onFilterTag(t)}
-            title={`Show only profiles tagged #${t}`}
+            onClick={() => props.onFilterTag(tag)}
+            title={t("Show only profiles tagged #{tag}", { tag })}
             className={`max-w-full truncate rounded-md px-1.5 py-0.5 text-[10px] hover:ring-1 hover:ring-accent/50 ${TONES.plain}`}
           >
-            #{t}
+            #{tag}
           </button>
         ))}
       </div>
@@ -241,8 +249,8 @@ export default function ProfileCard(props: CardProps) {
       )}
 
       {inCloud && (
-        <p data-cloud-usage className="mt-3 truncate text-[11px] text-fog/55" title={`Cloud session ${cloud!.sid}`}>
-          <span className="text-iris">●</span> {cloud!.exit ?? "cloud"} · {formatBytes(cloud!.bytes)} · {formatEur(cloud!.costEur)}
+        <p data-cloud-usage className="mt-3 truncate text-[11px] text-fog/55" title={t("Cloud session {sid}", { sid: cloud!.sid })}>
+          <span className="text-iris">●</span> {cloud!.exit ?? t("cloud")} · {formatBytes(cloud!.bytes)} · {formatEur(cloud!.costEur)}
           {cloud!.seconds ? ` · ${formatDuration(cloud!.seconds)}` : ""}
         </p>
       )}
@@ -255,21 +263,21 @@ export default function ProfileCard(props: CardProps) {
               onClick={props.onCloudOpen}
               disabled={cloud!.status !== "running"}
             >
-              Open window
+              {t("Open window")}
             </button>
             <button
               className="rounded-lg border border-line-strong px-3 py-1.5 text-xs font-semibold text-fog hover:bg-elevate disabled:opacity-50"
               onClick={props.onCloudStop}
               disabled={cloud!.status === "stopping"}
             >
-              {cloud!.status === "stopping" ? "Stopping…" : "Stop"}
+              {cloud!.status === "stopping" ? t("Stopping…") : t("Stop")}
             </button>
           </>
         ) : cloudStarting ? (
           <div className="min-w-0 flex-1" role="status" aria-live="polite">
             <div className="rounded-lg bg-elevate px-3 py-1.5 text-center text-xs font-semibold text-fog/70">
               <span className="mr-1.5 inline-block h-1.5 w-1.5 animate-pulse rounded-full bg-iris align-middle" />
-              Starting in the cloud…
+              {t("Starting in the cloud…")}
             </div>
           </div>
         ) : running ? (
@@ -277,14 +285,14 @@ export default function ProfileCard(props: CardProps) {
             className="flex-1 rounded-lg border border-line-strong px-3 py-1.5 text-xs font-semibold text-fog hover:bg-elevate"
             onClick={props.onStop}
           >
-            Stop
+            {t("Stop")}
           </button>
         ) : launching ? (
           <div className="min-w-0 flex-1" role="status" aria-live="polite">
             {download ? (
               <>
                 <div className="flex items-center justify-between gap-2 text-[11px] font-medium text-fog/70">
-                  <span className="truncate">Downloading build {download.version.split(".")[0]}…</span>
+                  <span className="truncate">{t("Downloading build {n}…", { n: download.version.split(".")[0] })}</span>
                   <span className="shrink-0 tabular-nums">
                     {download.pct}% · {download.seenMB}/{download.totalMB} MB
                   </span>
@@ -299,7 +307,7 @@ export default function ProfileCard(props: CardProps) {
             ) : (
               <div className="rounded-lg bg-elevate px-3 py-1.5 text-center text-xs font-semibold text-fog/70">
                 <span className="mr-1.5 inline-block h-1.5 w-1.5 animate-pulse rounded-full bg-accent align-middle" />
-                Launching…
+                {t("Launching…")}
               </div>
             )}
           </div>
@@ -309,54 +317,54 @@ export default function ProfileCard(props: CardProps) {
               className="flex-1 rounded-lg bg-sheen px-3 py-1.5 text-xs font-semibold text-[#07080a] hover:opacity-95"
               onClick={props.onLaunch}
             >
-              Launch
+              {t("Launch")}
             </button>
             <button
               className={`${btnGhost} inline-flex items-center gap-1.5`}
               onClick={props.onCloudStart}
-              title="Run this profile on Clearcote's servers instead of this PC. Billed per GB of traffic."
-              aria-label={`Run ${name} in the cloud`}
+              title={t("Run this profile on Clearcote's servers instead of this PC. Billed per GB of traffic.")}
+              aria-label={t("Run {name} in the cloud", { name })}
             >
-              <CloudGlyph /> Cloud
+              <CloudGlyph /> {t("Cloud")}
             </button>
           </>
         )}
         {!inCloud && (
           <button className={btnGhost} onClick={() => props.onEdit()}>
-            Edit
+            {t("Edit")}
           </button>
         )}
         <Menu
-          label={`More actions for ${name}`}
+          label={t("More actions for {name}", { name })}
           items={[
             ...(inCloud
               ? [
-                  { label: "Open cloud window", onSelect: props.onCloudOpen },
-                  { label: "Stop in the cloud", onSelect: props.onCloudStop },
-                  { label: "Edit", onSelect: () => props.onEdit() },
+                  { label: t("Open cloud window"), onSelect: props.onCloudOpen },
+                  { label: t("Stop in the cloud"), onSelect: props.onCloudStop },
+                  { label: t("Edit"), onSelect: () => props.onEdit() },
                   "separator" as const,
                 ]
               : !running && !launching && !cloudStarting
-                ? [{ label: "Run in the cloud", onSelect: props.onCloudStart }, "separator" as const]
+                ? [{ label: t("Run in the cloud"), onSelect: props.onCloudStart }, "separator" as const]
                 : []),
-            { label: "Duplicate", onSelect: props.onDuplicate },
-            { label: "Save as template…", onSelect: props.onSaveTemplate },
-            { label: "Export…", onSelect: props.onExport },
-            { label: "Open data folder", onSelect: props.onOpenData },
-            ...(p.proxy ? [{ label: "Check proxy location", onSelect: props.onCheckGeo }] : []),
+            { label: t("Duplicate"), onSelect: props.onDuplicate },
+            { label: t("Save as template…"), onSelect: props.onSaveTemplate },
+            { label: t("Export…"), onSelect: props.onExport },
+            { label: t("Open data folder"), onSelect: props.onOpenData },
+            ...(p.proxy ? [{ label: t("Check proxy location"), onSelect: props.onCheckGeo }] : []),
             {
-              label: "Clear cache (keeps logins)…",
+              label: t("Clear cache (keeps logins)…"),
               onSelect: props.onClearCache,
               disabled: running,
-              hint: running ? "Stop it first — the browser has its cache open." : undefined,
+              hint: running ? t("Stop it first — the browser has its cache open.") : undefined,
             },
             "separator",
             {
-              label: "Delete…",
+              label: t("Delete…"),
               onSelect: props.onDelete,
               danger: true,
               disabled: busy,
-              hint: running ? "Stop it first — its browser has the data open." : busy ? "Stop its cloud browser first." : undefined,
+              hint: running ? t("Stop it first — its browser has the data open.") : busy ? t("Stop its cloud browser first.") : undefined,
               shortcut: "Del",
             },
           ]}
@@ -376,10 +384,10 @@ export default function ProfileCard(props: CardProps) {
               {notice.tone === "error" ? "●" : "▲"}
             </span>
             <div className="min-w-0 flex-1">
-              <p className={"font-medium " + (notice.tone === "error" ? "text-danger" : "text-warn")}>{notice.title}</p>
+              <p className={"font-medium " + (notice.tone === "error" ? "text-danger" : "text-warn")}>{t(notice.title)}</p>
               {notice.lines.map((l, i) => (
                 <p key={i} className="mt-1 break-words leading-relaxed text-fog/60">
-                  {l}
+                  {t(l)}
                 </p>
               ))}
               {(notice.action || notice.raw) && (
@@ -389,7 +397,7 @@ export default function ProfileCard(props: CardProps) {
                       className="rounded-md border border-line-strong bg-surface px-2 py-1 text-[11px] font-medium text-fog/85 hover:bg-elevate"
                       onClick={() => props.onNoticeAction(notice.action!)}
                     >
-                      {actionLabel(notice.action)}
+                      {t(actionLabel(notice.action))}
                     </button>
                   )}
                   {notice.raw && (
@@ -397,7 +405,7 @@ export default function ProfileCard(props: CardProps) {
                       className="rounded-md px-2 py-1 text-[11px] text-fog/45 hover:bg-elevate hover:text-fog/80"
                       onClick={() => props.onCopy(notice.raw!)}
                     >
-                      Copy details
+                      {t("Copy details")}
                     </button>
                   )}
                 </div>
@@ -406,7 +414,7 @@ export default function ProfileCard(props: CardProps) {
             <button
               className="-mr-1 shrink-0 rounded px-1 text-fog/35 hover:text-fog"
               onClick={props.onDismissNotice}
-              aria-label="Dismiss"
+              aria-label={t("Dismiss")}
             >
               ✕
             </button>

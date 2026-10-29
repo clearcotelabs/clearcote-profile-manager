@@ -1,6 +1,7 @@
 "use client";
 
 import { needsHelper, ACCOUNT_WHY } from "@/lib/webPreview";
+import { t, tRich, useLocale } from "@/lib/i18n";
 import { takeJustPaired } from "@/lib/helperBridge";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import type { Profile } from "@/types/profile";
@@ -112,8 +113,8 @@ const saveList = (key: string, v: string[]) => {
 
 /** Typing in a field must never trigger a single-key shortcut. A checkbox, radio or button is not
  *  typing — counting every <input> left Esc and Ctrl+A dead after ticking a card's checkbox. */
-function isTyping(t: EventTarget | null): boolean {
-  const el = t as HTMLElement | null;
+function isTyping(target: EventTarget | null): boolean {
+  const el = target as HTMLElement | null;
   if (!el) return false;
   if (el.isContentEditable || el.tagName === "TEXTAREA" || el.tagName === "SELECT") return true;
   if (el.tagName !== "INPUT") return false;
@@ -131,6 +132,7 @@ interface Toast {
 type PromptKind = { kind: "set-group" } | { kind: "add-tag" } | { kind: "rename-group"; key: string; name: string };
 
 export default function Page() {
+  useLocale();
   return (
     <ConfirmProvider>
       <Manager />
@@ -142,6 +144,7 @@ export default function Page() {
 const CLOUD_TOPUP_URL = "https://www.clearcotelabs.com/dashboard/browsers";
 
 function Manager() {
+  useLocale();
   const confirm = useConfirm();
   const [profiles, setProfiles] = useState<Profile[]>([]);
   // The OS, read after mount: the page is prerendered, and a label that differed between the
@@ -254,11 +257,11 @@ function Manager() {
       /* ignore */
     }
   }, [theme, mounted]);
-  const toggleTheme = () => setTheme((t) => (t === "dark" ? "light" : "dark"));
+  const toggleTheme = () => setTheme((th) => (th === "dark" ? "light" : "dark"));
 
   useEffect(() => {
-    const t = setInterval(async () => setRunning(await api.running()), 2500);
-    return () => clearInterval(t);
+    const iv = setInterval(async () => setRunning(await api.running()), 2500);
+    return () => clearInterval(iv);
   }, []);
 
   useEffect(() => {
@@ -314,8 +317,8 @@ function Manager() {
   }, []);
   useEffect(() => {
     if (!toast || toast.tone === "error") return;
-    const t = setTimeout(() => setToast((cur) => (cur?.id === toast.id ? null : cur)), toast.action ? 8000 : 3500);
-    return () => clearTimeout(t);
+    const tm = setTimeout(() => setToast((cur) => (cur?.id === toast.id ? null : cur)), toast.action ? 8000 : 3500);
+    return () => clearTimeout(tm);
   }, [toast]);
 
   // ── Editor ────────────────────────────────────────────────────────────────
@@ -335,10 +338,10 @@ function Manager() {
   async function closeEditor() {
     if (editorDirty) {
       const ok = await confirm({
-        title: "Discard your changes?",
-        body: `“${editing?.name?.trim() || "This profile"}” has changes that are not saved.`,
-        confirmLabel: "Discard",
-        cancelLabel: "Keep editing",
+        title: t("Discard your changes?"),
+        body: t("“{name}” has changes that are not saved.", { name: editing?.name?.trim() || t("This profile") }),
+        confirmLabel: t("Discard"),
+        cancelLabel: t("Keep editing"),
         tone: "danger",
       });
       if (!ok) return;
@@ -364,7 +367,7 @@ function Manager() {
     closeEditorNow();
     await refresh();
     if (from) await saveTemplates(markUsed(templates, from.id, new Date().toISOString()));
-    notify(`Saved “${displayName(saved)}”.`);
+    notify(t("Saved “{name}”.", { name: displayName(saved) }));
     return saved;
   }
 
@@ -381,21 +384,25 @@ function Manager() {
   }
   async function saveAsTemplate(p: Profile, choice: { name: string; proxy: ProfileTemplate["proxy"]; gpu: ProfileTemplate["gpu"] }) {
     const now = new Date().toISOString();
-    const replacing = templates.some((t) => t.name.trim().toLowerCase() === choice.name.trim().toLowerCase());
+    const replacing = templates.some((tpl) => tpl.name.trim().toLowerCase() === choice.name.trim().toLowerCase());
     await saveTemplates(upsertTemplate(templates, templateFromProfile(p, choice, now, `tpl-${randomSeed()}`), now));
     setSaveTplFor(null);
-    notify(`${replacing ? "Replaced" : "Saved"} the template “${choice.name.trim()}”. Use it from the ▾ next to New profile.`);
+    notify(
+      replacing
+        ? t("Replaced the template “{name}”. Use it from the ▾ next to New profile.", { name: choice.name.trim() })
+        : t("Saved the template “{name}”. Use it from the ▾ next to New profile.", { name: choice.name.trim() }),
+    );
   }
   /** Open the editor on a new profile made from a template — on the proxy, when it asks for one. */
-  function newFromTemplate(t: ProfileTemplate) {
-    const p = profileFromTemplate(t, {
+  function newFromTemplate(tpl: ProfileTemplate) {
+    const p = profileFromTemplate(tpl, {
       seed: randomSeed(),
       now: new Date().toISOString(),
-      number: nextNumber(t, profiles.map((x) => x.name)),
+      number: nextNumber(tpl, profiles.map((x) => x.name)),
       hostVendor,
     });
-    openEditor(p, t.proxy === "ask" ? "proxy" : undefined);
-    setEditingFrom(t);
+    openEditor(p, tpl.proxy === "ask" ? "proxy" : undefined);
+    setEditingFrom(tpl);
   }
 
   /** "Create & launch": the saved copy is what launches, as the web version's helper only launches
@@ -420,14 +427,16 @@ function Manager() {
   // ── Delete (recoverable) ──────────────────────────────────────────────────
   async function remove(p: Profile) {
     const ok = await confirm({
-      title: `Delete “${displayName(p)}”?`,
+      title: t("Delete “{name}”?", { name: displayName(p) }),
       body: (
         <>
-          This removes the profile <span className="text-fog/80">and its saved browser data</span> — cookies, logins,
-          history and extensions. You can undo it for a few seconds.
+          {tRich(
+            "This removes the profile <em>and its saved browser data</em> — cookies, logins, history and extensions. You can undo it for a few seconds.",
+            { em: (s) => <span className="text-fog/80">{s}</span> },
+          )}
         </>
       ),
-      confirmLabel: "Delete",
+      confirmLabel: t("Delete"),
       tone: "danger",
     });
     if (!ok) return;
@@ -443,9 +452,9 @@ function Manager() {
     forget([p.id]);
     await refresh();
     if (next) requestAnimationFrame(() => document.querySelector<HTMLElement>(`[data-card="${CSS.escape(next)}"]`)?.focus());
-    notify(`Deleted “${displayName(p)}”.`, {
+    notify(t("Deleted “{name}”.", { name: displayName(p) }), {
       action: {
-        label: "Undo",
+        label: t("Undo"),
         run: async () => {
           const back = await api.profiles.restore(r.trashId);
           if (!back.ok) {
@@ -453,7 +462,7 @@ function Manager() {
             return;
           }
           await refresh();
-          notify(`Restored “${displayName(back.profile)}”.`);
+          notify(t("Restored “{name}”.", { name: displayName(back.profile) }));
         },
       },
     });
@@ -535,7 +544,7 @@ function Manager() {
       if (r.ok) {
         await refresh();
         if (r.warnings.length) setNotices((n) => ({ ...n, [p.id]: describeLaunchWarnings(r.warnings) }));
-        notify(`“${displayName(p)}” is running in the cloud.`);
+        notify(t("“{name}” is running in the cloud.", { name: displayName(p) }));
       } else if (!needsHelper(r)) {
         const n = describeCloudError(r);
         if (n) setNotices((all) => ({ ...all, [p.id]: n }));
@@ -547,11 +556,11 @@ function Manager() {
   async function cloudStop(p: Profile) {
     const r = await api.cloud.stop(p.id);
     setCloudSessions(await api.cloud.list());
-    if (r.ok) notify(`Stopping “${displayName(p)}” in the cloud.`);
-    else notify(r.error || "It could not be stopped. Try again.", { tone: "error" });
+    if (r.ok) notify(t("Stopping “{name}” in the cloud.", { name: displayName(p) }));
+    else notify(r.error || t("It could not be stopped. Try again."), { tone: "error" });
   }
   async function cloudOpen(p: Profile) {
-    if (!(await api.cloud.open(p.id))) notify("It is no longer running in the cloud.", { tone: "error" });
+    if (!(await api.cloud.open(p.id))) notify(t("It is no longer running in the cloud."), { tone: "error" });
   }
 
   async function noticeAction(p: Profile, a: NoticeAction) {
@@ -569,31 +578,36 @@ function Manager() {
   async function copy(text: string) {
     try {
       await navigator.clipboard.writeText(text);
-      notify("Copied to the clipboard.");
+      notify(t("Copied to the clipboard."));
     } catch {
-      notify("Could not copy to the clipboard.", { tone: "error" });
+      notify(t("Could not copy to the clipboard."), { tone: "error" });
     }
   }
 
   async function checkGeo(p: Profile) {
-    notify(`Checking where “${displayName(p)}” exits…`);
+    notify(t("Checking where “{name}” exits…", { name: displayName(p) }));
     const r = await api.checkProfileGeo(p.id);
     if (r.ok) {
       await refresh();
-      notify(`“${displayName(p)}” exits in ${[r.city, r.country].filter(Boolean).join(", ") || "an unknown place"}${r.ip ? ` as ${r.ip}` : ""}.`);
-    } else if (!needsHelper(r)) notify(r.error || "The proxy location could not be checked.", { tone: "error" });
+      const place = [r.city, r.country].filter(Boolean).join(", ") || t("an unknown place");
+      notify(
+        r.ip
+          ? t("“{name}” exits in {place} as {ip}.", { name: displayName(p), place, ip: r.ip })
+          : t("“{name}” exits in {place}.", { name: displayName(p), place }),
+      );
+    } else if (!needsHelper(r)) notify(r.error || t("The proxy location could not be checked."), { tone: "error" });
   }
 
   async function clearCache(p: Profile) {
     const ok = await confirm({
-      title: `Clear the cache of “${displayName(p)}”?`,
-      body: "Cached pages, scripts and shaders are removed; they rebuild as you browse. Cookies, logins, saved site data, history and extensions stay.",
-      confirmLabel: "Clear cache",
+      title: t("Clear the cache of “{name}”?", { name: displayName(p) }),
+      body: t("Cached pages, scripts and shaders are removed; they rebuild as you browse. Cookies, logins, saved site data, history and extensions stay."),
+      confirmLabel: t("Clear cache"),
     });
     if (!ok) return;
     const r = await api.profiles.clearCache(p.id);
-    if (r.ok) notify(`Cleared ${fmtSize(r.freedBytes ?? 0)} of cache from “${displayName(p)}”.`);
-    else notify(r.error || "Could not clear the cache.", { tone: "error" });
+    if (r.ok) notify(t("Cleared {size} of cache from “{name}”.", { size: fmtSize(r.freedBytes ?? 0), name: displayName(p) }));
+    else notify(r.error || t("Could not clear the cache."), { tone: "error" });
   }
 
   async function pickBinary() {
@@ -602,7 +616,7 @@ function Manager() {
       setBinary(b);
       setSettings(await api.settings.get());
       refreshTarget();
-      notify("Browser binary set.");
+      notify(t("Browser binary set."));
     }
   }
 
@@ -617,9 +631,15 @@ function Manager() {
     setExportReq(null);
     const r = await api.exportProfiles({ ids: req?.ids, includeSecrets });
     if (r.ok) {
+      const n = r.count ?? 0;
       notify(
-        `Exported ${r.count} profile${r.count === 1 ? "" : "s"}` +
-          (includeSecrets ? " — with proxy passwords and encryption keys. Keep the file private." : " — proxy passwords and encryption keys left out."),
+        includeSecrets
+          ? n === 1
+            ? t("Exported 1 profile — with proxy passwords and encryption keys. Keep the file private.")
+            : t("Exported {n} profiles — with proxy passwords and encryption keys. Keep the file private.", { n })
+          : n === 1
+            ? t("Exported 1 profile — proxy passwords and encryption keys left out.")
+            : t("Exported {n} profiles — proxy passwords and encryption keys left out.", { n }),
       );
     }
   }
@@ -627,12 +647,18 @@ function Manager() {
     const r = await api.importProfiles();
     if (r.ok) {
       await refresh();
+      const n = r.count ?? 0;
       notify(
-        `Imported ${r.count} profile${r.count === 1 ? "" : "s"}` +
-          (r.renamed ? ` — ${r.renamed} under a new id, because theirs was already taken.` : "."),
+        r.renamed
+          ? n === 1
+            ? t("Imported 1 profile — {renamed} under a new id, because theirs was already taken.", { renamed: r.renamed })
+            : t("Imported {n} profiles — {renamed} under a new id, because theirs was already taken.", { n, renamed: r.renamed })
+          : n === 1
+            ? t("Imported 1 profile.")
+            : t("Imported {n} profiles.", { n }),
       );
     } else if (r.error && !needsHelper(r)) {
-      notify(`Import failed: ${r.error}`, { tone: "error" });
+      notify(t("Import failed: {error}", { error: r.error }), { tone: "error" });
     }
   }
   async function createMany(list: Profile[], template?: ProfileTemplate) {
@@ -640,7 +666,16 @@ function Manager() {
     setBulkCreateOpen(false);
     await refresh();
     if (template && list.length) await saveTemplates(markUsed(templates, template.id, new Date().toISOString(), list.length));
-    notify(`Created ${list.length} profile${list.length === 1 ? "" : "s"}${template ? ` from “${template.name}”` : ""}.`);
+    const n = list.length;
+    notify(
+      template
+        ? n === 1
+          ? t("Created 1 profile from “{template}”.", { template: template.name })
+          : t("Created {n} profiles from “{template}”.", { n, template: template.name })
+        : n === 1
+          ? t("Created 1 profile.")
+          : t("Created {n} profiles.", { n }),
+    );
   }
   async function openData(p: Profile) {
     const r = await api.profiles.openData(p.id);
@@ -655,7 +690,7 @@ function Manager() {
     try {
       const r = await api.update.download(update);
       if (r.ok && r.path) setUpdFile({ path: r.path, verified: !!r.verified });
-      else setUpdErr(r.error || "Download failed.");
+      else setUpdErr(r.error || t("Download failed."));
     } finally {
       setUpdBusy(false);
       setUpdDl(null);
@@ -740,7 +775,15 @@ function Manager() {
     });
     if (groupFilter?.key === key) setGroupFilter(newKey ? { key: newKey, name: to } : null);
     await refresh();
-    notify(to ? `Renamed the group to “${to}” (${n} profile${n === 1 ? "" : "s"}).` : `Ungrouped ${n} profile${n === 1 ? "" : "s"}.`);
+    notify(
+      to
+        ? n === 1
+          ? t("Renamed the group to “{name}” (1 profile).", { name: to })
+          : t("Renamed the group to “{name}” ({n} profiles).", { name: to, n })
+        : n === 1
+          ? t("Ungrouped 1 profile.")
+          : t("Ungrouped {n} profiles.", { n }),
+    );
   }
 
   // ── Selection + bulk actions ──────────────────────────────────────────────
@@ -762,11 +805,11 @@ function Manager() {
       const r = await launch(p);
       if (r.ok) done++;
       else if (r.code === "CONCURRENCY_LIMIT_EXCEEDED") {
-        notify(`Launched ${done}, then reached your plan's browser limit.`, { tone: "error" });
+        notify(t("Launched {n}, then reached your plan's browser limit.", { n: done }), { tone: "error" });
         return;
       }
     }
-    notify(`Launched ${done} profile${done === 1 ? "" : "s"}.`);
+    notify(done === 1 ? t("Launched 1 profile.") : t("Launched {n} profiles.", { n: done }));
   }
   async function bulkStop() {
     const ids = selectedProfiles.map((p) => p.id).filter((id) => running.includes(id));
@@ -775,25 +818,29 @@ function Manager() {
     await refresh();
     setCloudSessions(await api.cloud.list());
     ids.push(...inCloud);
-    notify(`Stopped ${ids.length} browser${ids.length === 1 ? "" : "s"}.`);
+    notify(ids.length === 1 ? t("Stopped 1 browser.") : t("Stopped {n} browsers.", { n: ids.length }));
   }
   async function bulkDelete() {
     const deletable = selectedProfiles.filter((p) => !active.includes(p.id));
     const skipped = selectedProfiles.length - deletable.length;
     if (!deletable.length) {
-      notify("Stop their browsers first — running profiles can't be deleted.", { tone: "error" });
+      notify(t("Stop their browsers first — running profiles can't be deleted."), { tone: "error" });
       return;
     }
     const ok = await confirm({
-      title: `Delete ${deletable.length} profile${deletable.length === 1 ? "" : "s"}?`,
+      title: deletable.length === 1 ? t("Delete 1 profile?") : t("Delete {n} profiles?", { n: deletable.length }),
       body: (
         <>
-          This removes them <span className="text-fog/80">and their saved browser data</span> — cookies, logins, history and
-          extensions. You can undo it for a few seconds.
-          {skipped ? ` ${skipped} running profile${skipped === 1 ? " is" : "s are"} left alone.` : ""}
+          {tRich(
+            "This removes them <em>and their saved browser data</em> — cookies, logins, history and extensions. You can undo it for a few seconds.",
+            { em: (s) => <span className="text-fog/80">{s}</span> },
+          )}
+          {skipped
+            ? " " + (skipped === 1 ? t("1 running profile is left alone.") : t("{n} running profiles are left alone.", { n: skipped }))
+            : ""}
         </>
       ),
-      confirmLabel: "Delete",
+      confirmLabel: t("Delete"),
       tone: "danger",
     });
     if (!ok) return;
@@ -804,14 +851,14 @@ function Manager() {
     }
     forget(deletable.map((p) => p.id));
     await refresh();
-    notify(`Deleted ${trashed.length} profile${trashed.length === 1 ? "" : "s"}.`, {
+    notify(trashed.length === 1 ? t("Deleted 1 profile.") : t("Deleted {n} profiles.", { n: trashed.length }), {
       action: {
-        label: "Undo",
+        label: t("Undo"),
         run: async () => {
           let back = 0;
-          for (const t of trashed) if ((await api.profiles.restore(t)).ok) back++;
+          for (const trashId of trashed) if ((await api.profiles.restore(trashId)).ok) back++;
           await refresh();
-          notify(`Restored ${back} profile${back === 1 ? "" : "s"}.`);
+          notify(back === 1 ? t("Restored 1 profile.") : t("Restored {n} profiles.", { n: back }));
         },
       },
     });
@@ -924,9 +971,9 @@ function Manager() {
             <div>
               <h1 className="text-[15px] font-semibold tracking-tight">
                 Clear<span className="text-fog/55">cote</span>{" "}
-                <span className="text-fog/45 font-normal">Profile Manager</span>
+                <span className="text-fog/45 font-normal">{t("Profile Manager")}</span>
               </h1>
-              <div className="text-xs text-fog/40">A clear coat for your browser identity.</div>
+              <div className="text-xs text-fog/40">{t("A clear coat for your browser identity.")}</div>
             </div>
           </div>
           <div className="flex flex-wrap items-center justify-end gap-2">
@@ -934,19 +981,19 @@ function Manager() {
               <button
                 className="inline-flex items-center gap-1.5 rounded-lg border border-accent/50 bg-accent/10 px-3 py-1.5 text-xs font-semibold text-accent transition hover:bg-accent/20"
                 onClick={startAccountLogin}
-                title="Sign in on clearcotelabs.com and approve: your licence key is filled in for you"
+                title={t("Sign in on clearcotelabs.com and approve: your licence key is filled in for you")}
               >
                 <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" aria-hidden="true">
                   <circle cx="12" cy="8" r="4" />
                   <path d="M4 21c1.5-4 4.5-6 8-6s6.5 2 8 6" />
                 </svg>
-                Use my Clearcote account
+                {t("Use my Clearcote account")}
               </button>
             )}
             {/* What the next launch actually runs — and a way to change it. */}
             <button
               className={`hidden items-center gap-1.5 rounded-full border px-2.5 py-1 text-[11px] transition sm:inline-flex ${pillTone}`}
-              title={offerAccount ? "No licence key yet: use your Clearcote account" : view.title}
+              title={offerAccount ? t("No licence key yet: use your Clearcote account") : view.title}
               onClick={() => (offerAccount ? startAccountLogin() : setSettingsOpen(view.section))}
             >
               <span className={`h-1.5 w-1.5 rounded-full ${dotTone}`} />
@@ -955,53 +1002,53 @@ function Manager() {
             <button
               className={btnGhost + " w-8 px-0 text-sm"}
               onClick={toggleTheme}
-              title="Toggle light / dark theme"
-              aria-label="Toggle light or dark theme"
+              title={t("Toggle light / dark theme")}
+              aria-label={t("Toggle light or dark theme")}
             >
               {theme === "dark" ? "☀" : "☾"}
             </button>
             <button
               className={btnGhost + " w-8 px-0"}
               onClick={() => setShortcutsOpen(true)}
-              title="Keyboard shortcuts (?)"
-              aria-label="Keyboard shortcuts"
+              title={t("Keyboard shortcuts (?)")}
+              aria-label={t("Keyboard shortcuts")}
             >
               ?
             </button>
-            <button className={btnGhost} onClick={() => setSettingsOpen("general")} title={`Settings (${shortcutLabel(",", host)})`}>
-              Settings
+            <button className={btnGhost} onClick={() => setSettingsOpen("general")} title={t("Settings ({shortcut})", { shortcut: shortcutLabel(",", host) })}>
+              {t("Settings")}
             </button>
             <div className="flex shadow-[0_0_20px_-6px_rgba(56,224,214,0.6)]" data-new-split="1">
               <button
                 className="rounded-l-lg bg-sheen px-3.5 py-1.5 text-xs font-semibold text-[#07080a] hover:opacity-95 transition"
                 onClick={() => openEditor(freshProfile())}
-                title={`New profile (${shortcutLabel("N", host)})`}
+                title={t("New profile ({shortcut})", { shortcut: shortcutLabel("N", host) })}
               >
-                + New profile
+                {t("+ New profile")}
               </button>
               <Menu
-                label="New from a template"
+                label={t("New from a template")}
                 trigger="▾"
                 triggerClassName="h-full rounded-r-lg border-l border-[#07080a]/25 bg-sheen px-2 py-1.5 text-xs font-bold text-[#07080a] hover:opacity-95 transition"
                 items={[
                   ...(templates.length
-                    ? templates.slice(0, 12).map((t, i) => ({
-                        label: t.name,
-                        hint: describeTemplate(t),
+                    ? templates.slice(0, 12).map((tpl, i) => ({
+                        label: tpl.name,
+                        hint: describeTemplate(tpl),
                         shortcut: i === 0 ? shortcutLabel("Shift+N", host) : undefined,
-                        onSelect: () => newFromTemplate(t),
+                        onSelect: () => newFromTemplate(tpl),
                       }))
                     : [
                         {
-                          label: "No templates yet",
-                          hint: "Open ⋯ on any profile and choose Save as template",
+                          label: t("No templates yet"),
+                          hint: t("Open ⋯ on any profile and choose Save as template"),
                           disabled: true,
                           onSelect: () => {},
                         },
                       ]),
                   "separator" as const,
-                  { label: "From proxy list…", onSelect: () => setBulkCreateOpen(true) },
-                  { label: "Manage templates…", onSelect: () => setManageTplOpen(true) },
+                  { label: t("From proxy list…"), onSelect: () => setBulkCreateOpen(true) },
+                  { label: t("Manage templates…"), onSelect: () => setManageTplOpen(true) },
                 ]}
               />
             </div>
@@ -1010,7 +1057,7 @@ function Manager() {
 
         {!isEl && (
           <div className="mt-4 rounded-lg border border-iris/25 bg-iris/5 px-3 py-2 text-xs text-iris">
-            Browser preview — profiles are stored locally in this browser and launching is disabled. Run the desktop app for the full experience.
+            {t("Browser preview — profiles are stored locally in this browser and launching is disabled. Run the desktop app for the full experience.")}
           </div>
         )}
 
@@ -1036,9 +1083,9 @@ function Manager() {
           <input
             ref={searchRef}
             className={input + " max-w-sm"}
-            placeholder="Search names, groups, tags, proxies…"
-            aria-label="Search profiles"
-            title={`Search (${shortcutLabel("F", host)} or /)`}
+            placeholder={t("Search names, groups, tags, proxies…")}
+            aria-label={t("Search profiles")}
+            title={t("Search ({shortcut} or /)", { shortcut: shortcutLabel("F", host) })}
             value={query}
             onChange={(e) => setQuery(e.target.value)}
             onKeyDown={(e) => {
@@ -1061,18 +1108,21 @@ function Manager() {
             }
             aria-pressed={runningOnly}
             onClick={() => setRunningOnly((v) => !v)}
-            title="Show only profiles whose browser is open"
+            title={t("Show only profiles whose browser is open")}
           >
-            Running{runningCount ? ` · ${runningCount}` : ""}
+            {t("Running")}
+            {runningCount ? ` · ${runningCount}` : ""}
           </button>
           <div className="text-xs text-fog/35" aria-live="polite">
             {filtered.length !== profiles.length
-              ? `${filtered.length} of ${profiles.length}`
-              : `${profiles.length} profile${profiles.length === 1 ? "" : "s"}`}
+              ? t("{shown} of {total}", { shown: filtered.length, total: profiles.length })
+              : profiles.length === 1
+                ? t("1 profile")
+                : t("{n} profiles", { n: profiles.length })}
           </div>
           <div className="ml-auto flex flex-wrap items-center gap-2">
             <label className="flex items-center gap-1.5 text-xs text-fog/40">
-              Sort
+              {t("Sort")}
               <select
                 className="rounded-lg border border-line bg-ink/70 px-2 py-1.5 text-xs text-fog/80 outline-none focus:border-accent/60"
                 value={sort}
@@ -1080,19 +1130,19 @@ function Manager() {
               >
                 {(Object.keys(SORT_LABELS) as SortKey[]).map((k) => (
                   <option key={k} value={k}>
-                    {SORT_LABELS[k]}
+                    {t(SORT_LABELS[k])}
                   </option>
                 ))}
               </select>
             </label>
-            <button className={btnGhost} onClick={() => setBulkCreateOpen(true)} title="One profile per proxy">
-              From proxy list…
+            <button className={btnGhost} onClick={() => setBulkCreateOpen(true)} title={t("One profile per proxy")}>
+              {t("From proxy list…")}
             </button>
             <button className={btnGhost} onClick={doImport}>
-              Import
+              {t("Import")}
             </button>
             <button className={btnGhost} onClick={() => openExport()} disabled={profiles.length === 0}>
-              Export
+              {t("Export")}
             </button>
           </div>
         </div>
@@ -1100,12 +1150,12 @@ function Manager() {
         {/* Active filters */}
         {(tagFilter || groupFilter) && (
           <div className="mt-3 flex flex-wrap items-center gap-2 text-xs">
-            <span className="text-fog/40">Showing</span>
+            <span className="text-fog/40">{t("Showing")}</span>
             {tagFilter && (
               <button
                 className="inline-flex items-center gap-1.5 rounded-full border border-accent/40 bg-accent/10 px-2.5 py-0.5 text-accent hover:bg-accent/15"
                 onClick={() => setTagFilter(null)}
-                aria-label={`Remove the tag filter #${tagFilter}`}
+                aria-label={t("Remove the tag filter #{tag}", { tag: tagFilter })}
               >
                 #{tagFilter} <span aria-hidden>✕</span>
               </button>
@@ -1114,7 +1164,7 @@ function Manager() {
               <button
                 className="inline-flex items-center gap-1.5 rounded-full border border-accent/40 bg-accent/10 px-2.5 py-0.5 text-accent hover:bg-accent/15"
                 onClick={() => setGroupFilter(null)}
-                aria-label={`Remove the group filter ${groupFilter.name}`}
+                aria-label={t("Remove the group filter {name}", { name: groupFilter.name })}
               >
                 {groupFilter.name} <span aria-hidden>✕</span>
               </button>
@@ -1135,12 +1185,16 @@ function Manager() {
               />
             </div>
             <h2 className="mt-3 text-xl font-semibold">
-              {profiles.length === 0 ? "Meet Clyde — your first identity awaits" : runningOnly && !query && !tagFilter && !groupFilter ? "Nothing is running" : "No matches"}
+              {profiles.length === 0
+                ? t("Meet Clyde — your first identity awaits")
+                : runningOnly && !query && !tagFilter && !groupFilter
+                  ? t("Nothing is running")
+                  : t("No matches")}
             </h2>
             <p className="mt-1.5 max-w-sm text-sm text-fog/50">
               {profiles.length === 0
-                ? "Chameleons blend in to stay unseen. Spin up a profile — a saved fingerprint seed, proxy, and persistent session — and launch it any time."
-                : "Try a different search or filter."}
+                ? t("Chameleons blend in to stay unseen. Spin up a profile — a saved fingerprint seed, proxy, and persistent session — and launch it any time.")
+                : t("Try a different search or filter.")}
             </p>
             {profiles.length === 0 ? (
               <div className="mt-6 flex flex-wrap justify-center gap-2">
@@ -1148,16 +1202,16 @@ function Manager() {
                   className="rounded-lg bg-sheen px-5 py-2.5 text-sm font-semibold text-[#07080a] shadow-[0_0_26px_-6px_rgba(56,224,214,0.55)] transition hover:opacity-95 active:scale-[0.98]"
                   onClick={() => openEditor(freshProfile())}
                 >
-                  + Create your first profile
+                  {t("+ Create your first profile")}
                 </button>
                 <button className={btnGhost + " px-4 py-2.5 text-sm"} onClick={() => setBulkCreateOpen(true)}>
-                  From a proxy list…
+                  {t("From a proxy list…")}
                 </button>
               </div>
             ) : (
               filtering && (
                 <button className={btnGhost + " mt-4"} onClick={clearFilters}>
-                  Clear search and filters
+                  {t("Clear search and filters")}
                 </button>
               )
             )}
@@ -1168,10 +1222,10 @@ function Manager() {
             const named = sections.filter((s) => s.group !== null);
             const ni = named.findIndex((s) => s.key === sec.key);
             return (
-              <section key={sec.group === null ? "none" : `g:${sec.key}`} className="mt-5" aria-label={sec.group ?? (sections.length > 1 ? "No group" : "Profiles")}>
+              <section key={sec.group === null ? "none" : `g:${sec.key}`} className="mt-5" aria-label={sec.group ?? (sections.length > 1 ? t("No group") : t("Profiles"))}>
                 {hasHeading(sec) && (
                   <GroupHeader
-                    name={sec.group ?? "No group"}
+                    name={sec.group ?? t("No group")}
                     count={sec.profiles.length}
                     running={sec.profiles.filter((p) => active.includes(p.id)).length}
                     collapsed={folded}
@@ -1179,7 +1233,7 @@ function Manager() {
                     canMoveUp={ni > 0}
                     canMoveDown={ni >= 0 && ni < named.length - 1}
                     onToggle={() => toggleCollapse(sec.key)}
-                    onFilter={() => setGroupFilter({ key: sec.key, name: sec.group ?? "No group" })}
+                    onFilter={() => setGroupFilter({ key: sec.key, name: sec.group ?? t("No group") })}
                     onRename={() => setPrompt({ kind: "rename-group", key: sec.key, name: sec.group ?? "" })}
                     onMove={(dir) => moveGroupBy(sec.key, dir)}
                     onUngroup={() => void renameGroup(sec.key, sec.group ?? "", "")}
@@ -1199,7 +1253,7 @@ function Manager() {
                         selected={selected.has(p.id)}
                         selecting={selected.size > 0}
                         onToggleSelect={({ range }) => toggleSelect(p.id, range)}
-                        onFilterTag={(t) => setTagFilter(t)}
+                        onFilterTag={(tag) => setTagFilter(tag)}
                         onLaunch={() => void launch(p)}
                         onStop={() => stop(p)}
                         cloud={cloudById.get(p.id)}
@@ -1233,36 +1287,36 @@ function Manager() {
       {selected.size > 0 && (
         <div
           role="region"
-          aria-label="Selected profiles"
+          aria-label={t("Selected profiles")}
           className="fixed inset-x-0 bottom-0 z-30 border-t border-line-strong bg-surface/95 px-4 py-2.5 backdrop-blur"
           style={{ paddingBottom: "calc(0.625rem + env(safe-area-inset-bottom, 0px))" }}
         >
           <div className="mx-auto flex max-w-6xl flex-wrap items-center gap-2">
-            <span className="mr-1 text-sm font-semibold">{selected.size} selected</span>
+            <span className="mr-1 text-sm font-semibold">{t("{n} selected", { n: selected.size })}</span>
             <button className={btnGhost} onClick={bulkLaunch}>
-              Launch
+              {t("Launch")}
             </button>
             <button className={btnGhost} onClick={bulkStop} disabled={!selectedProfiles.some((p) => active.includes(p.id))}>
-              Stop
+              {t("Stop")}
             </button>
             <button className={btnGhost} onClick={() => setPrompt({ kind: "set-group" })}>
-              Set group…
+              {t("Set group…")}
             </button>
             <button className={btnGhost} onClick={() => setPrompt({ kind: "add-tag" })}>
-              Add tag…
+              {t("Add tag…")}
             </button>
             <button className={btnGhost} onClick={() => openExport([...selected])}>
-              Export…
+              {t("Export…")}
             </button>
             <button className={btnGhost + " text-danger hover:bg-danger/10"} onClick={bulkDelete}>
-              Delete…
+              {t("Delete…")}
             </button>
             <span className="flex-1" />
             <button className="text-xs text-fog/50 hover:text-fog" onClick={() => setSelected(new Set(visibleIds))} title={shortcutLabel("A", host)}>
-              Select all {visibleIds.length}
+              {t("Select all {n}", { n: visibleIds.length })}
             </button>
             <button className="text-xs text-fog/50 hover:text-fog" onClick={() => setSelected(new Set())} title="Esc">
-              Clear selection
+              {t("Clear selection")}
             </button>
           </div>
         </div>
@@ -1336,19 +1390,19 @@ function Manager() {
           onSave={async (next) => {
             await saveTemplates(next);
             setManageTplOpen(false);
-            notify("Templates saved.");
+            notify(t("Templates saved."));
           }}
           onClose={() => setManageTplOpen(false)}
         />
       )}
       {prompt?.kind === "set-group" && (
         <PromptDialog
-          title={`Set the group of ${selected.size} profile${selected.size === 1 ? "" : "s"}`}
-          label="Group"
+          title={selected.size === 1 ? t("Set the group of 1 profile") : t("Set the group of {n} profiles", { n: selected.size })}
+          label={t("Group")}
           suggestions={groupNames}
-          confirmLabel="Set group"
+          confirmLabel={t("Set group")}
           allowEmpty
-          hint="Leave it empty to take them out of any group."
+          hint={t("Leave it empty to take them out of any group.")}
           onClose={() => setPrompt(null)}
           onConfirm={(v) => {
             setPrompt(null);
@@ -1358,35 +1412,43 @@ function Manager() {
                 if (!v) delete out.group;
                 return out;
               },
-              v ? `Moved ${selected.size} profile${selected.size === 1 ? "" : "s"} to “${v}”.` : `Ungrouped ${selected.size} profile${selected.size === 1 ? "" : "s"}.`,
+              v
+                ? selected.size === 1
+                  ? t("Moved 1 profile to “{group}”.", { group: v })
+                  : t("Moved {n} profiles to “{group}”.", { n: selected.size, group: v })
+                : selected.size === 1
+                  ? t("Ungrouped 1 profile.")
+                  : t("Ungrouped {n} profiles.", { n: selected.size }),
             );
           }}
         />
       )}
       {prompt?.kind === "add-tag" && (
         <PromptDialog
-          title={`Tag ${selected.size} profile${selected.size === 1 ? "" : "s"}`}
-          label="Tag"
+          title={selected.size === 1 ? t("Tag 1 profile") : t("Tag {n} profiles", { n: selected.size })}
+          label={t("Tag")}
           suggestions={Array.from(new Set(profiles.flatMap((p) => p.tags ?? []))).sort()}
-          confirmLabel="Add tag"
+          confirmLabel={t("Add tag")}
           onClose={() => setPrompt(null)}
           onConfirm={(v) => {
             setPrompt(null);
             const tag = v.replace(/^#/, "");
             void bulkEdit(
-              (p) => ({ ...p, tags: (p.tags ?? []).some((t) => t.toLowerCase() === tag.toLowerCase()) ? p.tags : [...(p.tags ?? []), tag] }),
-              `Tagged ${selected.size} profile${selected.size === 1 ? "" : "s"} #${tag}.`,
+              (p) => ({ ...p, tags: (p.tags ?? []).some((x) => x.toLowerCase() === tag.toLowerCase()) ? p.tags : [...(p.tags ?? []), tag] }),
+              selected.size === 1
+                ? t("Tagged 1 profile #{tag}.", { tag })
+                : t("Tagged {n} profiles #{tag}.", { n: selected.size, tag }),
             );
           }}
         />
       )}
       {prompt?.kind === "rename-group" && (
         <PromptDialog
-          title={`Rename “${prompt.name}”`}
-          label="New name"
+          title={t("Rename “{name}”", { name: prompt.name })}
+          label={t("New name")}
           initial={prompt.name}
-          confirmLabel="Rename"
-          hint="Every profile in the group moves with it."
+          confirmLabel={t("Rename")}
+          hint={t("Every profile in the group moves with it.")}
           onClose={() => setPrompt(null)}
           onConfirm={(v) => {
             const p = prompt;
@@ -1421,7 +1483,7 @@ function Manager() {
               {toast.action.label}
             </button>
           )}
-          <button className="shrink-0 text-fog/40 hover:text-fog" onClick={() => setToast(null)} aria-label="Dismiss">
+          <button className="shrink-0 text-fog/40 hover:text-fog" onClick={() => setToast(null)} aria-label={t("Dismiss")}>
             ✕
           </button>
         </div>

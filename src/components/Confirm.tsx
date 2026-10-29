@@ -12,6 +12,7 @@
 
 import { createContext, useCallback, useContext, useId, useRef, useState } from "react";
 import Dialog from "./Dialog";
+import { t } from "@/lib/i18n";
 
 export interface ConfirmOptions {
   title: string;
@@ -83,7 +84,7 @@ function ConfirmDialog({ opts, onSettle }: { opts: ConfirmOptions; onSettle: (v:
           className="rounded-lg border border-line-strong px-3.5 py-1.5 text-sm text-fog/80 hover:bg-elevate"
           onClick={() => onSettle(false)}
         >
-          {opts.cancelLabel || "Cancel"}
+          {opts.cancelLabel || t("Cancel")}
         </button>
         <button
           className={
@@ -94,7 +95,7 @@ function ConfirmDialog({ opts, onSettle }: { opts: ConfirmOptions; onSettle: (v:
           }
           onClick={() => onSettle(true)}
         >
-          {opts.confirmLabel || "OK"}
+          {opts.confirmLabel || t("OK")}
         </button>
       </div>
     </Dialog>

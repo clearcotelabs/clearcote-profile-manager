@@ -4,13 +4,14 @@
 import type { Profile } from "@/types/profile";
 // The PURE proxy module (no node:net), same as src/types/profile.ts uses.
 import { parseProxy } from "../../electron/proxyargs";
+import { getLocale, LOCALE_META, t, tx } from "./i18n";
 
 export type SortKey = "recent" | "name" | "created";
 
 export const SORT_LABELS: Record<SortKey, string> = {
-  recent: "Recently used",
-  name: "Name",
-  created: "Newest",
+  recent: tx("Recently used"),
+  name: tx("Name"),
+  created: tx("Newest"),
 };
 
 const ts = (iso?: string) => {
@@ -147,7 +148,7 @@ export function filterProfiles(list: Profile[], f: ListFilter, running: string[]
   return list.filter(
     (p) =>
       (!q || haystack(p).includes(q)) &&
-      (!tag || (p.tags || []).some((t) => t.trim().toLowerCase() === tag)) &&
+      (!tag || (p.tags || []).some((x) => x.trim().toLowerCase() === tag)) &&
       (f.group === undefined || groupKey(p.group) === f.group) &&
       (!f.runningOnly || run.has(p.id)),
   );
@@ -165,7 +166,12 @@ export function geoLabel(p: Profile, now = Date.now()): { text: string; title: s
   const when = relativeTime(g.at, now);
   return {
     text: place,
-    title: `Exits via ${px}${g.ip ? ` as ${g.ip}` : ""}${g.country ? ` (${g.country})` : ""}${when ? `, checked ${when}` : ""}.`,
+    title: t("Exits via {proxy}{ip}{country}{checked}.", {
+      proxy: px,
+      ip: g.ip ? t(" as {ip}", { ip: g.ip }) : "",
+      country: g.country ? ` (${g.country})` : "",
+      checked: when ? t(", checked {when}", { when }) : "",
+    }),
   };
 }
 
@@ -174,8 +180,8 @@ export function relativeTime(iso: string | undefined, now = Date.now()): string 
   const at = iso ? Date.parse(iso) : NaN;
   if (!Number.isFinite(at)) return null;
   const s = Math.round((now - at) / 1000);
-  if (s < 45) return "just now";
-  const rtf = new Intl.RelativeTimeFormat("en", { numeric: "auto" });
+  if (s < 45) return t("just now");
+  const rtf = new Intl.RelativeTimeFormat(LOCALE_META[getLocale()].htmlLang, { numeric: "auto" });
   const m = Math.round(s / 60);
   if (m < 60) return rtf.format(-m, "minute");
   const h = Math.round(m / 60);
@@ -194,9 +200,9 @@ export interface VersionInfo {
 
 export function versionInfo(v?: string): VersionInfo {
   const raw = (v ?? "").trim();
-  if (!raw || /^(latest|auto)$/i.test(raw)) return { kind: "latest", label: "latest build" };
-  if (/^\d+$/.test(raw)) return { kind: "major", label: `build ${raw}` };
-  return { kind: "exact", label: `pinned ${raw}` };
+  if (!raw || /^(latest|auto)$/i.test(raw)) return { kind: "latest", label: t("latest build") };
+  if (/^\d+$/.test(raw)) return { kind: "major", label: t("build {n}", { n: raw }) };
+  return { kind: "exact", label: t("pinned {version}", { version: raw }) };
 }
 
 /**
