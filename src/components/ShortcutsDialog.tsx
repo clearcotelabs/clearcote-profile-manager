@@ -11,10 +11,11 @@ const GROUPS: { title: string; keys: [string, string][] }[] = [
     keys: [
       ["Ctrl N", tx("New profile")],
       ["Ctrl Shift N", tx("New profile from the last-used template")],
+      ["Ctrl K", tx("Find a profile or a command")],
       ["Ctrl F  or  /", tx("Search profiles")],
       ["Ctrl ,", tx("Settings")],
       ["Ctrl A", tx("Select every profile shown")],
-      ["Esc", tx("Clear the selection")],
+      ["Esc", tx("Clear the selection, or close the details panel")],
       ["?", tx("This list")],
     ],
   },

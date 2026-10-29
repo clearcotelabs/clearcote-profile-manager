@@ -53,11 +53,20 @@
   "1 profile": [
     "app/page.tsx"
   ],
+  "1 profile without one": [
+    "src/components/ProxiesView.tsx"
+  ],
+  "1 proxy": [
+    "src/components/ProxiesView.tsx"
+  ],
   "1 running profile is left alone.": [
     "app/page.tsx"
   ],
   "1 setting matches “{query}”": [
     "src/components/ProfileEditor.tsx"
+  ],
+  "1 thing contradicts the rest": [
+    "src/components/ProfileInspector.tsx"
   ],
   "1 — Android only": [
     "src/lib/fields.ts"
@@ -97,6 +106,9 @@
   ],
   "A Windows persona claims a Direct3D11 renderer, but on Linux the Vulkan backend answers with SPIR-V, and the two contradict each other. Off by default: the re-translation is a different code path from the one that drew, so a shader it cannot translate falls back to the honest answer.": [
     "src/lib/fields.ts"
+  ],
+  "A check goes through the first profile that uses the proxy and keeps the answer on that profile. Profiles that share a server but log in differently are one row.": [
+    "src/components/ProxiesView.tsx"
   ],
   "A clear coat for your browser identity.": [
     "app/page.tsx"
@@ -178,6 +190,10 @@
   ],
   "AdsPower, Dolphin Anty, GoLogin, Multilogin, Octo…": [
     "app/page.tsx"
+  ],
+  "All profiles": [
+    "app/page.tsx",
+    "src/lib/workspace.ts"
   ],
   "All settings": [
     "src/components/ProfileEditor.tsx"
@@ -315,6 +331,9 @@
   "Browser copies in the temp folder": [
     "src/components/StorageSection.tsx"
   ],
+  "Browser data": [
+    "src/components/ProfileInspector.tsx"
+  ],
   "Browser data lives in the desktop app.": [
     "src/lib/ipc.ts"
   ],
@@ -328,6 +347,7 @@
     "src/lib/launchError.ts"
   ],
   "Browser version": [
+    "src/components/ProfileInspector.tsx",
     "src/lib/fields.ts"
   ],
   "Build {major} — what profiles on Latest launch — isn't downloaded yet, so the first launch will wait for it.": [
@@ -375,7 +395,11 @@
   ],
   "Captured fingerprint": [
     "src/components/ProfileCard.tsx",
+    "src/components/ProfileInspector.tsx",
     "src/lib/fields.ts"
+  ],
+  "Cards": [
+    "app/page.tsx"
   ],
   "Chameleons blend in to stay unseen. Spin up a profile — a saved fingerprint seed, proxy, and persistent session — and launch it any time.": [
     "app/page.tsx"
@@ -383,12 +407,22 @@
   "Change version": [
     "src/lib/launchError.ts"
   ],
+  "Changed": [
+    "src/components/ProfileInspector.tsx"
+  ],
   "Changes save as you make them — the licence key saves with Save.": [
     "src/components/SettingsModal.tsx"
   ],
   "Check": [
     "src/components/ProfileEditor.tsx",
+    "src/components/ProxiesView.tsx",
     "src/components/SettingsModal.tsx"
+  ],
+  "Check all": [
+    "src/components/ProxiesView.tsx"
+  ],
+  "Check every proxy": [
+    "app/page.tsx"
   ],
   "Check for updates when the app starts": [
     "src/components/SettingsModal.tsx"
@@ -402,8 +436,23 @@
   "Check proxy location": [
     "src/components/ProfileCard.tsx"
   ],
+  "Check where it exits": [
+    "src/components/ProfileInspector.tsx"
+  ],
+  "Check where {proxy} exits": [
+    "src/components/ProxiesView.tsx"
+  ],
   "Check your internet connection, and any system proxy or firewall, then try again.": [
     "src/lib/launchError.ts"
+  ],
+  "Checked 1 proxy.": [
+    "app/page.tsx"
+  ],
+  "Checked {n} proxies.": [
+    "app/page.tsx"
+  ],
+  "Checked {n} proxies; {failed} did not answer.": [
+    "app/page.tsx"
   ],
   "Checking a proxy runs in the desktop app.": [
     "src/lib/ipc.ts"
@@ -419,6 +468,7 @@
   ],
   "Checking…": [
     "src/components/ProfileEditor.tsx",
+    "src/components/ProxiesView.tsx",
     "src/components/SettingsModal.tsx",
     "src/lib/launchTarget.ts"
   ],
@@ -448,6 +498,7 @@
   ],
   "Clear cache": [
     "app/page.tsx",
+    "src/components/ProfileInspector.tsx",
     "src/components/StorageSection.tsx"
   ],
   "Clear cache (keeps logins)…": [
@@ -466,7 +517,7 @@
     "app/page.tsx",
     "src/components/StorageSection.tsx"
   ],
-  "Clear the selection": [
+  "Clear the selection, or close the details panel": [
     "src/components/ShortcutsDialog.tsx"
   ],
   "Cleared {size} from “{name}”.": [
@@ -488,8 +539,20 @@
   "Close a browser that is using this licence — here or on another machine — and launch again.": [
     "src/lib/launchError.ts"
   ],
+  "Close details": [
+    "src/components/ProfileInspector.tsx"
+  ],
+  "Close its browser": [
+    "src/components/ProfileInspector.tsx"
+  ],
+  "Close the browser of {name}": [
+    "src/components/Sidebar.tsx"
+  ],
   "Close the browsers and quit": [
     "src/components/SettingsModal.tsx"
+  ],
+  "Close the side panel": [
+    "app/page.tsx"
   ],
   "Close window": [
     "src/components/CloudViewer.tsx"
@@ -547,6 +610,12 @@
   ],
   "Come back to this tab": [
     "src/components/HelperGate.tsx"
+  ],
+  "Commands": [
+    "app/page.tsx"
+  ],
+  "Commands and search": [
+    "app/page.tsx"
   ],
   "Concurrency limit reached: 1 of 1 browsers in use.": [
     "src/lib/ipc.ts"
@@ -642,6 +711,9 @@
   "Create {n} profiles": [
     "src/components/BulkCreateDialog.tsx"
   ],
+  "Created": [
+    "src/components/ProfileInspector.tsx"
+  ],
   "Created 1 profile from “{template}”.": [
     "app/page.tsx"
   ],
@@ -705,6 +777,13 @@
   "Deny list": [
     "src/lib/fields.ts"
   ],
+  "Details": [
+    "src/components/ProfileCard.tsx"
+  ],
+  "Details of {name}": [
+    "app/page.tsx",
+    "src/components/ProfileInspector.tsx"
+  ],
   "Discard": [
     "app/page.tsx"
   ],
@@ -715,7 +794,8 @@
     "app/page.tsx",
     "src/components/HelperGate.tsx",
     "src/components/ProfileCard.tsx",
-    "src/components/ProfileEditor.tsx"
+    "src/components/ProfileEditor.tsx",
+    "src/components/ProfileInspector.tsx"
   ],
   "Does it work and where does it exit? Changes nothing. UDP is tested only when you ask.": [
     "src/components/ProfileEditor.tsx"
@@ -777,6 +857,9 @@
   "Duplicate": [
     "src/components/ProfileCard.tsx"
   ],
+  "Each profile keeps its own login unless the new address has one. Their last exit is cleared, since it was measured through the old server.": [
+    "app/page.tsx"
+  ],
   "Each profile's browser version is downloaded on first use and checked against its SHA-256.": [
     "src/components/SettingsModal.tsx"
   ],
@@ -793,6 +876,12 @@
   "Edit profile": [
     "src/components/ProfileEditor.tsx",
     "src/lib/launchError.ts"
+  ],
+  "Edit settings": [
+    "src/components/ProfileInspector.tsx"
+  ],
+  "Edit {name}": [
+    "app/page.tsx"
   ],
   "Empty all four: the seed or capture brings a screen that agrees with itself": [
     "src/components/ProfileEditor.tsx"
@@ -830,6 +919,9 @@
   "Everything else in a profile already survives a copy. Cookies do not, because they are sealed with a key the OS keychain holds for the machine that created them.": [
     "src/lib/fields.ts"
   ],
+  "Exit": [
+    "src/components/ProfileTable.tsx"
+  ],
   "Exits via {proxy}{ip}{country}{checked}.": [
     "src/lib/profileList.ts"
   ],
@@ -841,6 +933,9 @@
   ],
   "Export 1 profile": [
     "src/components/ExportDialog.tsx"
+  ],
+  "Export all profiles…": [
+    "app/page.tsx"
   ],
   "Export {n} profiles": [
     "src/components/ExportDialog.tsx"
@@ -895,20 +990,35 @@
   "Filter by GPU vendor": [
     "src/components/LibraryModal.tsx"
   ],
+  "Find a profile or a command": [
+    "src/components/CommandPalette.tsx",
+    "src/components/ShortcutsDialog.tsx"
+  ],
+  "Find a profile or a command ({shortcut})": [
+    "app/page.tsx"
+  ],
+  "Find a profile or a command…": [
+    "src/components/CommandPalette.tsx"
+  ],
   "Find a setting": [
     "src/components/ProfileEditor.tsx"
   ],
   "Find a setting…": [
     "src/components/ProfileEditor.tsx"
   ],
+  "Find anything…": [
+    "app/page.tsx"
+  ],
   "Fingerprint seed": [
+    "src/components/ProfileInspector.tsx",
     "src/lib/fields.ts"
   ],
   "Fingerprint seed {seed}": [
     "src/components/ProfileCard.tsx"
   ],
   "Fix →": [
-    "src/components/ProfileEditor.tsx"
+    "src/components/ProfileEditor.tsx",
+    "src/components/ProfileInspector.tsx"
   ],
   "For moving to another computer you control.": [
     "src/components/ExportDialog.tsx"
@@ -973,13 +1083,20 @@
   "Gives every profile Chrome's revocation list, which the browser never downloads by itself, so it refuses the certificates Google has revoked or distrusted, as Chrome does. The list comes from {host}, directly from this PC rather than through a profile's proxy, and is refreshed every 6 hours. The first tab waits on a blank page for a few seconds until the list is active, then opens the start page.": [
     "src/components/SettingsModal.tsx"
   ],
+  "Go to": [
+    "app/page.tsx"
+  ],
   "Group": [
     "app/page.tsx",
     "src/components/BulkCreateDialog.tsx",
     "src/lib/fields.ts"
   ],
   "Group {name}": [
+    "app/page.tsx",
     "src/components/GroupHeader.tsx"
+  ],
+  "Groups": [
+    "src/components/Sidebar.tsx"
   ],
   "HLSL shader dialect": [
     "src/lib/fields.ts"
@@ -1024,6 +1141,7 @@
     "src/lib/ipc.ts"
   ],
   "Identity": [
+    "src/components/ProfileInspector.tsx",
     "src/lib/fields.ts"
   ],
   "Identity spoofs (UA, screen, GPU, persona) stay on either way; this only affects the noised surfaces.": [
@@ -1040,7 +1158,8 @@
     "src/components/MigrateDialog.tsx"
   ],
   "Import cookies…": [
-    "src/components/ProfileCard.tsx"
+    "src/components/ProfileCard.tsx",
+    "src/components/ProfileInspector.tsx"
   ],
   "Import failed.": [
     "src/components/MigrateDialog.tsx"
@@ -1050,6 +1169,9 @@
   ],
   "Import from file…": [
     "src/components/ProfileEditor.tsx"
+  ],
+  "Import profiles from a file…": [
+    "app/page.tsx"
   ],
   "Import runs in the desktop app.": [
     "src/lib/ipc.ts"
@@ -1092,6 +1214,9 @@
   ],
   "Invalid licence.": [
     "src/components/SettingsModal.tsx"
+  ],
+  "Issues": [
+    "src/components/ProfileTable.tsx"
   ],
   "It can no longer be restored.": [
     "src/lib/ipc.ts"
@@ -1172,13 +1297,21 @@
     "src/components/SettingsModal.tsx"
   ],
   "Language": [
+    "src/components/ProfileInspector.tsx",
     "src/components/SettingsModal.tsx"
   ],
   "Last checked {when}.": [
     "src/components/SettingsModal.tsx"
   ],
+  "Last exit": [
+    "src/components/ProxiesView.tsx"
+  ],
   "Last launched {when}": [
-    "src/components/ProfileCard.tsx"
+    "src/components/ProfileCard.tsx",
+    "src/components/ProfileInspector.tsx"
+  ],
+  "Last used": [
+    "src/components/ProfileTable.tsx"
   ],
   "Later": [
     "src/components/UpdateBanner.tsx"
@@ -1198,6 +1331,8 @@
   "Launch": [
     "app/page.tsx",
     "src/components/ProfileCard.tsx",
+    "src/components/ProfileInspector.tsx",
+    "src/components/ProfileTable.tsx",
     "src/components/ShortcutsDialog.tsx"
   ],
   "Launch command": [
@@ -1205,6 +1340,9 @@
   ],
   "Launch failed": [
     "src/lib/launchError.ts"
+  ],
+  "Launch {name}": [
+    "app/page.tsx"
   ],
   "Launched 1 profile.": [
     "app/page.tsx"
@@ -1240,7 +1378,9 @@
     "src/lib/launchTarget.ts"
   ],
   "Launching…": [
-    "src/components/ProfileCard.tsx"
+    "src/components/ProfileCard.tsx",
+    "src/components/ProfileInspector.tsx",
+    "src/components/ProfileTable.tsx"
   ],
   "Leave empty. Real Chrome reports what the site uses plus 10 GB.": [
     "src/lib/fields.ts"
@@ -1262,6 +1402,9 @@
   ],
   "Less": [
     "src/components/UpdateBanner.tsx"
+  ],
+  "Library": [
+    "src/components/Sidebar.tsx"
   ],
   "Licence": [
     "src/components/SettingsModal.tsx"
@@ -1326,10 +1469,15 @@
     "src/components/CloudFields.tsx"
   ],
   "More actions for {name}": [
-    "src/components/ProfileCard.tsx"
+    "src/components/ProfileCard.tsx",
+    "src/components/ProfileInspector.tsx",
+    "src/components/ProfileTable.tsx"
   ],
   "Most residential proxies refuse UDP; when they do, the browser quietly falls back.": [
     "src/lib/fields.ts"
+  ],
+  "Move 1 profile": [
+    "app/page.tsx"
   ],
   "Move between profiles": [
     "src/components/ShortcutsDialog.tsx"
@@ -1346,18 +1494,32 @@
   "Move up": [
     "src/components/GroupHeader.tsx"
   ],
+  "Move {n} profiles": [
+    "app/page.tsx"
+  ],
+  "Moved 1 profile to the new proxy.": [
+    "app/page.tsx"
+  ],
   "Moved 1 profile to “{group}”.": [
+    "app/page.tsx"
+  ],
+  "Moved {n} profiles to the new proxy.": [
     "app/page.tsx"
   ],
   "Moved {n} profiles to “{group}”.": [
     "app/page.tsx"
   ],
   "Name": [
+    "src/components/ProfileTable.tsx",
     "src/lib/fields.ts",
     "src/lib/profileList.ts"
   ],
   "Names": [
     "src/components/BulkCreateDialog.tsx"
+  ],
+  "Needs attention": [
+    "app/page.tsx",
+    "src/lib/workspace.ts"
   ],
   "Netherlands": [
     "src/components/CloudFields.tsx"
@@ -1381,6 +1543,7 @@
     "app/page.tsx"
   ],
   "New profile": [
+    "app/page.tsx",
     "src/components/ProfileEditor.tsx",
     "src/components/ShortcutsDialog.tsx"
   ],
@@ -1390,11 +1553,21 @@
   "New profile from the last-used template": [
     "src/components/ShortcutsDialog.tsx"
   ],
+  "New profile from “{template}”": [
+    "app/page.tsx"
+  ],
   "New profiles are named {name} 1, {name} 2, …": [
     "src/components/TemplateDialogs.tsx"
   ],
   "New profiles copy the settings of “{name}”. Each one gets its own new seed and empty browser data.": [
     "src/components/TemplateDialogs.tsx"
+  ],
+  "New profiles from a proxy list…": [
+    "app/page.tsx",
+    "src/components/ProxiesView.tsx"
+  ],
+  "New proxy address": [
+    "app/page.tsx"
   ],
   "New random GPU": [
     "src/components/TemplateDialogs.tsx"
@@ -1433,10 +1606,14 @@
     "src/lib/launchTarget.ts"
   ],
   "No matches": [
-    "app/page.tsx"
+    "app/page.tsx",
+    "src/components/CommandPalette.tsx"
   ],
   "No matching download — use the release page": [
     "src/components/UpdateBanner.tsx"
+  ],
+  "No profile uses a proxy yet": [
+    "src/components/ProxiesView.tsx"
   ],
   "No profile was given. Open a cloud browser from its card in the Profile Manager.": [
     "app/cloud/page.tsx"
@@ -1469,6 +1646,8 @@
     "src/components/StorageSection.tsx"
   ],
   "Not checked yet.": [
+    "src/components/ProfileInspector.tsx",
+    "src/components/ProxiesView.tsx",
     "src/components/SettingsModal.tsx"
   ],
   "Not connected to the Clearcote helper.": [
@@ -1481,12 +1660,19 @@
     "src/lib/fields.ts"
   ],
   "Notes": [
+    "src/components/ProfileInspector.tsx",
     "src/lib/fields.ts"
   ],
   "Nothing downloaded yet.": [
     "src/components/StorageSection.tsx"
   ],
   "Nothing is running": [
+    "app/page.tsx"
+  ],
+  "Nothing launched this week": [
+    "app/page.tsx"
+  ],
+  "Nothing needs attention": [
     "app/page.tsx"
   ],
   "Nothing to install first: npx fetches the SDK. Needs Node.js 20 or newer (<a>nodejs.org</a>).": [
@@ -1538,13 +1724,35 @@
     "src/components/ProfileCard.tsx"
   ],
   "Open data folder": [
-    "src/components/ProfileCard.tsx"
+    "src/components/ProfileCard.tsx",
+    "src/components/ProfileInspector.tsx"
   ],
   "Open disk image": [
     "src/components/UpdateBanner.tsx"
   ],
+  "Open its cloud window": [
+    "src/components/Sidebar.tsx"
+  ],
+  "Open now": [
+    "src/components/Sidebar.tsx"
+  ],
+  "Open on this computer": [
+    "src/components/ProfileInspector.tsx",
+    "src/components/ProfileTable.tsx"
+  ],
+  "Open the cloud window of {name}": [
+    "app/page.tsx"
+  ],
+  "Open the command bar": [
+    "app/page.tsx"
+  ],
+  "Open the side panel": [
+    "app/page.tsx"
+  ],
   "Open window": [
-    "src/components/ProfileCard.tsx"
+    "src/components/ProfileCard.tsx",
+    "src/components/ProfileInspector.tsx",
+    "src/components/ProfileTable.tsx"
   ],
   "Open ⋯ on any profile and choose Save as template": [
     "app/page.tsx"
@@ -1576,6 +1784,9 @@
   "Paste": [
     "src/components/ProfileEditor.tsx"
   ],
+  "Paste a list and get one profile per proxy, or add a proxy in a profile's Network settings.": [
+    "src/components/ProxiesView.tsx"
+  ],
   "Paste some proxies to see what will be created.": [
     "src/components/BulkCreateDialog.tsx"
   ],
@@ -1587,6 +1798,10 @@
   ],
   "Per-site noise on canvas, WebGL, audio and client rects. On by default.": [
     "src/lib/fields.ts"
+  ],
+  "Persona": [
+    "src/components/ProfileInspector.tsx",
+    "src/components/ProfileTable.tsx"
   ],
   "Persona default": [
     "src/components/TemplateDialogs.tsx"
@@ -1668,10 +1883,15 @@
   "Profiles set to Latest launch Clearcote {version}.": [
     "src/lib/launchTarget.ts"
   ],
+  "Proxies": [
+    "app/page.tsx",
+    "src/components/Sidebar.tsx"
+  ],
   "Proxies — one per line": [
     "src/components/BulkCreateDialog.tsx"
   ],
   "Proxy": [
+    "src/components/ProxiesView.tsx",
     "src/components/TemplateDialogs.tsx",
     "src/lib/fields.ts"
   ],
@@ -1768,11 +1988,20 @@
   "Replace template": [
     "src/components/TemplateDialogs.tsx"
   ],
+  "Replace {proxy}": [
+    "app/page.tsx"
+  ],
+  "Replace {proxy} in its profiles": [
+    "src/components/ProxiesView.tsx"
+  ],
   "Replaced the template “{name}”. Use it from the ▾ next to New profile.": [
     "app/page.tsx"
   ],
   "Replaces the template “{name}” (its use count stays).": [
     "src/components/TemplateDialogs.tsx"
+  ],
+  "Replace…": [
+    "src/components/ProxiesView.tsx"
   ],
   "Replay it from the dashboard afterwards.": [
     "src/components/CloudFields.tsx"
@@ -1801,6 +2030,9 @@
   "Restored “{name}”.": [
     "app/page.tsx"
   ],
+  "Results": [
+    "src/components/CommandPalette.tsx"
+  ],
   "Right-click “Clearcote Helper.command”, then Open. Keep its window open.": [
     "src/components/HelperGate.tsx"
   ],
@@ -1808,7 +2040,8 @@
     "src/components/HelperGate.tsx"
   ],
   "Run in the cloud": [
-    "src/components/ProfileCard.tsx"
+    "src/components/ProfileCard.tsx",
+    "src/components/ProfileInspector.tsx"
   ],
   "Run installer": [
     "src/components/UpdateBanner.tsx"
@@ -1823,10 +2056,12 @@
     "src/components/ProfileCard.tsx"
   ],
   "Run {name} in the cloud": [
+    "app/page.tsx",
     "src/components/ProfileCard.tsx"
   ],
   "Running": [
-    "app/page.tsx"
+    "app/page.tsx",
+    "src/lib/workspace.ts"
   ],
   "Running a profile in the cloud": [
     "src/components/SettingsModal.tsx"
@@ -1835,7 +2070,9 @@
     "src/lib/fields.ts"
   ],
   "Running on Clearcote's servers": [
-    "src/components/ProfileCard.tsx"
+    "src/components/ProfileCard.tsx",
+    "src/components/ProfileInspector.tsx",
+    "src/components/ProfileTable.tsx"
   ],
   "Running this profile on Clearcote's servers instead of this PC: where its traffic leaves, and what it keeps.": [
     "src/lib/fields.ts"
@@ -1906,12 +2143,18 @@
   "Search ({shortcut} or /)": [
     "app/page.tsx"
   ],
+  "Search host, country or profile…": [
+    "src/components/ProxiesView.tsx"
+  ],
   "Search names, groups, tags, proxies…": [
     "app/page.tsx"
   ],
   "Search profiles": [
     "app/page.tsx",
     "src/components/ShortcutsDialog.tsx"
+  ],
+  "Search proxies": [
+    "src/components/ProxiesView.tsx"
   ],
   "Select all {n}": [
     "app/page.tsx"
@@ -1923,7 +2166,8 @@
     "src/components/ShortcutsDialog.tsx"
   ],
   "Select {name}": [
-    "src/components/ProfileCard.tsx"
+    "src/components/ProfileCard.tsx",
+    "src/components/ProfileTable.tsx"
   ],
   "Selected profiles": [
     "app/page.tsx"
@@ -1987,23 +2231,41 @@
   "Show API key": [
     "src/components/SettingsModal.tsx"
   ],
+  "Show every profile again": [
+    "app/page.tsx"
+  ],
   "Show in Finder": [
     "src/components/UpdateBanner.tsx"
   ],
   "Show in folder": [
     "src/components/UpdateBanner.tsx"
   ],
+  "Show it in the list": [
+    "src/components/Sidebar.tsx"
+  ],
   "Show key": [
     "src/components/SettingsModal.tsx"
   ],
   "Show only profiles tagged #{tag}": [
-    "src/components/ProfileCard.tsx"
+    "src/components/ProfileCard.tsx",
+    "src/components/ProfileTable.tsx",
+    "src/components/Sidebar.tsx"
   ],
   "Show only profiles whose browser is open": [
-    "app/page.tsx"
+    "src/components/Sidebar.tsx"
   ],
   "Show only this group": [
-    "src/components/GroupHeader.tsx"
+    "src/components/GroupHeader.tsx",
+    "src/components/Sidebar.tsx"
+  ],
+  "Show profiles as": [
+    "app/page.tsx"
+  ],
+  "Show profiles as a table": [
+    "app/page.tsx"
+  ],
+  "Show profiles as cards": [
+    "app/page.tsx"
   ],
   "Showing": [
     "app/page.tsx"
@@ -2042,7 +2304,8 @@
     "src/lib/fields.ts"
   ],
   "Starting in the cloud…": [
-    "src/components/ProfileCard.tsx"
+    "src/components/ProfileCard.tsx",
+    "src/components/ProfileInspector.tsx"
   ],
   "Starting the cloud browser…": [
     "src/lib/helperBridge.ts"
@@ -2053,10 +2316,12 @@
   "Stop": [
     "app/page.tsx",
     "src/components/CloudViewer.tsx",
-    "src/components/ProfileCard.tsx"
+    "src/components/ProfileCard.tsx",
+    "src/components/ProfileTable.tsx"
   ],
   "Stop in the cloud": [
-    "src/components/ProfileCard.tsx"
+    "src/components/ProfileCard.tsx",
+    "src/components/ProfileInspector.tsx"
   ],
   "Stop it first — its browser has the data open.": [
     "src/components/ProfileCard.tsx"
@@ -2087,6 +2352,9 @@
   ],
   "Stop this profile's browser first — it has its cache open.": [
     "src/lib/ipc.ts"
+  ],
+  "Stop {name}": [
+    "app/page.tsx"
   ],
   "Stop “{name}” and launch": [
     "src/lib/launchError.ts"
@@ -2119,6 +2387,9 @@
   "TLS profile": [
     "src/lib/fields.ts"
   ],
+  "Table": [
+    "app/page.tsx"
+  ],
   "Tag": [
     "app/page.tsx"
   ],
@@ -2136,6 +2407,8 @@
   ],
   "Tags": [
     "src/components/BulkCreateDialog.tsx",
+    "src/components/ProfileTable.tsx",
+    "src/components/Sidebar.tsx",
     "src/lib/fields.ts"
   ],
   "Template": [
@@ -2341,6 +2614,9 @@
   "This cloud browser opens from the Clearcote profile manager, on a computer connected to it.": [
     "src/components/HelperGate.tsx"
   ],
+  "This computer's own connection": [
+    "src/components/ProfileInspector.tsx"
+  ],
   "This frees {size}. It downloads again, and is verified again, on the next launch that needs it.": [
     "src/components/StorageSection.tsx"
   ],
@@ -2427,6 +2703,7 @@
     "src/lib/fields.ts"
   ],
   "Timezone": [
+    "src/components/ProfileInspector.tsx",
     "src/lib/fields.ts"
   ],
   "Timezone, language and location follow the proxy's exit region": [
@@ -2609,6 +2886,13 @@
   "Use →": [
     "src/components/LibraryModal.tsx"
   ],
+  "Used by": [
+    "src/components/ProxiesView.tsx"
+  ],
+  "Used this week": [
+    "app/page.tsx",
+    "src/lib/workspace.ts"
+  ],
   "Version {version} is available — see the banner.": [
     "src/components/SettingsModal.tsx"
   ],
@@ -2667,7 +2951,8 @@
     "src/components/SettingsModal.tsx"
   ],
   "Where its traffic leaves": [
-    "src/components/CloudFields.tsx"
+    "src/components/CloudFields.tsx",
+    "src/components/ProfileInspector.tsx"
   ],
   "Where traffic exits, and everything that should agree with it.": [
     "src/lib/fields.ts"
@@ -2722,6 +3007,9 @@
   ],
   "Works · {exit} · answered in {s} s": [
     "src/lib/proxyReport.ts"
+  ],
+  "Workspace": [
+    "src/components/Sidebar.tsx"
   ],
   "You set this": [
     "src/components/ProfileEditor.tsx"
@@ -2799,7 +3087,8 @@
     "src/components/ProfileCard.tsx"
   ],
   "captured profile": [
-    "src/components/ProfileEditor.tsx"
+    "src/components/ProfileEditor.tsx",
+    "src/components/ProfileInspector.tsx"
   ],
   "check a proxy": [
     "src/lib/webPreview.ts"
@@ -2824,7 +3113,9 @@
   ],
   "cloud": [
     "src/components/CloudViewer.tsx",
-    "src/components/ProfileCard.tsx"
+    "src/components/ProfileCard.tsx",
+    "src/components/ProfileInspector.tsx",
+    "src/components/ProfileTable.tsx"
   ],
   "comma, separated": [
     "src/components/BulkCreateDialog.tsx"
@@ -2850,6 +3141,9 @@
   "exits in {place} ({ip})": [
     "src/lib/proxyReport.ts"
   ],
+  "follows the proxy": [
+    "src/components/ProfileInspector.tsx"
+  ],
   "from “{name}”": [
     "src/components/TemplateDialogs.tsx"
   ],
@@ -2864,6 +3158,9 @@
   ],
   "import profiles": [
     "src/lib/webPreview.ts"
+  ],
+  "in the cloud": [
+    "src/components/Sidebar.tsx"
   ],
   "just now": [
     "src/lib/profileList.ts"
@@ -2910,6 +3207,10 @@
   "navigator.storage.estimate().quota. Chrome reports a fixed quota: the site's own usage plus 10 GB, in normal and incognito windows alike, so an empty field already matches it. A number here replaces that, and a large one describes a value real Chrome never reports.": [
     "src/lib/fields.ts"
   ],
+  "never": [
+    "src/components/ProfileInspector.tsx",
+    "src/components/ProfileTable.tsx"
+  ],
   "new GPU": [
     "src/lib/templates.ts"
   ],
@@ -2931,6 +3232,9 @@
   "off — expose the LAN IP": [
     "src/lib/fields.ts"
   ],
+  "on this computer": [
+    "src/components/Sidebar.tsx"
+  ],
   "on — hide local IPs (default)": [
     "src/lib/fields.ts"
   ],
@@ -2945,6 +3249,7 @@
     "src/components/MigrateDialog.tsx"
   ],
   "persona default": [
+    "src/components/ProfileInspector.tsx",
     "src/lib/fields.ts"
   ],
   "pinned {version}": [
@@ -2989,6 +3294,9 @@
   "the seed": [
     "src/lib/coherence.ts"
   ],
+  "this computer": [
+    "src/components/ProfileTable.tsx"
+  ],
   "this profile has none": [
     "src/components/TemplateDialogs.tsx"
   ],
@@ -3016,6 +3324,9 @@
   "used {n}×": [
     "src/lib/templates.ts"
   ],
+  "with login": [
+    "src/components/ProxiesView.tsx"
+  ],
   "you have {v}": [
     "src/components/UpdateBanner.tsx"
   ],
@@ -3042,6 +3353,9 @@
   ],
   "{label} (selected)": [
     "src/components/ProfileCard.tsx"
+  ],
+  "{name} (group)": [
+    "src/components/Sidebar.tsx"
   ],
   "{name} (running in the cloud)": [
     "src/components/ProfileCard.tsx"
@@ -3086,7 +3400,14 @@
     "src/components/BulkCreateDialog.tsx"
   ],
   "{n} profiles": [
-    "app/page.tsx"
+    "app/page.tsx",
+    "src/components/ProxiesView.tsx"
+  ],
+  "{n} profiles without one": [
+    "src/components/ProxiesView.tsx"
+  ],
+  "{n} proxies": [
+    "src/components/ProxiesView.tsx"
   ],
   "{n} running": [
     "src/components/GroupHeader.tsx"
@@ -3105,6 +3426,9 @@
   ],
   "{n} tabs": [
     "src/components/CloudViewer.tsx"
+  ],
+  "{n} things contradict the rest": [
+    "src/components/ProfileInspector.tsx"
   ],
   "{proxy} — http and socks5 work in the cloud.": [
     "src/components/CloudFields.tsx"
@@ -3141,6 +3465,9 @@
   ],
   "… and {n} more": [
     "src/components/BulkCreateDialog.tsx"
+  ],
+  "↑↓ to move · Enter to run · Esc to close": [
+    "src/components/CommandPalette.tsx"
   ],
   "▲ 1 issue": [
     "src/components/ProfileEditor.tsx"

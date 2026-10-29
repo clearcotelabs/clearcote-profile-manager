@@ -13,7 +13,7 @@ import { formatBytes, formatDuration, formatEur } from "../../electron/cloudtext
 import type { Profile } from "@/types/profile";
 import { actionLabel, type LaunchNotice, type NoticeAction } from "@/lib/launchError";
 import { displayName, geoLabel, pinRefusedOnFree, proxySummary, relativeTime, versionInfo } from "@/lib/profileList";
-import Menu from "./Menu";
+import Menu, { type MenuItem } from "./Menu";
 import { t } from "@/lib/i18n";
 
 export interface CardProps {
@@ -58,6 +58,49 @@ export interface CardProps {
   onFilterTag: (tag: string) => void;
   onCheckGeo: () => void;
   onClearCache: () => void;
+  /** Open the side panel with this profile's details. */
+  onDetails?: () => void;
+}
+
+/** The ⋯ menu, shared by the card, the table row and the details panel so none of them drifts. */
+export function profileMenuItems(props: CardProps): (MenuItem | "separator")[] {
+  const { profile: p, running, launching, cloud, cloudStarting } = props;
+  const inCloud = !!cloud;
+  const busy = running || inCloud || cloudStarting;
+  return [
+    ...(inCloud
+      ? [
+          { label: t("Open cloud window"), onSelect: props.onCloudOpen },
+          { label: t("Stop in the cloud"), onSelect: props.onCloudStop },
+          { label: t("Edit"), onSelect: () => props.onEdit() },
+          "separator" as const,
+        ]
+      : !running && !launching && !cloudStarting
+        ? [{ label: t("Run in the cloud"), onSelect: props.onCloudStart }, "separator" as const]
+        : []),
+    { label: t("Duplicate"), onSelect: props.onDuplicate },
+    { label: t("Save as template…"), onSelect: props.onSaveTemplate },
+    { label: t("Export…"), onSelect: props.onExport },
+    { label: t("Import cookies…"), onSelect: props.onImportCookies },
+    { label: t("Open data folder"), onSelect: props.onOpenData },
+    ...(p.proxy ? [{ label: t("Check proxy location"), onSelect: props.onCheckGeo }] : []),
+    {
+      label: t("Clear cache (keeps logins)…"),
+      onSelect: props.onClearCache,
+      disabled: running,
+      hint: running ? t("Stop it first — the browser has its cache open.") : undefined,
+    },
+    ...(props.onDetails ? [{ label: t("Details"), onSelect: props.onDetails }] : []),
+    "separator",
+    {
+      label: t("Delete…"),
+      onSelect: props.onDelete,
+      danger: true,
+      disabled: busy,
+      hint: running ? t("Stop it first — its browser has the data open.") : busy ? t("Stop its cloud browser first.") : undefined,
+      shortcut: "Del",
+    },
+  ];
 }
 
 type Tone = "plain" | "accent" | "iris" | "warn";
@@ -336,42 +379,7 @@ export default function ProfileCard(props: CardProps) {
             {t("Edit")}
           </button>
         )}
-        <Menu
-          label={t("More actions for {name}", { name })}
-          items={[
-            ...(inCloud
-              ? [
-                  { label: t("Open cloud window"), onSelect: props.onCloudOpen },
-                  { label: t("Stop in the cloud"), onSelect: props.onCloudStop },
-                  { label: t("Edit"), onSelect: () => props.onEdit() },
-                  "separator" as const,
-                ]
-              : !running && !launching && !cloudStarting
-                ? [{ label: t("Run in the cloud"), onSelect: props.onCloudStart }, "separator" as const]
-                : []),
-            { label: t("Duplicate"), onSelect: props.onDuplicate },
-            { label: t("Save as template…"), onSelect: props.onSaveTemplate },
-            { label: t("Export…"), onSelect: props.onExport },
-            { label: t("Import cookies…"), onSelect: props.onImportCookies },
-            { label: t("Open data folder"), onSelect: props.onOpenData },
-            ...(p.proxy ? [{ label: t("Check proxy location"), onSelect: props.onCheckGeo }] : []),
-            {
-              label: t("Clear cache (keeps logins)…"),
-              onSelect: props.onClearCache,
-              disabled: running,
-              hint: running ? t("Stop it first — the browser has its cache open.") : undefined,
-            },
-            "separator",
-            {
-              label: t("Delete…"),
-              onSelect: props.onDelete,
-              danger: true,
-              disabled: busy,
-              hint: running ? t("Stop it first — its browser has the data open.") : busy ? t("Stop its cloud browser first.") : undefined,
-              shortcut: "Del",
-            },
-          ]}
-        />
+        <Menu label={t("More actions for {name}", { name })} items={profileMenuItems(props)} />
       </div>
 
       {notice && (

@@ -18,7 +18,13 @@ import {
 import ProfileEditor from "@/components/ProfileEditor";
 import SettingsModal, { type Section as SettingsSection } from "@/components/SettingsModal";
 import LibraryModal from "@/components/LibraryModal";
-import ProfileCard from "@/components/ProfileCard";
+import ProfileCard, { type CardProps } from "@/components/ProfileCard";
+import ProfileTable from "@/components/ProfileTable";
+import ProfileInspector from "@/components/ProfileInspector";
+import Sidebar, { type PageKey, type RunningItem } from "@/components/Sidebar";
+import CommandPalette, { type Command } from "@/components/CommandPalette";
+import ProxiesView from "@/components/ProxiesView";
+import { attentionReasons, inView, proxyInventory, replaceProxy, tagCounts, VIEW_LABELS, type ProxyRow, type ViewKey } from "@/lib/workspace";
 import ShortcutsDialog from "@/components/ShortcutsDialog";
 import UpdateBanner from "@/components/UpdateBanner";
 import ExportDialog from "@/components/ExportDialog";
@@ -63,6 +69,8 @@ import {
   SORT_LABELS,
   displayName,
   filterProfiles,
+  geoLabel,
+  proxySummary,
   groupKey,
   groupProfiles,
   isProfileDirty,
@@ -94,6 +102,7 @@ const btnGhost =
 
 // Per-viewer list preferences (the renderer's own storage; per install in the desktop app).
 const SORT_KEY = "clearcote.sort";
+const LAYOUT_KEY = "clearcote.layout";
 const GROUP_ORDER_KEY = "clearcote.groups.order";
 const COLLAPSED_KEY = "clearcote.groups.collapsed";
 const loadList = (key: string): string[] => {
@@ -130,7 +139,11 @@ interface Toast {
   action?: { label: string; run: () => void };
 }
 
-type PromptKind = { kind: "set-group" } | { kind: "add-tag" } | { kind: "rename-group"; key: string; name: string };
+type PromptKind =
+  | { kind: "set-group" }
+  | { kind: "add-tag" }
+  | { kind: "rename-group"; key: string; name: string }
+  | { kind: "replace-proxy"; row: ProxyRow };
 
 export default function Page() {
   useLocale();
@@ -168,7 +181,15 @@ function Manager() {
   // Click a tag or a group to narrow the list; "running" shows only open browsers.
   const [tagFilter, setTagFilter] = useState<string | null>(null);
   const [groupFilter, setGroupFilter] = useState<{ key: string; name: string } | null>(null);
-  const [runningOnly, setRunningOnly] = useState(false);
+  // The workspace: which page, which list, cards or a table, whose details are open.
+  const [page, setPage] = useState<PageKey>("profiles");
+  const [view, setView] = useState<ViewKey>("all");
+  const runningOnly = view === "running";
+  const [layout, setLayout] = useState<"cards" | "table">("cards");
+  const [detailsId, setDetailsId] = useState<string | null>(null);
+  const [paletteOpen, setPaletteOpen] = useState(false);
+  const [sidebarOpen, setSidebarOpen] = useState(false);
+  const [proxyChecking, setProxyChecking] = useState<Set<string>>(new Set());
   const [groupOrder, setGroupOrder] = useState<string[]>([]);
   const [collapsed, setCollapsed] = useState<string[]>([]);
   // Multi-select: the ids, and the last one clicked (Shift+click selects the range to it).
@@ -228,6 +249,7 @@ function Manager() {
     try {
       const saved = localStorage.getItem(SORT_KEY) as SortKey | null;
       if (saved && saved in SORT_LABELS) setSort(saved);
+      if (localStorage.getItem(LAYOUT_KEY) === "table") setLayout("table");
     } catch {
       /* ignore */
     }
@@ -738,25 +760,59 @@ function Manager() {
   const cloudById = useMemo(() => new Map(cloudSessions.map((c) => [c.profileId, c])), [cloudSessions]);
   // "Running" means open anywhere: on this PC or in the cloud.
   const active = useMemo(() => [...running, ...cloudSessions.map((c) => c.profileId).filter((id) => !running.includes(id))], [running, cloudSessions]);
+  // Why each profile needs attention: a launch notice still on it, or a coherence error.
+  const attention = useMemo(() => {
+    const m = new Map<string, { text: string; field?: string }[]>();
+    for (const p of profiles) {
+      const r = attentionReasons(p, notices[p.id], { hostPlatform: host });
+      if (r.length) m.set(p.id, r);
+    }
+    return m;
+  }, [profiles, notices, host]);
+  const activeSet = useMemo(() => new Set(active), [active]);
+  const attentionSet = useMemo(() => new Set(attention.keys()), [attention]);
+  const viewCounts = useMemo(() => {
+    const o = { active: activeSet, attention: attentionSet };
+    const n = (v: ViewKey) => profiles.filter((p) => inView(p, v, o)).length;
+    return { all: profiles.length, running: n("running"), attention: n("attention"), recent: n("recent") };
+  }, [profiles, activeSet, attentionSet]);
   const filtered = useMemo(
     () =>
       sortProfiles(
-        filterProfiles(profiles, { query, tag: tagFilter ?? undefined, group: groupFilter?.key, runningOnly }, active),
+        filterProfiles(profiles, { query, tag: tagFilter ?? undefined, group: groupFilter?.key, runningOnly }, active).filter((p) =>
+          inView(p, view, { active: activeSet, attention: attentionSet }),
+        ),
         active,
         sort,
       ),
-    [profiles, query, tagFilter, groupFilter, runningOnly, active, sort],
+    [profiles, query, tagFilter, groupFilter, runningOnly, active, sort, view, activeSet, attentionSet],
   );
+  const proxyRows = useMemo(() => proxyInventory(profiles), [profiles]);
+  const tagList = useMemo(() => tagCounts(profiles), [profiles]);
+  const groupList = useMemo(() => {
+    const m = new Map<string, { key: string; name: string; count: number }>();
+    for (const p of profiles) {
+      const name = p.group?.trim();
+      if (!name) continue;
+      const k = groupKey(name);
+      const cur = m.get(k);
+      if (cur) cur.count++;
+      else m.set(k, { key: k, name, count: 1 });
+    }
+    return [...m.values()].sort((a, b) => a.name.localeCompare(b.name, undefined, { numeric: true }));
+  }, [profiles]);
   const sections = useMemo(() => groupProfiles(filtered, groupOrder), [filtered, groupOrder]);
-  const runningCount = profiles.filter((p) => active.includes(p.id)).length;
   const groupNames = useMemo(
     () => Array.from(new Map(profiles.filter((p) => p.group?.trim()).map((p) => [groupKey(p.group), p.group!.trim()])).values()).sort(),
     [profiles],
   );
-  const filtering = !!(query.trim() || tagFilter || groupFilter || runningOnly);
+  const filtering = !!(query.trim() || tagFilter || groupFilter || view !== "all");
   // A heading (and folding) shows for every named group; only a lone "No group" list goes without.
   const hasHeading = (s: { group: string | null }) => sections.length > 1 || s.group !== null;
-  const visibleIds = sections.filter((s) => !(collapsed.includes(s.key) && hasHeading(s))).flatMap((s) => s.profiles.map((p) => p.id));
+  const visibleIds =
+    layout === "table"
+      ? filtered.map((p) => p.id)
+      : sections.filter((s) => !(collapsed.includes(s.key) && hasHeading(s))).flatMap((s) => s.profiles.map((p) => p.id));
 
   function changeSort(k: SortKey) {
     setSort(k);
@@ -770,7 +826,7 @@ function Manager() {
     setQuery("");
     setTagFilter(null);
     setGroupFilter(null);
-    setRunningOnly(false);
+    setView("all");
   }
 
   // ── Groups ────────────────────────────────────────────────────────────────
@@ -904,8 +960,8 @@ function Manager() {
   /** Arrow keys between cards. Up/Down go to the nearest card in the row above/below by position,
    *  which also works across group sections with different column counts. */
   function moveFocus(fromId: string, key: string) {
-    const cards = Array.from(document.querySelectorAll<HTMLElement>("[data-card]"));
-    const i = cards.findIndex((c) => c.dataset.card === fromId);
+    const cards = Array.from(document.querySelectorAll<HTMLElement>("[data-card], [data-row]"));
+    const i = cards.findIndex((c) => (c.dataset.card ?? c.dataset.row) === fromId);
     if (i < 0) return;
     if (key === "ArrowRight" || key === "ArrowLeft") {
       cards[key === "ArrowRight" ? Math.min(i + 1, cards.length - 1) : Math.max(i - 1, 0)]?.focus();
@@ -925,13 +981,223 @@ function Manager() {
     row[0].el.scrollIntoView({ block: "nearest" });
   }
 
+  // ── Workspace ─────────────────────────────────────────────────────────────
+  function changeLayout(l: "cards" | "table") {
+    setLayout(l);
+    try {
+      localStorage.setItem(LAYOUT_KEY, l);
+    } catch {
+      /* ignore */
+    }
+  }
+  function goProfiles(v: ViewKey = view) {
+    setPage("profiles");
+    setView(v);
+    setSidebarOpen(false);
+  }
+
+  /** Everything a card, a table row and the details panel need for one profile — one place, so the
+   *  three never disagree about what an action does. */
+  function cardProps(p: Profile): CardProps {
+    return {
+      profile: p,
+      running: running.includes(p.id),
+      launching: launchingId === p.id,
+      download: dl && dl.id === p.id ? dl : null,
+      notice: notices[p.id],
+      current,
+      selected: selected.has(p.id),
+      selecting: selected.size > 0,
+      onToggleSelect: ({ range }) => toggleSelect(p.id, range),
+      onFilterTag: (tag) => {
+        setTagFilter(tag);
+        goProfiles();
+      },
+      onLaunch: () => void launch(p),
+      onStop: () => stop(p),
+      cloud: cloudById.get(p.id),
+      cloudStarting: cloudStartingId === p.id,
+      onCloudStart: () => void cloudStart(p),
+      onCloudStop: () => void cloudStop(p),
+      onCloudOpen: () => void cloudOpen(p),
+      onEdit: (field) => openEditor(p, field),
+      onDuplicate: () => duplicate(p),
+      onSaveTemplate: () => setSaveTplFor(p),
+      onDelete: () => remove(p),
+      onExport: () => openExport([p.id]),
+      onImportCookies: () => setMigrate({ kind: "cookies", id: p.id, name: p.name || p.id }),
+      onOpenData: () => openData(p),
+      onCheckGeo: () => checkGeo(p),
+      onClearCache: () => clearCache(p),
+      onDismissNotice: () => setNotices(({ [p.id]: _gone, ...rest }) => rest),
+      onNoticeAction: (a) => noticeAction(p, a),
+      onCopy: copy,
+      onArrow: (key) => moveFocus(p.id, key),
+      onDetails: () => setDetailsId(p.id),
+    };
+  }
+  const detailsProfile = detailsId ? profiles.find((p) => p.id === detailsId) : undefined;
+
+  // ── Proxies page ──────────────────────────────────────────────────────────
+  async function checkProxy(row: ProxyRow) {
+    const p = row.profiles[0];
+    if (!p) return;
+    setProxyChecking((s) => new Set(s).add(row.key));
+    try {
+      await checkGeo(p);
+    } finally {
+      setProxyChecking((s) => {
+        const n = new Set(s);
+        n.delete(row.key);
+        return n;
+      });
+    }
+  }
+  async function checkAllProxies() {
+    // One at a time: a burst of lookups through the same provider looks like what it is.
+    setPage("proxies");
+    setProxyChecking(new Set(proxyRows.map((r) => r.key)));
+    let failed = 0;
+    for (const row of proxyRows) {
+      const r = await api.checkProfileGeo(row.profiles[0].id).catch(() => ({ ok: false }));
+      if (!r.ok) failed++;
+      setProxyChecking((s) => {
+        const n = new Set(s);
+        n.delete(row.key);
+        return n;
+      });
+    }
+    await refresh();
+    notify(
+      failed
+        ? t("Checked {n} proxies; {failed} did not answer.", { n: proxyRows.length, failed })
+        : proxyRows.length === 1
+          ? t("Checked 1 proxy.")
+          : t("Checked {n} proxies.", { n: proxyRows.length }),
+      failed ? { tone: "error" } : {},
+    );
+  }
+  async function doReplaceProxy(row: ProxyRow, to: string) {
+    let n = 0;
+    for (const p of row.profiles) {
+      const next = replaceProxy(p, row.key, to);
+      if (next !== p) {
+        // The old exit was measured through the old server; it says nothing about the new one.
+        const { lastGeo: _old, ...rest } = next;
+        await api.profiles.save(rest);
+        n++;
+      }
+    }
+    await refresh();
+    notify(n === 1 ? t("Moved 1 profile to the new proxy.") : t("Moved {n} profiles to the new proxy.", { n }));
+  }
+  function showProxyProfiles(row: ProxyRow) {
+    setQuery(`${row.host}:${row.port}`);
+    setTagFilter(null);
+    setGroupFilter(null);
+    goProfiles("all");
+  }
+
+  // ── Open now (sidebar) ────────────────────────────────────────────────────
+  const runningItems: RunningItem[] = [
+    ...profiles
+      .filter((p) => running.includes(p.id))
+      .map((p) => ({ id: p.id, name: displayName(p), where: "local" as const, detail: geoLabel(p)?.text })),
+    ...cloudSessions.map((c) => ({
+      id: c.profileId,
+      name: displayName(profiles.find((p) => p.id === c.profileId) ?? ({ id: c.profileId } as Profile)),
+      where: "cloud" as const,
+      detail: c.exit,
+      stopping: c.status === "stopping",
+    })),
+  ];
+  function stopRunning(id: string) {
+    const p = profiles.find((x) => x.id === id) ?? ({ id } as Profile);
+    if (cloudById.has(id)) void cloudStop(p);
+    else void stop(p);
+  }
+  function openRunning(id: string) {
+    const p = profiles.find((x) => x.id === id);
+    if (!p) return;
+    if (cloudById.has(id)) void cloudOpen(p);
+    else {
+      setDetailsId(id);
+      setSidebarOpen(false);
+    }
+  }
+
+  // ── Command palette ───────────────────────────────────────────────────────
+  function paletteCommands(): { commands: Command[]; profileCommands: Command[] } {
+    const app = t("Commands");
+    const nav = t("Go to");
+    const commands: Command[] = [
+      { id: "new", section: app, label: t("New profile"), hint: shortcutLabel("N", host), run: () => openEditor(freshProfile()) },
+      ...templates.slice(0, 8).map((tpl) => ({
+        id: `tpl:${tpl.id}`,
+        section: app,
+        label: t("New profile from “{template}”", { template: tpl.name }),
+        keywords: "template",
+        run: () => newFromTemplate(tpl),
+      })),
+      { id: "bulk", section: app, label: t("New profiles from a proxy list…"), keywords: "bulk create import", run: () => setBulkCreateOpen(true) },
+      { id: "import", section: app, label: t("Import profiles from a file…"), run: () => void doImport() },
+      { id: "migrate", section: app, label: t("Move in from another browser…"), keywords: "adspower dolphin gologin multilogin octo", run: () => setMigrate({ kind: "profiles" }) },
+      { id: "export", section: app, label: t("Export all profiles…"), run: () => openExport() },
+      { id: "templates", section: app, label: t("Manage templates…"), run: () => setManageTplOpen(true) },
+      { id: "checkall", section: app, label: t("Check every proxy"), keywords: "proxies geo exit", run: () => void checkAllProxies() },
+      {
+        id: "layout",
+        section: app,
+        label: layout === "cards" ? t("Show profiles as a table") : t("Show profiles as cards"),
+        keywords: "view layout density",
+        run: () => changeLayout(layout === "cards" ? "table" : "cards"),
+      },
+      { id: "theme", section: app, label: t("Toggle light or dark theme"), run: toggleTheme },
+      { id: "settings", section: app, label: t("Settings"), hint: shortcutLabel(",", host), run: () => setSettingsOpen("general") },
+      { id: "shortcuts", section: app, label: t("Keyboard shortcuts"), hint: "?", run: () => setShortcutsOpen(true) },
+      { id: "v:all", section: nav, label: t("All profiles"), run: () => goProfiles("all") },
+      { id: "v:running", section: nav, label: t("Running"), run: () => goProfiles("running") },
+      { id: "v:attention", section: nav, label: t("Needs attention"), run: () => goProfiles("attention") },
+      { id: "v:recent", section: nav, label: t("Used this week"), run: () => goProfiles("recent") },
+      { id: "v:proxies", section: nav, label: t("Proxies"), run: () => setPage("proxies") },
+      ...groupList.map((g) => ({
+        id: `g:${g.key}`,
+        section: nav,
+        label: t("Group {name}", { name: g.name }),
+        run: () => {
+          setGroupFilter({ key: g.key, name: g.name });
+          goProfiles();
+        },
+      })),
+    ];
+    const sec = t("Profiles");
+    const profileCommands: Command[] = profiles.flatMap((p) => {
+      const name = displayName(p);
+      const kw = [p.group, ...(p.tags ?? []), proxySummary(p.proxy)].filter(Boolean).join(" ");
+      const live = active.includes(p.id);
+      const first: Command = cloudById.has(p.id)
+        ? { id: `o:${p.id}`, section: sec, label: t("Open the cloud window of {name}", { name }), keywords: kw, run: () => void cloudOpen(p) }
+        : running.includes(p.id)
+          ? { id: `s:${p.id}`, section: sec, label: t("Stop {name}", { name }), keywords: kw, run: () => void stop(p) }
+          : { id: `l:${p.id}`, section: sec, label: t("Launch {name}", { name }), keywords: kw, run: () => void launch(p) };
+      return [
+        first,
+        { id: `d:${p.id}`, section: sec, label: t("Details of {name}", { name }), keywords: kw, run: () => setDetailsId(p.id) },
+        { id: `e:${p.id}`, section: sec, label: t("Edit {name}", { name }), keywords: kw, run: () => openEditor(p) },
+        ...(live ? [] : [{ id: `c:${p.id}`, section: sec, label: t("Run {name} in the cloud", { name }), keywords: kw, run: () => void cloudStart(p) }]),
+      ];
+    });
+    return { commands, profileCommands };
+  }
+
   // ── Keyboard ──────────────────────────────────────────────────────────────
   // Page-level shortcuts stand down while any dialog is open, and single keys never fire while
   // typing in a field.
   // The most recently used template, for Ctrl+Shift+N (read through the ref, like the rest).
   const newFromLast = () => (templates[0] ? newFromTemplate(templates[0]) : setManageTplOpen(true));
-  const kb = useRef({ visibleIds, selectedCount: selected.size, filtering, newFromLast });
-  kb.current = { visibleIds, selectedCount: selected.size, filtering, newFromLast };
+  const detailsOpen = !!detailsProfile;
+  const kb = useRef({ visibleIds, selectedCount: selected.size, filtering, newFromLast, detailsOpen });
+  kb.current = { visibleIds, selectedCount: selected.size, filtering, newFromLast, detailsOpen };
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
       if (dialogOpen() || e.defaultPrevented) return;
@@ -944,6 +1210,9 @@ function Manager() {
       } else if (mod && !e.altKey && k === "n") {
         e.preventDefault();
         openEditor(freshProfile());
+      } else if (mod && !e.altKey && !e.shiftKey && k === "k") {
+        e.preventDefault();
+        setPaletteOpen(true);
       } else if (mod && !e.altKey && k === "f") {
         e.preventDefault();
         searchRef.current?.focus();
@@ -964,6 +1233,9 @@ function Manager() {
         } else if (e.key === "Escape" && kb.current.selectedCount) {
           e.preventDefault();
           setSelected(new Set());
+        } else if (e.key === "Escape" && kb.current.detailsOpen) {
+          e.preventDefault();
+          setDetailsId(null);
         }
       }
     };
@@ -973,7 +1245,7 @@ function Manager() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  const view = describeTarget(isEl ? target : target ?? { mode: "preview" });
+  const pill = describeTarget(isEl ? target : target ?? { mode: "preview" });
   // No key yet: "Use my Clearcote account" is the first thing in the header (and the pill does the same).
   const offerAccount = mounted && !settings.licenseKey && !!api.license.loginStart;
   function startAccountLogin() {
@@ -984,8 +1256,40 @@ function Manager() {
     ok: "border-accent/30 text-accent hover:bg-accent/5",
     warn: "border-warn/40 text-warn hover:bg-warn/5",
     muted: "border-line text-fog/50 hover:bg-elevate",
-  }[view.tone];
-  const dotTone = { ok: "bg-accent", warn: "bg-warn", muted: "bg-fog/30" }[view.tone];
+  }[pill.tone];
+  const dotTone = { ok: "bg-accent", warn: "bg-warn", muted: "bg-fog/30" }[pill.tone];
+  const sidebar = (
+    <Sidebar
+      page={page}
+      onPage={(p) => {
+        setPage(p);
+        setSidebarOpen(false);
+      }}
+      view={view}
+      onView={(v) => goProfiles(v)}
+      counts={viewCounts}
+      groups={groupList}
+      group={groupFilter?.key ?? null}
+      onGroup={(g) => setGroupFilter(g)}
+      tags={tagList}
+      tag={tagFilter}
+      onTag={(tag) => setTagFilter(tag)}
+      proxies={proxyRows.length}
+      running={runningItems}
+      onStopRunning={stopRunning}
+      onOpenRunning={openRunning}
+      footer={
+        <button
+          className="flex w-full items-center justify-between rounded-lg px-2 py-1 text-[11px] text-fog/45 hover:bg-elevate hover:text-fog"
+          onClick={() => setPaletteOpen(true)}
+          aria-label={t("Open the command bar")}
+        >
+          <span>{t("Commands and search")}</span>
+          <kbd className="rounded border border-line px-1 font-mono text-[10px]">{shortcutLabel("K", host)}</kbd>
+        </button>
+      }
+    />
+  );
   const current = target && target.mode === "managed" ? { version: target.version, major: target.major, plan: target.plan } : undefined;
   const takenNames = useMemo(
     () => profiles.filter((p) => p.id !== editing?.id).map((p) => (p.name ?? "").trim().toLowerCase()).filter(Boolean),
@@ -995,10 +1299,27 @@ function Manager() {
   return (
     // data-ready: set once hydrated and the shortcuts are live — what the UI tests wait for.
     <main className="app-sheen relative min-h-screen" data-ready={mounted ? "1" : undefined}>
-      <div className={"relative z-10 mx-auto max-w-6xl px-6 py-6 animate-fade-up " + (selected.size ? "pb-24" : "")}>
+      <div className="relative z-10 flex min-h-screen">
+      {/* The workspace column: always there from 768 px, a drawer below that. */}
+      <div className="sticky top-0 hidden h-screen md:block">{sidebar}</div>
+      {sidebarOpen && (
+        <div className="fixed inset-0 z-50 flex md:hidden">
+          <div className="h-full">{sidebar}</div>
+          <button className="flex-1 bg-black/50" aria-label={t("Close the side panel")} onClick={() => setSidebarOpen(false)} />
+        </div>
+      )}
+      <div className="min-w-0 flex-1">
+      <div className={"mx-auto max-w-6xl px-6 py-6 animate-fade-up " + (selected.size ? "pb-24" : "")}>
         {/* Header */}
         <header className="flex flex-wrap items-center justify-between gap-4">
           <div className="flex items-center gap-3">
+            <button
+              className={btnGhost + " w-8 px-0 md:hidden"}
+              onClick={() => setSidebarOpen(true)}
+              aria-label={t("Open the side panel")}
+            >
+              ☰
+            </button>
             <LogoMark className="h-8 w-8" />
             <div>
               <h1 className="text-[15px] font-semibold tracking-tight">
@@ -1025,11 +1346,20 @@ function Manager() {
             {/* What the next launch actually runs — and a way to change it. */}
             <button
               className={`hidden items-center gap-1.5 rounded-full border px-2.5 py-1 text-[11px] transition sm:inline-flex ${pillTone}`}
-              title={offerAccount ? t("No licence key yet: use your Clearcote account") : view.title}
-              onClick={() => (offerAccount ? startAccountLogin() : setSettingsOpen(view.section))}
+              title={offerAccount ? t("No licence key yet: use your Clearcote account") : pill.title}
+              onClick={() => (offerAccount ? startAccountLogin() : setSettingsOpen(pill.section))}
             >
               <span className={`h-1.5 w-1.5 rounded-full ${dotTone}`} />
-              {view.text}
+              {pill.text}
+            </button>
+            <button
+              className={btnGhost + " hidden items-center gap-2 text-fog/55 lg:inline-flex"}
+              onClick={() => setPaletteOpen(true)}
+              title={t("Find a profile or a command ({shortcut})", { shortcut: shortcutLabel("K", host) })}
+              data-palette-button
+            >
+              {t("Find anything…")}
+              <kbd className="rounded border border-line px-1 font-mono text-[10px] text-fog/40">{shortcutLabel("K", host)}</kbd>
             </button>
             <button
               className={btnGhost + " w-8 px-0 text-sm"}
@@ -1110,6 +1440,22 @@ function Manager() {
           />
         )}
 
+        {page === "proxies" ? (
+          <>
+            <h2 className="mt-6 text-lg font-semibold">{t("Proxies")}</h2>
+            <ProxiesView
+              rows={proxyRows}
+              profileCount={profiles.length}
+              checking={proxyChecking}
+              onCheck={(r) => void checkProxy(r)}
+              onCheckAll={() => void checkAllProxies()}
+              onShowProfiles={showProxyProfiles}
+              onReplace={(row) => setPrompt({ kind: "replace-proxy", row })}
+              onFromList={() => setBulkCreateOpen(true)}
+            />
+          </>
+        ) : (
+        <>
         {/* Toolbar */}
         <div className="mt-6 flex flex-wrap items-center gap-3">
           <input
@@ -1133,18 +1479,18 @@ function Manager() {
               }
             }}
           />
-          <button
-            className={
-              "rounded-lg border px-2.5 py-1.5 text-xs font-medium transition " +
-              (runningOnly ? "border-accent/50 bg-accent/10 text-accent" : "border-line text-fog/70 hover:bg-elevate")
-            }
-            aria-pressed={runningOnly}
-            onClick={() => setRunningOnly((v) => !v)}
-            title={t("Show only profiles whose browser is open")}
-          >
-            {t("Running")}
-            {runningCount ? ` · ${runningCount}` : ""}
-          </button>
+          <div className="inline-flex overflow-hidden rounded-lg border border-line" role="group" aria-label={t("Show profiles as")}>
+            {(["cards", "table"] as const).map((l) => (
+              <button
+                key={l}
+                className={"px-2.5 py-1.5 text-xs font-medium transition " + (layout === l ? "bg-elevate text-fog" : "text-fog/55 hover:text-fog")}
+                aria-pressed={layout === l}
+                onClick={() => changeLayout(l)}
+              >
+                {l === "cards" ? t("Cards") : t("Table")}
+              </button>
+            ))}
+          </div>
           <div className="text-xs text-fog/35" aria-live="polite">
             {filtered.length !== profiles.length
               ? t("{shown} of {total}", { shown: filtered.length, total: profiles.length })
@@ -1183,9 +1529,18 @@ function Manager() {
         </div>
 
         {/* Active filters */}
-        {(tagFilter || groupFilter) && (
+        {(tagFilter || groupFilter || view !== "all") && (
           <div className="mt-3 flex flex-wrap items-center gap-2 text-xs">
             <span className="text-fog/40">{t("Showing")}</span>
+            {view !== "all" && (
+              <button
+                className="inline-flex items-center gap-1.5 rounded-full border border-accent/40 bg-accent/10 px-2.5 py-0.5 text-accent hover:bg-accent/15"
+                onClick={() => setView("all")}
+                aria-label={t("Show every profile again")}
+              >
+                {t(VIEW_LABELS[view])} <span aria-hidden>✕</span>
+              </button>
+            )}
             {tagFilter && (
               <button
                 className="inline-flex items-center gap-1.5 rounded-full border border-accent/40 bg-accent/10 px-2.5 py-0.5 text-accent hover:bg-accent/15"
@@ -1224,7 +1579,11 @@ function Manager() {
                 ? t("Meet Clyde — your first identity awaits")
                 : runningOnly && !query && !tagFilter && !groupFilter
                   ? t("Nothing is running")
-                  : t("No matches")}
+                  : view === "attention" && !query && !tagFilter && !groupFilter
+                    ? t("Nothing needs attention")
+                    : view === "recent" && !query && !tagFilter && !groupFilter
+                      ? t("Nothing launched this week")
+                      : t("No matches")}
             </h2>
             <p className="mt-1.5 max-w-sm text-sm text-fog/50">
               {profiles.length === 0
@@ -1251,6 +1610,12 @@ function Manager() {
               )
             )}
           </div>
+        ) : layout === "table" ? (
+          <div className="mt-5">
+            <ProfileTable
+              rows={filtered.map((p) => ({ ...cardProps(p), attention: attention.get(p.id) ?? [], open: detailsId === p.id }))}
+            />
+          </div>
         ) : (
           sections.map((sec, si) => {
             const folded = collapsed.includes(sec.key) && hasHeading(sec);
@@ -1275,41 +1640,9 @@ function Manager() {
                   />
                 )}
                 {!folded && (
-                  <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3" data-section={si}>
+                  <div className="grid grid-cols-[repeat(auto-fill,minmax(min(100%,300px),1fr))] gap-3" data-section={si}>
                     {sec.profiles.map((p) => (
-                      <ProfileCard
-                        key={p.id}
-                        profile={p}
-                        running={running.includes(p.id)}
-                        launching={launchingId === p.id}
-                        download={dl && dl.id === p.id ? dl : null}
-                        notice={notices[p.id]}
-                        current={current}
-                        selected={selected.has(p.id)}
-                        selecting={selected.size > 0}
-                        onToggleSelect={({ range }) => toggleSelect(p.id, range)}
-                        onFilterTag={(tag) => setTagFilter(tag)}
-                        onLaunch={() => void launch(p)}
-                        onStop={() => stop(p)}
-                        cloud={cloudById.get(p.id)}
-                        cloudStarting={cloudStartingId === p.id}
-                        onCloudStart={() => void cloudStart(p)}
-                        onCloudStop={() => void cloudStop(p)}
-                        onCloudOpen={() => void cloudOpen(p)}
-                        onEdit={(field) => openEditor(p, field)}
-                        onDuplicate={() => duplicate(p)}
-                        onSaveTemplate={() => setSaveTplFor(p)}
-                        onDelete={() => remove(p)}
-                        onExport={() => openExport([p.id])}
-                        onImportCookies={() => setMigrate({ kind: "cookies", id: p.id, name: p.name || p.id })}
-                        onOpenData={() => openData(p)}
-                        onCheckGeo={() => checkGeo(p)}
-                        onClearCache={() => clearCache(p)}
-                        onDismissNotice={() => setNotices(({ [p.id]: _gone, ...rest }) => rest)}
-                        onNoticeAction={(a) => noticeAction(p, a)}
-                        onCopy={copy}
-                        onArrow={(key) => moveFocus(p.id, key)}
-                      />
+                      <ProfileCard key={p.id} {...cardProps(p)} />
                     ))}
                   </div>
                 )}
@@ -1317,14 +1650,23 @@ function Manager() {
             );
           })
         )}
+        </>
+        )}
       </div>
+      </div>
+      </div>
+
+      {detailsProfile && (
+        <ProfileInspector {...cardProps(detailsProfile)} attention={attention.get(detailsProfile.id) ?? []} onClose={() => setDetailsId(null)} />
+      )}
+      {paletteOpen && <CommandPalette {...paletteCommands()} onClose={() => setPaletteOpen(false)} />}
 
       {/* Bulk actions for the selected profiles */}
       {selected.size > 0 && (
         <div
           role="region"
           aria-label={t("Selected profiles")}
-          className="fixed inset-x-0 bottom-0 z-30 border-t border-line-strong bg-surface/95 px-4 py-2.5 backdrop-blur"
+          className="fixed inset-x-0 bottom-0 z-30 border-t border-line-strong bg-surface/95 px-4 py-2.5 backdrop-blur md:left-60"
           style={{ paddingBottom: "calc(0.625rem + env(safe-area-inset-bottom, 0px))" }}
         >
           <div className="mx-auto flex max-w-6xl flex-wrap items-center gap-2">
@@ -1478,6 +1820,20 @@ function Manager() {
                 ? t("Tagged 1 profile #{tag}.", { tag })
                 : t("Tagged {n} profiles #{tag}.", { n: selected.size, tag }),
             );
+          }}
+        />
+      )}
+      {prompt?.kind === "replace-proxy" && (
+        <PromptDialog
+          title={t("Replace {proxy}", { proxy: prompt.row.key })}
+          label={t("New proxy address")}
+          confirmLabel={prompt.row.profiles.length === 1 ? t("Move 1 profile") : t("Move {n} profiles", { n: prompt.row.profiles.length })}
+          hint={t("Each profile keeps its own login unless the new address has one. Their last exit is cleared, since it was measured through the old server.")}
+          onClose={() => setPrompt(null)}
+          onConfirm={(v) => {
+            const row = (prompt as { row: ProxyRow }).row;
+            setPrompt(null);
+            if (v.trim()) void doReplaceProxy(row, v.trim());
           }}
         />
       )}
