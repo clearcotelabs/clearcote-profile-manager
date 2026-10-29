@@ -1367,6 +1367,7 @@ function Manager() {
               className={`hidden items-center gap-1.5 rounded-full border px-2.5 py-1 text-[11px] transition sm:inline-flex ${pillTone}`}
               title={offerAccount ? t("No licence key yet: use your Clearcote account") : pill.title}
               onClick={() => (offerAccount ? startAccountLogin() : setSettingsOpen(pill.section))}
+              data-launch-target="1"
             >
               <span className={`h-1.5 w-1.5 rounded-full ${dotTone}`} />
               {pill.text}

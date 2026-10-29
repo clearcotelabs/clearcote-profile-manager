@@ -7,7 +7,17 @@ A desktop app to **create, save, organize, and launch [Clearcote](https://github
 > **Status:** built — profile create/edit/launch, running a profile in the cloud with a live window, proxy geo-resolve, import/export, a light/dark theme (dark by default), and packaged builds for **Windows, Linux and macOS** (all cut by CI on every release). Full design + phases in **[PLAN.md](PLAN.md)**.
 
 <details>
-<summary>More screenshots — meet Clyde, light theme, editor</summary>
+<summary>More screenshots — run a task, table view, editor, light theme, meet Clyde</summary>
+
+**Run a task on many profiles** — Jet learns it in the first profile and repeats it on the rest; each waits for you before a click that can't be undone
+
+![Run a task dialog](docs/screenshots/run-task.png)
+
+![Run board with profiles waiting for approval](docs/screenshots/task-board.png)
+
+**Table view** (cards or a table, from the toolbar)
+
+![Table view](docs/screenshots/table-view.png)
 
 **Empty state — meet Clyde, the Clearcote chameleon** (he bobs, blinks, and shifts hue)
 
@@ -17,7 +27,7 @@ A desktop app to **create, save, organize, and launch [Clearcote](https://github
 
 ![Light theme](docs/screenshots/light-theme.png)
 
-**Profile editor**
+**Profile editor** (here with a profile's task values)
 
 ![Profile editor](docs/screenshots/editor.png)
 
@@ -296,6 +306,14 @@ npm run dist       # package for whichever OS you are on
 | `src/types/` | shared data model (`Profile`) |
 | `tests/` | vitest unit suite (`npm test`) — see [tests/README.md](tests/README.md) |
 | `profiles/` | runtime profile store — JSON per profile + per-profile `userdata/`; git-ignored except the example |
+
+## Screenshots
+
+The README screenshots come from the real desktop app, not the browser preview:
+`npm run build`, then `node scripts/screenshots.mjs --binary latest --jet "<command that starts Jet>" --jet-env <file with TYPESAFE_API_KEY>`
+(`latest` needs a licence key; `--binary <chrome.exe>` uses that browser). It seeds made-up profiles in a throwaway
+data folder, launches two of them, and runs a real task on three, so the run board in the picture is a real run.
+Without `--binary` and `--jet` it takes the shots that need neither.
 
 ## Packaging (Windows + Linux + macOS)
 

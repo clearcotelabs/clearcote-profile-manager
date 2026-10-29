@@ -78,7 +78,8 @@ describe.skipIf(!READY)("the desktop app, end to end", () => {
     if (process.env.E2E_OUTCOMES) fs.appendFileSync(process.env.E2E_OUTCOMES, `${what}: ${outcome.slice(0, 90)}\n`);
   };
   const pillText = () =>
-    win.locator("header button").first().textContent().then((t) => (t || "").trim());
+    // The pill itself: since 0.30.0 the header's first button is the sidebar toggle (☰).
+    win.locator("header [data-launch-target]").first().textContent().then((t) => (t || "").trim());
 
   beforeAll(async () => {
     UDD = fs.mkdtempSync(path.join(os.tmpdir(), "ccpm-app-e2e-"));
@@ -403,9 +404,15 @@ describe.skipIf(!READY)("the desktop app, end to end", () => {
         fs.writeFileSync(path.join(dir, "browser", "chrome.exe"), Buffer.alloc(1_500_000));
         if (marker) fs.writeFileSync(path.join(dir, ".verified"), "x");
       };
-      build(path.join(fakeCache, "pro-153.0.8010.36-r27")); // what Latest runs (licensed)
-      build(path.join(fakeCache, "pro-152.0.7977.82-r22")); // nothing uses it
-      build(path.join(fakeCache, "pro-151.0.7922.108-r18")); // "pinned" pins it
+      // What Latest runs for this licence, asked from the live catalog: a hard-coded build goes stale
+      // the day a newer one ships (153 r27 did, and the plan then had two builds to remove).
+      const lt = (await win.evaluate(() =>
+        (window as unknown as { clearcote: { launchTarget: () => Promise<{ version?: string }> } }).clearcote.launchTarget(),
+      )) as { version?: string };
+      const latestTag = KEY && lt.version ? `pro-${lt.version}` : "pro-latest"; // no key: the removal step below is skipped
+      build(path.join(fakeCache, latestTag)); // what Latest runs (licensed)
+      build(path.join(fakeCache, "pro-153.0.8010.36-r27")); // nothing uses it
+      build(path.join(fakeCache, "pro-152.0.7977.82-r22")); // "pinned" pins it (below)
       build(path.join(fakeTmp, "clearcote-recover-abc"), false);
       build(path.join(fakeTmp, "clearcote-live", "0123456789abcdef"), false);
       // A cache next to real logins, in the profile that has been launched.
@@ -415,14 +422,25 @@ describe.skipIf(!READY)("the desktop app, end to end", () => {
       if (!fs.existsSync(path.join(def, "Preferences"))) fs.writeFileSync(path.join(def, "Preferences"), "{}");
 
       await stopApp();
+      // Pinned to a licensed build the catalog still lists: 151 became an open build on 10-28, so a
+      // 151 PRO revision no longer counts as pinned (and was offered for removal).
+      const pinnedFile = path.join(PROFILES, "pinned.json");
+      fs.writeFileSync(pinnedFile, JSON.stringify({ ...readJson(pinnedFile), browserVersion: "152.0.7977.82-r22" }, null, 2));
       await start({ CLEARCOTE_CACHE: fakeCache, TEMP: fakeTmp, TMP: fakeTmp });
       await win.keyboard.press("Control+Comma");
       const dlg = win.getByRole("dialog", { name: "Settings" });
       await dlg.getByRole("button", { name: "Storage" }).click();
       if (KEY) {
-        await dlg.getByRole("button", { name: /^Remove unused · frees 2 MB$/ }).click({ timeout: 30000 });
+        await dlg
+          .getByRole("button", { name: /^Remove unused · frees 2 MB$/ })
+          .click({ timeout: 30000 })
+          .catch(async (e) => {
+            throw new Error(`${(e as Error).message}
+Latest: ${latestTag}
+Storage shows: ${await dlg.innerText()}`);
+          });
         await dlg.getByText(/^Removed 1 build/).waitFor();
-        expect(fs.readdirSync(fakeCache).sort()).toEqual(["pro-151.0.7922.108-r18", "pro-153.0.8010.36-r27"]);
+        expect(fs.readdirSync(fakeCache).sort()).toEqual(["pro-152.0.7977.82-r22", latestTag].sort());
       }
       await dlg.getByRole("button", { name: "Clean up" }).click();
       await dlg.getByText(/^Cleaned up/).waitFor();

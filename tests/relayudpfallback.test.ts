@@ -2,7 +2,7 @@
 // with Relay UDP off, and says so. A relay through such a proxy closes every UDP socket at once (WebRTC
 // error + no public address, HTTP/3 never starts); with it off the browser behaves as with the toggle off.
 
-import { describe, it, expect, vi, beforeAll } from "vitest";
+import { describe, it, expect, vi, beforeAll, afterAll } from "vitest";
 import fs from "node:fs";
 import os from "node:os";
 import path from "node:path";
@@ -13,6 +13,7 @@ const ROOT = fs.mkdtempSync(path.join(os.tmpdir(), "ccpm-relayudp-"));
 vi.mock("electron", () => ({ app: { getPath: () => ROOT } }));
 let relayUdpAfterPin: typeof import("../electron/launcher").relayUdpAfterPin;
 beforeAll(async () => { ({ relayUdpAfterPin } = await import("../electron/launcher")); });
+afterAll(() => fs.rmSync(ROOT, { recursive: true, force: true }));
 
 const prof = (socks5Udp: boolean) => ({ id: "p1", name: "t", proxy: "socks5://203.0.113.5:1080", socks5Udp }) as unknown as Profile;
 

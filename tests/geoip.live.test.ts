@@ -16,7 +16,8 @@ import path from "node:path";
 import type { Profile } from "../electron/types";
 
 const PROXY = process.env.CLEARCOTE_TEST_PROXY;
-const ROOT = fs.mkdtempSync(path.join(os.tmpdir(), "ccpm-geoip-live-"));
+// Only made when the suite runs: skipped (no proxy), its afterAll never runs and the folder was left behind.
+const ROOT = PROXY ? fs.mkdtempSync(path.join(os.tmpdir(), "ccpm-geoip-live-")) : path.join(os.tmpdir(), "ccpm-geoip-live-unused");
 vi.mock("electron", () => ({ app: { getPath: () => ROOT } }));
 afterAll(() => fs.rmSync(ROOT, { recursive: true, force: true }));
 
