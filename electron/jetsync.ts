@@ -375,6 +375,7 @@ export class SyncManager extends EventEmitter {
       let exitCode: number | null = null;
       const crashed = () => {
         if (this.stopRequested.has(key)) end("stopped", "Stopped.");
+        else if (tooOld(stderr)) end("failed", JET_TOO_OLD);
         else end("failed", `Jet stopped without finishing (exit code ${exitCode}). ${lastLines(stderr)}`.trim());
       };
       if (w.stdout) {
@@ -493,6 +494,15 @@ export class SyncManager extends EventEmitter {
   private sleep(ms: number): Promise<void> {
     return this.deps.sleep ? this.deps.sleep(ms) : new Promise((r) => setTimeout(r, ms));
   }
+}
+
+/** The oldest Jet with the worker this runner speaks to. */
+export const MIN_JET = "0.3.0";
+const JET_TOO_OLD = `This Jet is too old to run tasks on profiles (it needs ${MIN_JET} or newer). Update it with "pip install -U clearcote-jet".`;
+
+/** An older Jet has no `worker` command: argparse says so on stderr. */
+function tooOld(lines: string[]): boolean {
+  return /invalid choice: '?worker'?/.test(lines.join(""));
 }
 
 function lastLines(lines: string[]): string {

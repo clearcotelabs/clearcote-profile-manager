@@ -88,7 +88,8 @@ describe.skipIf(!READY)("e2e — one task on two profiles, through real Jet work
     const store = await import("../electron/store");
     store.writeSettings({
       binaryPath: process.env.CLEARCOTE_BINARY,
-      crlset: false,
+      // CLEARCOTE_SYNC_CRLSET=1: the default for users, where the first tab is held over a DevTools pipe as well.
+      crlset: process.env.CLEARCOTE_SYNC_CRLSET === "1",
       jetCommand: process.env.CLEARCOTE_JET_COMMAND,
       jetApiKey: jetKey(),
     });

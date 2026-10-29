@@ -164,6 +164,29 @@ set no location) and the Geolocation API reports the host's real position — ge
 derived from the proxy on its own. The lookup speaks SOCKS5 with authentication directly, so it works
 through the same residential proxies the browser uses.
 
+## Run a task on many profiles
+
+Select profiles, choose **Run a task…** and say what to do: "Log in as {{email}} with the password
+{{password}} and accept the new terms". [Jet](https://github.com/clearcotelabs/clearcote-jet) works the
+task out in the first profile and saves it; the others repeat it **without the model**, each in its own
+browser with its own mouse movement and timing. This copies the task, not your clicks, so profiles with
+different screens, languages or cookie banners still do the right thing.
+
+- **Values per profile.** `{{name}}`, `{{id}}`, `{{group}}` and `{{tags}}` come with every profile; add
+  your own under **Task values** in the editor. A **secret** value (a password) is typed only: the run
+  board, exports, the saved task and Jet's model see its name, never the value.
+- **Ask before a click that can't be undone.** On by default: each profile stops before sending, buying,
+  booking or deleting, and the run board lets you approve them one by one or all at once.
+- **Pacing.** How many run at once, and a random wait between starts, so a batch never acts in step.
+- **Setting up Jet.** `pip install clearcote-jet` (0.3.0 or newer), then **Settings → Tasks**: the
+  command to start it (empty = `clearcote-jet` from PATH) and its model key. Only learning a task uses
+  the model, about $0.001 a task.
+- **How it connects.** A task's launches open a local DevTools port (`--remote-debugging-port=0`, read
+  back from `DevToolsActivePort`), and a Jet worker attaches to it. **Settings → Tasks → Allow
+  automation on every launch** opens it on every launch, for your own SDK or Playwright scripts; while a
+  profile runs, any program on this PC can use that port. Desktop app only: the web version cannot run
+  tasks or open the port.
+
 ## Revoked certificates
 
 Real Chrome downloads Google's certificate revocation list (CRLSet) in the background, which is how a

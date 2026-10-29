@@ -337,6 +337,18 @@ describe("a run", () => {
     expect(run.rows[0].detail).toMatch(/No module named 'mcp'/);
   });
 
+  it("a Jet without the worker command (before 0.3.0) says to update it", async () => {
+    const h = harness({
+      script: (w, msg) => {
+        if (msg.cmd !== "run") return;
+        w.stderr.write("usage: clearcote-jet [-h] {browser,run,read} ...\nclearcote-jet: error: argument command: invalid choice: 'worker' (choose from browser, run, read)\n");
+        setTimeout(() => w.exit(2), 5);
+      },
+    });
+    const run = await finished(h.mgr, startOk(h, { profileIds: ["a"], goal: "x" }));
+    expect(run.rows[0]).toMatchObject({ status: "failed", detail: expect.stringMatching(/too old.*0\.3\.0.*pip install -U clearcote-jet/) });
+  });
+
   it("a worker error event fails the row", async () => {
     const h = harness({ script: (w, m) => m.cmd === "run" && (w.out({ type: "error", message: "Could not attach to the browser" }), w.exit(1)) });
     const run = await finished(h.mgr, startOk(h, { profileIds: ["a"], goal: "x" }));
