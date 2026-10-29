@@ -270,6 +270,27 @@ describe("a typed screen, by the engine build the profile launches", () => {
   });
 });
 
+describe("a typed screen whose pixel ratio is the persona's", () => {
+  // Sonex 10-29 on r54: seed cust-b + a typed 1920 x 1080 reported devicePixelRatio 1.25.
+  const OWN = { screenWidth: 1920, screenHeight: 1080, availWidth: 1920, availHeight: 1040 };
+  const R54: CoherenceContext = { major: 156, revision: 54, hostScreen: { width: 1920, height: 1080, availWidth: 1920, availHeight: 1040, devicePixelRatio: 1 } };
+  const issue = (p: Record<string, unknown>) => coherenceIssues(p, R54).find((i) => i.id === "screen-without-pixel-ratio");
+
+  it("warns under a seed, a capture or Light stealth, and points at Pixel ratio", () => {
+    const i = issue({ ...CLEAN, fingerprint: "cust-b", ...OWN });
+    expect(i?.field).toBe("devicePixelRatio");
+    expect(i?.message).toMatch(/so the seed still picks it/);
+    expect(issue({ ...CLEAN, fingerprintProfile: "cap.json", ...OWN })).toBeDefined();
+    expect(issue({ ...CLEAN, lightStealth: true, ...OWN })).toBeDefined();
+  });
+
+  it("is silent once the ratio is typed, without a persona, or with no screen typed", () => {
+    expect(issue({ ...CLEAN, fingerprint: "cust-b", ...OWN, devicePixelRatio: 1 })).toBeUndefined();
+    expect(issue({ ...CLEAN, ...OWN })).toBeUndefined();
+    expect(issue({ ...CLEAN, fingerprint: "cust-b" })).toBeUndefined();
+  });
+});
+
 describe("a capture from a display too small to hold a window", () => {
   it("surfaces the import's own guard", () =>
     expect(ids({ ...CLEAN, fingerprintProfile: "tiny.json" }, { capturedScreenWarning: "800x600 display" })).toContain(

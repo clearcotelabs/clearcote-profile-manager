@@ -883,7 +883,7 @@
   "Edit {name}": [
     "app/page.tsx"
   ],
-  "Empty all four: the seed or capture brings a screen that agrees with itself": [
+  "Empty all four and the pixel ratio: the seed or capture brings a screen and ratio that agree": [
     "src/components/ProfileEditor.tsx"
   ],
   "Empty uses the persona's screen, or this display when there is no persona. On builds before 154 r36, with a seed, a captured fingerprint or Light stealth active, a typed size reaches screen.* but not the CSS media queries, so pages read two different screens, even when the size matches your own monitor. From 154 r36 on both report the typed size: typing all four of this display's values is fine, while any other size is still a faked screen the real window cannot match.": [
@@ -984,7 +984,7 @@
   "File contents": [
     "src/components/MigrateDialog.tsx"
   ],
-  "Fill all four from this display: {width} × {height}, work area {availWidth} × {availHeight}": [
+  "Fill all four and the pixel ratio from this display: {width} × {height}, work area {availWidth} × {availHeight}, pixel ratio {ratio}": [
     "src/components/ProfileEditor.tsx"
   ],
   "Filter by GPU vendor": [
@@ -2181,6 +2181,9 @@
   "Session & data": [
     "src/lib/fields.ts"
   ],
+  "Set Pixel ratio as well (“Use this display” fills both from this display), or empty the screen fields.": [
+    "src/lib/coherence.ts"
+  ],
   "Set Platform to macos on a Mac, or import a fingerprint captured on {platform}.": [
     "src/lib/coherence.ts"
   ],
@@ -2580,6 +2583,9 @@
   ],
   "The request expired. Nothing was paired.": [
     "src/components/HelperGate.tsx"
+  ],
+  "The screen size is typed but the pixel ratio is not, so {source} still picks it. A typed screen at another display's ratio describes a panel no monitor has.": [
+    "src/lib/coherence.ts"
   ],
   "The session stops when its traffic reaches this, so it can never cost more.": [
     "src/components/CloudFields.tsx"

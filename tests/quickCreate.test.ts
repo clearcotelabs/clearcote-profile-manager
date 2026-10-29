@@ -31,6 +31,17 @@ describe("Use this display", () => {
     expect(p.proxy).toBe("http://h.example:1");
     expect("screenWidth" in p).toBe(false);
   });
+
+  // Sonex 10-29 on r54: the four fields alone left a seed's 1.25 under a typed 1920 x 1080.
+  it("takes this display's pixel ratio with the screen, and Clear empties it too", () => {
+    const scaled = { ...host, devicePixelRatio: 1 };
+    const p = withHostScreen({ ...base, devicePixelRatio: 1.25 }, scaled);
+    expect(p.devicePixelRatio).toBe(1);
+    expect(screenSource(p, scaled)).toBe("host");
+    expect(screenSource({ ...p, devicePixelRatio: 1.25 }, scaled)).toBe("other");
+    expect(screenSource(withHostScreen(base, host), scaled)).toBe("other");
+    expect("devicePixelRatio" in withoutScreen(p)).toBe(false);
+  });
 });
 
 describe("proxy from the clipboard", () => {

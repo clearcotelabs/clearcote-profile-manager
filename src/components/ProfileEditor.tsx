@@ -107,7 +107,7 @@ function selectedMajor(v: string | undefined): number | undefined {
 function hostScreen() {
   if (typeof window === "undefined" || !window.screen) return undefined;
   const s = window.screen;
-  return { width: s.width, height: s.height, availWidth: s.availWidth, availHeight: s.availHeight };
+  return { width: s.width, height: s.height, availWidth: s.availWidth, availHeight: s.availHeight, devicePixelRatio: window.devicePixelRatio || undefined };
 }
 
 export interface ProfileEditorProps {
@@ -995,11 +995,12 @@ export default function ProfileEditor({
                     type="button"
                     className={btnGhost + " py-1 text-xs"}
                     onClick={() => onChange(withHostScreen(profile, host))}
-                    title={t("Fill all four from this display: {width} × {height}, work area {availWidth} × {availHeight}", {
+                    title={t("Fill all four and the pixel ratio from this display: {width} × {height}, work area {availWidth} × {availHeight}, pixel ratio {ratio}", {
                       width: host.width,
                       height: host.height,
                       availWidth: host.availWidth,
                       availHeight: host.availHeight,
+                      ratio: host.devicePixelRatio ?? 1,
                     })}
                     data-use-display="1"
                   >
@@ -1011,7 +1012,7 @@ export default function ProfileEditor({
                     type="button"
                     className={btnGhost + " py-1 text-xs"}
                     onClick={() => onChange(withoutScreen(profile))}
-                    title={t("Empty all four: the seed or capture brings a screen that agrees with itself")}
+                    title={t("Empty all four and the pixel ratio: the seed or capture brings a screen and ratio that agree")}
                   >
                     {t("Clear")}
                   </button>

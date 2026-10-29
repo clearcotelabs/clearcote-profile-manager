@@ -48,7 +48,7 @@ export interface CoherenceContext {
   /** Tier of the build the profile launches, when known: "free" is the open build. */
   tier?: "free" | "pro";
   /** This machine's display in CSS pixels, as a browser with no screen override reports it. */
-  hostScreen?: { width: number; height: number; availWidth?: number; availHeight?: number };
+  hostScreen?: { width: number; height: number; availWidth?: number; availHeight?: number; devicePixelRatio?: number };
 }
 
 /** Engine major that implements --socks5-credentials and --portable-profile (r14) and the shader
@@ -219,6 +219,21 @@ export function coherenceIssues(
           : screenSource === "Light stealth"
             ? t("Type all four to match this host's real display, or leave them empty so Light stealth reports the real screen.")
             : t("Type all four to match this host's real display, or leave them empty so {source} supplies the screen.", { source: t(screenSource) }),
+    });
+  }
+
+  // ── A typed screen whose pixel ratio still comes from the persona ─────────
+  // The screen switches leave devicePixelRatio to the seed, capture or Light stealth row, so a typed
+  // 1920 × 1080 can come out at a laptop persona's 1.25: a 2400 × 1350 panel no monitor ships, which
+  // the audit flags (measured on r54, 2026-10-29). With none of the three the real ratio is reported
+  // next to the real screen, which fits.
+  if (screenSpoofed && screenSource && !isSet(profile.devicePixelRatio)) {
+    out.push({
+      id: "screen-without-pixel-ratio",
+      severity: "warn",
+      field: "devicePixelRatio",
+      message: t("The screen size is typed but the pixel ratio is not, so {source} still picks it. A typed screen at another display's ratio describes a panel no monitor has.", { source: t(screenSource) }),
+      fix: t("Set Pixel ratio as well (“Use this display” fills both from this display), or empty the screen fields."),
     });
   }
 

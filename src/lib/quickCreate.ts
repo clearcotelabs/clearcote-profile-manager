@@ -12,27 +12,36 @@ export interface HostScreen {
   height: number;
   availWidth?: number;
   availHeight?: number;
+  /** The display's scale (1.25 at 125%). Windows reports the screen in scaled pixels, so a screen
+   *  is only this display's together with this ratio. */
+  devicePixelRatio?: number;
 }
 
-/** The four screen fields set to this display. The work area falls back to the full size only when
- *  the browser reports none (it always does in Chrome and Electron). */
+/** The four screen fields and the pixel ratio set to this display. The work area falls back to the
+ *  full size only when the browser reports none (it always does in Chrome and Electron). The ratio
+ *  goes with them: left to the seed, a 1920 × 1080 screen could take a laptop persona's 1.25 and
+ *  describe a 2400 × 1350 panel no monitor has. */
 export function withHostScreen(p: Profile, host: HostScreen): Profile {
-  return {
+  const out: Profile = {
     ...p,
     screenWidth: host.width,
     screenHeight: host.height,
     availWidth: host.availWidth ?? host.width,
     availHeight: host.availHeight ?? host.height,
   };
+  if (host.devicePixelRatio) out.devicePixelRatio = host.devicePixelRatio;
+  return out;
 }
 
-/** All four screen fields empty: the seed or a capture supplies a screen that agrees with itself. */
+/** All four screen fields and the pixel ratio empty: the seed or a capture supplies a screen and a
+ *  ratio that agree with each other. */
 export function withoutScreen(p: Profile): Profile {
-  const { screenWidth: _w, screenHeight: _h, availWidth: _aw, availHeight: _ah, ...rest } = p;
+  const { screenWidth: _w, screenHeight: _h, availWidth: _aw, availHeight: _ah, devicePixelRatio: _r, ...rest } = p;
   return rest as Profile;
 }
 
-/** "host" when all four typed values are this display's, "empty" when none is typed, else "other". */
+/** "host" when all four typed values and the pixel ratio are this display's, "empty" when no screen
+ *  field is typed, else "other". */
 export function screenSource(p: Profile, host: HostScreen | undefined): "host" | "empty" | "other" {
   const typed = [p.screenWidth, p.screenHeight, p.availWidth, p.availHeight];
   if (typed.every((v) => v == null)) return "empty";
@@ -41,7 +50,8 @@ export function screenSource(p: Profile, host: HostScreen | undefined): "host" |
   return p.screenWidth === want.screenWidth &&
     p.screenHeight === want.screenHeight &&
     p.availWidth === want.availWidth &&
-    p.availHeight === want.availHeight
+    p.availHeight === want.availHeight &&
+    p.devicePixelRatio === want.devicePixelRatio
     ? "host"
     : "other";
 }

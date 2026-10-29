@@ -48,7 +48,7 @@ describe.skipIf(!READY)("quick create — the shortcuts in a real browser", () =
       executablePath: process.env.CLEARCOTE_UI_BROWSER || undefined,
       args: ["--no-sandbox"],
     });
-    ctx = await browser.newContext({ viewport: { width: 1280, height: 900 }, screen: { width: 1920, height: 1080 } });
+    ctx = await browser.newContext({ viewport: { width: 1280, height: 900 }, screen: { width: 1920, height: 1080 }, deviceScaleFactor: 1.25 });
     await ctx.grantPermissions(["clipboard-read", "clipboard-write"], { origin: ORIGIN });
     // The browser preview's mock launches only when told to (src/lib/ipc.ts).
     await ctx.addInitScript(() => localStorage.setItem("clearcote.mock.launch", "ok"));
@@ -91,19 +91,21 @@ describe.skipIf(!READY)("quick create — the shortcuts in a real browser", () =
     expect(await drawer.textContent()).toContain("real IP");
   }, 20000);
 
-  it("Use this display fills all four screen fields from the display, Clear empties them", async () => {
+  it("Use this display fills the four screen fields and the pixel ratio from the display, Clear empties them", async () => {
     await rail("Hardware").click();
-    const want = await page.evaluate(() => [screen.width, screen.height, screen.availWidth, screen.availHeight].map(String));
+    const want = await page.evaluate(() =>
+      [screen.width, screen.height, screen.availWidth, screen.availHeight, devicePixelRatio].map(String),
+    );
     await page.locator('[data-use-display="1"]').click();
     const got = await until(
-      () => Promise.all(["screenWidth", "screenHeight", "availWidth", "availHeight"].map(value)),
+      () => Promise.all(["screenWidth", "screenHeight", "availWidth", "availHeight", "devicePixelRatio"].map(value)),
       (v) => v.join() === want.join(),
       "screen fields",
     );
     expect(got).toEqual(want);
     expect(await page.locator('[data-screen-source="host"]').textContent()).toContain("This display");
     await page.locator('[data-screen-source="host"]').getByRole("button", { name: "Clear" }).click();
-    await until(() => value("screenWidth"), (v) => v === "", "screen width cleared");
+    await until(() => Promise.all([value("screenWidth"), value("devicePixelRatio")]), (v) => v.join() === ",", "screen and ratio cleared");
     expect(await page.locator('[data-use-display="1"]').count()).toBe(1);
   }, 20000);
 
