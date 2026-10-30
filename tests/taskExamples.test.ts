@@ -2,7 +2,7 @@
 // well formed (what the dialog and Jet read), "same for all" slots that the goal really uses, start pages
 // that are http(s), the chips in Run a task, and a translation of every title and category in every locale.
 import { describe, expect, it } from "vitest";
-import { EXAMPLE_CATEGORIES, FEATURED_EXAMPLES, TASK_EXAMPLES, exampleById } from "../src/lib/taskExamples";
+import { EXAMPLE_CATEGORIES, FEATURED_EXAMPLES, TASK_EXAMPLES, exampleById, exampleModes, exampleTaskName } from "../src/lib/taskExamples";
 import { templateSlots } from "../electron/jetslots";
 import de from "../src/lib/i18n/de.json";
 import es from "../src/lib/i18n/es.json";
@@ -58,4 +58,36 @@ describe("task examples", () => {
       expect(keys.filter((k) => typeof cat[k] !== "string" || !cat[k].trim())).toEqual([]);
     });
   }
+});
+
+describe("picking an example in Run a task", () => {
+  const ex = (id: string) => exampleById(id)!;
+
+  it("keeps a name the user typed and follows the examples otherwise", () => {
+    expect(exampleTaskName("", undefined, "Log in")).toBe("Log in");
+    expect(exampleTaskName("  ", "Log in", "Read the balance")).toBe("Read the balance");
+    // Still the previous example's title: follows the new pick.
+    expect(exampleTaskName("Log in", "Log in", "Read the balance")).toBe("Read the balance");
+    // A name of the user's own stays.
+    expect(exampleTaskName("Morning check", "Log in", "Read the balance")).toBe("Morning check");
+    expect(exampleTaskName("Morning check", undefined, "Read the balance")).toBe("Morning check");
+  });
+
+  it("sets an example's presets only for its own slots and keeps a mode the user chose", () => {
+    // Fresh dialog: the presets of the example.
+    expect(exampleModes({}, new Set(), ex("job-search"))).toEqual({ query: "run", city: "run" });
+    // Picking another example drops the first one's presets instead of piling them up.
+    expect(exampleModes({ query: "run", city: "run" }, new Set(), ex("wikipedia"))).toEqual({ topic: "run" });
+    // A preset slot the user switched back to each profile's own stays that way.
+    expect(exampleModes({ product: "profile" }, new Set(["product"]), ex("price-check"))).toEqual({ product: "profile" });
+    // A slot the user set to the same for all stays so, though the new example has no preset for it.
+    expect(exampleModes({ email: "run" }, new Set(["email"]), ex("login-inbox"))).toEqual({ email: "run" });
+    // A user mode for a slot the new goal does not have is not carried along.
+    expect(exampleModes({ product: "run" }, new Set(["product"]), ex("balance"))).toEqual({});
+  });
+
+  it("has no same-for-all presets that would send one value from many accounts", () => {
+    expect(exampleById("follow-account")).toBeUndefined();
+    for (const id of ["coupon", "quote-request", "survey-slider"]) expect(ex(id).same ?? [], id).toEqual([]);
+  });
 });

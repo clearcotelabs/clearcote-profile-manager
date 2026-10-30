@@ -1307,9 +1307,6 @@
     "src/components/ProfileEditor.tsx",
     "src/components/ProfileInspector.tsx"
   ],
-  "Follow an account": [
-    "src/lib/taskExamples.ts"
-  ],
   "For example: the search words": [
     "src/components/TasksView.tsx"
   ],

@@ -7,7 +7,7 @@
 
 import { useMemo, useState } from "react";
 import { EXAMPLE_CATEGORIES, TASK_EXAMPLES, type ExampleCategory, type TaskExample } from "@/lib/taskExamples";
-import { t } from "@/lib/i18n";
+import { t, useLocale } from "@/lib/i18n";
 import { SlotText } from "./StepTimeline";
 
 const search =
@@ -16,6 +16,8 @@ const search =
 const catTitle = (id: ExampleCategory) => t(EXAMPLE_CATEGORIES.find((c) => c.id === id)?.title ?? id);
 
 function useFiltered(q: string, cat: ExampleCategory | "all") {
+  // The search matches translated titles: a language switch searches the new ones.
+  const locale = useLocale();
   return useMemo(() => {
     const s = q.trim().toLowerCase();
     return TASK_EXAMPLES.filter(
@@ -23,7 +25,7 @@ function useFiltered(q: string, cat: ExampleCategory | "all") {
         (cat === "all" || ex.category === cat) &&
         (!s || `${t(ex.title)} ${ex.title} ${catTitle(ex.category)} ${ex.goal}`.toLowerCase().includes(s)),
     );
-  }, [q, cat]);
+  }, [q, cat, locale]);
 }
 
 export function ExamplePicker({ onPick, onClose }: { onPick: (ex: TaskExample) => void; onClose: () => void }) {
@@ -34,7 +36,22 @@ export function ExamplePicker({ onPick, onClose }: { onPick: (ex: TaskExample) =
   return (
     <div className="mb-2 rounded-lg border border-line bg-surface/70" data-run-example-picker="1">
       <div className="flex items-center gap-2 border-b border-line p-2">
-        <input className={search} placeholder={t("Search examples…")} aria-label={t("Search examples")} value={q} onChange={(e) => setQ(e.target.value)} autoFocus />
+        <input
+          className={search}
+          placeholder={t("Search examples…")}
+          aria-label={t("Search examples")}
+          value={q}
+          onChange={(e) => setQ(e.target.value)}
+          onKeyDown={(e) => {
+            // Escape closes the picker, not the whole dialog (Dialog skips a handled Escape).
+            if (e.key === "Escape") {
+              e.preventDefault();
+              e.stopPropagation();
+              onClose();
+            }
+          }}
+          autoFocus
+        />
         <button className="text-xs text-fog/50 hover:text-fog" onClick={onClose}>
           {t("Close")}
         </button>
@@ -80,7 +97,7 @@ export function ExampleGallery({ onPick }: { onPick: (ex: TaskExample) => void }
       {groups.map((g) => (
         <section key={g.id} className="mb-5" data-example-group={g.id}>
           <h3 className="mb-2 text-[10px] font-semibold uppercase tracking-[0.08em] text-fog/40">{t(g.title)}</h3>
-          <div className="grid grid-cols-1 gap-2.5 sm:grid-cols-2 xl:grid-cols-3">
+          <div className="grid grid-cols-[repeat(auto-fill,minmax(14rem,1fr))] gap-2.5">
             {g.items.map((ex) => (
               <button
                 key={ex.id}

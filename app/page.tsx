@@ -222,6 +222,18 @@ function Manager() {
   const [runTaskFor, setRunTaskFor] = useState<SavedTask | undefined>(undefined);
   /** ...or the example it was opened from (Tasks page → an example card). */
   const [runTaskExample, setRunTaskExample] = useState<TaskExample | undefined>(undefined);
+  /** Run a task opens fresh every time: only what this opening passes (a saved task or an example). */
+  const openRunTask = (task?: SavedTask, example?: TaskExample) => {
+    setRunTaskFor(task);
+    setRunTaskExample(task ? undefined : example);
+    setRunTaskOpen(true);
+  };
+  /** Every way the dialog closes forgets what it was opened with. */
+  const closeRunTask = () => {
+    setRunTaskOpen(false);
+    setRunTaskFor(undefined);
+    setRunTaskExample(undefined);
+  };
   // Templates: the profile being saved as one, the manage dialog, and the template the open editor
   // was started from (its use is counted when that profile is saved).
   const [saveTplFor, setSaveTplFor] = useState<Profile | null>(null);
@@ -1548,22 +1560,11 @@ function Manager() {
             <TasksView
               tasks={savedTasks}
               selectedCount={selected.size}
-              onRun={(task) => {
-                setRunTaskFor(task);
-                setRunTaskOpen(true);
-              }}
+              onRun={(task) => openRunTask(task)}
               onSave={saveTask}
               onDelete={(task) => void deleteTask(task)}
-              onNew={() => {
-                setRunTaskFor(undefined);
-                setRunTaskExample(undefined);
-                setRunTaskOpen(true);
-              }}
-              onExample={(ex) => {
-                setRunTaskFor(undefined);
-                setRunTaskExample(ex);
-                setRunTaskOpen(true);
-              }}
+              onNew={() => openRunTask()}
+              onExample={(ex) => openRunTask(undefined, ex)}
             />
           </>
         ) : page === "proxies" ? (
@@ -1813,7 +1814,7 @@ function Manager() {
               {t("Export…")}
             </button>
             {api.sync && (
-              <button className={btnGhost} onClick={() => setRunTaskOpen(true)} data-bulk-run-task="1">
+              <button className={btnGhost} onClick={() => openRunTask()} data-bulk-run-task="1">
                 {t("Run a task…")}
               </button>
             )}
@@ -1897,14 +1898,10 @@ function Manager() {
           }}
           onTrial={(runId, rest) => setTrials((m) => ({ ...m, [runId]: rest }))}
           onOpenSettings={() => {
-            setRunTaskOpen(false);
+            closeRunTask();
             setSettingsOpen("tasks");
           }}
-          onClose={() => {
-            setRunTaskOpen(false);
-            setRunTaskFor(undefined);
-            setRunTaskExample(undefined);
-          }}
+          onClose={closeRunTask}
         />
       )}
       {api.sync && (

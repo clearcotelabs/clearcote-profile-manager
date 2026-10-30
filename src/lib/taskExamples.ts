@@ -6,9 +6,14 @@
 // would ask, ends with what "done" looks like, and uses {{slots}} for what differs per profile or per run.
 // Kept to what a browser agent does well: logging in, forms (dropdowns, date pickers, sliders, autocomplete),
 // searching and paging, reading a value off a page, cart and wishlist without checking out, a table row's
-// menu, a confirm dialog. Nothing that solves captchas, pays, posts in bulk or collects people's data.
+// menu, a confirm dialog. Nothing that solves captchas, pays, posts in bulk, collects people's data or inflates
+// numbers across accounts (follows, votes, one coupon or one quote from many profiles: no "same for all" there).
 
 import { tx } from "./i18n";
+import { templateSlots } from "../../electron/jetslots";
+
+/** Where a slot's value comes from in Run a task (TaskParam["source"]). */
+type Source = "profile" | "run";
 
 export const EXAMPLE_CATEGORIES = [
   { id: "accounts", title: tx("Accounts & logins") },
@@ -113,7 +118,6 @@ export const TASK_EXAMPLES: TaskExample[] = [
     title: tx("Try a discount code"),
     goal: "Open the cart, enter {{coupon}} in the discount code field, apply it and tell me whether it was accepted and what the new total is. Do not check out",
     url: "https://",
-    same: ["coupon"],
   },
   {
     id: "order-status",
@@ -167,7 +171,6 @@ export const TASK_EXAMPLES: TaskExample[] = [
     title: tx("Request a quote"),
     goal: "Fill in the quote request with the company {{company}}, {{seats}} seats, the start date {{date}} and the message {{message}}, then send it and tell me what the page says next",
     url: "https://",
-    same: ["seats", "date"],
   },
 
   // Reading & monitoring
@@ -230,14 +233,6 @@ export const TASK_EXAMPLES: TaskExample[] = [
     title: tx("Update the profile bio"),
     goal: "Open your profile, click Edit, replace the bio with {{bio}}, save, and check that the profile page shows the new text",
     url: "https://",
-  },
-  {
-    id: "follow-account",
-    category: "social",
-    title: tx("Follow an account"),
-    goal: "Search for {{account}}, open the matching profile and follow it unless you already do, then tell me how many followers it has",
-    url: "https://",
-    same: ["account"],
   },
   {
     id: "notifications",
@@ -327,4 +322,33 @@ export const FEATURED_EXAMPLES: string[] = ["login-inbox", "balance", "contact-f
 
 export function exampleById(id: string): TaskExample | undefined {
   return TASK_EXAMPLES.find((e) => e.id === id);
+}
+
+/** An example's "same for every profile" slots, as dialog modes. */
+export function sameForAll(ex: TaskExample | undefined): Record<string, Source> {
+  return Object.fromEntries((ex?.same ?? []).map((s) => [s, "run" as const]));
+}
+
+/** The slot modes after picking an example: only the new goal's slots; a mode the user chose (or the saved
+ *  task set) stays, the rest take the example's "same for all" presets. Modes of slots the new goal no
+ *  longer has are dropped, so an earlier example's presets do not pile up. */
+export function exampleModes(
+  prev: Record<string, Source>,
+  userSet: ReadonlySet<string>,
+  ex: TaskExample,
+): Record<string, Source> {
+  const same = sameForAll(ex);
+  const out: Record<string, Source> = {};
+  for (const s of templateSlots(ex.goal)) {
+    if (userSet.has(s) && prev[s]) out[s] = prev[s];
+    else if (same[s]) out[s] = same[s];
+  }
+  return out;
+}
+
+/** The task name after picking an example: the example's title, unless the user typed a name of their own
+ *  (anything but empty or the previous example's title). */
+export function exampleTaskName(current: string, prevTitle: string | undefined, nextTitle: string): string {
+  const c = current.trim();
+  return !c || (prevTitle !== undefined && c === prevTitle.trim()) ? nextTitle : current;
 }

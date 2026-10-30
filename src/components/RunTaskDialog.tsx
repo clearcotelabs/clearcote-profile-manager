@@ -24,7 +24,7 @@ import type { Profile, ProfileVar } from "@/types/profile";
 import { api, type SavedTask, type Settings, type StartRequest, type TaskParam } from "@/lib/ipc";
 import { looksSecret, profileValues, templateSlots, valuesFor } from "../../electron/jetslots";
 import { t, tRich } from "@/lib/i18n";
-import { FEATURED_EXAMPLES, exampleById, type TaskExample } from "@/lib/taskExamples";
+import { FEATURED_EXAMPLES, exampleById, exampleModes, exampleTaskName, sameForAll, type TaskExample } from "@/lib/taskExamples";
 
 const input =
   "w-full rounded-lg border border-line bg-ink/70 px-3 py-2 text-sm text-fog outline-none placeholder:text-fog/30 focus:border-accent/60 focus:ring-1 focus:ring-accent/40";
@@ -47,11 +47,6 @@ export function withFills(p: Profile, fills: Record<string, string> | undefined,
     else vars.push(v);
   }
   return { ...p, vars };
-}
-
-/** An example's "same for every profile" slots, as dialog modes. */
-function sameForAll(ex: TaskExample | undefined): Record<string, TaskParam["source"]> {
-  return Object.fromEntries((ex?.same ?? []).map((s) => [s, "run" as const]));
 }
 
 export default function RunTaskDialog({
@@ -92,6 +87,7 @@ export default function RunTaskDialog({
   const titleId = useId();
   const ids = { goal: useId(), url: useId(), confirm: useId(), conc: useId(), smin: useId(), smax: useId(), close: useId(), trial: useId() };
   const goalRef = useRef<HTMLTextAreaElement>(null);
+  const moreRef = useRef<HTMLButtonElement>(null);
   const from = task ? undefined : example;
   const [goal, setGoal] = useState(task?.goal ?? from?.goal ?? "");
   const [url, setUrl] = useState(task?.url ?? from?.url ?? "");
@@ -111,6 +107,14 @@ export default function RunTaskDialog({
   const [mode, setMode] = useState<Record<string, TaskParam["source"]>>(() =>
     task ? Object.fromEntries(task.params.map((p) => [p.name, p.source])) : sameForAll(from),
   );
+  /** Slots whose mode the user chose (or the saved task set): picking an example keeps those. */
+  const userModes = useRef<Set<string>>(new Set(task?.params.map((p) => p.name) ?? []));
+  /** The title of the example last picked (or opened with), to tell it from a name the user typed. */
+  const exampleTitle = useRef<string | undefined>(from ? t(from.title) : undefined);
+  const setSlotMode = (s: string, source: TaskParam["source"]) => {
+    userModes.current.add(s);
+    setMode((m) => ({ ...m, [s]: source }));
+  };
   const [browsing, setBrowsing] = useState(false);
   const [runVals, setRunVals] = useState<Record<string, string>>(() =>
     Object.fromEntries((task?.params ?? []).filter((p) => p.source === "run" && p.default).map((p) => [p.name, p.default as string])),
@@ -182,7 +186,10 @@ export default function RunTaskDialog({
   function pickExample(ex: TaskExample) {
     setGoal(ex.goal);
     if (!url.trim()) setUrl(ex.url);
-    setMode((m) => ({ ...m, ...sameForAll(ex) }));
+    setMode((m) => exampleModes(m, userModes.current, ex));
+    const title = t(ex.title);
+    setTaskName((n) => exampleTaskName(n, exampleTitle.current, title));
+    exampleTitle.current = title;
     setBrowsing(false);
     requestAnimationFrame(() => goalRef.current?.focus());
   }
@@ -311,6 +318,7 @@ export default function RunTaskDialog({
                   ),
               )}
               <button
+                ref={moreRef}
                 className="rounded-md px-1.5 py-0.5 text-[11px] text-accent/80 hover:text-accent"
                 onClick={() => setBrowsing((v) => !v)}
                 aria-expanded={browsing}
@@ -321,7 +329,15 @@ export default function RunTaskDialog({
             </div>
           )}
         </div>
-        {browsing && <ExamplePicker onPick={pickExample} onClose={() => setBrowsing(false)} />}
+        {browsing && (
+          <ExamplePicker
+            onPick={pickExample}
+            onClose={() => {
+              setBrowsing(false);
+              requestAnimationFrame(() => moreRef.current?.focus());
+            }}
+          />
+        )}
         <textarea
           id={ids.goal}
           ref={goalRef}
@@ -353,14 +369,14 @@ export default function RunTaskDialog({
                       <button
                         className={"px-2 py-0.5 " + (!run ? "bg-elevate text-fog" : "text-fog/45 hover:text-fog")}
                         aria-pressed={!run}
-                        onClick={() => setMode((m) => ({ ...m, [s]: "profile" }))}
+                        onClick={() => setSlotMode(s, "profile")}
                       >
                         {t("Each profile's own")}
                       </button>
                       <button
                         className={"px-2 py-0.5 " + (run ? "bg-elevate text-fog" : "text-fog/45 hover:text-fog")}
                         aria-pressed={run}
-                        onClick={() => setMode((m) => ({ ...m, [s]: "run" }))}
+                        onClick={() => setSlotMode(s, "run")}
                         data-run-source-run={s}
                       >
                         {t("Same for all")}

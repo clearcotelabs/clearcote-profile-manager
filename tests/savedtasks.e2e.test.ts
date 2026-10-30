@@ -108,8 +108,14 @@ describe.skipIf(!READY)("Jet setup and saved tasks — in a real browser", () =>
 
   it("More examples… browses the catalog by category and search; a pick fills the goal and its run values", async () => {
     expect(await page.locator("[data-run-examples] [data-example]").count()).toBeGreaterThanOrEqual(3);
+    // Escape in the picker's search closes the picker only, and focus goes back to More examples….
     await page.locator("[data-run-more-examples]").click();
     const picker = page.locator("[data-run-example-picker]");
+    await picker.getByRole("textbox").press("Escape");
+    await picker.waitFor({ state: "detached" });
+    expect(await page.locator("[data-run-task]").count()).toBe(1);
+    await until(() => page.evaluate(() => !!document.activeElement?.hasAttribute("data-run-more-examples")), (v) => v, "focus on More examples…");
+    await page.locator("[data-run-more-examples]").click();
     expect(await picker.locator("[data-example]").count()).toBeGreaterThanOrEqual(30);
     await picker.locator('[data-example-tab="admin"]').click();
     expect(await picker.locator('[data-example="row-menu"]').count()).toBe(1);
@@ -229,6 +235,23 @@ describe.skipIf(!READY)("Jet setup and saved tasks — in a real browser", () =>
     await page.locator("[data-run-task]").waitFor();
     expect(await page.locator("[data-run-goal]").inputValue()).toContain("{{product}}");
     expect(await page.locator('[data-run-source-run="product"]').getAttribute("aria-pressed")).toBe("true");
+    await page.getByRole("button", { name: "Cancel" }).click();
+    await page.locator("[data-run-task]").waitFor({ state: "detached" });
+  });
+
+  it("an example does not stick: Jet settings… closes it, and Run a task from the toolbar opens empty", async () => {
+    if ((await page.locator("[data-task-examples]").getAttribute("aria-pressed")) !== "true") await page.locator("[data-task-examples]").click();
+    await page.locator('[data-example-gallery] [data-example="price-check"]').click();
+    await page.locator("[data-run-task]").waitFor();
+    await page.getByRole("button", { name: "Jet settings…" }).click();
+    await page.locator("[data-run-task]").waitFor({ state: "detached" });
+    await page.keyboard.press("Escape");
+    await page.getByRole("button", { name: /All profiles/ }).first().click();
+    await page.locator("[data-bulk-run-task]").waitFor();
+    await page.locator("[data-bulk-run-task]").click();
+    await page.locator("[data-run-task]").waitFor();
+    expect(await page.locator("[data-run-goal]").inputValue()).toBe("");
+    expect(await page.locator("[data-run-url]").inputValue()).toBe("");
     await page.getByRole("button", { name: "Cancel" }).click();
     await page.locator("[data-run-task]").waitFor({ state: "detached" });
   });
