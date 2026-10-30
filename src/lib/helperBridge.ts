@@ -271,7 +271,13 @@ function saveFile(name: string, text: string) {
   setTimeout(() => URL.revokeObjectURL(url), 10_000);
 }
 
-const ALLOWED_EXTERNAL = [/^https:\/\/www\.clearcotelabs\.com\//, /^https:\/\/github\.com\/clearcotelabs\//];
+/** electron/handlers.ts ALLOWED_EXTERNAL: the same links the desktop app opens. */
+const ALLOWED_EXTERNAL = [
+  /^https:\/\/www\.clearcotelabs\.com\//,
+  /^https:\/\/github\.com\/clearcotelabs\//,
+  /^https:\/\/www\.python\.org\/downloads\/$/,
+  /^https:\/\/console\.typesafe\.ai\/?$/,
+];
 
 /** The cloud viewer page, next to this one (cloud.html in the static export, /cloud in dev). */
 const viewerUrl = (id: string) => `${process.env.NODE_ENV === "production" ? "cloud.html" : "/cloud"}?id=${encodeURIComponent(id)}`;
@@ -375,6 +381,24 @@ export function buildHelperApi(): ClearcoteApi {
       account: call("cloud:account"),
       onChanged: (cb) => on("cloud:changed", cb),
       onEnded: (cb) => on("cloud:ended", cb),
+    },
+    // Tasks run on this computer, as in the desktop app; the page never gets a browser's DevTools endpoint
+    // (helper/policy.ts), so there is no cdpEndpoint here.
+    sync: {
+      list: call("sync:list"),
+      start: call("sync:start"),
+      approve: call("sync:approve"),
+      cancel: call("sync:cancel"),
+      stop: call("sync:stop"),
+      clear: call("sync:clear"),
+      onChanged: (cb) => on("sync:changed", cb),
+    },
+    jetSetup: { status: call("jet:status"), install: call("jet:install"), checkKey: call("jet:checkKey") },
+    tasks: {
+      list: call("tasks:list"),
+      save: call("tasks:save"),
+      remove: call("tasks:delete"),
+      onChanged: (cb) => on("tasks:changed", () => cb()),
     },
     hostGpu: call("host:gpu"),
     listVersions: call("versions:list"),

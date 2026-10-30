@@ -47,10 +47,11 @@ export function buildPreviewApi(mock: ClearcoteApi): ClearcoteApi {
     },
     launchTarget: async () => ({ mode: "preview" }),
     launch: fail(tx("launch a browser")),
-    // Tasks run in the desktop app only (it opens each browser's automation port), so the web version has none.
-    sync: undefined,
+    // Tasks show as in the desktop app; running one, setting up Jet or saving a task needs the computer.
+    sync: mock.sync && { ...mock.sync, start: fail(tx("run a task on profiles")) as NonNullable<ClearcoteApi["sync"]>["start"] },
+    // Nothing on the computer can be checked yet, so no setup checklist (it would say Python is missing).
     jetSetup: undefined,
-    tasks: undefined,
+    tasks: mock.tasks && { ...mock.tasks, save: fail(tx("save a task")) as never },
     cdpEndpoint: undefined,
     cloud: {
       ...mock.cloud,
@@ -79,13 +80,23 @@ export function buildPreviewApi(mock: ClearcoteApi): ClearcoteApi {
   };
 }
 
-/** One object whose calls go to whichever API `pick` names at call time. */
+/** One object whose calls go to whichever API `pick` names at call time. The same key gives the same
+ *  function or object every time, as the desktop app's API does: components keep them in hook deps
+ *  (a new `api.jetSetup` on every render made JetSetup ask for Jet's status in a loop). */
 export function switchable<T extends object>(pick: () => T): T {
+  const fns = new Map<PropertyKey, (...a: unknown[]) => unknown>();
+  const objs = new Map<PropertyKey, object>();
   return new Proxy({} as T, {
     get(_t, k) {
       const v = (pick() as Record<PropertyKey, unknown>)[k];
-      if (typeof v === "function") return (...a: unknown[]) => ((pick() as Record<PropertyKey, (...x: unknown[]) => unknown>)[k])(...a);
-      if (v && typeof v === "object") return switchable(() => (pick() as Record<PropertyKey, object>)[k]);
+      if (typeof v === "function") {
+        if (!fns.has(k)) fns.set(k, (...a: unknown[]) => ((pick() as Record<PropertyKey, (...x: unknown[]) => unknown>)[k])(...a));
+        return fns.get(k);
+      }
+      if (v && typeof v === "object") {
+        if (!objs.has(k)) objs.set(k, switchable(() => (pick() as Record<PropertyKey, object>)[k]));
+        return objs.get(k);
+      }
       return v;
     },
   });

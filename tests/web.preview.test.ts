@@ -92,6 +92,14 @@ describe("the web preview", () => {
     expect(await list()).toEqual(["helper"]);
     expect(api.n).toBe(2);
   });
+
+  it("switchable gives the same object and function for a key every time (hook deps stay put)", () => {
+    const side = { jetSetup: { status: async () => "ok" }, launch: async () => true };
+    const api = switchable(() => side);
+    expect(api.jetSetup).toBe(api.jetSetup);
+    expect(api.jetSetup.status).toBe(api.jetSetup.status);
+    expect(api.launch).toBe(api.launch);
+  });
 });
 
 describe("the built-in helper release (no API needed)", () => {
