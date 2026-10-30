@@ -4,6 +4,8 @@
 // left, the chosen task on the right: its recipe (goal with {{values}}, start page, how it runs), the values
 // it asks for (changed here, saved as you type, which is how people try a task with other values), what Jet
 // did the last time it finished, and its runs, each of which can run again with the same values.
+// With no tasks yet, and under "Examples" later, a gallery of examples (src/lib/taskExamples.ts) shows what
+// Jet can do; a card opens Run a task with it.
 // Saving goes through onSave (electron/tasks.ts normalizes and stores it); the page owns undo for delete.
 
 import { useEffect, useId, useMemo, useRef, useState } from "react";
@@ -12,6 +14,8 @@ import { t } from "@/lib/i18n";
 import { relativeTime } from "@/lib/profileList";
 import { BUILTIN_SLOTS, looksSecret, templateSlots } from "../../electron/jetslots";
 import StepTimeline, { SlotText } from "./StepTimeline";
+import { ExampleGallery } from "./TaskExamples";
+import type { TaskExample } from "@/lib/taskExamples";
 
 const ghost = "rounded-lg border border-line px-2.5 py-1 text-[11px] font-medium text-fog/80 hover:bg-elevate transition disabled:opacity-40";
 const primary = "rounded-lg bg-sheen px-3.5 py-1.5 text-[12px] font-semibold text-[#07080a] disabled:opacity-40";
@@ -59,10 +63,13 @@ export default function TasksView(props: {
   onDelete: (task: SavedTask) => void;
   /** Start a new task from scratch (opens Run a task empty). */
   onNew: () => void;
+  /** Open Run a task prefilled with an example. */
+  onExample: (example: TaskExample) => void;
 }) {
-  const { tasks, onNew } = props;
+  const { tasks, onNew, onExample } = props;
   const [q, setQ] = useState("");
   const [picked, setPicked] = useState<string | null>(null);
+  const [browsing, setBrowsing] = useState(false);
 
   const shown = useMemo(() => {
     const s = q.trim().toLowerCase();
@@ -73,14 +80,20 @@ export default function TasksView(props: {
 
   if (tasks.length === 0) {
     return (
-      <div className="mt-10 text-center" data-tasks-view="empty">
-        <p className="text-base font-semibold">{t("No saved tasks yet")}</p>
-        <p className="mx-auto mt-1 max-w-sm text-sm text-fog/50">
-          {t("Save a task after it worked, or create one here. A saved task runs again without the model.")}
-        </p>
-        <button className={primary + " mt-4"} onClick={onNew} data-task-new="1">
-          {t("New task")}
-        </button>
+      <div data-tasks-view="empty">
+        <div className="mt-10 text-center">
+          <p className="text-base font-semibold">{t("No saved tasks yet")}</p>
+          <p className="mx-auto mt-1 max-w-sm text-sm text-fog/50">
+            {t("Save a task after it worked, or create one here. A saved task runs again without the model.")}
+          </p>
+          <button className={primary + " mt-4"} onClick={onNew} data-task-new="1">
+            {t("New task")}
+          </button>
+        </div>
+        <div className="mt-10">
+          <h3 className="mb-1 text-sm font-semibold text-fog">{t("Or start from an example")}</h3>
+          <ExampleGallery onPick={onExample} />
+        </div>
       </div>
     );
   }
@@ -100,9 +113,25 @@ export default function TasksView(props: {
             {t("New task")}
           </button>
         </div>
+        <button
+          className={"border-b border-line px-3 py-2 text-left text-[12px] transition " + (browsing ? "bg-accent/10 text-fog" : "text-fog/60 hover:bg-elevate hover:text-fog")}
+          onClick={() => setBrowsing((v) => !v)}
+          aria-pressed={browsing}
+          data-task-examples="1"
+        >
+          {t("Browse examples")}
+        </button>
         <ul className="min-h-0 flex-1 divide-y divide-line overflow-y-auto" aria-label={t("Saved tasks")}>
           {shown.map((x) => (
-            <TaskItem key={x.id} task={x} active={task?.id === x.id} onPick={() => setPicked(x.id)} />
+            <TaskItem
+              key={x.id}
+              task={x}
+              active={!browsing && task?.id === x.id}
+              onPick={() => {
+                setPicked(x.id);
+                setBrowsing(false);
+              }}
+            />
           ))}
           {shown.length === 0 && <li className="px-3 py-6 text-center text-xs text-fog/40">{t("No task matches “{q}”.", { q: q.trim() })}</li>}
         </ul>
@@ -111,7 +140,17 @@ export default function TasksView(props: {
         </div>
       </aside>
 
-      {task ? (
+      {browsing ? (
+        <section className="min-w-0 rounded-xl border border-line bg-surface/70 px-4 py-3" aria-label={t("Examples")}>
+          <div className="mb-2 flex items-center gap-2">
+            <h2 className="flex-1 text-base font-semibold text-fog">{t("Examples")}</h2>
+            <button className={ghost} onClick={() => setBrowsing(false)}>
+              {t("Close")}
+            </button>
+          </div>
+          <ExampleGallery onPick={onExample} />
+        </section>
+      ) : task ? (
         <Detail key={task.id} {...props} task={task} onPicked={(id) => setPicked(id)} />
       ) : (
         <div className="rounded-xl border border-line bg-surface/70 p-6 text-center text-sm text-fog/45">{t("Pick a task on the left.")}</div>

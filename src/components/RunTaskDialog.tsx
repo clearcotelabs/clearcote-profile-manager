@@ -5,7 +5,8 @@
 //
 // Made to work without reading docs:
 // - Jet setup (Python, Jet, model key) is a checklist at the top until it is ready (JetSetup).
-// - Examples fill the task in one click; chips insert a {{value}} at the cursor.
+// - Examples (src/lib/taskExamples.ts) fill the task in one click, a few as chips and the rest under
+//   "More examples…"; chips insert a {{value}} at the cursor.
 // - A value a profile lacks is typed right here, in a grid, and saved to that profile's task values on Run,
 //   instead of a trip to each profile's editor.
 // - "Try it on the first profile" (on by default for more than one) runs one profile; the run board then
@@ -18,10 +19,12 @@
 import { useId, useMemo, useRef, useState } from "react";
 import Dialog, { DialogFooter, DialogHeader } from "./Dialog";
 import JetSetup from "./JetSetup";
+import { ExamplePicker } from "./TaskExamples";
 import type { Profile, ProfileVar } from "@/types/profile";
 import { api, type SavedTask, type Settings, type StartRequest, type TaskParam } from "@/lib/ipc";
 import { looksSecret, profileValues, templateSlots, valuesFor } from "../../electron/jetslots";
-import { t, tRich, tx } from "@/lib/i18n";
+import { t, tRich } from "@/lib/i18n";
+import { FEATURED_EXAMPLES, exampleById, type TaskExample } from "@/lib/taskExamples";
 
 const input =
   "w-full rounded-lg border border-line bg-ink/70 px-3 py-2 text-sm text-fog outline-none placeholder:text-fog/30 focus:border-accent/60 focus:ring-1 focus:ring-accent/40";
@@ -31,13 +34,6 @@ const label = "block text-[11px] font-medium uppercase tracking-wide text-fog/45
 const btnGhost = "rounded-lg border border-line-strong px-3.5 py-1.5 text-sm text-fog/80 hover:bg-elevate";
 const btnPrimary = "rounded-lg bg-sheen px-4 py-1.5 text-sm font-semibold text-[#07080a] disabled:opacity-40";
 const chip = "rounded-md border border-line px-2 py-0.5 font-mono text-[11px] text-fog/70 hover:border-accent/50 hover:text-fog";
-
-const EXAMPLES: { title: string; goal: string; url: string }[] = [
-  { title: tx("Log in"), goal: "Log in with {{email}} and the password {{password}}", url: "https://" },
-  { title: tx("Read something"), goal: "Open the account page and tell me the current balance", url: "https://" },
-  { title: tx("Fill a form"), goal: "Fill in the contact form with the name {{name}} and the message {{message}}, then send it", url: "https://" },
-];
-
 
 /** The profile with the values typed in the dialog added to (or replacing) its task values. */
 export function withFills(p: Profile, fills: Record<string, string> | undefined, secret: Set<string>): Profile {
@@ -53,10 +49,16 @@ export function withFills(p: Profile, fills: Record<string, string> | undefined,
   return { ...p, vars };
 }
 
+/** An example's "same for every profile" slots, as dialog modes. */
+function sameForAll(ex: TaskExample | undefined): Record<string, TaskParam["source"]> {
+  return Object.fromEntries((ex?.same ?? []).map((s) => [s, "run" as const]));
+}
+
 export default function RunTaskDialog({
   profiles: selected,
   allProfiles,
   task,
+  example,
   settings,
   onStart,
   onSaveProfiles,
@@ -72,6 +74,8 @@ export default function RunTaskDialog({
   allProfiles: Profile[];
   /** Prefill from this saved task (Tasks page -> Run). */
   task?: SavedTask;
+  /** Prefill from this example (Tasks page -> an example card). Ignored with a task. */
+  example?: TaskExample;
   /** Create or update a saved task. */
   onSaveTask: (t: Partial<SavedTask>) => Promise<SavedTask>;
   settings: Settings;
@@ -88,8 +92,9 @@ export default function RunTaskDialog({
   const titleId = useId();
   const ids = { goal: useId(), url: useId(), confirm: useId(), conc: useId(), smin: useId(), smax: useId(), close: useId(), trial: useId() };
   const goalRef = useRef<HTMLTextAreaElement>(null);
-  const [goal, setGoal] = useState(task?.goal ?? "");
-  const [url, setUrl] = useState(task?.url ?? "");
+  const from = task ? undefined : example;
+  const [goal, setGoal] = useState(task?.goal ?? from?.goal ?? "");
+  const [url, setUrl] = useState(task?.url ?? from?.url ?? "");
   const [confirm, setConfirm] = useState(task?.confirm ?? true);
   const [concurrency, setConcurrency] = useState(task?.concurrency ?? settings.syncConcurrency ?? 2);
   const [stagger, setStagger] = useState<[number, number]>(task?.staggerSec ?? settings.syncStaggerSec ?? [3, 20]);
@@ -101,9 +106,12 @@ export default function RunTaskDialog({
   const learned = !!task?.history.some((h) => h.done > 0);
   const [trial, setTrial] = useState(selected.length > 1 && !learned);
   const [save, setSave] = useState(!!task);
-  const [taskName, setTaskName] = useState(task?.name ?? "");
+  const [taskName, setTaskName] = useState(task?.name ?? (from ? t(from.title) : ""));
   /** Per slot: each profile's own value, or one value for the whole run. */
-  const [mode, setMode] = useState<Record<string, TaskParam["source"]>>(() => Object.fromEntries((task?.params ?? []).map((p) => [p.name, p.source])));
+  const [mode, setMode] = useState<Record<string, TaskParam["source"]>>(() =>
+    task ? Object.fromEntries(task.params.map((p) => [p.name, p.source])) : sameForAll(from),
+  );
+  const [browsing, setBrowsing] = useState(false);
   const [runVals, setRunVals] = useState<Record<string, string>>(() =>
     Object.fromEntries((task?.params ?? []).filter((p) => p.source === "run" && p.default).map((p) => [p.name, p.default as string])),
   );
@@ -169,6 +177,14 @@ export default function RunTaskDialog({
       el?.focus();
       el?.setSelectionRange(at + token.length, at + token.length);
     });
+  }
+
+  function pickExample(ex: TaskExample) {
+    setGoal(ex.goal);
+    if (!url.trim()) setUrl(ex.url);
+    setMode((m) => ({ ...m, ...sameForAll(ex) }));
+    setBrowsing(false);
+    requestAnimationFrame(() => goalRef.current?.focus());
   }
 
   async function start() {
@@ -286,22 +302,26 @@ export default function RunTaskDialog({
           {!goal.trim() && (
             <div className="flex flex-wrap justify-end gap-1.5" data-run-examples="1">
               <span className="text-[11px] text-fog/40">{t("Examples:")}</span>
-              {EXAMPLES.map((ex) => (
-                <button
-                  key={ex.title}
-                  className="rounded-md bg-elevate px-2 py-0.5 text-[11px] text-fog/75 hover:text-fog"
-                  onClick={() => {
-                    setGoal(ex.goal);
-                    if (!url.trim()) setUrl(ex.url);
-                    goalRef.current?.focus();
-                  }}
-                >
-                  {t(ex.title)}
-                </button>
-              ))}
+              {FEATURED_EXAMPLES.map(exampleById).map(
+                (ex) =>
+                  ex && (
+                    <button key={ex.id} className="rounded-md bg-elevate px-2 py-0.5 text-[11px] text-fog/75 hover:text-fog" onClick={() => pickExample(ex)} data-example={ex.id}>
+                      {t(ex.title)}
+                    </button>
+                  ),
+              )}
+              <button
+                className="rounded-md px-1.5 py-0.5 text-[11px] text-accent/80 hover:text-accent"
+                onClick={() => setBrowsing((v) => !v)}
+                aria-expanded={browsing}
+                data-run-more-examples="1"
+              >
+                {t("More examples…")}
+              </button>
             </div>
           )}
         </div>
+        {browsing && <ExamplePicker onPick={pickExample} onClose={() => setBrowsing(false)} />}
         <textarea
           id={ids.goal}
           ref={goalRef}

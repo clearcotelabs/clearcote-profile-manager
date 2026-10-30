@@ -2,7 +2,8 @@
 // (src/lib/syncMock.ts: buildJetSetupMock, buildSyncMock, buildTasksMock):
 // the setup checklist (Install Jet, a refused and an accepted key), Run a task from an example with values
 // typed in the grid and "Save as a task", the trial on one profile and "Run on the other N", the Tasks page
-// (recipe, values, step timeline, runs), a value that is the same for every profile, and delete with undo.
+// (recipe, values, step timeline, runs), a value that is the same for every profile, delete with undo, and the
+// examples (More examples… in the dialog, Browse examples on the Tasks page).
 //
 // Opt-in, like the other UI suites — needs a dev server (or a static build) and a Chromium:
 //
@@ -105,6 +106,27 @@ describe.skipIf(!READY)("Jet setup and saved tasks — in a real browser", () =>
     await page.locator('[data-jet-setup="ready"]').waitFor();
   }, 40000);
 
+  it("More examples… browses the catalog by category and search; a pick fills the goal and its run values", async () => {
+    expect(await page.locator("[data-run-examples] [data-example]").count()).toBeGreaterThanOrEqual(3);
+    await page.locator("[data-run-more-examples]").click();
+    const picker = page.locator("[data-run-example-picker]");
+    expect(await picker.locator("[data-example]").count()).toBeGreaterThanOrEqual(30);
+    await picker.locator('[data-example-tab="admin"]').click();
+    expect(await picker.locator('[data-example="row-menu"]').count()).toBe(1);
+    expect(await picker.locator('[data-example="wikipedia"]').count()).toBe(0);
+    await picker.getByRole("tab", { name: "All" }).click();
+    await picker.getByRole("textbox").fill("wikipedia");
+    expect(await picker.locator("[data-example]").count()).toBe(1);
+    await picker.locator('[data-example="wikipedia"]').click();
+    expect(await picker.count()).toBe(0);
+    expect(await page.locator("[data-run-goal]").inputValue()).toContain("{{topic}}");
+    expect(await page.locator("[data-run-url]").inputValue()).toBe("https://en.wikipedia.org");
+    // {{topic}} is the same for every profile: asked once for the run.
+    expect(await page.locator('[data-run-source-run="topic"]').getAttribute("aria-pressed")).toBe("true");
+    await page.locator("[data-run-goal]").fill("");
+    await page.locator("[data-run-url]").fill("");
+  });
+
   it("an example, values typed in the grid and Save as a task; the trial runs one profile, then the rest", async () => {
     await page.locator("[data-run-examples] button", { hasText: "Log in" }).click();
     expect(await page.locator("[data-run-goal]").inputValue()).toContain("{{password}}");
@@ -196,6 +218,19 @@ describe.skipIf(!READY)("Jet setup and saved tasks — in a real browser", () =>
     await until(async () => (await tasks()).length, (n) => n === 1, "deleted");
     await page.getByRole("button", { name: "Undo" }).click();
     await until(async () => (await tasks()).length, (n) => n === 2, "restored");
+  });
+
+  it("Browse examples on the Tasks page opens Run a task with the example", async () => {
+    await page.locator("[data-task-examples]").click();
+    const gallery = page.locator("[data-example-gallery]");
+    expect(Number(await gallery.getAttribute("data-example-gallery"))).toBeGreaterThanOrEqual(30);
+    expect(await gallery.locator("[data-example-group]").count()).toBe(7);
+    await gallery.locator('[data-example="price-check"]').click();
+    await page.locator("[data-run-task]").waitFor();
+    expect(await page.locator("[data-run-goal]").inputValue()).toContain("{{product}}");
+    expect(await page.locator('[data-run-source-run="product"]').getAttribute("aria-pressed")).toBe("true");
+    await page.getByRole("button", { name: "Cancel" }).click();
+    await page.locator("[data-run-task]").waitFor({ state: "detached" });
   });
 
   it("no page errors", () => {

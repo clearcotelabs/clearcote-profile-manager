@@ -191,6 +191,9 @@
   "About Jet ↗": [
     "src/components/TasksSection.tsx"
   ],
+  "Accounts & logins": [
+    "src/lib/taskExamples.ts"
+  ],
   "Across all categories. Clear the search to go back.": [
     "src/components/ProfileEditor.tsx"
   ],
@@ -202,6 +205,9 @@
   ],
   "Add tag…": [
     "app/page.tsx"
+  ],
+  "Add to cart in a size and colour": [
+    "src/lib/taskExamples.ts"
   ],
   "Add your API key to run in the cloud": [
     "src/lib/launchError.ts"
@@ -221,6 +227,9 @@
   "Address": [
     "src/components/CloudViewer.tsx"
   ],
+  "Admin & back-office": [
+    "src/lib/taskExamples.ts"
+  ],
   "Adopts a real machine's GPU, screen, fonts, voices and WebGL. Its fields override the seed persona; anything it does not carry falls back to the seed. Strongest coherence comes from a capture whose GPU vendor matches this host.": [
     "src/lib/fields.ts"
   ],
@@ -232,6 +241,9 @@
   ],
   "Advanced: the Jet command": [
     "src/components/TasksSection.tsx"
+  ],
+  "All": [
+    "src/components/TaskExamples.tsx"
   ],
   "All profiles": [
     "app/page.tsx",
@@ -276,6 +288,9 @@
   "Another profile is already called “{name}”. A different name keeps the two apart in the list.": [
     "src/components/ProfileEditor.tsx"
   ],
+  "Answer a survey": [
+    "src/lib/taskExamples.ts"
+  ],
   "Any country": [
     "src/components/CloudFields.tsx"
   ],
@@ -302,6 +317,9 @@
   ],
   "Approve it in the tab that opened. Check that it shows {code}. <a>Open the sign-in page</a>": [
     "src/components/SettingsModal.tsx"
+  ],
+  "Archive closed tickets": [
+    "src/lib/taskExamples.ts"
   ],
   "Ask each time": [
     "src/components/TemplateDialogs.tsx"
@@ -366,6 +384,9 @@
   "Block third-party cookies": [
     "src/lib/fields.ts"
   ],
+  "Book an appointment": [
+    "src/lib/taskExamples.ts"
+  ],
   "Brand": [
     "src/lib/fields.ts"
   ],
@@ -377,6 +398,9 @@
   ],
   "Bridge credentials": [
     "src/lib/fields.ts"
+  ],
+  "Browse examples": [
+    "src/components/TasksView.tsx"
   ],
   "Browse library…": [
     "src/components/ProfileEditor.tsx"
@@ -468,11 +492,17 @@
   "Cards": [
     "app/page.tsx"
   ],
+  "Catch up on notifications": [
+    "src/lib/taskExamples.ts"
+  ],
   "Chameleons blend in to stay unseen. Spin up a profile — a saved fingerprint seed, proxy, and persistent session — and launch it any time.": [
     "app/page.tsx"
   ],
   "Change": [
     "src/components/RunTaskDialog.tsx"
+  ],
+  "Change the display name": [
+    "src/lib/taskExamples.ts"
   ],
   "Change version": [
     "src/lib/launchError.ts"
@@ -487,6 +517,12 @@
     "src/components/ProfileEditor.tsx",
     "src/components/ProxiesView.tsx",
     "src/components/SettingsModal.tsx"
+  ],
+  "Check a delivery": [
+    "src/lib/taskExamples.ts"
+  ],
+  "Check a status page": [
+    "src/lib/taskExamples.ts"
   ],
   "Check again": [
     "src/components/JetSetup.tsx"
@@ -503,6 +539,9 @@
   "Check for updates when the app starts": [
     "src/components/SettingsModal.tsx"
   ],
+  "Check if a size is in stock": [
+    "src/lib/taskExamples.ts"
+  ],
   "Check it in Settings → Licence.": [
     "src/lib/launchError.ts"
   ],
@@ -511,6 +550,9 @@
   ],
   "Check proxy location": [
     "src/components/ProfileCard.tsx"
+  ],
+  "Check the plan and renewal date": [
+    "src/lib/taskExamples.ts"
   ],
   "Check where it exits": [
     "src/components/ProfileInspector.tsx"
@@ -642,7 +684,9 @@
   ],
   "Close": [
     "src/components/Dialog.tsx",
-    "src/components/HelperGate.tsx"
+    "src/components/HelperGate.tsx",
+    "src/components/TaskExamples.tsx",
+    "src/components/TasksView.tsx"
   ],
   "Close a browser that is using this licence — here or on another machine — and launch again.": [
     "src/lib/launchError.ts"
@@ -731,6 +775,9 @@
   "Commands and search": [
     "app/page.tsx"
   ],
+  "Compare two plans": [
+    "src/lib/taskExamples.ts"
+  ],
   "Concurrency limit reached: 1 of 1 browsers in use.": [
     "src/lib/ipc.ts"
   ],
@@ -810,6 +857,9 @@
   "Couldn't start in the cloud": [
     "src/lib/launchError.ts"
   ],
+  "Count pending orders": [
+    "src/lib/taskExamples.ts"
+  ],
   "Country": [
     "src/components/CloudFields.tsx"
   ],
@@ -867,6 +917,9 @@
   ],
   "Data directory": [
     "src/lib/fields.ts"
+  ],
+  "Deactivate a user from the table": [
+    "src/lib/taskExamples.ts"
   ],
   "Default value": [
     "src/components/TasksView.tsx"
@@ -1084,6 +1137,9 @@
   "Enable Widevine (DRM) in Session, or set the brand to Chromium — which is what this build honestly is.": [
     "src/lib/coherence.ts"
   ],
+  "Enter an address with suggestions": [
+    "src/lib/taskExamples.ts"
+  ],
   "Essentials": [
     "src/components/ProfileEditor.tsx"
   ],
@@ -1117,6 +1173,12 @@
   "Everything else in a profile already survives a copy. Cookies do not, because they are sealed with a key the OS keychain holds for the machine that created them.": [
     "src/lib/fields.ts"
   ],
+  "Example categories": [
+    "src/components/TaskExamples.tsx"
+  ],
+  "Examples": [
+    "src/components/TasksView.tsx"
+  ],
   "Examples:": [
     "src/components/RunTaskDialog.tsx"
   ],
@@ -1134,6 +1196,9 @@
   ],
   "Export 1 profile": [
     "src/components/ExportDialog.tsx"
+  ],
+  "Export a report": [
+    "src/lib/taskExamples.ts"
   ],
   "Export all profiles…": [
     "app/page.tsx"
@@ -1188,14 +1253,17 @@
   "File contents": [
     "src/components/MigrateDialog.tsx"
   ],
-  "Fill a form": [
-    "src/components/RunTaskDialog.tsx"
+  "Fill a contact form": [
+    "src/lib/taskExamples.ts"
   ],
   "Fill all four and the pixel ratio from this display: {width} × {height}, work area {availWidth} × {availHeight}, pixel ratio {ratio}": [
     "src/components/ProfileEditor.tsx"
   ],
   "Filter by GPU vendor": [
     "src/components/LibraryModal.tsx"
+  ],
+  "Find a page in the docs": [
+    "src/lib/taskExamples.ts"
   ],
   "Find a profile or a command": [
     "src/components/CommandPalette.tsx",
@@ -1216,6 +1284,15 @@
   "Find anything…": [
     "app/page.tsx"
   ],
+  "Find opening hours": [
+    "src/lib/taskExamples.ts"
+  ],
+  "Find the newest job listings": [
+    "src/lib/taskExamples.ts"
+  ],
+  "Find the three cheapest": [
+    "src/lib/taskExamples.ts"
+  ],
   "Fingerprint seed": [
     "src/components/ProfileInspector.tsx",
     "src/lib/fields.ts"
@@ -1230,11 +1307,17 @@
     "src/components/ProfileEditor.tsx",
     "src/components/ProfileInspector.tsx"
   ],
+  "Follow an account": [
+    "src/lib/taskExamples.ts"
+  ],
   "For example: the search words": [
     "src/components/TasksView.tsx"
   ],
   "For moving to another computer you control.": [
     "src/components/ExportDialog.tsx"
+  ],
+  "Forms & sign-ups": [
+    "src/lib/taskExamples.ts"
   ],
   "Forward": [
     "src/components/CloudViewer.tsx"
@@ -1707,13 +1790,19 @@
     "src/components/StorageSection.tsx"
   ],
   "Log in": [
-    "src/components/RunTaskDialog.tsx"
+    "src/lib/taskExamples.ts"
   ],
   "Logins survive a stop. They are kept in your Clearcote account, separate from this PC's browser data.": [
     "src/components/CloudFields.tsx"
   ],
   "Longest wait": [
     "src/components/RunTaskDialog.tsx"
+  ],
+  "Look something up on Wikipedia": [
+    "src/lib/taskExamples.ts"
+  ],
+  "Look up a price": [
+    "src/lib/taskExamples.ts"
   ],
   "Looking for the Clearcote helper on this computer…": [
     "src/components/HelperGate.tsx"
@@ -1758,6 +1847,9 @@
     "src/components/ProfileCard.tsx",
     "src/components/ProfileInspector.tsx",
     "src/components/ProfileTable.tsx"
+  ],
+  "More examples…": [
+    "src/components/RunTaskDialog.tsx"
   ],
   "Most residential proxies refuse UDP; when they do, the browser quietly falls back.": [
     "src/lib/fields.ts"
@@ -1892,6 +1984,9 @@
   ],
   "No effect on a Windows host. Needs build 151.": [
     "src/lib/fields.ts"
+  ],
+  "No example matches “{q}”.": [
+    "src/components/TaskExamples.tsx"
   ],
   "No group": [
     "app/page.tsx"
@@ -2108,6 +2203,9 @@
   "Opening": [
     "src/components/TaskBoard.tsx"
   ],
+  "Or start from an example": [
+    "src/components/TasksView.tsx"
+  ],
   "Ordinary browsers cannot proxy UDP at all, so WebRTC normally bypasses the proxy. This routes it through the same SOCKS5 endpoint that already carries TCP. It needs a proxy that permits the UDP command — a self-hosted one usually does, a residential vendor usually does not. Many residential proxies move a sticky session to another exit the first time UDP goes through it, and keep it there; with this on, the app sends that first UDP before it looks up the exit (at launch, Resolve from proxy and Check), so the address you see is the one the browser uses.": [
     "src/lib/fields.ts"
   ],
@@ -2180,6 +2278,9 @@
   ],
   "Pick a version from the list instead.": [
     "src/lib/launchError.ts"
+  ],
+  "Pick an example to open it in Run a task, then change the words to fit your site. Values like {example} are filled from each profile or once per run.": [
+    "src/components/TaskExamples.tsx"
   ],
   "Pick one at random": [
     "src/components/ProfileEditor.tsx"
@@ -2276,8 +2377,14 @@
   "Read its source and how to verify it": [
     "src/components/HelperGate.tsx"
   ],
-  "Read something": [
-    "src/components/RunTaskDialog.tsx"
+  "Read the balance": [
+    "src/lib/taskExamples.ts"
+  ],
+  "Read the newest post": [
+    "src/lib/taskExamples.ts"
+  ],
+  "Reading & monitoring": [
+    "src/lib/taskExamples.ts"
   ],
   "Ready. Select profiles and choose Run a task.": [
     "src/components/JetSetup.tsx"
@@ -2385,11 +2492,17 @@
   "Replay it from the dashboard afterwards.": [
     "src/components/CloudFields.tsx"
   ],
+  "Reply to the newest message": [
+    "src/lib/taskExamples.ts"
+  ],
   "Report the persona's WebGL vendor and renderer. On by default. Off reports the host's real strings while the limits, extensions and readback stay on the persona.": [
     "src/lib/fields.ts"
   ],
   "Report this host's actual GPU and WebGL instead of a spoofed one.": [
     "src/lib/fields.ts"
+  ],
+  "Request a quote": [
+    "src/lib/taskExamples.ts"
   ],
   "Research": [
     "src/lib/webPreview.ts"
@@ -2571,6 +2684,9 @@
   "Save the profile": [
     "src/components/ShortcutsDialog.tsx"
   ],
+  "Save to the wishlist": [
+    "src/lib/taskExamples.ts"
+  ],
   "Saved": [
     "src/components/TasksView.tsx"
   ],
@@ -2616,8 +2732,17 @@
   "Scroll": [
     "src/components/StepTimeline.tsx"
   ],
+  "Search & research": [
+    "src/lib/taskExamples.ts"
+  ],
   "Search ({shortcut} or /)": [
     "app/page.tsx"
+  ],
+  "Search examples": [
+    "src/components/TaskExamples.tsx"
+  ],
+  "Search examples…": [
+    "src/components/TaskExamples.tsx"
   ],
   "Search host, country or profile…": [
     "src/components/ProxiesView.tsx"
@@ -2725,6 +2850,9 @@
   "Settings ({shortcut})": [
     "app/page.tsx"
   ],
+  "Shopping & prices": [
+    "src/lib/taskExamples.ts"
+  ],
   "Shops": [
     "src/lib/webPreview.ts"
   ],
@@ -2777,11 +2905,17 @@
   "Showing": [
     "app/page.tsx"
   ],
+  "Sign in and stay signed in": [
+    "src/lib/taskExamples.ts"
+  ],
   "Sign in on clearcotelabs.com and approve. The key of the plan you pay for (or your free one) is filled in here. Nothing to copy.": [
     "src/components/SettingsModal.tsx"
   ],
   "Sign in on clearcotelabs.com and approve: your licence key is filled in for you": [
     "app/page.tsx"
+  ],
+  "Sign up for a newsletter": [
+    "src/lib/taskExamples.ts"
   ],
   "Signs out everywhere: cookies, logins, saved site data, history and extensions are removed. The profile and its settings stay. This cannot be undone.": [
     "src/components/StorageSection.tsx"
@@ -2791,6 +2925,9 @@
   ],
   "Skipped {names}: the browser is running — stop it first.": [
     "src/components/StorageSection.tsx"
+  ],
+  "Social & messaging": [
+    "src/lib/taskExamples.ts"
   ],
   "Some sites hash a 2D canvas and reject anything perturbed, while still wanting the other surfaces noised. This unfarbles that one surface rather than the whole process.": [
     "src/lib/fields.ts"
@@ -3322,6 +3459,9 @@
   "Touch points": [
     "src/lib/fields.ts"
   ],
+  "Track an order": [
+    "src/lib/taskExamples.ts"
+  ],
   "Traffic cap (GB)": [
     "src/components/CloudFields.tsx"
   ],
@@ -3336,6 +3476,9 @@
   ],
   "Try a different search or filter.": [
     "app/page.tsx"
+  ],
+  "Try a discount code": [
+    "src/lib/taskExamples.ts"
   ],
   "Try again": [
     "src/components/HelperGate.tsx",
@@ -3352,6 +3495,9 @@
   ],
   "Turn off for a host that rasterises in software, where a spoofed GPU string cannot be backed by the render. navigator.gpu still follows the wide switch, so WebGPU keeps describing the persona.": [
     "src/lib/fields.ts"
+  ],
+  "Turn off marketing emails": [
+    "src/lib/taskExamples.ts"
   ],
   "Turn off the real GPU when bridging, so the reported GPU and the rendered pixels agree.": [
     "src/lib/coherence.ts"
@@ -3446,11 +3592,17 @@
   "Update Jet (this one is {v}; tasks need 0.3.0 or newer)": [
     "src/components/JetSetup.tsx"
   ],
+  "Update a customer record": [
+    "src/lib/taskExamples.ts"
+  ],
   "Update the app to import cookies.": [
     "app/page.tsx"
   ],
   "Update the app to import from another browser.": [
     "app/page.tsx"
+  ],
+  "Update the profile bio": [
+    "src/lib/taskExamples.ts"
   ],
   "Update the saved task": [
     "src/components/RunTaskDialog.tsx"

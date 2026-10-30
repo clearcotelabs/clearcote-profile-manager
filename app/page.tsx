@@ -36,6 +36,7 @@ import BulkCreateDialog from "@/components/BulkCreateDialog";
 import RunTaskDialog from "@/components/RunTaskDialog";
 import TaskBoard from "@/components/TaskBoard";
 import TasksView from "@/components/TasksView";
+import type { TaskExample } from "@/lib/taskExamples";
 import Menu from "@/components/Menu";
 import { launchReport, udpLine } from "@/lib/proxyReport";
 import { ManageTemplatesDialog, SaveTemplateDialog } from "@/components/TemplateDialogs";
@@ -219,6 +220,8 @@ function Manager() {
   /** Saved tasks (Tasks page), and the one Run a task was opened from. */
   const [savedTasks, setSavedTasks] = useState<SavedTask[]>([]);
   const [runTaskFor, setRunTaskFor] = useState<SavedTask | undefined>(undefined);
+  /** ...or the example it was opened from (Tasks page → an example card). */
+  const [runTaskExample, setRunTaskExample] = useState<TaskExample | undefined>(undefined);
   // Templates: the profile being saved as one, the manage dialog, and the template the open editor
   // was started from (its use is counted when that profile is saved).
   const [saveTplFor, setSaveTplFor] = useState<Profile | null>(null);
@@ -1553,6 +1556,12 @@ function Manager() {
               onDelete={(task) => void deleteTask(task)}
               onNew={() => {
                 setRunTaskFor(undefined);
+                setRunTaskExample(undefined);
+                setRunTaskOpen(true);
+              }}
+              onExample={(ex) => {
+                setRunTaskFor(undefined);
+                setRunTaskExample(ex);
                 setRunTaskOpen(true);
               }}
             />
@@ -1873,6 +1882,7 @@ function Manager() {
           profiles={selectedProfiles}
           allProfiles={profiles}
           task={runTaskFor}
+          example={runTaskExample}
           onSaveTask={saveTask}
           settings={settings}
           onStart={(req) => api.sync!.start(req)}
@@ -1893,6 +1903,7 @@ function Manager() {
           onClose={() => {
             setRunTaskOpen(false);
             setRunTaskFor(undefined);
+            setRunTaskExample(undefined);
           }}
         />
       )}
