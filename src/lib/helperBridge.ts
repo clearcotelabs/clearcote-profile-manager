@@ -324,6 +324,7 @@ export function buildHelperApi(): ClearcoteApi {
       temp: call("storage:temp"),
       cleanTemp: call("storage:cleanTemp"),
       profileSizes: call("storage:profileSizes"),
+      clearProfiles: call("storage:clearProfiles"),
       prefetch: call("build:prefetch"),
       onPrefetchProgress: (cb) => on("prefetch:progress", cb),
     },

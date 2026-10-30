@@ -216,15 +216,14 @@ export const CACHE_DIRS_PER_PROFILE = [
 /** The same, at the top of the user-data dir (shared by all Chromium profiles in it). */
 export const CACHE_DIRS_TOP = ["GrShaderCache", "GraphiteDawnCache", "ShaderCache", "component_crx_cache", "extensions_crx_cache"];
 
-/** Delete the browser caches under a user-data dir; returns the bytes freed. The caller must make
- *  sure the browser is not running (its files are open on Windows). */
-export async function clearBrowsingCache(userDataDir: string): Promise<number> {
+/** The cache folders that exist under a user-data dir (what clearBrowsingCache removes). */
+async function cacheTargets(userDataDir: string): Promise<string[]> {
   const targets: string[] = CACHE_DIRS_TOP.map((d) => path.join(userDataDir, d));
   let entries: fs.Dirent[] = [];
   try {
     entries = await fs.promises.readdir(userDataDir, { withFileTypes: true });
   } catch {
-    return 0;
+    return [];
   }
   for (const e of entries) {
     if (!e.isDirectory()) continue;
@@ -233,13 +232,103 @@ export async function clearBrowsingCache(userDataDir: string): Promise<number> {
     if (!fs.existsSync(path.join(prof, "Preferences"))) continue;
     for (const d of CACHE_DIRS_PER_PROFILE) targets.push(path.join(prof, d));
   }
+  return targets.filter((t) => fs.existsSync(t));
+}
+
+/** How much clearBrowsingCache would free under a user-data dir. */
+export async function cacheSizeAsync(userDataDir: string): Promise<number> {
+  const sizes = await Promise.all((await cacheTargets(userDataDir)).map(dirSizeAsync));
+  return sizes.reduce((a, b) => a + b, 0);
+}
+
+/** Delete the browser caches under a user-data dir; returns the bytes freed. The caller must make
+ *  sure the browser is not running (its files are open on Windows). */
+export async function clearBrowsingCache(userDataDir: string): Promise<number> {
   let freed = 0;
-  for (const t of targets) {
-    if (!fs.existsSync(t)) continue;
+  for (const t of await cacheTargets(userDataDir)) {
     freed += await dirSizeAsync(t);
     await fs.promises.rm(t, { recursive: true, force: true });
   }
   return freed;
+}
+
+/**
+ * Delete everything the browser keeps under a user-data dir — cookies, logins, history, extensions,
+ * caches — leaving the folder itself (the next launch starts like a new browser). The profile and its
+ * settings are not in here. A folder the person chose themselves (userDataDir) is only emptied when
+ * it is a browser's: one with a "Local State" file, so a mistyped path never empties some other folder.
+ * Same caller rule as clearBrowsingCache: the browser must not be running.
+ */
+export async function wipeBrowserData(userDataDir: string, chosen: boolean): Promise<number> {
+  if (chosen && !fs.existsSync(path.join(userDataDir, "Local State"))) return 0;
+  let entries: fs.Dirent[] = [];
+  try {
+    entries = await fs.promises.readdir(userDataDir, { withFileTypes: true });
+  } catch {
+    return 0;
+  }
+  let freed = 0;
+  for (const e of entries) {
+    const p = path.join(userDataDir, e.name);
+    if (e.isDirectory()) freed += await dirSizeAsync(p);
+    else freed += await fs.promises.stat(p).then((st) => st.size, () => 0);
+    await fs.promises.rm(p, { recursive: true, force: true });
+  }
+  return freed;
+}
+
+export type ClearMode = "cache" | "all";
+export interface ClearOutcome {
+  ok: boolean;
+  freedBytes?: number;
+  error?: string;
+  /** Why it was refused: the browser is open, or the profile is gone / not a profile. */
+  code?: "running" | "missing";
+}
+
+/** Clear one profile's cache ("cache") or all its browser data ("all"): Settings → Storage, one row
+ *  or many. Refuses a profile whose browser is running; the profile itself always stays. */
+export async function clearProfileData(id: unknown, mode: ClearMode, running: string[]): Promise<ClearOutcome> {
+  if (!isSafeId(id)) return { ok: false, code: "missing", error: "Invalid profile id." };
+  if (running.includes(id)) {
+    return { ok: false, code: "running", error: `Stop this profile's browser first — it has its ${mode === "all" ? "data" : "cache"} open.` };
+  }
+  const p = getProfile(id);
+  if (!p) return { ok: false, code: "missing", error: "That profile no longer exists." };
+  const dir = userDataDirOf(p);
+  const freedBytes = mode === "all" ? await wipeBrowserData(dir, !!p.userDataDir) : await clearBrowsingCache(dir);
+  return { ok: true, freedBytes };
+}
+
+export interface ClearManyResult {
+  freedBytes: number;
+  /** Ids cleared. */
+  cleared: string[];
+  /** Names of the profiles left alone because their browser is running. */
+  running: string[];
+  /** Names (or ids) of the profiles that could not be cleared for another reason. */
+  failed: string[];
+}
+
+/** clearProfileData for several profiles, one after another, totalled. */
+export async function clearProfilesData(ids: unknown, mode: ClearMode, running: string[]): Promise<ClearManyResult> {
+  const out: ClearManyResult = { freedBytes: 0, cleared: [], running: [], failed: [] };
+  if (mode !== "cache" && mode !== "all") return out;
+  const list = Array.isArray(ids) ? [...new Set(ids)] : [];
+  for (const id of list) {
+    const name = (isSafeId(id) && getProfile(id)?.name?.trim()) || String(id);
+    let r: ClearOutcome;
+    try {
+      r = await clearProfileData(id, mode, running);
+    } catch (err) {
+      r = { ok: false, error: String((err as Error)?.message || err) };
+    }
+    if (r.ok) {
+      out.cleared.push(String(id));
+      out.freedBytes += r.freedBytes ?? 0;
+    } else (r.code === "running" ? out.running : out.failed).push(name);
+  }
+  return out;
 }
 
 export function deleteProfile(id: string): void {

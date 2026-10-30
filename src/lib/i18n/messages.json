@@ -447,6 +447,7 @@
     "src/components/ProfileEditor.tsx",
     "src/components/PromptDialog.tsx",
     "src/components/RunTaskDialog.tsx",
+    "src/components/StorageSection.tsx",
     "src/components/TasksView.tsx",
     "src/components/TemplateDialogs.tsx"
   ],
@@ -593,7 +594,16 @@
   "Clear cache (keeps logins)…": [
     "src/components/ProfileCard.tsx"
   ],
+  "Clear cache of 1 profile ({size})": [
+    "src/components/StorageSection.tsx"
+  ],
   "Clear cache of {name}": [
+    "src/components/StorageSection.tsx"
+  ],
+  "Clear cache of {n} profiles ({size})": [
+    "src/components/StorageSection.tsx"
+  ],
+  "Clear cache · frees {size}": [
     "src/components/StorageSection.tsx"
   ],
   "Clear search and filters": [
@@ -608,6 +618,12 @@
   ],
   "Clear the selection, or close the details panel": [
     "src/components/ShortcutsDialog.tsx"
+  ],
+  "Cleared the cache of 1 profile — {size} freed.": [
+    "src/components/StorageSection.tsx"
+  ],
+  "Cleared the cache of {n} profiles — {size} freed.": [
+    "src/components/StorageSection.tsx"
   ],
   "Cleared {size} from “{name}”.": [
     "src/components/StorageSection.tsx"
@@ -767,6 +783,9 @@
     "app/page.tsx",
     "src/components/StorageSection.tsx"
   ],
+  "Could not clear {names}.": [
+    "src/components/StorageSection.tsx"
+  ],
   "Could not copy the task: {msg}": [
     "src/components/TasksView.tsx"
   ],
@@ -866,6 +885,27 @@
   "Delete 1 profile?": [
     "app/page.tsx"
   ],
+  "Delete all browser data · frees {size}": [
+    "src/components/StorageSection.tsx"
+  ],
+  "Delete all data of 1 profile ({size})": [
+    "src/components/StorageSection.tsx"
+  ],
+  "Delete all data of {n} profiles ({size})": [
+    "src/components/StorageSection.tsx"
+  ],
+  "Delete data of 1 profile": [
+    "src/components/StorageSection.tsx"
+  ],
+  "Delete data of {n} profiles": [
+    "src/components/StorageSection.tsx"
+  ],
+  "Delete data of {n} profiles?": [
+    "src/components/StorageSection.tsx"
+  ],
+  "Delete data of “{name}”?": [
+    "src/components/StorageSection.tsx"
+  ],
   "Delete {n} profiles?": [
     "app/page.tsx"
   ],
@@ -874,6 +914,12 @@
   ],
   "Deleted 1 profile.": [
     "app/page.tsx"
+  ],
+  "Deleted the browser data of 1 profile — {size} freed.": [
+    "src/components/StorageSection.tsx"
+  ],
+  "Deleted the browser data of {n} profiles — {size} freed.": [
+    "src/components/StorageSection.tsx"
   ],
   "Deleted the task “{name}”.": [
     "app/page.tsx"
@@ -887,6 +933,9 @@
   "Delete…": [
     "app/page.tsx",
     "src/components/ProfileCard.tsx"
+  ],
+  "Deleting…": [
+    "src/components/StorageSection.tsx"
   ],
   "Deny list": [
     "src/lib/fields.ts"
@@ -2462,6 +2511,9 @@
   "Running this profile on Clearcote's servers instead of this PC: where its traffic leaves, and what it keeps.": [
     "src/lib/fields.ts"
   ],
+  "Running, so not selectable: {names}.": [
+    "src/components/StorageSection.tsx"
+  ],
   "Runs": [
     "src/components/TasksView.tsx"
   ],
@@ -2593,6 +2645,9 @@
   "Secret values are typed only: Jet's model, the run board and the saved task see the name, never the value.": [
     "src/components/RunTaskDialog.tsx"
   ],
+  "Select all profiles": [
+    "src/components/StorageSection.tsx"
+  ],
   "Select all {n}": [
     "app/page.tsx"
   ],
@@ -2608,7 +2663,8 @@
   ],
   "Select {name}": [
     "src/components/ProfileCard.tsx",
-    "src/components/ProfileTable.tsx"
+    "src/components/ProfileTable.tsx",
+    "src/components/StorageSection.tsx"
   ],
   "Selected profiles": [
     "app/page.tsx"
@@ -2727,8 +2783,14 @@
   "Sign in on clearcotelabs.com and approve: your licence key is filled in for you": [
     "app/page.tsx"
   ],
+  "Signs out everywhere: cookies, logins, saved site data, history and extensions are removed. The profile and its settings stay. This cannot be undone.": [
+    "src/components/StorageSection.tsx"
+  ],
   "Simple": [
     "src/components/ProfileEditor.tsx"
+  ],
+  "Skipped {names}: the browser is running — stop it first.": [
+    "src/components/StorageSection.tsx"
   ],
   "Some sites hash a 2D canvas and reject anything perturbed, while still wanting the other surfaces noised. This unfarbles that one surface rather than the whole process.": [
     "src/lib/fields.ts"
@@ -2795,6 +2857,9 @@
   ],
   "Stop it there, or wait for it to close, then start this one again.": [
     "src/lib/launchError.ts"
+  ],
+  "Stop its browser first — it has its data open.": [
+    "src/components/StorageSection.tsx"
   ],
   "Stop its browser first — it has the cache open.": [
     "src/components/StorageSection.tsx"
@@ -3215,6 +3280,9 @@
   ],
   "Through an HTTP proxy a browser sends a Proxy-Connection header on plain-HTTP requests, and every proxied connection shows proxy-shaped connect and TLS timing. This sends Connection instead and reports the timing like a reused connection.": [
     "src/lib/fields.ts"
+  ],
+  "Tick profiles to delete their data together.": [
+    "src/components/StorageSection.tsx"
   ],
   "Timezone": [
     "src/components/ProfileInspector.tsx",
@@ -3695,6 +3763,9 @@
   "clear a profile's cache": [
     "src/lib/webPreview.ts"
   ],
+  "clear profiles' browser data": [
+    "src/lib/webPreview.ts"
+  ],
   "clearcote-profiles library": [
     "src/components/LibraryModal.tsx"
   ],
@@ -4060,7 +4131,8 @@
     "src/components/TasksView.tsx"
   ],
   "{n} selected": [
-    "app/page.tsx"
+    "app/page.tsx",
+    "src/components/StorageSection.tsx"
   ],
   "{n} set here": [
     "src/components/ProfileEditor.tsx"

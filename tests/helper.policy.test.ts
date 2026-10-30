@@ -177,6 +177,21 @@ describe("webPolicy", () => {
     await h["profiles:importData"](ctx, JSON.stringify(base({ userDataDir: "C:\\x" })));
     expect(JSON.parse(got[0])[0].userDataDir).toBeUndefined();
   });
+
+  it("clearing several profiles' data goes to the same handler as one profile's cache, unchanged", async () => {
+    const got: unknown[][] = [];
+    const h = m.webPolicy({
+      "profiles:clearCache": (_c, ...a: unknown[]) => (got.push(["one", ...a]), { ok: true }),
+      "storage:clearProfiles": (_c, ...a: unknown[]) => (got.push(["many", ...a]), { freedBytes: 0 }),
+    });
+    const ctx = { emit: () => {} };
+    await h["profiles:clearCache"](ctx, "p");
+    await h["storage:clearProfiles"](ctx, ["p", "q"], "all");
+    expect(got).toEqual([
+      ["one", "p"],
+      ["many", ["p", "q"], "all"],
+    ]);
+  });
 });
 
 describe("run a task stays in the desktop app", () => {

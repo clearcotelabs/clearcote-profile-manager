@@ -7,7 +7,7 @@ import type { VersionOption } from "./catalog";
 import type { CachedBuild } from "./cache";
 import type { UpdateInfo, DownloadResult } from "./appupdate";
 import type { LaunchTarget } from "./launchTarget";
-import type { TrashResult, RestoreResult } from "./profiles";
+import type { TrashResult, RestoreResult, ClearManyResult, ClearMode } from "./profiles";
 import type { ExitEvent } from "./launcher";
 import type { StopOutcome } from "./procstop";
 import type { TempCopy } from "./cache";
@@ -51,8 +51,10 @@ const api = {
     prune: (): Promise<{ removed: number; freedBytes: number; skipped: number }> => ipcRenderer.invoke("storage:prune"),
     temp: (): Promise<TempCopy[]> => ipcRenderer.invoke("storage:temp"),
     cleanTemp: (): Promise<{ removed: number; inUse: number; freedBytes: number }> => ipcRenderer.invoke("storage:cleanTemp"),
-    profileSizes: (): Promise<{ id: string; name: string; bytes: number; running: boolean }[]> =>
+    profileSizes: (): Promise<{ id: string; name: string; bytes: number; cacheBytes: number; running: boolean }[]> =>
       ipcRenderer.invoke("storage:profileSizes"),
+    /** Clear the cache ("cache") or all browser data ("all") of several profiles; running ones are refused. */
+    clearProfiles: (ids: string[], mode: ClearMode): Promise<ClearManyResult> => ipcRenderer.invoke("storage:clearProfiles", ids, mode),
     /** Download the build "Latest" resolves to now, before any launch needs it. */
     prefetch: (): Promise<{ ok: boolean; version?: string; major?: number; downloaded?: boolean; error?: string }> =>
       ipcRenderer.invoke("build:prefetch"),

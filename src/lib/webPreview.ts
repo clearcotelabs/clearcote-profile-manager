@@ -37,7 +37,14 @@ export function buildPreviewApi(mock: ClearcoteApi): ClearcoteApi {
       clearCache: fail(tx("clear a profile's cache")),
     },
     checkProfileGeo: fail(tx("check where a proxy exits")) as ClearcoteApi["checkProfileGeo"],
-    storage: { ...mock.storage, prefetch: fail(tx("download the browser")) },
+    storage: {
+      ...mock.storage,
+      prefetch: fail(tx("download the browser")),
+      clearProfiles: async () => {
+        askForHelper(tx("clear profiles' browser data"));
+        return { freedBytes: 0, cleared: [], running: [], failed: [], error: t("Connect this computer first."), code: NEEDS_HELPER };
+      },
+    },
     launchTarget: async () => ({ mode: "preview" }),
     launch: fail(tx("launch a browser")),
     // Tasks run in the desktop app only (it opens each browser's automation port), so the web version has none.

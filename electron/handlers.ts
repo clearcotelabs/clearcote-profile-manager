@@ -420,21 +420,23 @@ export function createHandlers(host: HandlerHost): Record<string, Handler> {
     "storage:profileSizes": async () => {
       const run = new Set(launcher.listRunning());
       return Promise.all(
-        profiles.listProfiles().map(async (p) => ({
-          id: p.id,
-          name: p.name?.trim() || p.id,
-          bytes: await profiles.dirSizeAsync(profiles.userDataDirOf(p)),
-          running: run.has(p.id),
-        })),
+        profiles.listProfiles().map(async (p) => {
+          const dir = profiles.userDataDirOf(p);
+          return {
+            id: p.id,
+            name: p.name?.trim() || p.id,
+            bytes: await profiles.dirSizeAsync(dir),
+            cacheBytes: await profiles.cacheSizeAsync(dir),
+            running: run.has(p.id),
+          };
+        }),
       );
     },
-    "profiles:clearCache": async (_c, id: string) => {
-      if (!profiles.isSafeId(id)) return { ok: false, error: "Invalid profile id." };
-      if (launcher.listRunning().includes(id)) return { ok: false, error: "Stop this profile's browser first — it has its cache open." };
-      const p = profiles.getProfile(id);
-      if (!p) return { ok: false, error: "That profile no longer exists." };
-      return { ok: true, freedBytes: await profiles.clearBrowsingCache(profiles.userDataDirOf(p)) };
-    },
+    // One row's cache, or the cache / all browser data of the profiles ticked in the list. Same rules
+    // either way (profiles.clearProfileData): a running browser is refused, the profile stays.
+    "profiles:clearCache": (_c, id: string) => profiles.clearProfileData(id, "cache", launcher.listRunning()),
+    "storage:clearProfiles": (_c, ids: string[], mode: profiles.ClearMode) =>
+      profiles.clearProfilesData(ids, mode, launcher.listRunning()),
     "build:prefetch": async (c) => {
       let downloaded = false;
       try {

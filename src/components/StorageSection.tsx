@@ -4,10 +4,11 @@
 // back what nothing needs: old browser builds (7.9 GB on the machine this was built on, 12 of 13
 // builds unused), browser copies outside the cache, and each profile's own caches.
 
-import { useCallback, useEffect, useState } from "react";
-import { api, type PrefetchProgress, type ProfileSize, type StoragePlan, type TempCopy } from "@/lib/ipc";
+import { useCallback, useEffect, useId, useRef, useState } from "react";
+import { api, type ClearMode, type PrefetchProgress, type ProfileSize, type StoragePlan, type TempCopy } from "@/lib/ipc";
 import type { LaunchTarget } from "@/lib/launchTarget";
 import { useConfirm } from "./Confirm";
+import Dialog from "./Dialog";
 import { t, tRich } from "@/lib/i18n";
 
 export const fmtSize = (b: number) =>
@@ -37,6 +38,76 @@ function Toggle({ checked, onChange, label }: { checked: boolean; onChange: (v: 
   );
 }
 
+/** The confirmation for the profiles ticked in the list: their cache (the default, keeps logins) or
+ *  all their browser data. One dialog; the button says what goes and how much it frees. */
+function ClearProfilesDialog({ picked, onSettle }: { picked: ProfileSize[]; onSettle: (mode: ClearMode | null) => void }) {
+  const titleId = useId();
+  const cancelRef = useRef<HTMLButtonElement>(null);
+  const [mode, setMode] = useState<ClearMode>("cache");
+  const n = picked.length;
+  const cacheSize = fmtSize(picked.reduce((a, p) => a + (p.cacheBytes ?? 0), 0));
+  const allSize = fmtSize(picked.reduce((a, p) => a + p.bytes, 0));
+  const names = picked.map((p) => p.name).join(", ");
+  const choice = (value: ClearMode, label: string, body: string) => (
+    <label
+      className={
+        "flex cursor-pointer gap-2.5 rounded-lg border px-3 py-2.5 transition " +
+        (mode === value ? (value === "all" ? "border-danger/60 bg-danger/5" : "border-accent/60 bg-accent/5") : "border-line hover:bg-elevate")
+      }
+    >
+      <input type="radio" name="clear-mode" className="mt-0.5 accent-[#38e0d6]" checked={mode === value} onChange={() => setMode(value)} />
+      <span className="min-w-0">
+        <span className="block text-sm font-medium text-fog/90">{label}</span>
+        <span className="mt-0.5 block text-xs leading-relaxed text-fog/55">{body}</span>
+      </span>
+    </label>
+  );
+  return (
+    <Dialog onClose={() => onSettle(null)} labelledBy={titleId} variant="fit" layer="top" className="max-w-md" initialFocus={cancelRef}>
+      <div className="space-y-3 px-5 pb-4 pt-5">
+        <h2 id={titleId} className="text-base font-semibold">
+          {n === 1 ? t("Delete data of “{name}”?", { name: picked[0].name }) : t("Delete data of {n} profiles?", { n })}
+        </h2>
+        {n > 1 && (
+          <p className="truncate text-xs text-fog/50" title={names}>
+            {names}
+          </p>
+        )}
+        {choice(
+          "cache",
+          t("Clear cache · frees {size}", { size: cacheSize }),
+          t("Cached pages, scripts and shaders are removed; they rebuild as you browse. Cookies, logins, saved site data, history and extensions stay."),
+        )}
+        {choice(
+          "all",
+          t("Delete all browser data · frees {size}", { size: allSize }),
+          t("Signs out everywhere: cookies, logins, saved site data, history and extensions are removed. The profile and its settings stay. This cannot be undone."),
+        )}
+      </div>
+      <div className="flex flex-none justify-end gap-2 border-t border-line bg-ink/40 px-5 py-3">
+        <button ref={cancelRef} className="rounded-lg border border-line-strong px-3.5 py-1.5 text-sm text-fog/80 hover:bg-elevate" onClick={() => onSettle(null)}>
+          {t("Cancel")}
+        </button>
+        <button
+          className={
+            "rounded-lg px-3.5 py-1.5 text-sm font-semibold " +
+            (mode === "all" ? "bg-danger text-surface hover:opacity-90" : "bg-sheen text-[#07080a] hover:opacity-95")
+          }
+          onClick={() => onSettle(mode)}
+        >
+          {mode === "all"
+            ? n === 1
+              ? t("Delete all data of 1 profile ({size})", { size: allSize })
+              : t("Delete all data of {n} profiles ({size})", { n, size: allSize })
+            : n === 1
+              ? t("Clear cache of 1 profile ({size})", { size: cacheSize })
+              : t("Clear cache of {n} profiles ({size})", { n, size: cacheSize })}
+        </button>
+      </div>
+    </Dialog>
+  );
+}
+
 export default function StorageSection({
   autoPrune,
   onAutoPrune,
@@ -52,6 +123,8 @@ export default function StorageSection({
   const [busy, setBusy] = useState<string | null>(null);
   const [msg, setMsg] = useState<string | null>(null);
   const [dl, setDl] = useState<PrefetchProgress | null>(null);
+  const [selected, setSelected] = useState<Set<string>>(new Set());
+  const [asking, setAsking] = useState(false);
 
   const load = useCallback(() => {
     void api.storage.plan().then(setPlan).catch(() => setPlan({ keep: [], remove: [], freeBytes: 0, offline: true }));
@@ -67,6 +140,18 @@ export default function StorageSection({
   const buildsBytes = plan ? [...plan.keep, ...plan.remove].reduce((s, b) => s + b.sizeBytes, 0) : 0;
   const tempBytes = (temp ?? []).reduce((s, x) => s + x.sizeBytes, 0);
   const profileBytes = (sizes ?? []).reduce((s, p) => s + p.bytes, 0);
+  // A running browser has its files open: its row cannot be ticked (the main process refuses it too).
+  const selectable = (sizes ?? []).filter((p) => !p.running);
+  const picked = selectable.filter((p) => selected.has(p.id));
+  const runningNames = (sizes ?? []).filter((p) => p.running).map((p) => p.name);
+  const allPicked = selectable.length > 0 && picked.length === selectable.length;
+  const toggle = (id: string, on: boolean) =>
+    setSelected((prev) => {
+      const next = new Set(prev);
+      if (on) next.add(id);
+      else next.delete(id);
+      return next;
+    });
   const total = buildsBytes + tempBytes + profileBytes;
 
   async function prune() {
@@ -129,6 +214,39 @@ export default function StorageSection({
     try {
       const r = await api.profiles.clearCache(p.id);
       setMsg(r.ok ? t("Cleared {size} from “{name}”.", { size: fmtSize(r.freedBytes ?? 0), name: p.name }) : r.error || t("Could not clear the cache."));
+      load();
+    } finally {
+      setBusy(null);
+    }
+  }
+  async function clearPicked(mode: ClearMode | null) {
+    setAsking(false);
+    if (!mode || !picked.length) return;
+    setBusy("profiles");
+    setMsg(null);
+    try {
+      const r = await api.storage.clearProfiles(
+        picked.map((p) => p.id),
+        mode,
+      );
+      if (r.error) {
+        setMsg(r.error);
+        return;
+      }
+      const n = r.cleared.length;
+      const size = fmtSize(r.freedBytes);
+      let line =
+        mode === "all"
+          ? n === 1
+            ? t("Deleted the browser data of 1 profile — {size} freed.", { size })
+            : t("Deleted the browser data of {n} profiles — {size} freed.", { n, size })
+          : n === 1
+            ? t("Cleared the cache of 1 profile — {size} freed.", { size })
+            : t("Cleared the cache of {n} profiles — {size} freed.", { n, size });
+      if (r.running.length) line += " " + t("Skipped {names}: the browser is running — stop it first.", { names: r.running.join(", ") });
+      if (r.failed.length) line += " " + t("Could not clear {names}.", { names: r.failed.join(", ") });
+      setMsg(line);
+      setSelected(new Set());
       load();
     } finally {
       setBusy(null);
@@ -295,6 +413,34 @@ export default function StorageSection({
             {t("Each profile's cookies, logins and cache. Clearing the cache keeps you signed in.")}
           </div>
         </div>
+        {!!sizes?.length && (
+          <div className="flex flex-wrap items-center gap-3 border-b border-line px-4 py-2.5">
+            <input
+              type="checkbox"
+              className="accent-[#38e0d6]"
+              checked={allPicked}
+              ref={(el) => {
+                if (el) el.indeterminate = picked.length > 0 && !allPicked;
+              }}
+              onChange={(e) => setSelected(e.target.checked ? new Set(selectable.map((p) => p.id)) : new Set())}
+              disabled={!selectable.length || busy !== null}
+              aria-label={t("Select all profiles")}
+            />
+            <span className="min-w-0 flex-1 text-xs text-fog/55">
+              {picked.length ? t("{n} selected", { n: picked.length }) : t("Tick profiles to delete their data together.")}
+              {runningNames.length > 0 && (
+                <span className="block text-fog/40">{t("Running, so not selectable: {names}.", { names: runningNames.join(", ") })}</span>
+              )}
+            </span>
+            <button className={btn} onClick={() => setAsking(true)} disabled={!picked.length || busy !== null}>
+              {busy === "profiles"
+                ? t("Deleting…")
+                : picked.length === 1
+                  ? t("Delete data of 1 profile")
+                  : t("Delete data of {n} profiles", { n: picked.length })}
+            </button>
+          </div>
+        )}
         <ul className="divide-y divide-line">
           {sizes === null && <li className="px-4 py-3 text-xs text-fog/45">{t("Loading…")}</li>}
           {sizes?.length === 0 && <li className="px-4 py-3 text-xs text-fog/45">{t("No profiles yet.")}</li>}
@@ -302,6 +448,15 @@ export default function StorageSection({
             .sort((a, b) => b.bytes - a.bytes)
             .map((p) => (
               <li key={p.id} className="flex items-center gap-3 px-4 py-2.5">
+                <input
+                  type="checkbox"
+                  className="accent-[#38e0d6]"
+                  checked={!p.running && selected.has(p.id)}
+                  onChange={(e) => toggle(p.id, e.target.checked)}
+                  disabled={p.running || busy !== null}
+                  title={p.running ? t("Stop its browser first — it has its data open.") : undefined}
+                  aria-label={t("Select {name}", { name: p.name })}
+                />
                 <span className="min-w-0 flex-1 truncate text-xs text-fog/80">{p.name}</span>
                 <span className="w-16 shrink-0 text-right text-[11px] tabular-nums text-fog/45">{fmtSize(p.bytes)}</span>
                 <button
@@ -317,6 +472,7 @@ export default function StorageSection({
             ))}
         </ul>
       </section>
+      {asking && picked.length > 0 && <ClearProfilesDialog picked={picked} onSettle={clearPicked} />}
     </div>
   );
 }

@@ -95,34 +95,34 @@ describe("exportList", () => {
   });
 });
 
-describe("clearBrowsingCache — signed in afterwards", () => {
-  /** A user-data dir laid out like Chromium's: two Chromium profiles plus shared caches. */
-  function chromiumDir(): string {
-    const udd = fs.mkdtempSync(path.join(ROOT, "udd-"));
-    const put = (rel: string, bytes = 100) => {
-      fs.mkdirSync(path.dirname(path.join(udd, rel)), { recursive: true });
-      fs.writeFileSync(path.join(udd, rel), Buffer.alloc(bytes));
-    };
-    for (const prof of ["Default", "Profile 1"]) {
-      put(`${prof}/Preferences`, 10);
-      put(`${prof}/Cookies`, 10);
-      put(`${prof}/Login Data`, 10);
-      put(`${prof}/Local Storage/leveldb/000003.log`, 10);
-      put(`${prof}/IndexedDB/https_x.indexeddb.leveldb/LOG`, 10);
-      put(`${prof}/History`, 10);
-      put(`${prof}/Cache/Cache_Data/data_0`, 1000);
-      put(`${prof}/Code Cache/js/index`, 500);
-      put(`${prof}/GPUCache/data_1`, 200);
-      put(`${prof}/Service Worker/CacheStorage/abc/index`, 300);
-      put(`${prof}/Service Worker/Database/LOG`, 10); // registrations — kept
-    }
-    put("GrShaderCache/data_0", 400);
-    put("ShaderCache/data_0", 50);
-    put("Local State", 10);
-    put("NotAProfile/Cache/data", 999); // no Preferences here: left alone
-    return udd;
+/** A user-data dir laid out like Chromium's: two Chromium profiles plus shared caches. */
+function chromiumDir(at?: string): string {
+  const udd = at ?? fs.mkdtempSync(path.join(ROOT, "udd-"));
+  const put = (rel: string, bytes = 100) => {
+    fs.mkdirSync(path.dirname(path.join(udd, rel)), { recursive: true });
+    fs.writeFileSync(path.join(udd, rel), Buffer.alloc(bytes));
+  };
+  for (const prof of ["Default", "Profile 1"]) {
+    put(`${prof}/Preferences`, 10);
+    put(`${prof}/Cookies`, 10);
+    put(`${prof}/Login Data`, 10);
+    put(`${prof}/Local Storage/leveldb/000003.log`, 10);
+    put(`${prof}/IndexedDB/https_x.indexeddb.leveldb/LOG`, 10);
+    put(`${prof}/History`, 10);
+    put(`${prof}/Cache/Cache_Data/data_0`, 1000);
+    put(`${prof}/Code Cache/js/index`, 500);
+    put(`${prof}/GPUCache/data_1`, 200);
+    put(`${prof}/Service Worker/CacheStorage/abc/index`, 300);
+    put(`${prof}/Service Worker/Database/LOG`, 10); // registrations — kept
   }
+  put("GrShaderCache/data_0", 400);
+  put("ShaderCache/data_0", 50);
+  put("Local State", 10);
+  put("NotAProfile/Cache/data", 999); // no Preferences here: left alone
+  return udd;
+}
 
+describe("clearBrowsingCache — signed in afterwards", () => {
   it("removes the caches, keeps cookies, logins, site storage and history, and reports what it freed", async () => {
     const udd = chromiumDir();
     const freed = await m.clearBrowsingCache(udd);
@@ -154,5 +154,87 @@ describe("clearBrowsingCache — signed in afterwards", () => {
   it("userDataDirOf: the profile's own setting wins", () => {
     expect(m.userDataDirOf({ id: "a", userDataDir: "D:\\x" })).toBe("D:\\x");
     expect(m.userDataDirOf({ id: "a" })).toBe(path.join(PROFILES, "a", "userdata"));
+  });
+});
+
+describe("clearProfilesData — Settings → Storage, several profiles at once", () => {
+  // Per chromiumDir: what "Clear cache" frees, and everything in it.
+  const CACHE = 2 * (1000 + 500 + 200 + 300) + 400 + 50;
+  const ALL = 2 * (10 * 5 + 10 + 1000 + 500 + 200 + 300 + 10) + 400 + 50 + 10 + 999;
+  const withData = (id: string, over: Record<string, unknown> = {}) => {
+    const p = m.saveProfile(base(id, over));
+    chromiumDir(m.userDataDirOf(p));
+    return p;
+  };
+
+  it("cacheSizeAsync is what clearBrowsingCache then frees", async () => {
+    const udd = chromiumDir();
+    expect(await m.cacheSizeAsync(udd)).toBe(CACHE);
+    expect(await m.clearBrowsingCache(udd)).toBe(CACHE);
+    expect(await m.cacheSizeAsync(udd)).toBe(0);
+    expect(await m.cacheSizeAsync(path.join(ROOT, "nope"))).toBe(0);
+  });
+
+  it("'cache' clears each ticked profile's cache and totals it; logins stay; profiles not ticked are untouched", async () => {
+    for (const id of ["a", "b", "c"]) withData(id);
+    const r = await m.clearProfilesData(["a", "b"], "cache", []);
+    expect(r).toEqual({ freedBytes: 2 * CACHE, cleared: ["a", "b"], running: [], failed: [] });
+    for (const id of ["a", "b"]) {
+      const udd = m.userDataDirOf({ id });
+      expect(fs.existsSync(path.join(udd, "Default", "Cookies"))).toBe(true);
+      expect(fs.existsSync(path.join(udd, "Default", "Cache"))).toBe(false);
+    }
+    expect(await m.cacheSizeAsync(m.userDataDirOf({ id: "c" }))).toBe(CACHE);
+  });
+
+  it("'all' empties the browser data but keeps the profile, its settings and its folder", async () => {
+    withData("a", { proxy: "http://h:1", group: "Shop" });
+    const r = await m.clearProfilesData(["a"], "all", []);
+    expect(r.freedBytes).toBe(ALL);
+    expect(r.cleared).toEqual(["a"]);
+    const udd = m.userDataDirOf({ id: "a" });
+    expect(fs.existsSync(udd)).toBe(true);
+    expect(fs.readdirSync(udd)).toEqual([]);
+    expect(m.getProfile("a")).toMatchObject({ id: "a", proxy: "http://h:1", group: "Shop" });
+  });
+
+  it("refuses a profile whose browser is running, by name, and still does the others", async () => {
+    withData("a", { name: "Alpha" });
+    withData("b", { name: "Bank" });
+    const r = await m.clearProfilesData(["a", "b"], "all", ["b"]);
+    expect(r).toEqual({ freedBytes: ALL, cleared: ["a"], running: ["Bank"], failed: [] });
+    expect(await m.dirSizeAsync(m.userDataDirOf({ id: "b" }))).toBe(ALL);
+  });
+
+  it("unknown, unsafe and repeated ids: failed once each, nothing outside the profiles touched", async () => {
+    withData("a");
+    const outside = chromiumDir(path.join(ROOT, "outside"));
+    const r = await m.clearProfilesData(["a", "a", "ghost", "../outside", 7], "all", []);
+    expect(r.cleared).toEqual(["a"]);
+    expect(r.failed).toEqual(["ghost", "../outside", "7"]);
+    expect(await m.dirSizeAsync(outside)).toBe(ALL);
+    expect(await m.clearProfilesData("a", "all", [])).toEqual({ freedBytes: 0, cleared: [], running: [], failed: [] });
+    expect(await m.clearProfilesData(["a"], "everything" as never, [])).toEqual({ freedBytes: 0, cleared: [], running: [], failed: [] });
+  });
+
+  it("a folder the person chose is emptied only when it is a browser's (has Local State)", async () => {
+    const mine = fs.mkdtempSync(path.join(ROOT, "chosen-"));
+    fs.writeFileSync(path.join(mine, "notes.txt"), "keep me");
+    m.saveProfile(base("x", { userDataDir: mine }));
+    expect((await m.clearProfilesData(["x"], "all", [])).freedBytes).toBe(0);
+    expect(fs.readFileSync(path.join(mine, "notes.txt"), "utf8")).toBe("keep me");
+    chromiumDir(mine);
+    expect((await m.clearProfilesData(["x"], "all", [])).freedBytes).toBeGreaterThan(ALL);
+    expect(fs.readdirSync(mine)).toEqual([]);
+  });
+
+  it("the single-row Clear cache goes the same way: running refused with the same words as before", async () => {
+    withData("a");
+    expect(await m.clearProfileData("a", "cache", ["a"])).toMatchObject({
+      ok: false,
+      code: "running",
+      error: "Stop this profile's browser first — it has its cache open.",
+    });
+    expect(await m.clearProfileData("a", "cache", [])).toEqual({ ok: true, freedBytes: CACHE });
   });
 });

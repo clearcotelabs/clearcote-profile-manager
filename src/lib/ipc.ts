@@ -57,7 +57,21 @@ export interface ProfileSize {
   id: string;
   name: string;
   bytes: number;
+  /** What "Clear cache" would free. */
+  cacheBytes: number;
   running: boolean;
+}
+/** Settings → Storage, several profiles at once: their cache, or all their browser data (signs out). */
+export type ClearMode = "cache" | "all";
+export interface ClearManyResult {
+  freedBytes: number;
+  cleared: string[];
+  /** Names of the profiles refused because their browser is running. */
+  running: string[];
+  failed: string[];
+  /** Nothing was tried (the web version without the helper). */
+  error?: string;
+  code?: string;
 }
 export interface PrefetchProgress {
   pct: number;
@@ -366,6 +380,7 @@ export interface ClearcoteApi {
     temp: () => Promise<TempCopy[]>;
     cleanTemp: () => Promise<{ removed: number; inUse: number; freedBytes: number }>;
     profileSizes: () => Promise<ProfileSize[]>;
+    clearProfiles: (ids: string[], mode: ClearMode) => Promise<ClearManyResult>;
     prefetch: () => Promise<{ ok: boolean; version?: string; major?: number; downloaded?: boolean; error?: string }>;
     onPrefetchProgress: (cb: (p: PrefetchProgress) => void) => () => void;
   };
@@ -525,7 +540,9 @@ function buildMock(): ClearcoteApi {
     };
   }
   const STORAGE_KEY = "clearcote.mock.storage";
-  type MockStorage = { plan?: StoragePlan; temp?: TempCopy[]; sizes?: Record<string, number> };
+  // sizes: each profile's data; caches: what of that is cache (default: a quarter of it).
+  type MockStorage = { plan?: StoragePlan; temp?: TempCopy[]; sizes?: Record<string, number>; caches?: Record<string, number> };
+  const mockCache = (st: MockStorage, id: string) => st.caches?.[id] ?? Math.round((st.sizes?.[id] ?? 0) / 4);
 
   return {
     profiles: {
@@ -598,7 +615,35 @@ function buildMock(): ClearcoteApi {
       },
       profileSizes: async () => {
         const sizes = readJson<MockStorage>(STORAGE_KEY, {}).sizes ?? {};
-        return read().map((p) => ({ id: p.id, name: p.name?.trim() || p.id, bytes: sizes[p.id] ?? 0, running: mockRunning.has(p.id) }));
+        const st = readJson<MockStorage>(STORAGE_KEY, {});
+        return read().map((p) => ({
+          id: p.id,
+          name: p.name?.trim() || p.id,
+          bytes: sizes[p.id] ?? 0,
+          cacheBytes: mockCache(st, p.id),
+          running: mockRunning.has(p.id),
+        }));
+      },
+      // Plays the desktop: running profiles refused by name, the rest shrink by what was cleared.
+      clearProfiles: async (ids, mode) => {
+        const st = readJson<MockStorage>(STORAGE_KEY, {});
+        const sizes = { ...(st.sizes ?? {}) };
+        const caches = { ...(st.caches ?? {}) };
+        const out: ClearManyResult = { freedBytes: 0, cleared: [], running: [], failed: [] };
+        for (const id of ids) {
+          const p = read().find((x) => x.id === id);
+          if (!p) out.failed.push(id);
+          else if (mockRunning.has(id)) out.running.push(p.name?.trim() || id);
+          else {
+            const freed = mode === "all" ? sizes[id] ?? 0 : mockCache(st, id);
+            sizes[id] = Math.max(0, (sizes[id] ?? 0) - freed);
+            caches[id] = 0;
+            out.freedBytes += freed;
+            out.cleared.push(id);
+          }
+        }
+        localStorage.setItem(STORAGE_KEY, JSON.stringify({ ...st, sizes, caches }));
+        return out;
       },
       prefetch: async () => {
         if (localStorage.getItem("clearcote.mock.prefetch") !== "ok") return { ok: false, error: t("Downloading builds runs in the desktop app.") };

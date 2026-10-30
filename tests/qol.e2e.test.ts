@@ -349,6 +349,56 @@ describe.skipIf(!READY)("quality-of-life round — in a real browser", () => {
     await dlg.getByText("Build 153.0.8010.36 is ready — the next launch starts straight away.").waitFor();
   }, 60000);
 
+  it("Storage: tick several profiles, one dialog — cache by default, or all their data — running ones not selectable", async () => {
+    const { page } = await fresh({
+      profiles: TEAM,
+      launch: "ok",
+      storage: { sizes: { shop: 98e6, bank: 48e6, mail: 40e6, temp: 12e6 }, caches: { shop: 30e6, bank: 8e6, mail: 10e6, temp: 0 } },
+    });
+    await card(page, "bank").getByRole("button", { name: "Launch" }).click();
+    await card(page, "bank").getByText("running").waitFor();
+    await page.keyboard.press("Control+Comma");
+    const dlg = page.getByRole("dialog", { name: "Settings" });
+    await dlg.getByRole("button", { name: "Storage" }).click();
+    await dlg.getByText("Running, so not selectable: Bank.").waitFor();
+    expect(await dlg.getByRole("checkbox", { name: "Select Bank" }).isDisabled()).toBe(true);
+    expect(await dlg.getByRole("button", { name: "Delete data of 0 profiles" }).isDisabled()).toBe(true);
+
+    // Select all takes the three that can go; unticking one leaves two.
+    await dlg.getByRole("checkbox", { name: "Select all profiles" }).check();
+    await dlg.getByText("3 selected").waitFor();
+    await dlg.getByRole("checkbox", { name: "Select Temp" }).uncheck();
+    await dlg.getByText("2 selected").waitFor();
+
+    // Cancel changes nothing; the default is the cache, which keeps logins.
+    await dlg.getByRole("button", { name: "Delete data of 2 profiles" }).click();
+    let ask = page.getByRole("dialog", { name: "Delete data of 2 profiles?" });
+    expect(await ask.getByRole("radio", { name: /Clear cache · frees 40 MB/ }).isChecked()).toBe(true);
+    await ask.getByRole("button", { name: "Cancel" }).click();
+    await ask.waitFor({ state: "detached" });
+    await dlg.getByText("2 selected").waitFor();
+
+    await dlg.getByRole("button", { name: "Delete data of 2 profiles" }).click();
+    ask = page.getByRole("dialog", { name: "Delete data of 2 profiles?" });
+    await ask.getByRole("button", { name: "Clear cache of 2 profiles (40 MB)" }).click();
+    await dlg.getByText("Cleared the cache of 2 profiles — 40 MB freed.").waitFor();
+    await dlg.getByText("Tick profiles to delete their data together.").waitFor(); // selection cleared
+    await dlg.getByText("158 MB profile data", { exact: false }).waitFor(); // 198 − 40
+
+    // All browser data: the button says so and how much it frees.
+    await dlg.getByRole("checkbox", { name: "Select Shop" }).check();
+    await dlg.getByRole("checkbox", { name: "Select Mail" }).check();
+    await dlg.getByRole("button", { name: "Delete data of 2 profiles" }).click();
+    ask = page.getByRole("dialog", { name: "Delete data of 2 profiles?" });
+    await ask.getByRole("radio", { name: /Delete all browser data · frees 98 MB/ }).check();
+    await ask.getByRole("button", { name: "Delete all data of 2 profiles (98 MB)" }).click();
+    await dlg.getByText("Deleted the browser data of 2 profiles — 98 MB freed.").waitFor();
+    await dlg.getByText("60 MB profile data", { exact: false }).waitFor();
+    // The profiles themselves stay.
+    await page.keyboard.press("Escape");
+    for (const id of ["shop", "mail"]) await card(page, id).waitFor();
+  }, 60000);
+
   it("Licence: a free-key link, a check straight after saving, and 'valid but busy' reads as valid", async () => {
     const { page, ctx } = await fresh({ license: { ok: true, busy: true, code: "CONCURRENCY_LIMIT_EXCEEDED" } });
     await page.keyboard.press("Control+Comma");
