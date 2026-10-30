@@ -4,7 +4,7 @@
 // who set it by hand, and whether every launch opens a local automation port (so your own scripts can drive
 // the windows this app opens).
 
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import JetSetup from "./JetSetup";
 import { api, type Settings } from "@/lib/ipc";
 import { t, tRich } from "@/lib/i18n";
@@ -26,7 +26,11 @@ export default function TasksSection({
   const desktop = !!api.sync;
   const dirty = cmd !== (settings.jetCommand ?? "");
   // The app may set the command itself (after Install Jet): follow it while the field is untouched.
-  useEffect(() => setCmd(settings.jetCommand ?? ""), [settings.jetCommand]);
+  const shown = useRef(settings.jetCommand ?? "");
+  useEffect(() => {
+    setCmd((c) => (c === shown.current ? settings.jetCommand ?? "" : c));
+    shown.current = settings.jetCommand ?? "";
+  }, [settings.jetCommand]);
 
   if (!desktop) {
     return (

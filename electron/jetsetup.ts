@@ -54,10 +54,11 @@ export const execFile: Exec = (cmd, args, opts = {}) =>
     let out = "";
     let err = "";
     let done = false;
+    let timer: ReturnType<typeof setTimeout> | undefined;
     const finish = (r: { code: number | null; spawnError?: string }) => {
       if (done) return;
       done = true;
-      clearTimeout(timer);
+      if (timer) clearTimeout(timer);
       resolve({ out, err, ...r });
     };
     let child: ReturnType<typeof spawn>;
@@ -66,7 +67,7 @@ export const execFile: Exec = (cmd, args, opts = {}) =>
     } catch (e) {
       return finish({ code: null, spawnError: (e as { code?: string })?.code || String(e) });
     }
-    const timer = setTimeout(() => {
+    timer = setTimeout(() => {
       child.kill();
       finish({ code: null, spawnError: "timeout" });
     }, opts.timeoutMs ?? 20_000);
@@ -124,8 +125,10 @@ export async function probeJet(command: string[], exec: Exec = execFile, env: No
   return { ok: false, reason: "error", detail: tail.slice(0, 300) || "Jet did not answer." };
 }
 
-function quote(s: string): string {
-  return /[\s"]/.test(s) ? `"${s}"` : s;
+/** Quoted the way parseCommandLine reads it back: ' and " both start a quote there. */
+export function quote(s: string): string {
+  if (!/[\s"']/.test(s)) return s;
+  return s.includes('"') ? `'${s}'` : `"${s}"`;
 }
 
 /** Is this model key accepted? Checks the saved key when none is given, then TYPESAFE_API_KEY. */
@@ -155,14 +158,18 @@ export function moduleCommand(py: PythonFound): string[] {
 
 /** Everything the checklist shows. When the saved command fails but Jet is in a Python we found, that
  *  Python's `-m clearcote_jet.cli` is returned as fixedCommand. */
-export async function jetStatus(s: Pick<Settings, "jetCommand" | "jetApiKey">, deps: { exec?: Exec; fetcher?: typeof fetch; platform?: NodeJS.Platform } = {}): Promise<JetStatus> {
+export async function jetStatus(
+  s: Pick<Settings, "jetCommand" | "jetApiKey">,
+  deps: { exec?: Exec; fetcher?: typeof fetch; platform?: NodeJS.Platform; fallback?: boolean } = {},
+): Promise<JetStatus> {
   const exec = deps.exec ?? execFile;
   const [keyP, pyP] = [checkKey(s.jetApiKey, deps.fetcher), findPython(exec, deps.platform)];
   const [cmd, args] = workerCommand(s);
   let jet = await probeJet([cmd, ...args.slice(0, -1)], exec);
   const python = await pyP;
   let fixedCommand: string | undefined;
-  if (!jet.ok && python) {
+  // A command typed in by hand is what runs use, so it is what the checklist reports: no quiet fallback.
+  if (!jet.ok && python && deps.fallback !== false) {
     const viaModule = await probeJet(moduleCommand(python), exec);
     if (viaModule.ok || (viaModule.reason === "old" && jet.reason === "missing")) {
       jet = viaModule;

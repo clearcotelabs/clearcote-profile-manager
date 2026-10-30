@@ -200,6 +200,20 @@ describe("jetStatus", () => {
     expect(s.ready).toBe(true);
   });
 
+  it("fallback off (a command typed by hand): its own failure is reported, no fixedCommand", async () => {
+    const exec = fakeExec((cmd, args) => {
+      const py = pyAnswer(args);
+      if (py) return py;
+      if (cmd === "my-jet") return { code: null, spawnError: "ENOENT" };
+      if (cmd === PY_EXE && isWorker(args)) return { out: ready("0.3.0") };
+      return { code: 1 };
+    });
+    const s = await jetStatus({ jetCommand: "my-jet", jetApiKey: "sk" }, { exec, fetcher: fetchStatus(422), platform: "win32", fallback: false });
+    expect(s.jet).toEqual({ ok: false, reason: "missing" });
+    expect(s.fixedCommand).toBeUndefined();
+    expect(s.ready).toBe(false);
+  });
+
   it("saved command works but no key anywhere: jet ok, no fixedCommand, not ready", async () => {
     const exec = fakeExec((cmd, args) => pyAnswer(args) ?? (isWorker(args) ? { out: ready("0.4.0") } : { code: 1 }));
     const s = await jetStatus({ jetCommand: "clearcote-jet" }, { exec, fetcher: fetchStatus(200), platform: "linux" });

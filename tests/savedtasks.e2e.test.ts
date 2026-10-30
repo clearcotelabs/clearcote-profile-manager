@@ -180,6 +180,9 @@ describe.skipIf(!READY)("Jet setup and saved tasks — in a real browser", () =>
 
     const [task] = await tasks();
     expect(task.history[0]).toMatchObject({ done: 3, total: 3, params: { email: "team@example.com" } });
+    // Updating the saved task on Run kept the earlier runs and the steps.
+    expect(task.history).toHaveLength(3);
+    expect(task.steps?.length).toBeGreaterThan(0);
     const profiles = await page.evaluate(() => JSON.parse(localStorage.getItem("clearcote.profiles.mock") || "[]"));
     expect(profiles.find((p: { id: string }) => p.id === "shop-01").vars[0]).toEqual({ key: "email", value: "ana@example.com" });
     await page.locator("[data-task-clear]").click();

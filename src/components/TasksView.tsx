@@ -10,7 +10,7 @@ import { useEffect, useId, useMemo, useRef, useState } from "react";
 import type { SavedTask, TaskParam, StepSummary } from "@/lib/ipc";
 import { t } from "@/lib/i18n";
 import { relativeTime } from "@/lib/profileList";
-import { BUILTIN_SLOTS, templateSlots } from "../../electron/jetslots";
+import { BUILTIN_SLOTS, looksSecret, templateSlots } from "../../electron/jetslots";
 import StepTimeline, { SlotText } from "./StepTimeline";
 
 const ghost = "rounded-lg border border-line px-2.5 py-1 text-[11px] font-medium text-fog/80 hover:bg-elevate transition disabled:opacity-40";
@@ -23,13 +23,13 @@ const cell =
 const label = "mb-1 block text-[11px] font-medium uppercase tracking-wide text-fog/45";
 
 /** A slot that looks like a password is secret by default (as in the Run a task dialog). */
-const SECRETISH = /pass|pwd|secret|token|pin|otp|code/i;
+
 const BUILTIN: readonly string[] = BUILTIN_SLOTS;
 
 /** One row per slot of the goal, from the task's saved params where it has one. */
 function mergeParams(goal: string, params: TaskParam[]): TaskParam[] {
   return templateSlots(goal).map(
-    (name) => params.find((p) => p.name === name) ?? { name, source: "profile" as const, ...(SECRETISH.test(name) ? { secret: true } : {}) }
+    (name) => params.find((p) => p.name === name) ?? { name, source: "profile" as const, ...(looksSecret(name) ? { secret: true } : {}) }
   );
 }
 
@@ -194,6 +194,8 @@ function Detail({
     }
   };
 
+  const params = useRef<ParamsControl | null>(null);
+
   return (
     <section className="min-w-0 rounded-xl border border-line bg-surface/70" aria-label={task.name} data-task-detail={task.id}>
       {editing ? (
@@ -217,10 +219,24 @@ function Detail({
             <button className={ghost} onClick={duplicate} disabled={busy} data-task-duplicate="1">
               {t("Duplicate")}
             </button>
-            <button className={ghost + " hover:border-danger/50 hover:text-danger"} onClick={() => onDelete(task)} data-task-delete="1">
+            <button
+              className={ghost + " hover:border-danger/50 hover:text-danger"}
+              onClick={() => {
+                params.current?.cancel();
+                onDelete(task);
+              }}
+              data-task-delete="1"
+            >
               {t("Delete")}
             </button>
-            <button className={primary} onClick={() => onRun(task)} data-task-run="1">
+            <button
+              className={primary}
+              onClick={() => {
+                const waiting = params.current?.flush();
+                onRun(waiting ? { ...task, params: waiting } : task);
+              }}
+              data-task-run="1"
+            >
               {selectedCount > 0 ? t("Run on {n} selected", { n: selectedCount }) : t("Run…")}
             </button>
           </header>
@@ -230,7 +246,7 @@ function Detail({
             </div>
           )}
           <Recipe task={task} />
-          <Params task={task} onSave={onSave} />
+          <Params task={task} onSave={onSave} control={params} />
         </>
       )}
 
@@ -271,7 +287,22 @@ function Recipe({ task }: { task: SavedTask }) {
 }
 
 /** The values a task asks for, saved as they change (400 ms after the last keystroke). */
-function Params({ task, onSave }: { task: SavedTask; onSave: (task: Partial<SavedTask>) => Promise<SavedTask> }) {
+/** What the task's header needs from the values pane: save edits still waiting now, or drop them. */
+interface ParamsControl {
+  /** Saves what is waiting and returns it (null when nothing is). */
+  flush(): TaskParam[] | null;
+  cancel(): void;
+}
+
+function Params({
+  task,
+  onSave,
+  control,
+}: {
+  task: SavedTask;
+  onSave: (task: Partial<SavedTask>) => Promise<SavedTask>;
+  control: React.MutableRefObject<ParamsControl | null>;
+}) {
   const [rows, setRows] = useState<TaskParam[]>(() => mergeParams(task.goal, task.params));
   const [saved, setSaved] = useState<"idle" | "saving" | "saved" | "error">("idle");
   const latest = useRef(task);
@@ -282,20 +313,32 @@ function Params({ task, onSave }: { task: SavedTask; onSave: (task: Partial<Save
   const timer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const uid = useId();
 
-  const flush = () => {
+  const flush = (): TaskParam[] | null => {
     if (timer.current) clearTimeout(timer.current);
     timer.current = null;
     const next = pending.current;
     pending.current = null;
-    if (!next) return;
+    if (!next) return null;
     setSaved("saving");
     save
       .current({ ...latest.current, params: next })
       .then(() => setSaved("saved"))
       .catch(() => setSaved("error"));
+    return next;
   };
-  // A change still waiting is saved when the pane goes (another task picked, Edit opened).
-  useEffect(() => () => flush(), []); // eslint-disable-line react-hooks/exhaustive-deps
+  const cancel = () => {
+    if (timer.current) clearTimeout(timer.current);
+    timer.current = null;
+    pending.current = null;
+  };
+  control.current = { flush, cancel };
+  // A change still waiting is saved when the pane goes (another task picked, Edit opened); a deleted task
+  // was cancelled first, so it is not saved back.
+  useEffect(() => () => void flush(), []); // eslint-disable-line react-hooks/exhaustive-deps
+  // The task changed elsewhere (Run a task saved it, a run was recorded): follow it unless an edit is waiting.
+  useEffect(() => {
+    if (!pending.current) setRows(mergeParams(task.goal, task.params));
+  }, [task.goal, task.params]);
 
   const change = (name: string, patch: Partial<TaskParam>) => {
     const next = rows.map((p) => {
@@ -511,7 +554,7 @@ function History({ task, onRun }: { task: SavedTask; onRun: (task: SavedTask) =>
                   onClick={() =>
                     onRun({
                       ...task,
-                      params: task.params.map((p) => (p.source === "run" && h.params?.[p.name] !== undefined ? { ...p, default: h.params[p.name] } : p)),
+                      params: task.params.map((p) => (p.source === "run" && !p.secret && h.params?.[p.name] !== undefined ? { ...p, default: h.params[p.name] } : p)),
                     })
                   }
                   data-task-run-again={i}

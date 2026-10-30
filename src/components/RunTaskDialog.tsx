@@ -20,7 +20,7 @@ import Dialog, { DialogFooter, DialogHeader } from "./Dialog";
 import JetSetup from "./JetSetup";
 import type { Profile, ProfileVar } from "@/types/profile";
 import { api, type SavedTask, type Settings, type StartRequest, type TaskParam } from "@/lib/ipc";
-import { profileValues, templateSlots, valuesFor } from "../../electron/jetslots";
+import { looksSecret, profileValues, templateSlots, valuesFor } from "../../electron/jetslots";
 import { t, tRich, tx } from "@/lib/i18n";
 
 const input =
@@ -38,8 +38,6 @@ const EXAMPLES: { title: string; goal: string; url: string }[] = [
   { title: tx("Fill a form"), goal: "Fill in the contact form with the name {{name}} and the message {{message}}, then send it", url: "https://" },
 ];
 
-/** A slot that looks like a password is secret by default. */
-const SECRETISH = /pass|pwd|secret|token|pin|otp|code/i;
 
 /** The profile with the values typed in the dialog added to (or replacing) its task values. */
 export function withFills(p: Profile, fills: Record<string, string> | undefined, secret: Set<string>): Profile {
@@ -121,13 +119,26 @@ export default function RunTaskDialog({
   );
 
   const slots = useMemo(() => templateSlots(goal), [goal]);
-  const isSecret = (s: string) => secretOverride[s] ?? SECRETISH.test(s);
-  const secretSet = useMemo(() => new Set(slots.filter((s) => secretOverride[s] ?? SECRETISH.test(s))), [slots, secretOverride]);
+  /** Secret by default: a slot that looks like a password, or one any of these profiles keeps secret. */
+  const keptSecret = useMemo(() => new Set(profiles.flatMap((p) => (p.vars ?? []).filter((v) => v.secret).map((v) => v.key.trim()))), [profiles]);
+  const isSecret = (s: string) => secretOverride[s] ?? (looksSecret(s) || keptSecret.has(s));
+  const secretSet = useMemo(
+    () => new Set(slots.filter((s) => secretOverride[s] ?? (looksSecret(s) || keptSecret.has(s)))),
+    [slots, secretOverride, keptSecret],
+  );
+  /** Values typed in the grid that still apply: for a slot of this goal that each profile fills itself. A
+   *  column that was renamed in the goal or switched to "same for all" is never written to the profiles. */
+  const gridFor = (id: string) => {
+    const f = fills[id];
+    if (!f) return undefined;
+    const kept = Object.fromEntries(Object.entries(f).filter(([k]) => slots.includes(k) && mode[k] !== "run"));
+    return Object.keys(kept).length ? kept : undefined;
+  };
   const runSlots = useMemo(() => slots.filter((s) => mode[s] === "run"), [slots, mode]);
   /** This run's own values (the slots set to "same for every profile"); never saved to a profile. */
   const params = useMemo(() => Object.fromEntries(runSlots.filter((s) => runVals[s]?.trim()).map((s) => [s, runVals[s]])), [runSlots, runVals]);
   /** The profiles with the values typed in the grid: what gets saved. */
-  const filled = useMemo(() => profiles.map((p) => withFills(p, fills[p.id], secretSet)), [profiles, fills, secretSet]);
+  const filled = useMemo(() => profiles.map((p) => withFills(p, gridFor(p.id), secretSet)), [profiles, fills, secretSet, slots, mode]); // eslint-disable-line react-hooks/exhaustive-deps
   /** ...and with this run's values on top: what the task sees. */
   const effective = useMemo(() => filled.map((p) => withFills(p, params, secretSet)), [filled, params, secretSet]);
   /** Before the grid: which profile lacks which per-profile slot (rows and columns stay put while typing). */
@@ -201,12 +212,15 @@ export default function RunTaskDialog({
         staggerSec: stagger,
         closeWhenDone,
         ...(Object.keys(params).length ? { params, paramSecret: Object.keys(params).filter((k) => secretSet.has(k)) } : {}),
+        // Secret for this run wherever the value comes from, a profile's own value too.
+        ...(secretSet.size ? { secretSlots: [...secretSet] } : {}),
         ...(taskId ? { taskId } : {}),
       };
       const first = trial && runnable.length > 1;
+      // The rest of a trial are the profiles that can run; the ones still missing a value were named above.
       const r = await onStart(first ? { ...base, profileIds: [runnable[0]] } : base);
       if (!r.ok) return setError(r.error);
-      if (first) onTrial(r.runId, { ...base, profileIds: base.profileIds.slice(1) });
+      if (first) onTrial(r.runId, { ...base, profileIds: runnable.slice(1) });
       onClose();
     } catch (e) {
       setError(String((e as Error)?.message || e));
@@ -216,6 +230,9 @@ export default function RunTaskDialog({
   }
 
   const n = profiles.length;
+  const runnableCount = n - stillMissing;
+  /** A trial needs one profile to try and at least one to go on to. */
+  const trialOn = trial && runnableCount > 1;
   return (
     <Dialog onClose={onClose} labelledBy={titleId} className="max-h-[820px] max-w-2xl" initialFocus={goalRef}>
       <DialogHeader
@@ -448,14 +465,14 @@ export default function RunTaskDialog({
           </p>
         </div>
 
-        {n > 1 && (
+        {runnableCount > 1 && (
           <label htmlFor={ids.trial} className="mt-4 flex items-start gap-2.5 rounded-lg border border-accent/30 bg-accent/5 px-3 py-2.5 text-sm text-fog/80">
             <input id={ids.trial} type="checkbox" className="mt-0.5 accent-[#38e0d6]" checked={trial} onChange={(e) => setTrial(e.target.checked)} data-run-trial="1" />
             <span>
               {tRich("<b>Try it on {name} first</b> — Jet learns the task there. When it worked, the run board offers the other {n} in one click.", {
                 b: (s) => <span className="font-medium text-fog">{s}</span>,
                 name: effective.find((p) => !valuesFor(goal, p).missing.length)?.name ?? profiles[0]?.name ?? "",
-                n: n - 1,
+                n: runnableCount - 1,
               })}
             </span>
           </label>
@@ -534,7 +551,17 @@ export default function RunTaskDialog({
           {t("Cancel")}
         </button>
         <button className={btnPrimary} onClick={start} disabled={!canStart} data-run-start="1" title={!ready ? t("Finish setting up Jet first.") : undefined}>
-          {busy ? t("Starting…") : n === 0 ? t("Select at least one profile.") : trial && n > 1 ? t("Try it on 1 profile") : n === 1 ? t("Run") : t("Run on {n} profiles", { n: n - stillMissing })}
+          {busy
+            ? t("Starting…")
+            : n === 0
+              ? t("Select at least one profile.")
+              : trialOn
+                ? t("Try it on 1 profile")
+                : n === 1
+                  ? t("Run")
+                  : runnableCount === 1
+                    ? t("Run on 1 profile")
+                    : t("Run on {n} profiles", { n: runnableCount })}
         </button>
       </DialogFooter>
     </Dialog>

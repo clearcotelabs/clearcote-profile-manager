@@ -760,6 +760,9 @@
   "Copy details": [
     "src/components/ProfileCard.tsx"
   ],
+  "Could not check Jet: {error}": [
+    "src/components/JetSetup.tsx"
+  ],
   "Could not clear the cache.": [
     "app/page.tsx",
     "src/components/StorageSection.tsx"
@@ -2396,6 +2399,9 @@
   ],
   "Run installer": [
     "src/components/UpdateBanner.tsx"
+  ],
+  "Run on 1 profile": [
+    "src/components/RunTaskDialog.tsx"
   ],
   "Run on the other profile": [
     "src/components/TaskBoard.tsx"

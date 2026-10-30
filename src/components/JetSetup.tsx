@@ -59,6 +59,7 @@ export default function JetSetup({
   const keyId = useId();
   const [status, setStatus] = useState<JetStatus | null>(null);
   const [checking, setChecking] = useState(false);
+  const [statusError, setStatusError] = useState<string | null>(null);
   const [installing, setInstalling] = useState(false);
   const [installError, setInstallError] = useState<string | null>(null);
   const [key, setKey] = useState("");
@@ -80,8 +81,11 @@ export default function JetSetup({
   const refresh = useCallback(async () => {
     if (!setup) return;
     setChecking(true);
+    setStatusError(null);
     try {
       apply(await setup.status());
+    } catch (e) {
+      setStatusError(String((e as Error)?.message || e));
     } finally {
       setChecking(false);
     }
@@ -126,9 +130,22 @@ export default function JetSetup({
             : r.detail || t("The key could not be checked. Try again in a moment."),
         );
       }
+    } catch (e) {
+      setKeyError(String((e as Error)?.message || e));
     } finally {
       setKeyBusy(false);
     }
+  }
+
+  if (!status && statusError) {
+    return (
+      <div role="alert" className="flex flex-wrap items-center gap-2.5 rounded-xl border border-danger/40 bg-danger/5 px-3.5 py-3 text-xs text-danger" data-jet-setup="error">
+        <span className="min-w-0 flex-1 break-words">{t("Could not check Jet: {error}", { error: statusError })}</span>
+        <button className={btn} onClick={() => void refresh()} disabled={checking}>
+          {checking ? t("Checking…") : t("Check again")}
+        </button>
+      </div>
+    );
   }
 
   if (!status) {

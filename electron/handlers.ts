@@ -220,6 +220,18 @@ function recordTaskRuns(manager: SyncManager): void {
   // A run of a saved task goes into its history; the first profile that finished gives the step timeline.
   manager.on("finished", (run: SyncRun) => {
     if (!run.taskId) return;
+    try {
+      recordFinished(run);
+    } catch (e) {
+      console.error(`[tasks] could not record run ${run.id} into task ${run.taskId}:`, e);
+    }
+    manager.emit("tasksChanged");
+  });
+}
+
+function recordFinished(run: SyncRun): void {
+  if (!run.taskId) return;
+  {
     const done = run.rows.filter((r) => r.status === "done");
     const learned = done.find((r) => r.skill === "learned" || r.skill === "repaired");
     const best = learned ?? done[0];
@@ -229,15 +241,23 @@ function recordTaskRuns(manager: SyncManager): void {
       { at: run.createdAt, total: run.rows.length, done: done.length, ...(run.params ? { params: run.params } : {}), usd: run.rows.reduce((a, r) => a + (r.usd ?? 0), 0) || undefined },
       best ? { steps: best.steps, from: best.name, onlyIfNone: !learned } : undefined,
     );
-    manager.emit("tasksChanged");
-  });
+  }
+}
+
+/** One pip install at a time: a second click joins the one running (two into one site-packages can break it). */
+let installing: Promise<{ ok: true; status: JetStatus } | { ok: false; error: string }> | null = null;
+async function installOnce(): Promise<{ ok: true; status: JetStatus } | { ok: false; error: string }> {
+  const py = await findPython();
+  if (!py) return { ok: false, error: "No Python 3.10 or newer was found on this PC." };
+  const r = await installJet(py);
+  return r.ok ? { ok: true, status: await jetStatusSaved() } : r;
 }
 
 /** The setup checklist; a Jet command that works where the saved one does not is saved, unless it was typed in. */
 async function jetStatusSaved(): Promise<JetStatus> {
   const s = readSettings();
-  const status = await jetStatus(s);
-  if (status.fixedCommand && !isCustomCommand(s.jetCommand) && status.fixedCommand !== s.jetCommand) {
+  const status = await jetStatus(s, { fallback: !isCustomCommand(s.jetCommand) });
+  if (status.fixedCommand && status.fixedCommand !== s.jetCommand) {
     writeSettings({ ...readSettings(), jetCommand: status.fixedCommand });
   }
   return status;
@@ -320,12 +340,7 @@ export function createHandlers(host: HandlerHost): Record<string, Handler> {
     "tasks:delete": (_c, id: string) => deleteTask(TASKS_FILE(), String(id)),
     // Setup without a terminal (electron/jetsetup.ts): the checklist, Install Jet, and the key check.
     "jet:status": () => jetStatusSaved(),
-    "jet:install": async () => {
-      const py = await findPython();
-      if (!py) return { ok: false, error: "No Python 3.10 or newer was found on this PC." };
-      const r = await installJet(py);
-      return r.ok ? { ok: true, status: await jetStatusSaved() } : r;
-    },
+    "jet:install": () => (installing ??= installOnce().finally(() => (installing = null))),
     "jet:checkKey": (_c, key?: string) => checkKey(typeof key === "string" && key.trim() ? key : readSettings().jetApiKey),
 
     // ── Cloud ────────────────────────────────────────────────────────────────

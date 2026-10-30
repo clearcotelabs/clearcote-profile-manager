@@ -1025,7 +1025,11 @@ function Manager() {
       concurrency: run.concurrency,
       staggerSec: run.staggerSec,
       closeWhenDone: run.closeWhenDone,
-      params: Object.keys(run.params ?? {}).map((name) => ({ name, source: "run" as const, default: run.params![name] })),
+      params: [
+        ...Object.keys(run.params ?? {}).map((name) => ({ name, source: "run" as const, default: run.params![name] })),
+        // A secret run value is asked again each time it runs: its name is kept, never its value.
+        ...(run.secretParams ?? []).map((name) => ({ name, source: "run" as const, secret: true })),
+      ],
       ...(best ? { steps: best.steps.map(({ template, ...s }) => (template !== undefined ? { ...s, text: template } : s)), stepsFrom: best.name } : {}),
       history: [{ at: run.createdAt, total: run.rows.length, done: done.length, ...(run.params ? { params: run.params } : {}) }],
     });

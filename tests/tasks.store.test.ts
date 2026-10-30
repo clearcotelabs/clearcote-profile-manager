@@ -157,3 +157,37 @@ describe("forTask", () => {
     expect(readTasks(file)[0].steps).toEqual([{ kind: "fill", action: "Email", text: "{{email}}" }]);
   });
 });
+
+describe("saveTask on an existing task", () => {
+  it("changes the recipe but keeps the history and steps recordRun wrote", () => {
+    saveTask(file, { id: "t", name: "Old", goal: "log in as {{email}}", params: [{ name: "email", source: "profile" }] });
+    recordRun(file, "t", { at: 1, total: 2, done: 2 }, { steps: [{ kind: "click", action: "Sign in" }], from: "A" });
+    // What Run a task sends with "Update the saved task": the recipe, no history.
+    const saved = saveTask(file, { id: "t", name: "New", goal: "log in as {{email}}", url: undefined, params: [{ name: "email", source: "run", default: "x@y.z" }] });
+    expect(saved.name).toBe("New");
+    expect(saved.params).toEqual([{ name: "email", source: "run", default: "x@y.z" }]);
+    expect(saved.history).toEqual([{ at: 1, total: 2, done: 2 }]);
+    expect(saved.steps).toEqual([{ kind: "click", action: "Sign in" }]);
+    expect(saved.stepsFrom).toBe("A");
+    expect(readTasks(file)[0]).toEqual(saved);
+  });
+
+  it("ignores a stale history or steps sent with an update", () => {
+    saveTask(file, { id: "t", goal: "g" });
+    recordRun(file, "t", { at: 2, total: 1, done: 1 }, { steps: [{ kind: "click", action: "Go" }], from: "B" });
+    const saved = saveTask(file, { id: "t", goal: "g2", history: [], steps: [] });
+    expect(saved.goal).toBe("g2");
+    expect(saved.history).toHaveLength(1);
+    expect(saved.steps).toHaveLength(1);
+  });
+
+  it("a task saved again after it was deleted (undo) keeps what it carries", () => {
+    const t = saveTask(file, { id: "t", goal: "g" });
+    recordRun(file, "t", { at: 3, total: 1, done: 1 });
+    const before = readTasks(file)[0];
+    deleteTask(file, "t");
+    const back = saveTask(file, before);
+    expect(back.id).toBe(t.id);
+    expect(back.history).toEqual(before.history);
+  });
+});

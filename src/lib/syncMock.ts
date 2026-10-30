@@ -137,12 +137,12 @@ export function buildJetSetupMock(): JetSetupApi {
   const mode = () => (typeof localStorage === "undefined" ? null : localStorage.getItem("clearcote.mock.sync"));
   let installed = false;
   let keyOk = false;
-  const python = { cmd: ["py", "-3"], exe: "C:\Python313\python.exe", version: "3.13.2" };
+  const python = { cmd: ["py", "-3"], exe: "C:\\Python313\\python.exe", version: "3.13.2" };
   const status = (): JetStatus => {
     const m = mode();
     if (m === "ok") return { python, jet: { ok: true, version: "0.3.1", command: "clearcote-jet" }, key: { ok: true, source: "settings" }, ready: true };
     if (m !== "setup") return { python: null, jet: { ok: false, reason: "missing" }, key: { ok: false, reason: "missing" }, ready: false };
-    const jet: JetStatus["jet"] = installed ? { ok: true, version: "0.3.1", command: '"C:\Python313\python.exe" -m clearcote_jet.cli' } : { ok: false, reason: "missing" };
+    const jet: JetStatus["jet"] = installed ? { ok: true, version: "0.3.1", command: '"C:\\Python313\\python.exe" -m clearcote_jet.cli' } : { ok: false, reason: "missing" };
     const key: KeyState = keyOk ? { ok: true, source: "settings" } : { ok: false, reason: "missing" };
     return { python, jet, key, ready: jet.ok && key.ok };
   };
@@ -186,7 +186,11 @@ export function buildTasksMock(): TasksApi {
       const list = read();
       const id = t.id || `task-${now.toString(36)}`;
       const prev = list.find((x) => x.id === id);
-      const task: SavedTask = { params: [], confirm: true, history: [], createdAt: prev?.createdAt ?? now, ...prev, ...t, id, name: t.name?.trim() || prev?.name || String(t.goal ?? "Task").slice(0, 60), goal: String(t.goal ?? prev?.goal ?? ""), updatedAt: now } as SavedTask;
+      // As electron/tasks.ts: an update changes the recipe only; history and steps stay as recorded.
+      const runs = prev ? { history: prev.history, steps: prev.steps, stepsFrom: prev.stepsFrom, createdAt: prev.createdAt } : {};
+      const task: SavedTask = { params: [], confirm: true, history: [], createdAt: now, ...prev, ...t, ...runs, id, name: t.name?.trim() || prev?.name || String(t.goal ?? "Task").slice(0, 60), goal: String(t.goal ?? prev?.goal ?? ""), updatedAt: now } as SavedTask;
+      // As normalizeTask: a secret value never keeps a default.
+      task.params = (task.params ?? []).map((p) => (p.secret ? (({ default: _d, ...rest }) => rest)(p) : p));
       write(prev ? list.map((x) => (x.id === id ? task : x)) : [task, ...list]);
       listeners.forEach((cb) => cb());
       return task;

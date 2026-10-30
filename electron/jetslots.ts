@@ -57,11 +57,28 @@ export function valuesFor(goal: string, p: Pick<Profile, "id" | "name" | "group"
   return { values, secret: all.secret.filter((k) => k in values), missing };
 }
 
+const SECRET_WORDS = new Set(["pass", "password", "passwd", "passphrase", "pwd", "pw", "secret", "token", "pin", "otp", "totp", "key", "apikey", "cvv", "cvc"]);
+
+/** A slot name that looks like a secret, word by word: password, api_key, otpCode; not zipcode or passport. */
+export function looksSecret(name: string): boolean {
+  return name
+    .split(/[_.\-\s]+|(?<=[a-z0-9])(?=[A-Z])/)
+    .some((w) => SECRET_WORDS.has(w.toLowerCase()));
+}
+
 /** `text` with every secret value replaced by its slot, for anything shown or kept. */
 export function maskSecrets(text: string, values: Record<string, string>, secret: string[]): string {
+  // Each value as typed and as a URL or a form would carry it ("p@ss w" -> "p%40ss%20w", "p%40ss+w"), longest
+  // first, so a secret that contains another is masked whole.
+  const forms: [string, string][] = [];
+  for (const k of secret) {
+    const v = values[k];
+    if (!v) continue;
+    const enc = encodeURIComponent(v);
+    for (const f of new Set([v, enc, enc.replace(/%20/g, "+")])) forms.push([f, k]);
+  }
+  forms.sort((a, b) => b[0].length - a[0].length);
   let out = text;
-  // Longest first, so a secret that contains another is masked whole.
-  const keys = [...secret].filter((k) => values[k]).sort((a, b) => values[b].length - values[a].length);
-  for (const k of keys) out = out.split(values[k]).join(`{{${k}}}`);
+  for (const [f, k] of forms) out = out.split(f).join(`{{${k}}}`);
   return out;
 }

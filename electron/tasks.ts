@@ -59,16 +59,39 @@ export function tasksPath(root: string): string {
 
 export function readTasks(file: string): SavedTask[] {
   try {
-    const data = JSON.parse(fs.readFileSync(file, "utf8"));
-    return Array.isArray(data) ? data.filter((t) => t && typeof t.id === "string" && typeof t.goal === "string").map(normalizeTask) : [];
+    return parseTasks(fs.readFileSync(file, "utf8"));
   } catch {
+    return [];
+  }
+}
+
+function parseTasks(text: string): SavedTask[] {
+  const data = JSON.parse(text);
+  if (!Array.isArray(data)) throw new SyntaxError("tasks.json is not a list");
+  return data.filter((t) => t && typeof t.id === "string" && typeof t.goal === "string").map(normalizeTask);
+}
+
+/** The list a write starts from. A missing file is an empty list; a file that cannot be read is an error
+ *  (a write would replace every saved task), and one that cannot be parsed is kept aside as tasks.json.bad-<time>. */
+function readForWrite(file: string): SavedTask[] {
+  let text: string;
+  try {
+    text = fs.readFileSync(file, "utf8");
+  } catch (e) {
+    if ((e as NodeJS.ErrnoException).code === "ENOENT") return [];
+    throw e;
+  }
+  try {
+    return parseTasks(text);
+  } catch {
+    fs.renameSync(file, `${file}.bad-${Date.now()}`);
     return [];
   }
 }
 
 function writeTasks(file: string, list: SavedTask[]): void {
   fs.mkdirSync(path.dirname(file), { recursive: true });
-  const tmp = `${file}.tmp`;
+  const tmp = `${file}.${process.pid}.tmp`;
   fs.writeFileSync(tmp, JSON.stringify(list, null, 2), "utf8");
   fs.renameSync(tmp, file);
 }
@@ -101,23 +124,40 @@ export function normalizeTask(t: Partial<SavedTask>): SavedTask {
     updatedAt: Number(t.updatedAt) || now,
     ...(Array.isArray(t.steps) ? { steps: t.steps.slice(0, STEPS_KEPT) } : {}),
     ...(t.stepsFrom ? { stepsFrom: String(t.stepsFrom) } : {}),
-    history: Array.isArray(t.history) ? t.history.slice(0, HISTORY_KEPT) : [],
+    history: Array.isArray(t.history) ? t.history.slice(0, HISTORY_KEPT).map((h) => withoutSecrets(h, params)) : [],
   };
+}
+
+/** A run record without values for slots that are secret now (a value may have been marked secret later). */
+function withoutSecrets(h: TaskRunRecord, params: TaskParam[]): TaskRunRecord {
+  if (!h?.params) return h;
+  const secret = new Set(params.filter((p) => p.secret).map((p) => p.name));
+  const kept = Object.fromEntries(Object.entries(h.params).filter(([k]) => !secret.has(k)));
+  const { params: _p, ...rest } = h;
+  return Object.keys(kept).length ? { ...rest, params: kept } : rest;
 }
 
 /** Save (insert or replace by id); secret params never keep a default. Returns the saved task. */
 export function saveTask(file: string, t: Partial<SavedTask>): SavedTask {
+  const list = readForWrite(file);
+  const i = typeof t.id === "string" ? list.findIndex((x) => x.id === t.id) : -1;
+  if (i >= 0) {
+    // An update changes the recipe only. What happened (history, the steps of the last run) belongs to the
+    // runs, which recordRun writes; a renderer's copy may be stale or partial and must not replace it.
+    const prev = list[i];
+    const { history: _h, steps: _s, stepsFrom: _f, createdAt: _c, ...recipe } = t;
+    list[i] = { ...normalizeTask({ ...prev, ...recipe, history: prev.history, steps: prev.steps, stepsFrom: prev.stepsFrom }), createdAt: prev.createdAt, updatedAt: Date.now() };
+    writeTasks(file, list);
+    return list[i];
+  }
   const task = { ...normalizeTask(t), updatedAt: Date.now() };
-  const list = readTasks(file);
-  const i = list.findIndex((x) => x.id === task.id);
-  if (i >= 0) list[i] = { ...task, createdAt: list[i].createdAt };
-  else list.unshift(task);
+  list.unshift(task);
   writeTasks(file, list);
-  return i >= 0 ? list[i] : task;
+  return task;
 }
 
 export function deleteTask(file: string, id: string): boolean {
-  const list = readTasks(file);
+  const list = readForWrite(file);
   const next = list.filter((x) => x.id !== id);
   if (next.length === list.length) return false;
   writeTasks(file, next);
@@ -132,7 +172,7 @@ export function forTask(steps: StepSummary[]): StepSummary[] {
 }
 
 export function recordRun(file: string, id: string, rec: TaskRunRecord, steps?: { steps: StepSummary[]; from: string; onlyIfNone?: boolean }): SavedTask | null {
-  const list = readTasks(file);
+  const list = readForWrite(file);
   const t = list.find((x) => x.id === id);
   if (!t) return null;
   t.history = [rec, ...t.history].slice(0, HISTORY_KEPT);

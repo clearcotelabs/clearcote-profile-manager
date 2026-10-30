@@ -74,6 +74,8 @@ export interface SyncRun {
   taskId?: string;
   /** This run's own values that are not secret ({{slot}} → value); secret ones never leave the manager. */
   params?: Record<string, string>;
+  /** The names (never the values) of this run's secret values, so the run can be saved as a task. */
+  secretParams?: string[];
 }
 
 export interface StartRequest {
@@ -88,15 +90,28 @@ export interface StartRequest {
   params?: Record<string, string>;
   /** Which of params are secret: typed only, never shown, never saved. */
   paramSecret?: string[];
+  /** Slots the task marks secret, wherever their value comes from (a profile's own value too). */
+  secretSlots?: string[];
   /** The saved task this run came from. */
   taskId?: string;
+}
+
+/** Typed text as a saved task keeps it: a value of the task's slots becomes its {{slot}} when it is the whole
+ *  text, or inside longer text when it is at least 3 characters (so {{count}} = "1" leaves "10 results" alone). */
+export function templateText(text: string, values: Record<string, string>, slots: string[]): string {
+  const used = slots.filter((k) => values[k]);
+  const whole = used.find((k) => values[k] === text);
+  if (whole) return `{{${whole}}}`;
+  return maskSecrets(text, values, used.filter((k) => values[k].length >= 3));
 }
 
 /** The profile as this run sees it: the run's own values in place of (or added to) its task values. */
 export function withRunParams(p: Profile, params: Record<string, string> | undefined, secret: ReadonlySet<string>): Profile {
   if (!params || !Object.keys(params).length) return p;
+  const own = new Map((p.vars ?? []).map((v) => [v.key.trim(), v]));
   const vars = (p.vars ?? []).filter((v) => !(v.key.trim() in params));
-  for (const [key, value] of Object.entries(params)) vars.push({ key, value, ...(secret.has(key) ? { secret: true } : {}) });
+  // A value the profile keeps secret stays secret when the run supplies it.
+  for (const [key, value] of Object.entries(params)) vars.push({ key, value, ...(secret.has(key) || own.get(key)?.secret ? { secret: true } : {}) });
   return { ...p, vars };
 }
 
@@ -193,7 +208,7 @@ export class SyncManager extends EventEmitter {
   private workers = new Map<string, WorkerProc>(); // `${runId}/${profileId}`
   private stopRequested = new Set<string>();
   /** Each run's own values, secret ones included; kept here so they never reach list(). */
-  private runValues = new Map<string, { params: Record<string, string>; secret: Set<string> }>();
+  private runValues = new Map<string, { params: Record<string, string>; secret: Set<string>; slots: Set<string> }>();
 
   constructor(private deps: SyncDeps) {
     super();
@@ -251,10 +266,15 @@ export class SyncManager extends EventEmitter {
     const params: Record<string, string> = {};
     for (const [k, v] of Object.entries(req.params ?? {})) if (/^[A-Za-z_][\w.-]{0,63}$/.test(k) && String(v).trim()) params[k] = String(v);
     const secretParams = new Set((req.paramSecret ?? []).map(String));
-    if (Object.keys(params).length) {
-      this.runValues.set(run.id, { params, secret: secretParams });
+    // A run value for a slot any of these profiles keeps secret is secret too (never shown, never recorded).
+    for (const id of ids) for (const v of this.deps.getProfile(id)?.vars ?? []) if (v.secret && v.key.trim() in params) secretParams.add(v.key.trim());
+    const secretSlots = new Set([...(req.secretSlots ?? []).map(String), ...secretParams]);
+    if (Object.keys(params).length || secretSlots.size) {
+      this.runValues.set(run.id, { params, secret: secretParams, slots: secretSlots });
       const shown = Object.fromEntries(Object.entries(params).filter(([k]) => !secretParams.has(k)));
       if (Object.keys(shown).length) run.params = shown;
+      const hidden = Object.keys(params).filter((k) => secretParams.has(k));
+      if (hidden.length) run.secretParams = hidden;
     }
     if (typeof req.taskId === "string" && req.taskId) run.taskId = req.taskId;
     this.runs.unshift(run);
@@ -357,7 +377,10 @@ export class SyncManager extends EventEmitter {
     if (!stored) return this.finish(run, row, "failed", "The profile no longer exists.");
     const rv = this.runValues.get(run.id);
     const p = withRunParams(stored, rv?.params, rv?.secret ?? new Set());
-    const { values, secret, missing } = valuesFor(run.goal, p);
+    const found = valuesFor(run.goal, p);
+    const { values, missing } = found;
+    // A slot the task marks secret is secret on every profile, even where the profile's own value is not.
+    const secret = [...new Set([...found.secret, ...[...(rv?.slots ?? [])].filter((k) => k in values)])];
     if (missing.length) {
       return this.finish(run, row, "needs_input", `This profile has no value for ${missing.map((m) => `{{${m}}}`).join(", ")}. Add it under Task values in the profile.`);
     }
@@ -425,7 +448,7 @@ export class SyncManager extends EventEmitter {
           } catch {
             return; // not ours
           }
-          this.onEvent(run, row, ev, mask, end, (t) => maskSecrets(t, values, templateSlots(run.goal)));
+          this.onEvent(run, row, ev, mask, end, (t) => templateText(t, values, templateSlots(run.goal)));
         });
       }
       w.on("error", (e) => end("failed", notFound(cmd, e)));
@@ -470,7 +493,7 @@ export class SyncManager extends EventEmitter {
           ...(template !== text ? { template } : {}),
         });
         if (row.steps.length > MAX_STEPS_KEPT) row.steps.shift();
-        if (typeof ev.led_to === "string") row.url = ev.led_to;
+        if (typeof ev.led_to === "string") row.url = mask(ev.led_to);
         this.changed();
         return;
       }
@@ -487,7 +510,7 @@ export class SyncManager extends EventEmitter {
         if (typeof usage?.estimated_usd === "number") row.usd = usage.estimated_usd;
         const skill = ev.skill as { used?: string } | undefined;
         if (skill?.used) row.skill = skill.used;
-        if (typeof ev.url === "string") row.url = ev.url;
+        if (typeof ev.url === "string") row.url = mask(ev.url);
         end(rowStatusFor(String(ev.status)), typeof ev.detail === "string" ? ev.detail : undefined);
         return;
       }
