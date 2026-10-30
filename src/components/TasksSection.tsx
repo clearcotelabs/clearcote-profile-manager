@@ -2,11 +2,12 @@
 
 // Settings → Tasks: the Jet setup checklist (Python, Jet, model key; see JetSetup), the Jet command for those
 // who set it by hand, and whether every launch opens a local automation port (so your own scripts can drive
-// the windows this app opens).
+// the windows this app opens). In the web version those two are shown but set in the desktop app only
+// (helper/policy.ts keeps them as saved): which program runs is never a web page's choice.
 
 import { useEffect, useRef, useState } from "react";
 import JetSetup from "./JetSetup";
-import { api, type Settings } from "@/lib/ipc";
+import { api, isWeb, type Settings } from "@/lib/ipc";
 import { t, tRich } from "@/lib/i18n";
 
 const input =
@@ -23,7 +24,8 @@ export default function TasksSection({
   onSaveSettings: (patch: Partial<Settings>) => Promise<void> | void;
 }) {
   const [cmd, setCmd] = useState(settings.jetCommand ?? "");
-  const desktop = !!api.sync;
+  // The web version shows these but cannot change them (helper/policy.ts).
+  const locked = isWeb;
   const dirty = cmd !== (settings.jetCommand ?? "");
   // The app may set the command itself (after Install Jet): follow it while the field is untouched.
   const shown = useRef(settings.jetCommand ?? "");
@@ -31,14 +33,6 @@ export default function TasksSection({
     setCmd((c) => (c === shown.current ? settings.jetCommand ?? "" : c));
     shown.current = settings.jetCommand ?? "";
   }, [settings.jetCommand]);
-
-  if (!desktop) {
-    return (
-      <div className="rounded-xl border border-line bg-ink/30 px-4 py-3.5 text-xs leading-relaxed text-fog/60" data-tasks-web="1">
-        {t("Running tasks on profiles is in the desktop app only: it opens each browser's automation port, which a web page must not be able to do.")}
-      </div>
-    );
-  }
 
   return (
     <div className="space-y-4" data-tasks-settings="1">
@@ -58,10 +52,12 @@ export default function TasksSection({
           placeholder={'clearcote-jet   or   "C:\\Python312\\python.exe" -m clearcote_jet.cli'}
           value={cmd}
           spellCheck={false}
+          readOnly={locked}
           onChange={(e) => setCmd(e.target.value)}
         />
+        {locked && <p className="mt-2 text-[11px] text-fog/45">{t("Set in the desktop app on this computer: a web page cannot choose which program runs.")}</p>}
         <div className="mt-2 flex flex-wrap items-center gap-2">
-          <button className={btn} disabled={!dirty} onClick={() => onSaveSettings({ jetCommand: cmd.trim() || undefined })} data-jet-save="1">
+          <button className={btn} disabled={!dirty || locked} onClick={() => onSaveSettings({ jetCommand: cmd.trim() || undefined })} data-jet-save="1">
             {t("Save")}
           </button>
           <button className={btn} onClick={() => void api.openExternal(JET_URL)}>
@@ -84,8 +80,10 @@ export default function TasksSection({
             role="switch"
             aria-checked={!!settings.automation}
             aria-label={t("Allow automation on every launch")}
+            disabled={locked}
+            title={locked ? t("Set in the desktop app on this computer: a web page cannot open automation ports.") : undefined}
             onClick={() => onSaveSettings({ automation: !settings.automation })}
-            className={"relative h-5 w-9 shrink-0 rounded-full transition-colors " + (settings.automation ? "bg-accent" : "bg-line-strong")}
+            className={"relative h-5 w-9 shrink-0 rounded-full transition-colors disabled:opacity-50 " + (settings.automation ? "bg-accent" : "bg-line-strong")}
             data-automation-toggle="1"
           >
             <span

@@ -194,24 +194,54 @@ describe("webPolicy", () => {
   });
 });
 
-describe("run a task stays in the desktop app", () => {
-  const calls: string[] = [];
-  const fake = new Proxy({} as Record<string, (...a: unknown[]) => unknown>, {
-    get: (_t, ch: string) => (..._a: unknown[]) => {
-      calls.push(ch);
-      return ch === "settings:get" ? { jetApiKey: "tsk_live_1234567890abcd" } : { ok: true };
-    },
+describe("run a task from the web version", () => {
+  const calls: { ch: string; args: unknown[] }[] = [];
+  const CHANNELS = ["sync:list", "sync:start", "sync:approve", "sync:cancel", "sync:stop", "sync:clear", "tasks:list", "tasks:save", "tasks:delete", "jet:status", "jet:install", "jet:checkKey", "cdp:endpoint"];
+  // A plain object (not a Proxy): webPolicy spreads the handlers, and a spread sees own keys only.
+  const fake = Object.fromEntries(
+    CHANNELS.map((ch) => [
+      ch,
+      (_c: unknown, ...args: unknown[]) => {
+        calls.push({ ch, args });
+        return { ok: true };
+      },
+    ]),
+  );
+  const ctx = { emit: () => {} };
+
+  it("reaches runs, saved tasks and Jet setup like the desktop app", async () => {
+    const h = m.webPolicy(fake as never);
+    calls.length = 0;
+    for (const ch of ["sync:list", "sync:approve", "sync:cancel", "sync:stop", "sync:clear", "tasks:list", "tasks:save", "tasks:delete", "jet:status", "jet:install"]) {
+      expect(await h[ch](ctx, "x"), ch).toEqual({ ok: true });
+    }
+    expect(calls.map((c) => c.ch)).toEqual(["sync:list", "sync:approve", "sync:cancel", "sync:stop", "sync:clear", "tasks:list", "tasks:save", "tasks:delete", "jet:status", "jet:install"]);
   });
 
-  it("refuses starting, steering or clearing runs, and reading a DevTools endpoint", async () => {
+  it("starts a run by profile ids only", async () => {
     const h = m.webPolicy(fake as never);
-    for (const ch of ["sync:start", "sync:approve", "sync:cancel", "sync:stop", "sync:clear", "cdp:endpoint"]) {
-      const r = (await h[ch]({ emit: () => {} }, "x")) as { ok: boolean; error: string };
-      expect(r.ok, ch).toBe(false);
-      expect(r.error).toMatch(/desktop app only/);
-    }
-    expect(await h["sync:list"]({ emit: () => {} })).toEqual([]);
-    expect(calls.filter((c) => c.startsWith("sync:") || c === "cdp:endpoint")).toEqual([]);
+    calls.length = 0;
+    await h["sync:start"](ctx, { profileIds: ["shop-01"], goal: "Log in" });
+    expect(calls[0]).toEqual({ ch: "sync:start", args: [{ profileIds: ["shop-01"], goal: "Log in" }] });
+    expect(() => h["sync:start"](ctx, { profileIds: ["../etc"], goal: "x" })).toThrow(/Not a profile id/);
+    expect(() => h["sync:start"](ctx, null)).toThrow(/Not a task run/);
+  });
+
+  it("checks the saved Jet key when the masked one comes back", async () => {
+    const h = m.webPolicy(fake as never);
+    calls.length = 0;
+    await h["jet:checkKey"](ctx, m.maskSettings({ jetApiKey: "tsk_live_1234567890abcd" } as Settings).jetApiKey);
+    await h["jet:checkKey"](ctx, "tsk_new_key");
+    expect(calls.map((c) => c.args[0])).toEqual([undefined, "tsk_new_key"]);
+  });
+
+  it("never hands out a browser's DevTools endpoint", async () => {
+    const h = m.webPolicy(fake as never);
+    calls.length = 0;
+    const r = (await h["cdp:endpoint"](ctx, "shop-01")) as { ok: boolean; error: string };
+    expect(r.ok).toBe(false);
+    expect(r.error).toMatch(/DevTools endpoint/);
+    expect(calls).toEqual([]);
   });
 
   it("cannot change which program Jet is or turn automation on, and sees Jet's key masked", () => {

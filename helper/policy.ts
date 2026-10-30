@@ -9,14 +9,17 @@
 //   - It cannot point a profile at another folder (userDataDir) or a fingerprint file elsewhere.
 //   - Launches use the profile as saved on this computer, not whatever the page sends.
 //   - It sees the licence and API keys masked (it can replace them, not read them).
-//   - It cannot run tasks on profiles, open a browser's DevTools endpoint or learn where one is:
-//     whoever holds that endpoint controls the browser. Which program Jet is (jetCommand) stays as saved.
+//   - It can run tasks on profiles (Run a task, saved tasks, Jet setup), as the desktop app does, but it
+//     never gets a browser's DevTools endpoint or learns where one is: whoever holds that endpoint
+//     controls the browser, so only Jet, started by the helper, connects to it. Which program Jet is
+//     (jetCommand) and the automation-port setting stay as saved.
 // Everything set in the desktop app on this computer stays as it is.
 
 import * as profiles from "../electron/profiles";
 import { readSettings } from "../electron/store";
 import type { Handler } from "../electron/handlers";
 import type { Profile, Settings } from "../electron/types";
+import type { StartRequest } from "../electron/jetsync";
 
 /** A switch whose name says it runs something or takes a file or folder. */
 const RISKY_NAME = /(cmd-prefix|launcher|subprocess|gdb|wrapper|-file|-dir|-path|^--user-data|^--profile-directory)/i;
@@ -113,10 +116,10 @@ export function webPolicy(h: Record<string, Handler>): Record<string, Handler> {
       const list = (Array.isArray(data) ? data : [data]).map((p: Profile) => cleanProfile(p, null));
       return h["profiles:importData"](c, JSON.stringify(list));
     },
-    ...desktopOnly(["sync:start", "sync:approve", "sync:cancel", "sync:stop", "sync:clear", "cdp:endpoint", "jet:status", "jet:install", "jet:checkKey", "tasks:save", "tasks:delete"]),
-    "sync:list": () => [],
-    // A web page could rewrite a saved task the desktop user later runs with one click: tasks stay desktop-only.
-    "tasks:list": () => [],
+    "cdp:endpoint": () => ({ ok: false, error: NO_ENDPOINT }),
+    // Runs start from profiles as saved on this computer (by id), never from what the page sends.
+    "sync:start": (c, req: StartRequest) => h["sync:start"](c, cleanStart(req)),
+    "jet:checkKey": (c, key?: string) => h["jet:checkKey"](c, typeof key === "string" && key.includes(MASK) ? undefined : key),
     // A masked key from the Settings form means "the saved one".
     "license:check": (c, key?: string) => h["license:check"](c, key?.includes(MASK) ? undefined : key),
     "cloud:account": (c, key?: string) => h["cloud:account"](c, key?.includes(MASK) ? undefined : key),
@@ -125,8 +128,13 @@ export function webPolicy(h: Record<string, Handler>): Record<string, Handler> {
   };
 }
 
-const DESKTOP_ONLY = "Running tasks on profiles is in the desktop app only: it opens each browser's automation port.";
+const NO_ENDPOINT = "The web version never hands out a browser's DevTools endpoint: whoever holds it controls the browser.";
 
-function desktopOnly(channels: string[]): Record<string, Handler> {
-  return Object.fromEntries(channels.map((ch) => [ch, () => ({ ok: false, error: DESKTOP_ONLY })]));
+/** A run request from the page: profile ids only, the rest as plain values. */
+export function cleanStart(req: StartRequest): StartRequest {
+  if (!req || typeof req !== "object") throw new Error("Not a task run.");
+  const ids = Array.isArray(req.profileIds) ? req.profileIds.map(String) : [];
+  const bad = ids.filter((id) => !profiles.isSafeId(id));
+  if (bad.length) throw new Error(`Not a profile id: ${bad.join(", ")}`);
+  return { ...req, profileIds: ids, goal: String(req.goal ?? "") };
 }

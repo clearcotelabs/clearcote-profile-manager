@@ -2618,9 +2618,6 @@
     "src/components/ProfileInspector.tsx",
     "src/components/ProfileTable.tsx"
   ],
-  "Running tasks on profiles is in the desktop app only: it opens each browser's automation port, which a web page must not be able to do.": [
-    "src/components/TasksSection.tsx"
-  ],
   "Running this profile on Clearcote's servers instead of this PC: where its traffic leaves, and what it keeps.": [
     "src/lib/fields.ts"
   ],
@@ -2817,6 +2814,12 @@
   ],
   "Set group…": [
     "app/page.tsx"
+  ],
+  "Set in the desktop app on this computer: a web page cannot choose which program runs.": [
+    "src/components/TasksSection.tsx"
+  ],
+  "Set in the desktop app on this computer: a web page cannot open automation ports.": [
+    "src/components/TasksSection.tsx"
   ],
   "Set it only when it matches this host's real display, or leave it empty so the real screen is reported.": [
     "src/lib/coherence.ts"
@@ -4103,6 +4106,9 @@
   "run a profile in the cloud": [
     "src/lib/webPreview.ts"
   ],
+  "run a task on profiles": [
+    "src/lib/webPreview.ts"
+  ],
   "running": [
     "src/components/ProfileCard.tsx"
   ],
@@ -4111,6 +4117,9 @@
   ],
   "same proxy": [
     "src/lib/templates.ts"
+  ],
+  "save a task": [
+    "src/lib/webPreview.ts"
   ],
   "save settings": [
     "src/lib/webPreview.ts"
