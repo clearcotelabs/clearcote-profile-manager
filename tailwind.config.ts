@@ -10,6 +10,7 @@ const config: Config = {
       colors: {
         ink: "rgb(var(--c-ink) / <alpha-value>)", // page background
         surface: "rgb(var(--c-surface) / <alpha-value>)", // cards & raised panels
+        panel: "rgb(var(--c-panel) / <alpha-value>)", // sidebar (a shade under the paper on light)
         fog: "rgb(var(--c-fg) / <alpha-value>)", // foreground text
         accent: "rgb(var(--c-accent) / <alpha-value>)", // Clear Cyan (teal on light)
         sky: "rgb(var(--c-sky) / <alpha-value>)", // gradient midpoint / highlights
@@ -22,10 +23,14 @@ const config: Config = {
         line: "var(--line)",
         "line-strong": "var(--line-strong)",
         elevate: "var(--elevate)",
+        scrim: "var(--scrim)", // dialog backdrop: dark dim on dark, a soft veil on light
       },
       fontFamily: {
         sans: ["Inter", "Segoe UI", "ui-sans-serif", "system-ui", "sans-serif"],
         mono: ["JetBrains Mono", "ui-monospace", "Consolas", "SFMono-Regular", "monospace"],
+      },
+      boxShadow: {
+        card: "var(--card-shadow)", // soft lift on light, none on dark
       },
       backgroundImage: {
         // signature gradient · #38e0d6 → #6ee7ff → #a78bfa (same vivid sheen in both themes)

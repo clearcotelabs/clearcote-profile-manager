@@ -26,25 +26,60 @@
   --c-ok: 52 211 153; /* emerald-400 */
   --c-warn: 251 191 36; /* amber-400 */
   --c-danger: 251 113 133; /* rose-400 */
+  /* sidebar tint, and the lift under cards/tables (dark relies on the borders alone) */
+  --c-panel: 13 15 19;
+  --card-shadow: 0 0 #0000;
+  --scrim: rgba(0, 0, 0, 0.6);
 }
 
 html.light {
   /* Light — warm paper base, deepened teal accent for contrast (brand light variant). */
-  --c-ink: 250 249 244; /* #faf9f4 warm paper page bg */
+  --c-ink: 248 247 242; /* #f8f7f2 warm paper page bg */
   --c-surface: 255 255 255; /* white cards */
-  --c-fg: 28 32 40; /* #1c2028 near-ink text */
-  --c-accent: 13 148 138; /* #0d948a deepened teal (legible on light) */
-  --c-sky: 41 151 230; /* #2997e6 */
-  --c-iris: 124 92 246; /* #7c5cf6 */
-  --line: rgba(13, 15, 20, 0.12);
+  --c-fg: 22 26 33; /* #161a21 near-ink text */
+  --c-accent: 15 118 110; /* #0f766e deep teal: 5:1 on paper as text, paper text on it as a fill */
+  --c-sky: 3 105 161; /* #0369a1 */
+  --c-iris: 109 74 230; /* #6d4ae6 */
+  --line: rgba(13, 15, 20, 0.11);
   --line-strong: rgba(13, 15, 20, 0.2);
-  --elevate: rgba(13, 15, 20, 0.04);
-  --scrollthumb: #d8dbe2;
-  --sheen-a: rgba(56, 224, 214, 0.16);
-  --sheen-b: rgba(167, 139, 250, 0.12);
+  --elevate: rgba(13, 15, 20, 0.045);
+  --scrollthumb: #cfd3db;
+  --sheen-a: rgba(56, 224, 214, 0.14);
+  --sheen-b: rgba(167, 139, 250, 0.1);
   --c-ok: 4 120 87; /* emerald-700 */
   --c-warn: 180 83 9; /* amber-700 */
   --c-danger: 190 18 60; /* rose-700 */
+  --c-panel: 241 240 233; /* #f1f0e9 sidebar, a shade under the paper */
+  --card-shadow: 0 1px 2px rgba(16, 24, 40, 0.05), 0 1px 3px rgba(16, 24, 40, 0.04);
+  --scrim: rgba(22, 26, 33, 0.32);
+  color-scheme: light;
+}
+
+/* Muted text is foreground at low alpha (text-fog/40 …). That reads well on near-black, but on paper
+   the same alpha is ~2.5:1 — too faint. Light lifts every step so a /40 label lands near 5:1. */
+:where(html.light) .text-fog\/20 { color: rgb(var(--c-fg) / 0.42); }
+:where(html.light) .text-fog\/30 { color: rgb(var(--c-fg) / 0.54); }
+:where(html.light) .text-fog\/35 { color: rgb(var(--c-fg) / 0.6); }
+:where(html.light) .text-fog\/40 { color: rgb(var(--c-fg) / 0.64); }
+:where(html.light) .text-fog\/45 { color: rgb(var(--c-fg) / 0.67); }
+:where(html.light) .text-fog\/50 { color: rgb(var(--c-fg) / 0.68); }
+:where(html.light) .text-fog\/55 { color: rgb(var(--c-fg) / 0.72); }
+:where(html.light) .text-fog\/60 { color: rgb(var(--c-fg) / 0.76); }
+:where(html.light) .text-fog\/65 { color: rgb(var(--c-fg) / 0.8); }
+:where(html.light) .text-fog\/70 { color: rgb(var(--c-fg) / 0.83); }
+:where(html.light) .text-fog\/75 { color: rgb(var(--c-fg) / 0.86); }
+:where(html.light) .text-fog\/80 { color: rgb(var(--c-fg) / 0.88); }
+:where(html.light) .placeholder\:text-fog\/25::placeholder,
+:where(html.light) .placeholder\:text-fog\/30::placeholder,
+:where(html.light) .placeholder-fog\/30::placeholder { color: rgb(var(--c-fg) / 0.42); }
+
+/* Light fields are white on the paper with a firmer edge, instead of a paper tint inside white dialogs. */
+:where(html.light) :is(input, textarea, select)[class*="bg-ink"] {
+  background-color: #fff;
+  border-color: var(--line-strong);
+}
+:where(html.light) :is(input, textarea, select)[class*="bg-ink"]:focus {
+  border-color: rgb(var(--c-accent) / 0.6);
 }
 
 html,

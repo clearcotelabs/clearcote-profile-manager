@@ -62,7 +62,7 @@ export default function Sidebar(props: {
   return (
     <aside
       aria-label={t("Workspace")}
-      className="flex h-full w-60 shrink-0 flex-col border-r border-line bg-surface/60 backdrop-blur"
+      className="flex h-full w-60 shrink-0 flex-col border-r border-line bg-panel/60 backdrop-blur"
     >
       <div className="min-h-0 flex-1 overflow-y-auto px-2 pb-3">
         <div className={head}>{t("Library")}</div>

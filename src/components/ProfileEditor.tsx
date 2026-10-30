@@ -879,7 +879,7 @@ export default function ProfileEditor({
               </p>
             )}
             {geo && (
-              <p className={"mt-1 text-[11px] " + (geo.ok ? "text-accent" : "text-amber-500")}>
+              <p className={"mt-1 text-[11px] " + (geo.ok ? "text-accent" : "text-warn")}>
                 {geo.ok
                   ? t("egress {ip} · {country} · {timezone} · {language}", {
                       ip: String(geo.ip),
@@ -925,7 +925,7 @@ export default function ProfileEditor({
                       .join("  ·  ")}
                   </p>
                   {meta?.screenWarning && (
-                    <p className="mt-2 rounded border border-amber-500/30 bg-amber-500/10 px-2 py-1.5 text-[11px] text-amber-400">
+                    <p className="mt-2 rounded border border-warn/30 bg-warn/10 px-2 py-1.5 text-[11px] text-warn">
                       ⚠ {meta.screenWarning}
                     </p>
                   )}
@@ -943,7 +943,7 @@ export default function ProfileEditor({
                   {t("Browse library…")}
                 </button>
               </div>
-              {fpMsg && <p className="mt-2 text-[11px] text-amber-500">{fpMsg}</p>}
+              {fpMsg && <p className="mt-2 text-[11px] text-warn">{fpMsg}</p>}
             </div>
           </>
         );
@@ -1074,8 +1074,8 @@ export default function ProfileEditor({
                 (summary.ok
                   ? "border-accent/40 text-accent"
                   : summary.errors
-                    ? "border-rose-500/50 bg-rose-500/10 text-rose-400"
-                    : "border-amber-500/40 bg-amber-500/10 text-amber-400")
+                    ? "border-danger/50 bg-danger/10 text-danger"
+                    : "border-warn/40 bg-warn/10 text-warn")
               }
             >
               {summary.ok
@@ -1102,7 +1102,7 @@ export default function ProfileEditor({
                       <span
                         className={
                           "mt-1.5 h-1.5 w-1.5 shrink-0 rounded-full " +
-                          (i.severity === "error" ? "bg-rose-400" : "bg-amber-400")
+                          (i.severity === "error" ? "bg-danger" : "bg-warn")
                         }
                       />
                       <span className="flex-1 text-fog/70">
@@ -1156,7 +1156,7 @@ export default function ProfileEditor({
                       >
                         {t(c.label)}
                         {hasIssue ? (
-                          <span className="ml-auto text-[11px] text-rose-400" title={t("Has a coherence issue")}>
+                          <span className="ml-auto text-[11px] text-danger" title={t("Has a coherence issue")}>
                             ▲
                           </span>
                         ) : n ? (

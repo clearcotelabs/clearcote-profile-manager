@@ -165,7 +165,7 @@ function Row(props: RowProps) {
 export default function ProfileTable({ rows }: { rows: RowProps[] }) {
   const th = "px-2 py-2 text-left text-[10px] font-semibold uppercase tracking-[0.08em] text-fog/40";
   return (
-    <div className="overflow-x-auto rounded-xl border border-line bg-surface/70">
+    <div className="overflow-x-auto rounded-xl border border-line bg-surface/70 shadow-card">
       <table className="w-full min-w-[640px] border-collapse" data-profile-table>
         <thead className="border-b border-line">
           <tr>

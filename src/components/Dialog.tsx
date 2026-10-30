@@ -134,7 +134,7 @@ export default function Dialog({
   return (
     <div
       className={
-        "fixed inset-0 flex items-center justify-center bg-black/60 p-3 backdrop-blur-sm sm:p-6 " +
+        "fixed inset-0 flex items-center justify-center bg-scrim p-3 backdrop-blur-sm sm:p-6 " +
         (layer === "top" ? "z-50" : "z-40")
       }
       onMouseDown={(e) => {

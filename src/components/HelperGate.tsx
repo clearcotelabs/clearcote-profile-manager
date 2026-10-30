@@ -334,7 +334,7 @@ function ConnectDialog({
     <div
       // items-start + the dialog's my-auto: centred when it fits, and when it is taller than the screen it
       // starts at the top and scrolls (items-center pushed its top, close button included, out of reach).
-      className="fixed inset-0 z-50 flex items-start justify-center overflow-y-auto bg-black/60 px-4 py-8"
+      className="fixed inset-0 z-50 flex items-start justify-center overflow-y-auto bg-scrim px-4 py-8"
       onClick={onClose}
     >
       <div

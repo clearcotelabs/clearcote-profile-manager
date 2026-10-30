@@ -182,7 +182,7 @@ export default function ProfileCard(props: CardProps) {
       className={
         // focus-within:z-20 — an open ⋯ menu holds focus, and without raising its card the NEXT card
         // (positioned, later in the DOM) painted over the menu's lower items.
-        "group relative flex flex-col rounded-xl border bg-surface/80 p-4 outline-none transition duration-200 focus-within:z-20 " +
+        "group relative flex flex-col rounded-xl border bg-surface/80 p-4 shadow-card outline-none transition duration-200 focus-within:z-20 " +
         "focus-visible:border-accent/60 focus-visible:ring-2 focus-visible:ring-accent/40 " +
         (props.selected
           ? "border-accent/70 bg-accent/5"
