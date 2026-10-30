@@ -162,7 +162,7 @@ export default function ExtensionsView({
       >
         <input
           id="ext-store-link"
-          className={field + " max-w-md flex-1"}
+          className={field + " min-w-[20rem] max-w-md flex-1"}
           placeholder={t("Paste a Chrome Web Store link or extension ID")}
           aria-label={t("Chrome Web Store link or extension ID")}
           value={link}
