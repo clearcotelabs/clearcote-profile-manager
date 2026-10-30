@@ -13,6 +13,8 @@
 //     never gets a browser's DevTools endpoint or learns where one is: whoever holds that endpoint
 //     controls the browser, so only Jet, started by the helper, connects to it. Which program Jet is
 //     (jetCommand) and the automation-port setting stay as saved.
+//   - It can add extensions from the Chrome Web Store or a .crx file it uploads (both signature-checked) and
+//     turn them on for profiles, but not from a folder: that takes the desktop app's folder picker.
 // Everything set in the desktop app on this computer stays as it is.
 
 import * as profiles from "../electron/profiles";
@@ -20,6 +22,7 @@ import { readSettings } from "../electron/store";
 import type { Handler } from "../electron/handlers";
 import type { Profile, Settings } from "../electron/types";
 import type { StartRequest } from "../electron/jetsync";
+import { isExtensionId } from "../electron/extensions";
 
 /** A switch whose name says it runs something or takes a file or folder. */
 const RISKY_NAME = /(cmd-prefix|launcher|subprocess|gdb|wrapper|-file|-dir|-path|^--user-data|^--profile-directory)/i;
@@ -65,6 +68,8 @@ export function cleanProfile(incoming: Profile, stored: Profile | null): Profile
   if (p.fingerprintProfile && p.fingerprintProfile !== stored?.fingerprintProfile && !isBareName(p.fingerprintProfile)) {
     throw new Error("A fingerprint must be one from the library or imported here, not a path.");
   }
+  // Extensions by ID only: what loads is the copy kept on this computer.
+  if (p.extensions !== undefined) p.extensions = Array.isArray(p.extensions) ? p.extensions.filter(isExtensionId) : [];
   const refused = refusedArgs(p.extraArgs, stored?.extraArgs ?? []);
   if (refused.length) {
     throw new Error(

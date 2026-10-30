@@ -15,6 +15,7 @@ import path from "node:path";
 import * as launcher from "../electron/launcher";
 import { USER_DATA } from "./userdata";
 import { bootstrap, createHandlers, getSyncManager } from "../electron/handlers";
+import { extensionEvents } from "../electron/extensions";
 import { TokenStore } from "./auth";
 import { createServer } from "./server";
 import { webPolicy } from "./policy";
@@ -237,6 +238,7 @@ async function main() {
   cloud.on("ended", (ev) => broadcast("cloud:ended", ev));
   getSyncManager({ cloud: () => cloud }).on("changed", (runs) => broadcast("sync:changed", runs));
   getSyncManager({ cloud: () => cloud }).on("tasksChanged", () => broadcast("tasks:changed", null));
+  extensionEvents.on("changed", () => broadcast("extensions:changed", null));
   void cloud.restore();
 
   // Closing the window, Ctrl+C or the tray's Quit: close the browsers properly so each licence slot

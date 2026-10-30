@@ -53,6 +53,16 @@ export function buildPreviewApi(mock: ClearcoteApi): ClearcoteApi {
     jetSetup: undefined,
     tasks: mock.tasks && { ...mock.tasks, save: fail(tx("save a task")) as never },
     cdpEndpoint: undefined,
+    // Extensions show as in the desktop app; adding one or turning it on needs the computer.
+    extensions: mock.extensions && {
+      ...mock.extensions,
+      addStore: fail(tx("add an extension")) as never,
+      addCrxData: fail(tx("add an extension")) as never,
+      assign: async () => {
+        askForHelper(tx("turn an extension on for profiles"));
+        return 0;
+      },
+    },
     cloud: {
       ...mock.cloud,
       start: fail(tx("run a profile in the cloud")) as ClearcoteApi["cloud"]["start"],

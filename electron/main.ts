@@ -3,14 +3,15 @@ import path from "node:path";
 import fs from "node:fs";
 import * as profiles from "./profiles";
 import * as launcher from "./launcher";
-import { readSettings, writeSettings } from "./store";
+import { ROOT, readSettings, writeSettings } from "./store";
+import { addFromCrx, addFromFolder, extensionEvents } from "./extensions";
 import { restoreBounds } from "./windowstate";
 import { closeAction, askText, ASK_BUTTONS } from "./closeguard";
 import { checkForUpdate, downloadUpdate, startupCheckEnabled, type UpdateInfo } from "./appupdate";
 import { CloudManager } from "./cloud";
 import { bundleExecutable } from "./macos";
 import { iconSource, pickBinaryDialog } from "./hostui";
-import { bootstrap, createHandlers, exportChoice, getSyncManager, importData, importFingerprint } from "./handlers";
+import { bootstrap, createHandlers, exportChoice, getSyncManager, importData, importFingerprint, wrapExt } from "./handlers";
 
 const isDev = process.env.ELECTRON_DEV === "1";
 
@@ -254,6 +255,19 @@ function registerIpc(): void {
     );
   }
 
+  // Extensions from this computer's files: the pickers are the desktop app's own (a web page names no paths).
+  ipcMain.handle("extensions:addFolder", async () => {
+    const r = await dialog.showOpenDialog({ title: "Select an unpacked extension folder (the one with manifest.json)", properties: ["openDirectory"] });
+    if (r.canceled || !r.filePaths[0]) return null;
+    return wrapExt(async () => addFromFolder(ROOT, r.filePaths[0]));
+  });
+  ipcMain.handle("extensions:addCrx", async () => {
+    const r = await dialog.showOpenDialog({ title: "Select a .crx file", properties: ["openFile"], filters: [{ name: "Chrome extension", extensions: ["crx"] }] });
+    if (r.canceled || !r.filePaths[0]) return null;
+    const file = r.filePaths[0];
+    return wrapExt(async () => addFromCrx(ROOT, fs.readFileSync(file), path.basename(file)));
+  });
+
   ipcMain.handle("pickBinary", async () => {
     // The Linux binary is a bare `chrome` with no extension, and an "exe"-only filter would hide
     // the very file being asked for — so the filter follows the host, and Linux keeps an
@@ -363,6 +377,7 @@ app.whenReady().then(() => {
   registerIpc();
   getSyncManager({ cloud: () => cloud }).on("changed", (runs) => sendAll("sync:changed", runs));
   getSyncManager({ cloud: () => cloud }).on("tasksChanged", () => sendAll("tasks:changed", null));
+  extensionEvents.on("changed", () => sendAll("extensions:changed", null));
   // A browser that stopped without being asked to: tell the window, so its card can say why.
   launcher.browserEvents.on("exited", (ev) => {
     if (mainWin && !mainWin.isDestroyed()) mainWin.webContents.send("browser:exited", ev);

@@ -80,6 +80,13 @@ describe("refusedArgs", () => {
 });
 
 describe("cleanProfile", () => {
+  it("keeps extensions as IDs only", () => {
+    const ok = "nkbihfbeogaeaoehlefnkodbefgpgknn";
+    const out = m.cleanProfile(base({ extensions: [ok, "C:\evil", "../x", 42 as never] }), null);
+    expect(out.extensions).toEqual([ok]);
+    expect(m.cleanProfile(base({ extensions: "x" as never }), null).extensions).toEqual([]);
+  });
+
   it("keeps the stored data folder and ignores one from the page", () => {
     const stored = base({ userDataDir: "D:\\Profiles\\one" });
     expect(m.cleanProfile(base({ userDataDir: "C:\\Windows" }), stored).userDataDir).toBe("D:\\Profiles\\one");

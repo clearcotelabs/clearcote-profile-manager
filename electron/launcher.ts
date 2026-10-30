@@ -4,7 +4,7 @@ import { EventEmitter } from "node:events";
 import fs from "node:fs";
 import path from "node:path";
 import zlib from "node:zlib";
-import { PROFILES_DIR, FINGERPRINTS_DIR, readSettings, writeSettings } from "./store";
+import { PROFILES_DIR, FINGERPRINTS_DIR, ROOT, readSettings, writeSettings } from "./store";
 import { markLaunched, recordGeo } from "./profiles";
 import { webrtcIpFollowsProxy } from "./proxyargs";
 import { Tail, type ExitFacts } from "./exitreason";
@@ -20,6 +20,7 @@ import { fingerprintArgs, macosKeychainArgs, mergeFeatureFlags, proxyEgressArgs,
 import { clearPending, injectCookies, readPending } from "./cookiejar";
 import { withShaderDialect, shaderDialectWarning } from "./shaderdialect";
 import { seedWidevine, widevineArgs, claimsChromeBrand } from "./widevine";
+import { extensionsForLaunch, withExtensionArgs } from "./extensions";
 import {
   crlsetArgsWarning,
   crlsetEnabled,
@@ -507,6 +508,13 @@ export async function launch(
     args.push(...proxyEgressArgs(!!proxy, p.extraArgs, quicRelay));
     // One --enable-features and one --disable-features: Chromium keeps only the last of each.
     let argv = mergeFeatureFlags(args);
+    // Extensions (electron/extensions.ts): the profile's, from the copies kept on this computer, in one
+    // --load-extension. One that is missing or cannot be updated is said, never a refused launch.
+    if (p.extensions?.length) {
+      const ext = await extensionsForLaunch(ROOT, p.extensions);
+      warnings.push(...ext.warnings);
+      argv = withExtensionArgs(argv, ext.dirs);
+    }
     // Linux: the browser's own font bundle (FONTCONFIG_FILE) and the UI locale from --lang (LANGUAGE),
     // as the SDK sets them. Without the first, a Linux launch rendered with the host's fonts.
     const linuxEnv = { ...linuxFontEnv(bin, (m) => warnings.push(m)), ...linuxLocaleEnv(argv) };

@@ -29,6 +29,7 @@ import { addPending, readPending } from "./cookiejar";
 import crypto from "node:crypto";
 import { SyncManager, spawnJet, type StartRequest, type SyncRun } from "./jetsync";
 import { deleteTask, readTasks, recordRun, saveTask, tasksPath, type SavedTask } from "./tasks";
+import * as ext from "./extensions";
 import { checkKey, findPython, installJet, isCustomCommand, jetStatus, type JetStatus } from "./jetsetup";
 import type { Profile, Settings, FingerprintMeta } from "./types";
 
@@ -194,6 +195,15 @@ export function bootstrap(cloudFile: string): CloudManager {
 
 const TASKS_FILE = () => tasksPath(ROOT);
 
+/** An extension call as { ok, extension } or { ok: false, error } — the UI shows the error as it is. */
+export async function wrapExt(fn: () => Promise<ext.ExtensionEntry>): Promise<{ ok: true; extension: ext.ExtensionEntry } | { ok: false; error: string }> {
+  try {
+    return { ok: true, extension: await fn() };
+  } catch (e) {
+    return { ok: false, error: String((e as Error)?.message || e) };
+  }
+}
+
 /** The one task runner of this process (electron/jetsync.ts). The front door subscribes to its "changed". */
 let syncManager: SyncManager | null = null;
 export function getSyncManager(host: Pick<HandlerHost, "cloud">): SyncManager {
@@ -338,6 +348,29 @@ export function createHandlers(host: HandlerHost): Record<string, Handler> {
     "tasks:list": () => readTasks(TASKS_FILE()),
     "tasks:save": (_c, t: Partial<SavedTask>) => saveTask(TASKS_FILE(), t),
     "tasks:delete": (_c, id: string) => deleteTask(TASKS_FILE(), String(id)),
+    // Extensions (electron/extensions.ts): kept once on this computer, loaded into the profiles they are on.
+    // Adding from a folder is the desktop app's (main.ts, with its folder picker): a web page names no paths.
+    "extensions:list": () => ext.listExtensions(ROOT),
+    "extensions:addStore": (_c, ref: string) => wrapExt(() => ext.addFromStore(ROOT, String(ref ?? ""))),
+    "extensions:addCrxData": (_c, base64: string, fileName?: string) =>
+      wrapExt(() => ext.addFromCrx(ROOT, Buffer.from(String(base64 ?? ""), "base64"), fileName ? String(fileName) : undefined)),
+    "extensions:update": (_c, id: string) => wrapExt(async () => (await ext.updateExtension(ROOT, String(id))).entry),
+    "extensions:checkAll": () => ext.checkAll(ROOT),
+    "extensions:set": (_c, id: string, patch: { autoUpdate?: boolean }) =>
+      wrapExt(async () => ext.setExtension(ROOT, String(id), { autoUpdate: patch?.autoUpdate })),
+    "extensions:remove": (_c, id: string) => {
+      const sid = String(id);
+      if (!ext.isExtensionId(sid)) return { ok: false, error: "Not an extension ID." };
+      const profilesChanged = profiles.setProfilesExtension(sid, undefined, false);
+      return { ok: ext.removeExtension(ROOT, sid), profilesChanged };
+    },
+    /** Turn an extension on or off for these profiles; resolves to how many changed. */
+    "extensions:assign": (_c, id: string, ids: string[], on: boolean) => {
+      const sid = String(id);
+      if (!ext.getExtension(ROOT, sid)) return 0;
+      const list = Array.isArray(ids) ? ids.map(String).filter((x) => profiles.isSafeId(x)) : [];
+      return profiles.setProfilesExtension(sid, list, !!on);
+    },
     // Setup without a terminal (electron/jetsetup.ts): the checklist, Install Jet, and the key check.
     "jet:status": () => jetStatusSaved(),
     "jet:install": () => (installing ??= installOnce().finally(() => (installing = null))),

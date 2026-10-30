@@ -17,6 +17,7 @@ import {
   type SyncRun,
   type StartRequest,
   type SavedTask,
+  type ExtensionEntry,
 } from "@/lib/ipc";
 import ProfileEditor from "@/components/ProfileEditor";
 import SettingsModal, { type Section as SettingsSection } from "@/components/SettingsModal";
@@ -37,6 +38,7 @@ import RunTaskDialog from "@/components/RunTaskDialog";
 import TaskBoard from "@/components/TaskBoard";
 import TasksView from "@/components/TasksView";
 import type { TaskExample } from "@/lib/taskExamples";
+import ExtensionsView from "@/components/ExtensionsView";
 import Menu from "@/components/Menu";
 import { launchReport, udpLine } from "@/lib/proxyReport";
 import { ManageTemplatesDialog, SaveTemplateDialog } from "@/components/TemplateDialogs";
@@ -219,6 +221,8 @@ function Manager() {
   const [trials, setTrials] = useState<Record<string, StartRequest>>({});
   /** Saved tasks (Tasks page), and the one Run a task was opened from. */
   const [savedTasks, setSavedTasks] = useState<SavedTask[]>([]);
+  /** Extensions kept on this computer (Extensions page, the editor's picker). */
+  const [extensions, setExtensions] = useState<ExtensionEntry[]>([]);
   const [runTaskFor, setRunTaskFor] = useState<SavedTask | undefined>(undefined);
   /** ...or the example it was opened from (Tasks page → an example card). */
   const [runTaskExample, setRunTaskExample] = useState<TaskExample | undefined>(undefined);
@@ -357,6 +361,20 @@ function Manager() {
     let alive = true;
     void sync.list().then((r) => alive && setTaskRuns(r));
     const off = sync.onChanged((r) => setTaskRuns(r));
+    return () => {
+      alive = false;
+      off();
+    };
+  }, []);
+
+  // Extensions: the list now, and again whenever one is added, updated or removed (also by a launch's auto-update).
+  useEffect(() => {
+    const ext = api.extensions;
+    if (!ext) return;
+    let alive = true;
+    const load = () => void ext.list().then((l) => alive && setExtensions(l)).catch(() => {});
+    load();
+    const off = ext.onChanged(load);
     return () => {
       alive = false;
       off();
@@ -1262,6 +1280,7 @@ function Manager() {
       { id: "v:recent", section: nav, label: t("Used this week"), run: () => goProfiles("recent") },
       { id: "v:proxies", section: nav, label: t("Proxies"), run: () => setPage("proxies") },
       ...(api.tasks && api.sync ? [{ id: "v:tasks", section: nav, label: t("Tasks"), run: () => setPage("tasks") }] : []),
+      ...(api.extensions ? [{ id: "v:extensions", section: nav, label: t("Extensions"), run: () => setPage("extensions") }] : []),
       ...groupList.map((g) => ({
         id: `g:${g.key}`,
         section: nav,
@@ -1378,6 +1397,7 @@ function Manager() {
       onTag={(tag) => setTagFilter(tag)}
       proxies={proxyRows.length}
       tasks={api.tasks && api.sync ? savedTasks.length : undefined}
+      extensions={api.extensions ? extensions.length : undefined}
       running={runningItems}
       onStopRunning={stopRunning}
       onOpenRunning={openRunning}
@@ -1566,6 +1586,11 @@ function Manager() {
               onNew={() => openRunTask()}
               onExample={(ex) => openRunTask(undefined, ex)}
             />
+          </>
+        ) : page === "extensions" && api.extensions ? (
+          <>
+            <h2 className="mt-6 text-lg font-semibold">{t("Extensions")}</h2>
+            <ExtensionsView extensions={extensions} profiles={profiles} notify={notify} onProfilesChanged={() => void refresh()} />
           </>
         ) : page === "proxies" ? (
           <>

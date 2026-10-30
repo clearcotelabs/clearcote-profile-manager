@@ -54,7 +54,8 @@
     "src/components/BulkCreateDialog.tsx"
   ],
   "1 profile": [
-    "app/page.tsx"
+    "app/page.tsx",
+    "src/components/ExtensionsView.tsx"
   ],
   "1 profile needs a value. Type it here; it is saved to the profile:": [
     "src/components/RunTaskDialog.tsx"
@@ -155,6 +156,9 @@
   "A portable profile needs Clearcote {need} (r14+); build {major} ignores it, so cookies stay machine-bound.": [
     "src/lib/coherence.ts"
   ],
+  "A profile runs the version kept here. With auto-update off it never changes by itself, so an update can't break a wallet or a tool mid-week. Turning an extension on or off takes effect at the profile's next launch.": [
+    "src/components/ExtensionsView.tsx"
+  ],
   "A proxy carries ordinary connections only. HTTP/3 would go around it, straight from your real IP. Real Chrome behind a proxy never uses it either.": [
     "src/lib/quickCreate.ts"
   ],
@@ -197,8 +201,20 @@
   "Across all categories. Clear the search to go back.": [
     "src/components/ProfileEditor.tsx"
   ],
+  "Add .crx file…": [
+    "src/components/ExtensionsView.tsx"
+  ],
   "Add a proxy, or turn Transparent proxy off.": [
     "src/lib/coherence.ts"
+  ],
+  "Add an extension once on the Extensions page and turn it on here. Its version only changes when you update it there (or turn on its auto-update), and each profile keeps its own extension data.": [
+    "src/lib/fields.ts"
+  ],
+  "Add from store": [
+    "src/components/ExtensionsView.tsx"
+  ],
+  "Add one from the Chrome Web Store, then turn it on for the profiles that need it. Each profile keeps its own extension data, and the version stays as it is until you update it.": [
+    "src/components/ExtensionsView.tsx"
   ],
   "Add tag": [
     "app/page.tsx"
@@ -208,6 +224,9 @@
   ],
   "Add to cart in a size and colour": [
     "src/lib/taskExamples.ts"
+  ],
+  "Add unpacked folder…": [
+    "src/components/ExtensionsView.tsx"
   ],
   "Add your API key to run in the cloud": [
     "src/lib/launchError.ts"
@@ -223,6 +242,12 @@
   ],
   "Added because a proxy is set.": [
     "src/lib/quickCreate.ts"
+  ],
+  "Added “{name}” {version}.": [
+    "src/components/ExtensionsView.tsx"
+  ],
+  "Adding…": [
+    "src/components/ExtensionsView.tsx"
   ],
   "Address": [
     "src/components/CloudViewer.tsx"
@@ -351,6 +376,9 @@
   "Australia": [
     "src/components/CloudFields.tsx"
   ],
+  "Auto-update": [
+    "src/components/ExtensionsView.tsx"
+  ],
   "Automatic": [
     "src/components/SettingsModal.tsx"
   ],
@@ -365,6 +393,9 @@
   ],
   "Balance": [
     "src/components/SettingsModal.tsx"
+  ],
+  "Before a launch, at most every 6 hours, ask the store for a newer version and install it.": [
+    "src/components/ExtensionsView.tsx"
   ],
   "Before you run it": [
     "src/components/UpdateBanner.tsx"
@@ -466,6 +497,7 @@
     "src/components/BulkCreateDialog.tsx",
     "src/components/Confirm.tsx",
     "src/components/ExportDialog.tsx",
+    "src/components/ExtensionsView.tsx",
     "src/components/JetSetup.tsx",
     "src/components/MigrateDialog.tsx",
     "src/components/ProfileEditor.tsx",
@@ -536,6 +568,9 @@
   "Check every proxy": [
     "app/page.tsx"
   ],
+  "Check for updates": [
+    "src/components/ExtensionsView.tsx"
+  ],
   "Check for updates when the app starts": [
     "src/components/SettingsModal.tsx"
   ],
@@ -588,6 +623,7 @@
     "src/components/JetSetup.tsx"
   ],
   "Checking…": [
+    "src/components/ExtensionsView.tsx",
     "src/components/JetSetup.tsx",
     "src/components/ProfileEditor.tsx",
     "src/components/ProxiesView.tsx",
@@ -600,6 +636,9 @@
   "Choose file…": [
     "src/components/MigrateDialog.tsx"
   ],
+  "Choose the profiles that use {name}": [
+    "src/components/ExtensionsView.tsx"
+  ],
   "Choose the profiles to run it on:": [
     "src/components/RunTaskDialog.tsx"
   ],
@@ -608,6 +647,9 @@
   ],
   "Chosen by the model": [
     "src/components/StepTimeline.tsx"
+  ],
+  "Chrome Web Store link or extension ID": [
+    "src/components/ExtensionsView.tsx"
   ],
   "Chrome allows third-party cookies, and embedded sign-in, payment and challenge frames rely on them. Block them only for a site that should not see them. Builds before 154 r36 block them unless told otherwise, so an unticked profile tells them to allow; set a choice here rather than on the browser's own settings page, which this overrides.": [
     "src/lib/fields.ts"
@@ -825,6 +867,9 @@
   ],
   "Could not check Jet: {error}": [
     "src/components/JetSetup.tsx"
+  ],
+  "Could not check: {names}.": [
+    "src/components/ExtensionsView.tsx"
   ],
   "Could not clear the cache.": [
     "app/page.tsx",
@@ -1167,6 +1212,9 @@
   "Every selected profile has a value for each.": [
     "src/components/RunTaskDialog.tsx"
   ],
+  "Every store extension is up to date.": [
+    "src/components/ExtensionsView.tsx"
+  ],
   "Every template needs its own name.": [
     "src/components/TemplateDialogs.tsx"
   ],
@@ -1225,6 +1273,11 @@
     "app/page.tsx",
     "src/components/ExportDialog.tsx",
     "src/components/ProfileCard.tsx"
+  ],
+  "Extensions": [
+    "app/page.tsx",
+    "src/components/Sidebar.tsx",
+    "src/lib/fields.ts"
   ],
   "Extra flags": [
     "src/lib/fields.ts"
@@ -1306,6 +1359,9 @@
   "Fix →": [
     "src/components/ProfileEditor.tsx",
     "src/components/ProfileInspector.tsx"
+  ],
+  "Folder": [
+    "src/components/ExtensionsView.tsx"
   ],
   "For example: the search words": [
     "src/components/TasksView.tsx"
@@ -1555,6 +1611,12 @@
   "It is no longer running in the cloud.": [
     "app/page.tsx"
   ],
+  "It is turned off in the 1 profile that uses it. What it saved in that profile stays there.": [
+    "src/components/ExtensionsView.tsx"
+  ],
+  "It is turned off in the {n} profiles that use it. What it saved in those profiles stays there.": [
+    "src/components/ExtensionsView.tsx"
+  ],
   "It may have been revoked, or copied incompletely. Check it in Settings → Cloud.": [
     "src/lib/launchError.ts"
   ],
@@ -1782,6 +1844,9 @@
   "Load a real machine's GPU, screen, fonts, voices and WebGL. Its values override the seed persona.": [
     "src/components/ProfileEditor.tsx"
   ],
+  "Loaded from the copies kept under Extensions, at the next launch.": [
+    "src/lib/fields.ts"
+  ],
   "Loading…": [
     "src/components/LibraryModal.tsx",
     "src/components/StorageSection.tsx"
@@ -1958,6 +2023,9 @@
   "New task": [
     "src/components/TasksView.tsx"
   ],
+  "Newer version available: {names}.": [
+    "src/components/ExtensionsView.tsx"
+  ],
   "Newest": [
     "src/lib/profileList.ts"
   ],
@@ -1985,8 +2053,15 @@
   "No example matches “{q}”.": [
     "src/components/TaskExamples.tsx"
   ],
+  "No extensions yet": [
+    "src/components/ExtensionsView.tsx"
+  ],
+  "No extensions yet. Add them on the Extensions page, then turn them on here.": [
+    "src/components/ProfileEditor.tsx"
+  ],
   "No group": [
-    "app/page.tsx"
+    "app/page.tsx",
+    "src/components/ExtensionsView.tsx"
   ],
   "No key yet?": [
     "src/components/SettingsModal.tsx"
@@ -2009,6 +2084,9 @@
   ],
   "No profile uses a proxy yet": [
     "src/components/ProxiesView.tsx"
+  ],
+  "No profile uses it.": [
+    "src/components/ExtensionsView.tsx"
   ],
   "No profile was given. Open a cloud browser from its card in the Profile Manager.": [
     "app/cloud/page.tsx"
@@ -2060,6 +2138,9 @@
   "Not done": [
     "src/components/TaskBoard.tsx"
   ],
+  "Not on this computer: add it again under Extensions.": [
+    "src/components/ProfileEditor.tsx"
+  ],
   "Not run yet": [
     "src/components/TasksView.tsx"
   ],
@@ -2106,6 +2187,9 @@
   "Off by default: third-party cookies are allowed, as in Chrome.": [
     "src/lib/fields.ts"
   ],
+  "On 1 profile": [
+    "src/components/ExtensionsView.tsx"
+  ],
   "On a focused profile": [
     "src/components/ShortcutsDialog.tsx"
   ],
@@ -2117,6 +2201,9 @@
   ],
   "On for new profiles. Downloaded once from Google's own component server, SHA-256 verified, then shared by every profile that uses it.": [
     "src/lib/fields.ts"
+  ],
+  "On {n} profiles": [
+    "src/components/ExtensionsView.tsx"
   ],
   "On {n} profiles: {names} and {more} more": [
     "src/components/RunTaskDialog.tsx"
@@ -2233,6 +2320,12 @@
   "Paste": [
     "src/components/ProfileEditor.tsx"
   ],
+  "Paste a Chrome Web Store link (chromewebstore.google.com/detail/…) or a 32-letter extension ID.": [
+    "src/lib/extensionsMock.ts"
+  ],
+  "Paste a Chrome Web Store link or extension ID": [
+    "src/components/ExtensionsView.tsx"
+  ],
   "Paste a list and get one profile per proxy, or add a proxy in a profile's Network settings.": [
     "src/components/ProxiesView.tsx"
   ],
@@ -2344,6 +2437,9 @@
   "Profiles set to Latest launch Clearcote {version}.": [
     "src/lib/launchTarget.ts"
   ],
+  "Profiles that use “{name}”": [
+    "src/components/ExtensionsView.tsx"
+  ],
   "Proxies": [
     "app/page.tsx",
     "src/components/Sidebar.tsx"
@@ -2410,7 +2506,11 @@
   "Reload": [
     "src/components/CloudViewer.tsx"
   ],
+  "Reload from folder": [
+    "src/components/ExtensionsView.tsx"
+  ],
   "Remove": [
+    "src/components/ExtensionsView.tsx",
     "src/components/StorageSection.tsx",
     "src/components/TaskValues.tsx"
   ],
@@ -2432,6 +2532,12 @@
   "Remove unused · frees {size}": [
     "src/components/StorageSection.tsx"
   ],
+  "Remove {name}": [
+    "src/components/ExtensionsView.tsx"
+  ],
+  "Remove “{name}”?": [
+    "src/components/ExtensionsView.tsx"
+  ],
   "Removed 1 build — {size} freed.": [
     "src/components/StorageSection.tsx"
   ],
@@ -2440,6 +2546,9 @@
   ],
   "Removed {n} builds — {size} freed.": [
     "src/components/StorageSection.tsx"
+  ],
+  "Removed “{name}”.": [
+    "src/components/ExtensionsView.tsx"
   ],
   "Removing…": [
     "src/components/StorageSection.tsx"
@@ -2640,6 +2749,7 @@
     "src/components/TemplateDialogs.tsx"
   ],
   "Save": [
+    "src/components/ExtensionsView.tsx",
     "src/components/SettingsModal.tsx",
     "src/components/TasksSection.tsx",
     "src/components/TasksView.tsx"
@@ -2706,6 +2816,7 @@
     "src/components/ExportDialog.tsx"
   ],
   "Saving…": [
+    "src/components/ExtensionsView.tsx",
     "src/components/TasksView.tsx"
   ],
   "Say what the task is.": [
@@ -2738,6 +2849,12 @@
   "Search examples…": [
     "src/components/TaskExamples.tsx"
   ],
+  "Search extensions": [
+    "src/components/ExtensionsView.tsx"
+  ],
+  "Search extensions…": [
+    "src/components/ExtensionsView.tsx"
+  ],
   "Search host, country or profile…": [
     "src/components/ProxiesView.tsx"
   ],
@@ -2746,7 +2863,11 @@
   ],
   "Search profiles": [
     "app/page.tsx",
+    "src/components/ExtensionsView.tsx",
     "src/components/ShortcutsDialog.tsx"
+  ],
+  "Search profiles…": [
+    "src/components/ExtensionsView.tsx"
   ],
   "Search proxies": [
     "src/components/ProxiesView.tsx"
@@ -3119,6 +3240,10 @@
   "Test anyway": [
     "src/components/ProfileEditor.tsx"
   ],
+  "That extension is no longer here.": [
+    "src/components/ExtensionsView.tsx",
+    "src/lib/extensionsMock.ts"
+  ],
   "That file is over 20 MB — too big to be a cookie file or a profile list.": [
     "src/components/MigrateDialog.tsx"
   ],
@@ -3299,6 +3424,9 @@
   ],
   "The work area: the screen minus the taskbar, e.g. 1920 × 1032 on a 1920 × 1080 Windows 11 screen at 100 %. The full screen size here describes a screen with no taskbar, which is rare and stands out. Left empty under a seed, capture or Light stealth, it is not this display's own value, so matching this display means typing all four fields.": [
     "src/lib/fields.ts"
+  ],
+  "There are no profiles yet.": [
+    "src/components/ExtensionsView.tsx"
   ],
   "There's no build “{version}”": [
     "src/lib/launchError.ts"
@@ -3496,6 +3624,9 @@
   "Turn off for a host that rasterises in software, where a spoofed GPU string cannot be backed by the render. navigator.gpu still follows the wide switch, so WebGPU keeps describing the persona.": [
     "src/lib/fields.ts"
   ],
+  "Turn off for all {n}": [
+    "src/components/ExtensionsView.tsx"
+  ],
   "Turn off marketing emails": [
     "src/lib/taskExamples.ts"
   ],
@@ -3504,6 +3635,12 @@
   ],
   "Turn off the wide switch if you only wanted the strings, or leave this one on.": [
     "src/lib/coherence.ts"
+  ],
+  "Turn on for all {n}": [
+    "src/components/ExtensionsView.tsx"
+  ],
+  "Turn on for profiles…": [
+    "src/components/ExtensionsView.tsx"
   ],
   "Turn on geoip to fill it from the proxy's exit region at launch, or set a geolocation by hand.": [
     "src/lib/coherence.ts"
@@ -3586,6 +3723,9 @@
   "Unzip it and start it": [
     "src/components/HelperGate.tsx"
   ],
+  "Update": [
+    "src/components/ExtensionsView.tsx"
+  ],
   "Update Jet": [
     "src/components/JetSetup.tsx"
   ],
@@ -3607,6 +3747,12 @@
   "Update the saved task": [
     "src/components/RunTaskDialog.tsx"
   ],
+  "Updated “{name}” to {version}.": [
+    "src/components/ExtensionsView.tsx"
+  ],
+  "Updated: {names}.": [
+    "src/components/ExtensionsView.tsx"
+  ],
   "Updates": [
     "src/components/SettingsModal.tsx"
   ],
@@ -3615,6 +3761,9 @@
   ],
   "Updating only works in the desktop app.": [
     "src/lib/ipc.ts"
+  ],
+  "Updating…": [
+    "src/components/ExtensionsView.tsx"
   ],
   "Use a socks5:// proxy, or turn UDP relaying off so the profile does not claim something it is not doing.": [
     "src/lib/coherence.ts"
@@ -3845,6 +3994,9 @@
   "a model from this computer's maker": [
     "src/components/TemplateDialogs.tsx"
   ],
+  "add an extension": [
+    "src/lib/webPreview.ts"
+  ],
   "all": [
     "src/components/LibraryModal.tsx"
   ],
@@ -3908,6 +4060,9 @@
   ],
   "check your licence": [
     "src/lib/webPreview.ts"
+  ],
+  "checked {when}": [
+    "src/components/ExtensionsView.tsx"
   ],
   "choose a browser": [
     "src/lib/webPreview.ts"
@@ -4151,6 +4306,9 @@
   "time zone and language follow it": [
     "src/components/TemplateDialogs.tsx"
   ],
+  "turn an extension on for profiles": [
+    "src/lib/webPreview.ts"
+  ],
   "unset": [
     "src/lib/fields.ts"
   ],
@@ -4265,6 +4423,7 @@
   ],
   "{n} profiles": [
     "app/page.tsx",
+    "src/components/ExtensionsView.tsx",
     "src/components/ProxiesView.tsx"
   ],
   "{n} profiles need values. Type them here; they are saved to each profile:": [
@@ -4343,6 +4502,9 @@
   "{vendor} — this machine's GPU maker": [
     "src/lib/gpuPicker.ts"
   ],
+  "{version} available": [
+    "src/components/ExtensionsView.tsx"
+  ],
   "{version} · pinned": [
     "src/components/ProfileEditor.tsx"
   ],
@@ -4360,6 +4522,12 @@
   ],
   "“{name}” is running in the cloud.": [
     "app/page.tsx"
+  ],
+  "“{name}” is up to date ({version}).": [
+    "src/components/ExtensionsView.tsx"
+  ],
+  "“{name}”: turned on for {on}, off for {off} profiles. It applies at their next launch.": [
+    "src/components/ExtensionsView.tsx"
   ],
   "… and {n} more": [
     "src/components/BulkCreateDialog.tsx"

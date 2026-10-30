@@ -149,6 +149,8 @@ export interface Profile {
    *  profile's `email`. A secret one is never shown, logged, exported or sent to Jet's model; it is
    *  typed only (electron/jetslots.ts). */
   vars?: ProfileVar[];
+  /** Extension IDs to load, from the copies kept under Extensions (electron/extensions.ts). */
+  extensions?: string[];
 }
 
 export interface FingerprintMeta {

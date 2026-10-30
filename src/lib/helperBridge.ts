@@ -400,6 +400,18 @@ export function buildHelperApi(): ClearcoteApi {
       remove: call("tasks:delete"),
       onChanged: (cb) => on("tasks:changed", () => cb()),
     },
+    // From the store or an uploaded .crx; adding a folder takes the desktop app's folder picker.
+    extensions: {
+      list: call("extensions:list"),
+      addStore: call("extensions:addStore"),
+      addCrxData: call("extensions:addCrxData"),
+      update: call("extensions:update"),
+      checkAll: call("extensions:checkAll"),
+      set: call("extensions:set"),
+      remove: call("extensions:remove"),
+      assign: call("extensions:assign"),
+      onChanged: (cb) => on("extensions:changed", () => cb()),
+    },
     hostGpu: call("host:gpu"),
     listVersions: call("versions:list"),
     listRevisions: call("versions:revisions"),

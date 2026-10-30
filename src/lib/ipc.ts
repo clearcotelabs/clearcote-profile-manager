@@ -15,6 +15,9 @@ export type { JetStatus, KeyState } from "../../electron/jetsetup";
 import type { SavedTask } from "../../electron/tasks";
 export type { SavedTask, TaskParam, TaskRunRecord } from "../../electron/tasks";
 export type { StepSummary } from "../../electron/jetsync";
+import type { ExtensionEntry } from "../../electron/extensions";
+export type { ExtensionEntry, ExtensionSource } from "../../electron/extensions";
+import { buildExtensionsMock } from "@/lib/extensionsMock";
 import { buildHelperApi, helper } from "@/lib/helperBridge";
 import { buildPreviewApi, seedExamples, switchable } from "@/lib/webPreview";
 import { t } from "@/lib/i18n";
@@ -333,6 +336,29 @@ export interface TasksApi {
   onChanged: (cb: () => void) => () => void;
 }
 
+export type ExtResult = { ok: true; extension: ExtensionEntry } | { ok: false; error: string };
+
+/** Extensions kept on this computer and turned on per profile (electron/extensions.ts). */
+export interface ExtensionsApi {
+  list: () => Promise<ExtensionEntry[]>;
+  /** From a Chrome Web Store link or ID: downloaded from Google and its signature checked. */
+  addStore: (ref: string) => Promise<ExtResult>;
+  /** From the bytes of a .crx file (base64). */
+  addCrxData: (base64: string, fileName?: string) => Promise<ExtResult>;
+  /** Desktop app only: pick a .crx file or an unpacked folder. Null when the picker was closed. */
+  addCrx?: () => Promise<ExtResult | null>;
+  addFolder?: () => Promise<ExtResult | null>;
+  /** A store one from the store now; a folder one copied again from its folder. */
+  update: (id: string) => Promise<ExtResult>;
+  checkAll: () => Promise<{ updated: string[]; available: string[]; failed: string[] }>;
+  set: (id: string, patch: { autoUpdate?: boolean }) => Promise<ExtResult>;
+  /** Delete it, and take it off every profile that had it. */
+  remove: (id: string) => Promise<{ ok: boolean; profilesChanged?: number; error?: string }>;
+  /** Turn it on or off for these profiles; resolves to how many changed. */
+  assign: (id: string, ids: string[], on: boolean) => Promise<number>;
+  onChanged: (cb: () => void) => () => void;
+}
+
 /** Getting Jet ready without a terminal: Python, Jet, the model key (electron/jetsetup.ts). */
 export interface JetSetupApi {
   status: () => Promise<JetStatus>;
@@ -395,6 +421,7 @@ export interface ClearcoteApi {
   sync?: SyncApi;
   jetSetup?: JetSetupApi;
   tasks?: TasksApi;
+  extensions?: ExtensionsApi;
   /** A running profile's local DevTools endpoint (launched with automation), or null. */
   cdpEndpoint?: (id: string) => Promise<string | null>;
   /** Profiles running on Clearcote's servers, and the viewer window that shows one. */
@@ -686,6 +713,7 @@ function buildMock(): ClearcoteApi {
     sync: buildSyncMock(read),
     jetSetup: buildJetSetupMock(),
     tasks: buildTasksMock(),
+    extensions: buildExtensionsMock(PROFILES_KEY),
     cdpEndpoint: async () => null,
     cloud: {
       list: async () => cloudRead(),

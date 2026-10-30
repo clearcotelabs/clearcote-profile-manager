@@ -128,6 +128,23 @@ export function recordGeo(
   }
 }
 
+/** Turn an extension on or off for profiles (all of them for `ids` undefined and on false); returns how many changed. */
+export function setProfilesExtension(extId: string, ids: string[] | undefined, on: boolean): number {
+  const want = ids ? new Set(ids) : null;
+  let n = 0;
+  for (const p of listProfiles()) {
+    if (want && !want.has(p.id)) continue;
+    const had = (p.extensions ?? []).includes(extId);
+    if (had === on) continue;
+    const list = on ? [...(p.extensions ?? []), extId] : (p.extensions ?? []).filter((x) => x !== extId);
+    const out: Profile = { ...p, extensions: list };
+    if (!list.length) delete out.extensions;
+    fs.writeFileSync(profilePath(p.id), JSON.stringify(out, null, 2), "utf8");
+    n++;
+  }
+  return n;
+}
+
 /**
  * Rename a group on every profile in it. Groups are matched the way the list shows them — trimmed,
  * case-insensitive — so "Work" and "work " both move. Renaming to "" takes them out of any group.

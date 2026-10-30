@@ -17,6 +17,9 @@ import type { HostGpu } from "./hostgpu";
 import type { StartRequest, SyncRun } from "./jetsync";
 import type { JetStatus, KeyState } from "./jetsetup";
 import type { SavedTask } from "./tasks";
+import type { ExtensionEntry } from "./extensions";
+
+type ExtResult = { ok: true; extension: ExtensionEntry } | { ok: false; error: string };
 
 /** Subscribe to a main-process event; returns the unsubscribe function. */
 function on<T>(channel: string, cb: (data: T) => void): () => void {
@@ -77,6 +80,21 @@ const api = {
     stop: (runId: string, profileId?: string): Promise<number> => ipcRenderer.invoke("sync:stop", runId, profileId),
     clear: (): Promise<void> => ipcRenderer.invoke("sync:clear"),
     onChanged: (cb: (runs: SyncRun[]) => void) => on<SyncRun[]>("sync:changed", cb),
+  },
+  /** Extensions kept on this computer and loaded into profiles (electron/extensions.ts). */
+  extensions: {
+    list: (): Promise<ExtensionEntry[]> => ipcRenderer.invoke("extensions:list"),
+    addStore: (ref: string): Promise<ExtResult> => ipcRenderer.invoke("extensions:addStore", ref),
+    addCrxData: (base64: string, fileName?: string): Promise<ExtResult> => ipcRenderer.invoke("extensions:addCrxData", base64, fileName),
+    /** Desktop only: pick a .crx file or an unpacked folder; null when the picker was closed. */
+    addCrx: (): Promise<ExtResult | null> => ipcRenderer.invoke("extensions:addCrx"),
+    addFolder: (): Promise<ExtResult | null> => ipcRenderer.invoke("extensions:addFolder"),
+    update: (id: string): Promise<ExtResult> => ipcRenderer.invoke("extensions:update", id),
+    checkAll: (): Promise<{ updated: string[]; available: string[]; failed: string[] }> => ipcRenderer.invoke("extensions:checkAll"),
+    set: (id: string, patch: { autoUpdate?: boolean }): Promise<ExtResult> => ipcRenderer.invoke("extensions:set", id, patch),
+    remove: (id: string): Promise<{ ok: boolean; profilesChanged?: number; error?: string }> => ipcRenderer.invoke("extensions:remove", id),
+    assign: (id: string, ids: string[], on: boolean): Promise<number> => ipcRenderer.invoke("extensions:assign", id, ids, on),
+    onChanged: (cb: () => void) => on<void>("extensions:changed", cb),
   },
   /** Saved tasks (electron/tasks.ts). */
   tasks: {

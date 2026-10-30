@@ -57,7 +57,7 @@ import {
   type FingerprintMeta,
   type Profile,
 } from "@/types/profile";
-import { api, isWeb, type GeoResult, type HostGpu, type ProxyCheck, type VersionOption } from "@/lib/ipc";
+import { api, isWeb, type ExtensionEntry, type GeoResult, type HostGpu, type ProxyCheck, type VersionOption } from "@/lib/ipc";
 import { describeCheck, UDP_TEST_WARNING } from "@/lib/proxyReport";
 import { proxySummary } from "@/lib/profileList";
 import { browserCommandName, hostOs, shortcutLabel, type HostOs } from "@/lib/host";
@@ -190,6 +190,7 @@ export default function ProfileEditor({
   /** The GPU driving this machine's display; null until the main process answers (or when an
    *  older preload cannot). Its maker orders the GPU model picker and backs the cross-vendor rule. */
   const [hostGpu, setHostGpu] = useState<HostGpu | null>(null);
+  const [extList, setExtList] = useState<ExtensionEntry[]>([]);
   /** The user chose Custom… over a model and has not picked anything since. Without this the
    *  select would snap back to the model the moment Custom… was chosen, because the strings
    *  (deliberately left as the starting point for editing) still match it. */
@@ -232,6 +233,7 @@ export default function ProfileEditor({
     api.listVersions?.().then((v) => alive && setVersions(v || [])).catch(() => {});
     api.listRevisions?.().then((r) => alive && setRevisions(r || [])).catch(() => {});
     api.hostGpu?.().then((g) => alive && g && setHostGpu(g)).catch(() => {});
+    api.extensions?.list().then((l) => alive && setExtList(l)).catch(() => {});
     return () => {
       alive = false;
     };
@@ -696,6 +698,45 @@ export default function ProfileEditor({
                 set(key, (v.length ? v : undefined) as never);
               }}
             />
+          </>
+        );
+      }
+
+      case "extensions": {
+        const on = new Set(profile.extensions ?? []);
+        const known = new Set(extList.map((e) => e.id));
+        const gone = [...on].filter((id) => !known.has(id));
+        const flip = (id: string, v: boolean) => {
+          const next = v ? [...on, id] : [...on].filter((x) => x !== id);
+          set("extensions", (next.length ? next : undefined) as never);
+        };
+        return (
+          <>
+            {labelFor(f)}
+            {extList.length === 0 && !gone.length ? (
+              <p className="text-[12px] text-fog/50">{t("No extensions yet. Add them on the Extensions page, then turn them on here.")}</p>
+            ) : (
+              <ul className="grid gap-1 sm:grid-cols-2" data-editor-extensions>
+                {extList.map((e) => (
+                  <li key={e.id}>
+                    <label className="flex items-center gap-2 rounded-lg border border-line px-2.5 py-1.5 text-sm hover:bg-elevate">
+                      <input type="checkbox" checked={on.has(e.id)} onChange={(ev) => flip(e.id, ev.target.checked)} />
+                      {e.icon && <img src={e.icon} alt="" className="h-4 w-4 rounded-sm" />}
+                      <span className="min-w-0 flex-1 truncate">{e.name}</span>
+                      <span className="font-mono text-[10px] text-fog/40">{e.version}</span>
+                    </label>
+                  </li>
+                ))}
+                {gone.map((id) => (
+                  <li key={id}>
+                    <label className="flex items-center gap-2 rounded-lg border border-warn/40 px-2.5 py-1.5 text-sm" title={t("Not on this computer: add it again under Extensions.")}>
+                      <input type="checkbox" checked onChange={() => flip(id, false)} />
+                      <span className="min-w-0 flex-1 truncate font-mono text-[11px] text-warn">{id}</span>
+                    </label>
+                  </li>
+                ))}
+              </ul>
+            )}
           </>
         );
       }

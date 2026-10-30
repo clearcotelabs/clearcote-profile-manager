@@ -136,7 +136,8 @@ export interface FieldDef {
     | "canvasBridgeAllow"
     | "canvasBridgeDeny"
     | "gpuModel"
-    | "vars";
+    | "vars"
+    | "extensions";
   /** Rendered INSIDE the named field's bespoke control rather than on its own — the GPU vendor and
    *  renderer strings, which the model picker shows only in its Custom mode. The panel skips such
    *  a field; a search hit or a coherence deep-link lands on the host instead. The field stays in
@@ -213,6 +214,17 @@ export const FIELDS: FieldDef[] = [
     keywords: "pro free 151 150 149 revision r15 pin",
     why:
       tx("Latest is the newest of your tier. A Pro build needs a licence key in Settings. Latest and a bare major both follow the current Pro pin, which moves when a rebuild ships — pin a revision for a reproducible run."),
+  },
+  {
+    key: "extensions",
+    cat: "browser",
+    label: tx("Extensions"),
+    type: "custom",
+    custom: "extensions",
+    full: true,
+    keywords: "extension extensions chrome web store crx unpacked wallet metamask add-on addon --load-extension",
+    hint: tx("Loaded from the copies kept under Extensions, at the next launch."),
+    why: tx("Add an extension once on the Extensions page and turn it on here. Its version only changes when you update it there (or turn on its auto-update), and each profile keeps its own extension data."),
   },
   {
     key: "platform",
