@@ -181,7 +181,8 @@ async function main() {
     await win.keyboard.press("Escape");
     await win.waitForTimeout(600);
 
-    // 6. Run a task: the dialog, then the run board while every profile waits before "Place order".
+    // 6. Run a task: the dialog, then the run board while every profile waits before "Place order", then the
+    //    saved task on the Tasks page (recipe, values, the steps Jet took, the run).
     if (JET && BINARY) {
       server = shop();
       await new Promise((r) => server.listen(0, "127.0.0.1", r));
@@ -194,6 +195,11 @@ async function main() {
       await win.locator("[data-bulk-run-task]").click();
       await win.locator("[data-run-goal]").fill("Sign in with the email {{email}} and the password {{password}}, then place the order.");
       await win.getByLabel("Start page").fill(url);
+      await win.locator('[data-jet-setup="ready"]').waitFor({ timeout: 60_000 });
+      // All three at once (the board shows finished and waiting rows), saved as a task for the Tasks page.
+      await win.locator("[data-run-trial]").uncheck();
+      await win.locator("[data-run-save-toggle]").check();
+      await win.locator("[data-run-save-name]").fill("Place the weekly order");
       await win.waitForTimeout(500);
       await shot(win, "run-task");
       await win.locator("[data-run-start]").click();
@@ -219,6 +225,19 @@ async function main() {
       await shot(win, "task-board");
       await win.locator("[data-task-stop]").click().catch(() => {});
       await win.waitForTimeout(2000);
+      await win.locator("[data-task-clear]").click().catch(() => {});
+      await win.locator("[data-nav-tasks]").click();
+      await win.locator("[data-step-timeline]").waitFor();
+      // From the top: the page may still be scrolled from the profiles view.
+      await win.evaluate(() => {
+        for (let el = document.querySelector("[data-tasks-view]"); el; el = el.parentElement) el.scrollTop = 0;
+        window.scrollTo(0, 0);
+      });
+      await win.waitForTimeout(800);
+      await shot(win, "tasks-page");
+      await win.locator("[data-step-timeline]").scrollIntoViewIfNeeded();
+      await win.waitForTimeout(500);
+      await shot(win, "task-steps");
     }
   } finally {
     await app.close().catch(() => {});

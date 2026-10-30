@@ -10,7 +10,7 @@ import * as launcher from "./launcher";
 import * as geo from "./geo";
 import { checkProxy, resolveExit } from "./proxycheck";
 import { webrtcIpFollowsProxy } from "./proxyargs";
-import { readSettings, writeSettings, ensureDirs, FINGERPRINTS_DIR, PROFILES_DIR } from "./store";
+import { readSettings, writeSettings, ensureDirs, FINGERPRINTS_DIR, PROFILES_DIR, ROOT } from "./store";
 import { apiBase, checkLicense, resolveLicenseKey } from "./license";
 import { pollLogin, startLogin } from "./devicelogin";
 import { fetchCatalog, listVersions, fetchProRevisions } from "./catalog";
@@ -27,13 +27,21 @@ import { hostGpuCached } from "./hostgpu";
 import { parseCookies, parseMigration } from "./migrate";
 import { addPending, readPending } from "./cookiejar";
 import crypto from "node:crypto";
-import { SyncManager, spawnJet, type StartRequest } from "./jetsync";
+import { SyncManager, spawnJet, type StartRequest, type SyncRun } from "./jetsync";
+import { deleteTask, readTasks, recordRun, saveTask, tasksPath, type SavedTask } from "./tasks";
+import { checkKey, findPython, installJet, isCustomCommand, jetStatus, type JetStatus } from "./jetsetup";
 import type { Profile, Settings, FingerprintMeta } from "./types";
 
 const CLEARCOTE_PROFILES_REPO = "clearcotelabs/clearcote-profiles";
 
 /** Links out of the app go only to our own pages. */
-export const ALLOWED_EXTERNAL = [/^https:\/\/www\.clearcotelabs\.com\//, /^https:\/\/github\.com\/clearcotelabs\//];
+export const ALLOWED_EXTERNAL = [
+  /^https:\/\/www\.clearcotelabs\.com\//,
+  /^https:\/\/github\.com\/clearcotelabs\//,
+  // Jet setup (electron/jetsetup.ts): where to get Python and the model key.
+  /^https:\/\/www\.python\.org\/downloads\/$/,
+  /^https:\/\/console\.typesafe\.ai\/?$/,
+];
 
 /** Who asked: lets a handler stream progress back to that caller. */
 export interface HandlerCtx {
@@ -184,6 +192,8 @@ export function bootstrap(cloudFile: string): CloudManager {
   });
 }
 
+const TASKS_FILE = () => tasksPath(ROOT);
+
 /** The one task runner of this process (electron/jetsync.ts). The front door subscribes to its "changed". */
 let syncManager: SyncManager | null = null;
 export function getSyncManager(host: Pick<HandlerHost, "cloud">): SyncManager {
@@ -198,7 +208,39 @@ export function getSyncManager(host: Pick<HandlerHost, "cloud">): SyncManager {
     settings: () => readSettings(),
     spawnWorker: spawnJet,
   });
+  if (!recording) {
+    recording = true;
+    recordTaskRuns(syncManager);
+  }
   return syncManager;
+}
+
+let recording = false;
+function recordTaskRuns(manager: SyncManager): void {
+  // A run of a saved task goes into its history; the first profile that finished gives the step timeline.
+  manager.on("finished", (run: SyncRun) => {
+    if (!run.taskId) return;
+    const done = run.rows.filter((r) => r.status === "done");
+    const learned = done.find((r) => r.skill === "learned" || r.skill === "repaired");
+    const best = learned ?? done[0];
+    recordRun(
+      TASKS_FILE(),
+      run.taskId,
+      { at: run.createdAt, total: run.rows.length, done: done.length, ...(run.params ? { params: run.params } : {}), usd: run.rows.reduce((a, r) => a + (r.usd ?? 0), 0) || undefined },
+      best ? { steps: best.steps, from: best.name, onlyIfNone: !learned } : undefined,
+    );
+    manager.emit("tasksChanged");
+  });
+}
+
+/** The setup checklist; a Jet command that works where the saved one does not is saved, unless it was typed in. */
+async function jetStatusSaved(): Promise<JetStatus> {
+  const s = readSettings();
+  const status = await jetStatus(s);
+  if (status.fixedCommand && !isCustomCommand(s.jetCommand) && status.fixedCommand !== s.jetCommand) {
+    writeSettings({ ...readSettings(), jetCommand: status.fixedCommand });
+  }
+  return status;
 }
 
 export function createHandlers(host: HandlerHost): Record<string, Handler> {
@@ -272,6 +314,19 @@ export function createHandlers(host: HandlerHost): Record<string, Handler> {
     "sync:clear": () => sync().clearFinished(),
     /** Where a running profile's DevTools endpoint is, for driving it from your own script. */
     "cdp:endpoint": (_c, id: string) => launcher.cdpEndpoint(String(id)) ?? null,
+    // Saved tasks (electron/tasks.ts): the recipe, its last steps and its run history.
+    "tasks:list": () => readTasks(TASKS_FILE()),
+    "tasks:save": (_c, t: Partial<SavedTask>) => saveTask(TASKS_FILE(), t),
+    "tasks:delete": (_c, id: string) => deleteTask(TASKS_FILE(), String(id)),
+    // Setup without a terminal (electron/jetsetup.ts): the checklist, Install Jet, and the key check.
+    "jet:status": () => jetStatusSaved(),
+    "jet:install": async () => {
+      const py = await findPython();
+      if (!py) return { ok: false, error: "No Python 3.10 or newer was found on this PC." };
+      const r = await installJet(py);
+      return r.ok ? { ok: true, status: await jetStatusSaved() } : r;
+    },
+    "jet:checkKey": (_c, key?: string) => checkKey(typeof key === "string" && key.trim() ? key : readSettings().jetApiKey),
 
     // ── Cloud ────────────────────────────────────────────────────────────────
     // Run a profile on Clearcote's servers (cloud.ts), follow it, stop it, and show it in a viewer.

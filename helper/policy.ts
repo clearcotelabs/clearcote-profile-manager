@@ -113,7 +113,7 @@ export function webPolicy(h: Record<string, Handler>): Record<string, Handler> {
       const list = (Array.isArray(data) ? data : [data]).map((p: Profile) => cleanProfile(p, null));
       return h["profiles:importData"](c, JSON.stringify(list));
     },
-    ...desktopOnly(["sync:start", "sync:approve", "sync:cancel", "sync:stop", "sync:clear", "cdp:endpoint"]),
+    ...desktopOnly(["sync:start", "sync:approve", "sync:cancel", "sync:stop", "sync:clear", "cdp:endpoint", "jet:status", "jet:install", "jet:checkKey"]),
     "sync:list": () => [],
     // A masked key from the Settings form means "the saved one".
     "license:check": (c, key?: string) => h["license:check"](c, key?.includes(MASK) ? undefined : key),

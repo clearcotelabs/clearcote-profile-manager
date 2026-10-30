@@ -56,7 +56,10 @@
   "1 profile": [
     "app/page.tsx"
   ],
-  "1 profile has no value for every slot and will be skipped:": [
+  "1 profile needs a value. Type it here; it is saved to the profile:": [
+    "src/components/RunTaskDialog.tsx"
+  ],
+  "1 profile still has an empty value and will be skipped.": [
     "src/components/RunTaskDialog.tsx"
   ],
   "1 profile without one": [
@@ -65,11 +68,23 @@
   "1 proxy": [
     "src/components/ProxiesView.tsx"
   ],
+  "1 run": [
+    "src/components/TasksView.tsx"
+  ],
   "1 running profile is left alone.": [
     "app/page.tsx"
   ],
   "1 setting matches “{query}”": [
     "src/components/ProfileEditor.tsx"
+  ],
+  "1 step": [
+    "src/components/StepTimeline.tsx"
+  ],
+  "1 step, from {name}": [
+    "src/components/StepTimeline.tsx"
+  ],
+  "1 task": [
+    "src/components/TasksView.tsx"
   ],
   "1 thing contradicts the rest": [
     "src/components/ProfileInspector.tsx"
@@ -110,6 +125,9 @@
   "<b>Remove old builds automatically</b> — after a newer build downloads. The build Latest uses, pinned builds and running ones always stay.": [
     "src/components/StorageSection.tsx"
   ],
+  "<b>Try it on {name} first</b> — Jet learns the task there. When it worked, the run board offers the other {n} in one click.": [
+    "src/components/RunTaskDialog.tsx"
+  ],
   "<ok>✓ Verified</ok> against the checksum published with the release.": [
     "src/components/UpdateBanner.tsx"
   ],
@@ -149,11 +167,17 @@
   "A saved key is checked straight away. The check briefly takes one browser slot, so while every slot is in use it can only confirm the key is valid.": [
     "src/components/SettingsModal.tsx"
   ],
+  "A saved task keeps its steps and every run, and runs again later from the Tasks page, with other profiles or other values.": [
+    "src/components/RunTaskDialog.tsx"
+  ],
   "A tab from the helper (127.0.0.1) just opened. Check that it shows this code, then press <b>Codes match: approve</b>.": [
     "src/components/HelperGate.tsx"
   ],
   "A typed screen size can disagree with the screen CSS media queries report while {source} is active, so a page reads two different screens. Typing your own monitor's size does not avoid it.": [
     "src/lib/coherence.ts"
+  ],
+  "A value it asks for": [
+    "src/components/StepTimeline.tsx"
   ],
   "API key": [
     "src/components/SettingsModal.tsx"
@@ -185,6 +209,9 @@
   "Add your Clearcote API key in Settings → Cloud to run profiles in the cloud.": [
     "src/lib/ipc.ts"
   ],
+  "Add your model key": [
+    "src/components/JetSetup.tsx"
+  ],
   "Added because a proxy is set": [
     "src/components/ProfileEditor.tsx"
   ],
@@ -202,6 +229,9 @@
   ],
   "AdsPower, Dolphin Anty, GoLogin, Multilogin, Octo…": [
     "app/page.tsx"
+  ],
+  "Advanced: the Jet command": [
+    "src/components/TasksSection.tsx"
   ],
   "All profiles": [
     "app/page.tsx",
@@ -276,6 +306,9 @@
   "Ask each time": [
     "src/components/TemplateDialogs.tsx"
   ],
+  "Ask me before a click that can't be undone (sending, buying, deleting)": [
+    "src/components/TasksView.tsx"
+  ],
   "Ask me each time": [
     "src/components/SettingsModal.tsx"
   ],
@@ -284,6 +317,12 @@
   ],
   "Asks again next time the app starts. Settings → Updates turns this off.": [
     "src/components/UpdateBanner.tsx"
+  ],
+  "Asks before a final click": [
+    "src/components/TasksView.tsx"
+  ],
+  "Asks for: {slots}": [
+    "src/components/TasksView.tsx"
   ],
   "At launch, fill any unset timezone, language, geolocation and WebRTC IP from the proxy's exit region.": [
     "src/lib/fields.ts"
@@ -403,10 +442,12 @@
     "src/components/BulkCreateDialog.tsx",
     "src/components/Confirm.tsx",
     "src/components/ExportDialog.tsx",
+    "src/components/JetSetup.tsx",
     "src/components/MigrateDialog.tsx",
     "src/components/ProfileEditor.tsx",
     "src/components/PromptDialog.tsx",
     "src/components/RunTaskDialog.tsx",
+    "src/components/TasksView.tsx",
     "src/components/TemplateDialogs.tsx"
   ],
   "Canvas 2D noise": [
@@ -429,6 +470,9 @@
   "Chameleons blend in to stay unseen. Spin up a profile — a saved fingerprint seed, proxy, and persistent session — and launch it any time.": [
     "app/page.tsx"
   ],
+  "Change": [
+    "src/components/RunTaskDialog.tsx"
+  ],
   "Change version": [
     "src/lib/launchError.ts"
   ],
@@ -443,8 +487,14 @@
     "src/components/ProxiesView.tsx",
     "src/components/SettingsModal.tsx"
   ],
+  "Check again": [
+    "src/components/JetSetup.tsx"
+  ],
   "Check all": [
     "src/components/ProxiesView.tsx"
+  ],
+  "Check and save": [
+    "src/components/JetSetup.tsx"
   ],
   "Check every proxy": [
     "app/page.tsx"
@@ -491,17 +541,30 @@
   "Checking where “{name}” exits…": [
     "app/page.tsx"
   ],
+  "Checking whether Jet is ready on this PC…": [
+    "src/components/JetSetup.tsx"
+  ],
   "Checking…": [
+    "src/components/JetSetup.tsx",
     "src/components/ProfileEditor.tsx",
     "src/components/ProxiesView.tsx",
     "src/components/SettingsModal.tsx",
     "src/lib/launchTarget.ts"
   ],
+  "Choose": [
+    "src/components/StepTimeline.tsx"
+  ],
   "Choose file…": [
     "src/components/MigrateDialog.tsx"
   ],
+  "Choose the profiles to run it on:": [
+    "src/components/RunTaskDialog.tsx"
+  ],
   "Choose {exe}…": [
     "src/components/SettingsModal.tsx"
+  ],
+  "Chosen by the model": [
+    "src/components/StepTimeline.tsx"
   ],
   "Chrome allows third-party cookies, and embedded sign-in, payment and challenge frames rely on them. Block them only for a site that should not see them. Builds before 154 r36 block them unless told otherwise, so an unticked profile tells them to allow; set a choice here rather than on the browser's own settings page, which this overrides.": [
     "src/lib/fields.ts"
@@ -554,6 +617,9 @@
   ],
   "Clearing…": [
     "src/components/StorageSection.tsx"
+  ],
+  "Click": [
+    "src/components/StepTimeline.tsx"
   ],
   "Click the page to type into it. Paste with {keys}. Closing this window does not stop the cloud browser.": [
     "src/components/CloudViewer.tsx"
@@ -640,6 +706,9 @@
   "Come back to this tab": [
     "src/components/HelperGate.tsx"
   ],
+  "Comes from the profile itself": [
+    "src/components/TasksView.tsx"
+  ],
   "Commands": [
     "app/page.tsx"
   ],
@@ -695,11 +764,17 @@
     "app/page.tsx",
     "src/components/StorageSection.tsx"
   ],
+  "Could not copy the task: {msg}": [
+    "src/components/TasksView.tsx"
+  ],
   "Could not copy to the clipboard.": [
     "app/page.tsx"
   ],
   "Could not reach GitHub.": [
     "src/components/SettingsModal.tsx"
+  ],
+  "Could not save the task: {msg}": [
+    "src/components/TasksView.tsx"
   ],
   "Couldn't reach Clearcote's servers": [
     "src/lib/launchError.ts"
@@ -771,11 +846,15 @@
   "Data directory": [
     "src/lib/fields.ts"
   ],
+  "Default value": [
+    "src/components/TasksView.tsx"
+  ],
   "Defaults to this host.": [
     "src/lib/fields.ts"
   ],
   "Delete": [
     "app/page.tsx",
+    "src/components/TasksView.tsx",
     "src/components/TemplateDialogs.tsx"
   ],
   "Delete (can be undone)": [
@@ -793,6 +872,9 @@
   "Deleted 1 profile.": [
     "app/page.tsx"
   ],
+  "Deleted the task “{name}”.": [
+    "app/page.tsx"
+  ],
   "Deleted {n} profiles.": [
     "app/page.tsx"
   ],
@@ -806,12 +888,18 @@
   "Deny list": [
     "src/lib/fields.ts"
   ],
+  "Describe it as you would to a person, for example: Log in with {{email}} and the password {{password}}, then open Orders": [
+    "src/components/RunTaskDialog.tsx"
+  ],
   "Details": [
     "src/components/ProfileCard.tsx"
   ],
   "Details of {name}": [
     "app/page.tsx",
     "src/components/ProfileInspector.tsx"
+  ],
+  "Different per profile? Insert a value:": [
+    "src/components/RunTaskDialog.tsx"
   ],
   "Discard": [
     "app/page.tsx"
@@ -824,7 +912,8 @@
     "src/components/HelperGate.tsx",
     "src/components/ProfileCard.tsx",
     "src/components/ProfileEditor.tsx",
-    "src/components/ProfileInspector.tsx"
+    "src/components/ProfileInspector.tsx",
+    "src/components/TaskBoard.tsx"
   ],
   "Does it work and where does it exit? Changes nothing. UDP is tested only when you ask.": [
     "src/components/ProfileEditor.tsx"
@@ -840,6 +929,7 @@
   ],
   "Done": [
     "src/components/MigrateDialog.tsx",
+    "src/components/RunTaskDialog.tsx",
     "src/components/SettingsModal.tsx",
     "src/components/TaskBoard.tsx",
     "src/components/TemplateDialogs.tsx"
@@ -849,6 +939,9 @@
   ],
   "Download": [
     "src/components/UpdateBanner.tsx"
+  ],
+  "Download Python ↗": [
+    "src/components/JetSetup.tsx"
   ],
   "Download failed.": [
     "app/page.tsx"
@@ -888,7 +981,8 @@
     "src/lib/fields.ts"
   ],
   "Duplicate": [
-    "src/components/ProfileCard.tsx"
+    "src/components/ProfileCard.tsx",
+    "src/components/TasksView.tsx"
   ],
   "Each profile keeps its own login unless the new address has one. Their last exit is cleared, since it was measured through the old server.": [
     "app/page.tsx"
@@ -902,12 +996,19 @@
   "Each profile's cookies, logins and cache. Clearing the cache keeps you signed in.": [
     "src/components/StorageSection.tsx"
   ],
+  "Each profile's own": [
+    "src/components/RunTaskDialog.tsx"
+  ],
+  "Each profile's own value": [
+    "src/components/TasksView.tsx"
+  ],
   "Each time the app starts, it asks {host} whether a newer release exists and suggests upgrading. This build is unsigned, so nothing is installed behind your back — you download and run the installer yourself, and its checksum is verified first.": [
     "src/components/SettingsModal.tsx"
   ],
   "Edit": [
     "src/components/ProfileCard.tsx",
-    "src/components/ShortcutsDialog.tsx"
+    "src/components/ShortcutsDialog.tsx",
+    "src/components/TasksView.tsx"
   ],
   "Edit profile": [
     "src/components/ProfileEditor.tsx",
@@ -924,6 +1025,9 @@
   ],
   "Empty uses the persona's screen, or this display when there is no persona. On builds before 154 r36, with a seed, a captured fingerprint or Light stealth active, a typed size reaches screen.* but not the CSS media queries, so pages read two different screens, even when the size matches your own monitor. From 154 r36 on both report the typed size: typing all four of this display's values is fine, while any other size is still a faked screen the real window cannot match.": [
     "src/lib/fields.ts"
+  ],
+  "Empty: it starts on the page that is open.": [
+    "src/components/TasksView.tsx"
   ],
   "Enable Widevine (DRM) in Session, or set the brand to Chromium — which is what this build honestly is.": [
     "src/lib/coherence.ts"
@@ -960,6 +1064,9 @@
   ],
   "Everything else in a profile already survives a copy. Cookies do not, because they are sealed with a key the OS keychain holds for the machine that created them.": [
     "src/lib/fields.ts"
+  ],
+  "Examples:": [
+    "src/components/RunTaskDialog.tsx"
   ],
   "Exit": [
     "src/components/ProfileTable.tsx"
@@ -1029,6 +1136,9 @@
   "File contents": [
     "src/components/MigrateDialog.tsx"
   ],
+  "Fill a form": [
+    "src/components/RunTaskDialog.tsx"
+  ],
   "Fill all four and the pixel ratio from this display: {width} × {height}, work area {availWidth} × {availHeight}, pixel ratio {ratio}": [
     "src/components/ProfileEditor.tsx"
   ],
@@ -1061,9 +1171,15 @@
   "Fingerprint seed {seed}": [
     "src/components/ProfileCard.tsx"
   ],
+  "Finish setting up Jet first.": [
+    "src/components/RunTaskDialog.tsx"
+  ],
   "Fix →": [
     "src/components/ProfileEditor.tsx",
     "src/components/ProfileInspector.tsx"
+  ],
+  "For example: the search words": [
+    "src/components/TasksView.tsx"
   ],
   "For moving to another computer you control.": [
     "src/components/ExportDialog.tsx"
@@ -1125,6 +1241,9 @@
   "Get a free key ↗": [
     "src/components/SettingsModal.tsx"
   ],
+  "Get a key ↗": [
+    "src/components/JetSetup.tsx"
+  ],
   "Gives every profile Chrome's revocation list, which the browser never downloads by itself, so it refuses the certificates Google has revoked or distrusted, as Chrome does. The list comes from {host}, directly from this PC rather than through a profile's proxy, and is refreshed every 6 hours. The first tab waits on a blank page for a few seconds until the list is active, then opens the start page.": [
     "src/components/SettingsModal.tsx"
   ],
@@ -1154,8 +1273,7 @@
   ],
   "Hide": [
     "src/components/SettingsModal.tsx",
-    "src/components/TaskBoard.tsx",
-    "src/components/TasksSection.tsx"
+    "src/components/TaskBoard.tsx"
   ],
   "Hide 1 capture with a display too small to contain a browser window (under {w}×{h}) — the window would be bigger than its own screen.": [
     "src/components/LibraryModal.tsx"
@@ -1172,8 +1290,14 @@
   "Hide {n} captures with a display too small to contain a browser window (under {w}×{h}) — the window would be bigger than its own screen.": [
     "src/components/LibraryModal.tsx"
   ],
+  "Hint": [
+    "src/components/TasksView.tsx"
+  ],
   "How much to show": [
     "src/components/ProfileEditor.tsx"
+  ],
+  "How sure the model was": [
+    "src/components/StepTimeline.tsx"
   ],
   "How the app behaves.": [
     "src/components/SettingsModal.tsx"
@@ -1259,8 +1383,17 @@
   "India": [
     "src/components/CloudFields.tsx"
   ],
-  "Install it once with {cmd}. Leave the command empty to use {bin} from PATH, or give the full command, for example a Python of your own.": [
-    "src/components/TasksSection.tsx"
+  "Install Jet": [
+    "src/components/JetSetup.tsx"
+  ],
+  "Install Python 3.10 or newer": [
+    "src/components/JetSetup.tsx"
+  ],
+  "Installing Jet and the Clearcote SDK with pip. This takes a minute or two…": [
+    "src/components/JetSetup.tsx"
+  ],
+  "Installing…": [
+    "src/components/JetSetup.tsx"
   ],
   "Invalid licence.": [
     "src/components/SettingsModal.tsx"
@@ -1277,6 +1410,9 @@
   "It could not be stopped. Try again.": [
     "app/page.tsx",
     "src/components/CloudViewer.tsx"
+  ],
+  "It did not finish on {name}. Open the row to see the last steps, then change the task and try again.": [
+    "src/components/TaskBoard.tsx"
   ],
   "It ended with {code}.": [
     "src/lib/launchError.ts"
@@ -1297,6 +1433,12 @@
   "It was discarded without being used. Launching again downloads it afresh.": [
     "src/lib/launchError.ts"
   ],
+  "It worked on {name}. Jet saved the task, so the other profile repeats it without the model.": [
+    "src/components/TaskBoard.tsx"
+  ],
+  "It worked on {name}. Jet saved the task, so the other {n} repeat it without the model.": [
+    "src/components/TaskBoard.tsx"
+  ],
   "Italy": [
     "src/components/CloudFields.tsx"
   ],
@@ -1312,17 +1454,23 @@
   "Japan": [
     "src/components/CloudFields.tsx"
   ],
-  "Jet": [
+  "Jet command": [
     "src/components/TasksSection.tsx"
+  ],
+  "Jet runs on Python. On Windows, tick \"Add python.exe to PATH\" in the installer. Then come back and press Check again.": [
+    "src/components/JetSetup.tsx"
   ],
   "Jet settings…": [
     "src/components/RunTaskDialog.tsx"
   ],
-  "Jet works the task out in the first profile and saves it. The other profiles repeat it without the model, each on its own page with its own mouse movement and timing.": [
-    "src/components/RunTaskDialog.tsx"
+  "Jet {v} installed": [
+    "src/components/JetSetup.tsx"
   ],
-  "Jet's decision model (TYPESAFE_API_KEY). Needed only the first time a task is learned, about $0.001 a task; repeating a learned task uses no model. Empty: the key from Jet's own .env or the environment.": [
-    "src/components/TasksSection.tsx"
+  "Jet {v} is ready.": [
+    "src/components/JetSetup.tsx"
+  ],
+  "Jet's model picks each click the first time a task is learned, about $0.001 a task. Repeating a learned task uses no model. Create a key in the TypeSafe console and paste it here.": [
+    "src/components/JetSetup.tsx"
   ],
   "Keep editing": [
     "app/page.tsx"
@@ -1344,6 +1492,9 @@
   ],
   "Keeps the TLS ClientHello coherent with the Chrome version the persona claims, instead of always emitting the build's native one.": [
     "src/lib/fields.ts"
+  ],
+  "Key": [
+    "src/components/StepTimeline.tsx"
   ],
   "Key set": [
     "src/components/SettingsModal.tsx"
@@ -1503,7 +1654,7 @@
     "src/components/LibraryModal.tsx",
     "src/components/StorageSection.tsx"
   ],
-  "Log in as {{email}} with the password {{password}} and accept the new terms": [
+  "Log in": [
     "src/components/RunTaskDialog.tsx"
   ],
   "Logins survive a stop. They are kept in your Clearcote account, separate from this PC's browser data.": [
@@ -1543,7 +1694,13 @@
     "src/components/TaskBoard.tsx"
   ],
   "Model key": [
-    "src/components/TasksSection.tsx"
+    "src/components/JetSetup.tsx"
+  ],
+  "Model key works": [
+    "src/components/JetSetup.tsx"
+  ],
+  "Model key works (from TYPESAFE_API_KEY)": [
+    "src/components/JetSetup.tsx"
   ],
   "More actions for {name}": [
     "src/components/ProfileCard.tsx",
@@ -1589,11 +1746,15 @@
   "Name": [
     "src/components/ProfileTable.tsx",
     "src/components/TaskValues.tsx",
+    "src/components/TasksView.tsx",
     "src/lib/fields.ts",
     "src/lib/profileList.ts"
   ],
   "Names": [
     "src/components/BulkCreateDialog.tsx"
+  ],
+  "Needs Python first.": [
+    "src/components/JetSetup.tsx"
   ],
   "Needs attention": [
     "app/page.tsx",
@@ -1653,11 +1814,17 @@
   "New random GPU": [
     "src/components/TemplateDialogs.tsx"
   ],
+  "New task": [
+    "src/components/TasksView.tsx"
+  ],
   "Newest": [
     "src/lib/profileList.ts"
   ],
   "Next: {action}": [
     "src/components/TaskBoard.tsx"
+  ],
+  "No": [
+    "src/components/TasksView.tsx"
   ],
   "No HTTP/3 (QUIC)": [
     "src/lib/quickCreate.ts"
@@ -1711,11 +1878,20 @@
   "No reason was given.": [
     "src/lib/launchError.ts"
   ],
+  "No saved tasks yet": [
+    "src/components/TasksView.tsx"
+  ],
   "No setting matches that. Try a switch name, like “socks5”.": [
     "src/components/ProfileEditor.tsx"
   ],
+  "No steps yet: run the task once and its steps show here.": [
+    "src/components/StepTimeline.tsx"
+  ],
   "No tab? <a>Open the approval page</a>. The request expires in two minutes.": [
     "src/components/HelperGate.tsx"
+  ],
+  "No task matches “{q}”.": [
+    "src/components/TasksView.tsx"
   ],
   "No templates yet": [
     "app/page.tsx"
@@ -1739,6 +1915,15 @@
   ],
   "Not done": [
     "src/components/TaskBoard.tsx"
+  ],
+  "Not run yet": [
+    "src/components/TasksView.tsx"
+  ],
+  "Not run yet.": [
+    "src/components/TasksView.tsx"
+  ],
+  "Not saved": [
+    "src/components/TasksView.tsx"
   ],
   "Not saved yet — press Save or Enter.": [
     "src/components/SettingsModal.tsx"
@@ -1789,6 +1974,15 @@
   "On for new profiles. Downloaded once from Google's own component server, SHA-256 verified, then shared by every profile that uses it.": [
     "src/lib/fields.ts"
   ],
+  "On {n} profiles: {names} and {more} more": [
+    "src/components/RunTaskDialog.tsx"
+  ],
+  "On: {names}": [
+    "src/components/RunTaskDialog.tsx"
+  ],
+  "One click: the app runs pip for you in Python {v}.": [
+    "src/components/JetSetup.tsx"
+  ],
   "One flag per line. Appended verbatim, after everything else.": [
     "src/components/ProfileEditor.tsx"
   ],
@@ -1806,6 +2000,9 @@
   ],
   "Only does something with a proxy set. Needs build 152 r22 or newer.": [
     "src/lib/fields.ts"
+  ],
+  "Open": [
+    "app/page.tsx"
   ],
   "Open build": [
     "src/lib/launchTarget.ts"
@@ -1829,6 +2026,9 @@
   "Open on this computer": [
     "src/components/ProfileInspector.tsx",
     "src/components/ProfileTable.tsx"
+  ],
+  "Open page": [
+    "src/components/StepTimeline.tsx"
   ],
   "Open the cloud window of {name}": [
     "app/page.tsx"
@@ -1868,6 +2068,12 @@
   "Override": [
     "src/components/SettingsModal.tsx"
   ],
+  "Pacing": [
+    "src/components/TasksView.tsx"
+  ],
+  "Pacing: {n} at a time, {a}–{b} s apart": [
+    "src/components/RunTaskDialog.tsx"
+  ],
   "Pair this browser": [
     "src/components/HelperGate.tsx"
   ],
@@ -1885,6 +2091,9 @@
   ],
   "Paste some proxies to see what will be created.": [
     "src/components/BulkCreateDialog.tsx"
+  ],
+  "Paste your key": [
+    "src/components/JetSetup.tsx"
   ],
   "Path": [
     "src/components/SettingsModal.tsx"
@@ -1913,6 +2122,9 @@
   ],
   "Pick a model from the {vendor} group — this machine's GPU maker — or leave the GPU model on the persona default.": [
     "src/lib/coherence.ts"
+  ],
+  "Pick a task on the left.": [
+    "src/components/TasksView.tsx"
   ],
   "Pick a version from the list instead.": [
     "src/lib/launchError.ts"
@@ -1954,6 +2166,9 @@
   "Preview": [
     "src/components/BulkCreateDialog.tsx",
     "src/lib/launchTarget.ts"
+  ],
+  "Profile": [
+    "src/components/RunTaskDialog.tsx"
   ],
   "Profile Manager": [
     "app/page.tsx"
@@ -1997,6 +2212,9 @@
   "Proxy on your clipboard: {proxy}": [
     "src/components/ProfileEditor.tsx"
   ],
+  "Python {v} found": [
+    "src/components/JetSetup.tsx"
+  ],
   "Randomize": [
     "src/components/ProfileEditor.tsx"
   ],
@@ -2006,11 +2224,20 @@
   "Read its source and how to verify it": [
     "src/components/HelperGate.tsx"
   ],
+  "Read something": [
+    "src/components/RunTaskDialog.tsx"
+  ],
+  "Ready. Select profiles and choose Run a task.": [
+    "src/components/JetSetup.tsx"
+  ],
   "Real Chrome hides local host candidates behind a .local name, and so does this by default. Switching it off re-exposes your private IP to every page.": [
     "src/lib/fields.ts"
   ],
   "Recently used": [
     "src/lib/profileList.ts"
+  ],
+  "Recipe": [
+    "src/components/TasksView.tsx"
   ],
   "Reconnecting to the cloud browser…": [
     "src/components/CloudViewer.tsx"
@@ -2081,6 +2308,9 @@
   ],
   "Rendering, TLS and the real Chrome version are left untouched. Screen is deliberately not spoofed.": [
     "src/lib/fields.ts"
+  ],
+  "Repeated from the saved task, no model call": [
+    "src/components/StepTimeline.tsx"
   ],
   "Replace template": [
     "src/components/TemplateDialogs.tsx"
@@ -2154,12 +2384,33 @@
   "Run a task…": [
     "app/page.tsx"
   ],
+  "Run again": [
+    "src/components/TasksView.tsx"
+  ],
+  "Run again with these values": [
+    "src/components/TasksView.tsx"
+  ],
   "Run in the cloud": [
     "src/components/ProfileCard.tsx",
     "src/components/ProfileInspector.tsx"
   ],
   "Run installer": [
     "src/components/UpdateBanner.tsx"
+  ],
+  "Run on the other profile": [
+    "src/components/TaskBoard.tsx"
+  ],
+  "Run on the other {n}": [
+    "src/components/TaskBoard.tsx"
+  ],
+  "Run on the others anyway": [
+    "src/components/TaskBoard.tsx"
+  ],
+  "Run on {n} profiles": [
+    "src/components/RunTaskDialog.tsx"
+  ],
+  "Run on {n} selected": [
+    "src/components/TasksView.tsx"
   ],
   "Run one task on many profiles with Jet: it learns the task in the first profile and repeats it on the rest.": [
     "src/components/SettingsModal.tsx"
@@ -2176,6 +2427,9 @@
   "Run {name} in the cloud": [
     "app/page.tsx",
     "src/components/ProfileCard.tsx"
+  ],
+  "Run “{name}”": [
+    "src/components/RunTaskDialog.tsx"
   ],
   "Running": [
     "app/page.tsx",
@@ -2202,15 +2456,28 @@
   "Running this profile on Clearcote's servers instead of this PC: where its traffic leaves, and what it keeps.": [
     "src/lib/fields.ts"
   ],
+  "Runs": [
+    "src/components/TasksView.tsx"
+  ],
+  "Run…": [
+    "src/components/TasksView.tsx"
+  ],
   "Same GPU": [
     "src/components/TemplateDialogs.tsx"
+  ],
+  "Same for all": [
+    "src/components/RunTaskDialog.tsx"
+  ],
+  "Same for every profile, asked when it runs": [
+    "src/components/TasksView.tsx"
   ],
   "Same proxy": [
     "src/components/TemplateDialogs.tsx"
   ],
   "Save": [
     "src/components/SettingsModal.tsx",
-    "src/components/TasksSection.tsx"
+    "src/components/TasksSection.tsx",
+    "src/components/TasksView.tsx"
   ],
   "Save & launch": [
     "src/components/ProfileEditor.tsx"
@@ -2218,8 +2485,15 @@
   "Save ({shortcut})": [
     "src/components/ProfileEditor.tsx"
   ],
+  "Save a task after it worked, or create one here. A saved task runs again without the model.": [
+    "src/components/TasksView.tsx"
+  ],
   "Save and launch ({shortcut})": [
     "src/components/ProfileEditor.tsx"
+  ],
+  "Save as a task": [
+    "src/components/RunTaskDialog.tsx",
+    "src/components/TaskBoard.tsx"
   ],
   "Save as template": [
     "src/components/TemplateDialogs.tsx"
@@ -2239,6 +2513,15 @@
   "Save the profile": [
     "src/components/ShortcutsDialog.tsx"
   ],
+  "Saved": [
+    "src/components/TasksView.tsx"
+  ],
+  "Saved as a task. Find it under Tasks.": [
+    "app/page.tsx"
+  ],
+  "Saved tasks": [
+    "src/components/TasksView.tsx"
+  ],
   "Saved the template “{name}”. Use it from the ▾ next to New profile.": [
     "app/page.tsx"
   ],
@@ -2254,6 +2537,9 @@
   "Saves their settings to a JSON file. Browser data — cookies, logins, history — is not included; it stays in each profile's data folder.": [
     "src/components/ExportDialog.tsx"
   ],
+  "Saving…": [
+    "src/components/TasksView.tsx"
+  ],
   "Say what the task is.": [
     "src/lib/syncMock.ts"
   ],
@@ -2268,6 +2554,9 @@
   ],
   "Screen width": [
     "src/lib/fields.ts"
+  ],
+  "Scroll": [
+    "src/components/StepTimeline.tsx"
   ],
   "Search ({shortcut} or /)": [
     "app/page.tsx"
@@ -2285,8 +2574,15 @@
   "Search proxies": [
     "src/components/ProxiesView.tsx"
   ],
+  "Search tasks": [
+    "src/components/TasksView.tsx"
+  ],
+  "Search tasks…": [
+    "src/components/TasksView.tsx"
+  ],
   "Secret": [
-    "src/components/TaskValues.tsx"
+    "src/components/TaskValues.tsx",
+    "src/components/TasksView.tsx"
   ],
   "Secret values are typed only: Jet's model, the run board and the saved task see the name, never the value.": [
     "src/components/RunTaskDialog.tsx"
@@ -2295,6 +2591,7 @@
     "app/page.tsx"
   ],
   "Select at least one profile.": [
+    "src/components/RunTaskDialog.tsx",
     "src/lib/syncMock.ts"
   ],
   "Select every profile shown": [
@@ -2324,6 +2621,9 @@
   ],
   "Set Platform to macos on a Mac, or import a fingerprint captured on {platform}.": [
     "src/lib/coherence.ts"
+  ],
+  "Set by the app when it installs Jet. Leave it empty to use {bin} from PATH, or give the full command, for example a Python of your own.": [
+    "src/components/TasksSection.tsx"
   ],
   "Set group": [
     "app/page.tsx"
@@ -2371,8 +2671,7 @@
   ],
   "Show": [
     "src/components/SettingsModal.tsx",
-    "src/components/TaskBoard.tsx",
-    "src/components/TasksSection.tsx"
+    "src/components/TaskBoard.tsx"
   ],
   "Show API key": [
     "src/components/SettingsModal.tsx"
@@ -2448,6 +2747,7 @@
   ],
   "Start page": [
     "src/components/RunTaskDialog.tsx",
+    "src/components/TasksView.tsx",
     "src/lib/fields.ts"
   ],
   "Starting in the cloud…": [
@@ -2460,6 +2760,12 @@
   "Starting…": [
     "src/components/RunTaskDialog.tsx",
     "src/components/SettingsModal.tsx"
+  ],
+  "Step": [
+    "src/components/StepTimeline.tsx"
+  ],
+  "Steps Jet took": [
+    "src/components/StepTimeline.tsx"
   ],
   "Stop": [
     "app/page.tsx",
@@ -2569,7 +2875,7 @@
     "src/components/Sidebar.tsx",
     "src/lib/fields.ts"
   ],
-  "Task": [
+  "Task name": [
     "src/components/RunTaskDialog.tsx"
   ],
   "Task run": [
@@ -2579,7 +2885,12 @@
     "src/lib/fields.ts"
   ],
   "Tasks": [
-    "src/components/SettingsModal.tsx"
+    "app/page.tsx",
+    "src/components/SettingsModal.tsx",
+    "src/components/Sidebar.tsx"
+  ],
+  "Tasks are run by Jet, a free open-source helper on this PC. Set it up once:": [
+    "src/components/JetSetup.tsx"
   ],
   "Template": [
     "src/components/BulkCreateDialog.tsx",
@@ -2700,6 +3011,9 @@
   "The key could not be checked.": [
     "src/components/SettingsModal.tsx"
   ],
+  "The key could not be checked. Try again in a moment.": [
+    "src/components/JetSetup.tsx"
+  ],
   "The key is sent only to clearcotelabs.com, and only when a cloud browser is started, checked or followed.": [
     "src/components/SettingsModal.tsx"
   ],
@@ -2730,6 +3044,9 @@
   "The old fingerprint is not copied: each profile gets a persona from a real device with the same operating system. Cookies are added at each profile's first launch.": [
     "src/components/MigrateDialog.tsx"
   ],
+  "The page that is open": [
+    "src/components/TasksView.tsx"
+  ],
   "The persona already varies the model with the seed, so profiles no longer all report the same card. If you pick one, the strongest coherence comes from a model of this machine's own GPU maker: driver limits follow the real card, so a claim from another maker can be checked against them. Custom… exposes the raw vendor and renderer strings for a card the list does not have.": [
     "src/lib/fields.ts"
   ],
@@ -2750,6 +3067,9 @@
   ],
   "The request expired. Nothing was paired.": [
     "src/components/HelperGate.tsx"
+  ],
+  "The saved key was not accepted. Paste a new one.": [
+    "src/components/JetSetup.tsx"
   ],
   "The screen size is typed but the pixel ratio is not, so {source} still picks it. A typed screen at another display's ratio describes a panel no monitor has.": [
     "src/lib/coherence.ts"
@@ -2798,6 +3118,9 @@
   ],
   "This is a Mac, so the browser's fonts and text measurements are macOS's own, but the persona claims {platform} — a mismatch any font check reads.": [
     "src/lib/coherence.ts"
+  ],
+  "This key was not accepted. Copy it again from the console: the whole key, no spaces.": [
+    "src/components/JetSetup.tsx"
   ],
   "This list": [
     "src/components/ShortcutsDialog.tsx"
@@ -2881,6 +3204,9 @@
   "This removes them <em>and their saved browser data</em> — cookies, logins, history and extensions. You can undo it for a few seconds.": [
     "app/page.tsx"
   ],
+  "This task asks for nothing: it does the same thing on every profile.": [
+    "src/components/TasksView.tsx"
+  ],
   "Through an HTTP proxy a browser sends a Proxy-Connection header on plain-HTTP requests, and every proxied connection shows proxy-shaped connect and TLS timing. This sends Connection instead and reports the timing like a reused connection.": [
     "src/lib/fields.ts"
   ],
@@ -2941,6 +3267,9 @@
     "src/components/HelperGate.tsx",
     "src/lib/launchError.ts"
   ],
+  "Try it on 1 profile": [
+    "src/components/RunTaskDialog.tsx"
+  ],
   "Turn farbling back on if you only wanted the 2D canvas unfarbled.": [
     "src/lib/coherence.ts"
   ],
@@ -2968,11 +3297,20 @@
   "Turning this off leaves WebGL and audio noised — narrower than switching farbling off entirely. Needs 150 r12 or newer.": [
     "src/lib/fields.ts"
   ],
+  "Type": [
+    "src/components/StepTimeline.tsx"
+  ],
   "Type all four to match this host's real display, or leave them empty so Light stealth reports the real screen.": [
     "src/lib/coherence.ts"
   ],
   "Type all four to match this host's real display, or leave them empty so {source} supplies the screen.": [
     "src/lib/coherence.ts"
+  ],
+  "Typed only: never saved with the task or shown to the model.": [
+    "src/components/TasksView.tsx"
+  ],
+  "Typed when it runs": [
+    "src/components/TasksView.tsx"
   ],
   "UDP could not be tested.": [
     "src/lib/proxyReport.ts"
@@ -3028,11 +3366,20 @@
   "Unzip it and start it": [
     "src/components/HelperGate.tsx"
   ],
+  "Update Jet": [
+    "src/components/JetSetup.tsx"
+  ],
+  "Update Jet (this one is {v}; tasks need 0.3.0 or newer)": [
+    "src/components/JetSetup.tsx"
+  ],
   "Update the app to import cookies.": [
     "app/page.tsx"
   ],
   "Update the app to import from another browser.": [
     "app/page.tsx"
+  ],
+  "Update the saved task": [
+    "src/components/RunTaskDialog.tsx"
   ],
   "Updates": [
     "src/components/SettingsModal.tsx"
@@ -3045,6 +3392,12 @@
   ],
   "Use a socks5:// proxy, or turn UDP relaying off so the profile does not claim something it is not doing.": [
     "src/lib/coherence.ts"
+  ],
+  "Use an address that starts with http:// or https://, or leave it empty.": [
+    "src/components/TasksView.tsx"
+  ],
+  "Use another key": [
+    "src/components/JetSetup.tsx"
   ],
   "Use automatic": [
     "src/components/SettingsModal.tsx"
@@ -3084,8 +3437,8 @@
   "Value": [
     "src/components/TaskValues.tsx"
   ],
-  "Values used:": [
-    "src/components/RunTaskDialog.tsx"
+  "Values it asks for": [
+    "src/components/TasksView.tsx"
   ],
   "Version {version} is available — see the banner.": [
     "src/components/SettingsModal.tsx"
@@ -3114,6 +3467,9 @@
   "WebRTC only through the proxy": [
     "src/lib/quickCreate.ts"
   ],
+  "What Jet did": [
+    "src/components/TasksView.tsx"
+  ],
   "What WebRTC reports as the public address. “Resolve from proxy” fills it with the proxy's exit, and every launch looks that exit up again while the field still holds it, so a proxy that moves to another address does not leave WebRTC behind. Type an address to pin it.": [
     "src/lib/fields.ts"
   ],
@@ -3132,6 +3488,9 @@
   "What most profiles need. Everything else keeps its default; All settings has the rest.": [
     "src/components/ProfileEditor.tsx"
   ],
+  "What should each profile do?": [
+    "src/components/RunTaskDialog.tsx"
+  ],
   "What survives a restart, and what moves between machines.": [
     "src/lib/fields.ts"
   ],
@@ -3140,6 +3499,9 @@
   ],
   "What the app keeps on disk, what each part is for, and what can go.": [
     "src/components/SettingsModal.tsx"
+  ],
+  "What to do": [
+    "src/components/TasksView.tsx"
   ],
   "What's new": [
     "src/components/UpdateBanner.tsx"
@@ -3159,6 +3521,10 @@
   ],
   "Where traffic exits, and everything that should agree with it.": [
     "src/lib/fields.ts"
+  ],
+  "Where {slot} comes from": [
+    "src/components/RunTaskDialog.tsx",
+    "src/components/TasksView.tsx"
   ],
   "Which Clearcote build profiles launch with.": [
     "src/components/SettingsModal.tsx"
@@ -3214,8 +3580,11 @@
   "Workspace": [
     "src/components/Sidebar.tsx"
   ],
-  "Write {slot} for a value that differs per profile: its name, or one of its task values (in the profile's editor, under Identity).": [
-    "src/components/RunTaskDialog.tsx"
+  "Write a value it should ask for in double braces, like {example}.": [
+    "src/components/TasksView.tsx"
+  ],
+  "Yes": [
+    "src/components/TasksView.tsx"
   ],
   "You set this": [
     "src/components/ProfileEditor.tsx"
@@ -3253,6 +3622,12 @@
   "all": [
     "src/components/LibraryModal.tsx"
   ],
+  "all chosen by the model": [
+    "src/components/StepTimeline.tsx"
+  ],
+  "all replayed without the model": [
+    "src/components/StepTimeline.tsx"
+  ],
   "all — bridge everything": [
     "src/lib/fields.ts"
   ],
@@ -3264,9 +3639,6 @@
   ],
   "an unknown place": [
     "app/page.tsx"
-  ],
-  "and {n} more": [
-    "src/components/RunTaskDialog.tsx"
   ],
   "android — mobile persona": [
     "src/lib/fields.ts"
@@ -3320,6 +3692,9 @@
   "clearcote-profiles library": [
     "src/components/LibraryModal.tsx"
   ],
+  "closes the browser when done": [
+    "src/components/TasksView.tsx"
+  ],
   "cloud": [
     "src/components/CloudViewer.tsx",
     "src/components/ProfileCard.tsx",
@@ -3362,6 +3737,9 @@
   "geoip switched on — timezone, language and position will follow this proxy's exit region at launch. Untick it below if you don't want that.": [
     "src/components/ProfileEditor.tsx"
   ],
+  "has one": [
+    "src/components/RunTaskDialog.tsx"
+  ],
   "import a fingerprint": [
     "src/lib/webPreview.ts"
   ],
@@ -3393,6 +3771,7 @@
     "src/components/HelperGate.tsx"
   ],
   "learned": [
+    "src/components/StepTimeline.tsx",
     "src/components/TaskBoard.tsx"
   ],
   "library": [
@@ -3453,6 +3832,9 @@
   "on — hide local IPs (default)": [
     "src/lib/fields.ts"
   ],
+  "one at a time": [
+    "src/components/TasksView.tsx"
+  ],
   "open a profile's browser data": [
     "src/lib/webPreview.ts"
   ],
@@ -3462,6 +3844,9 @@
   ],
   "or drop it here, or paste below": [
     "src/components/MigrateDialog.tsx"
+  ],
+  "or type your own, like {slot}.": [
+    "src/components/RunTaskDialog.tsx"
   ],
   "persona default": [
     "src/components/ProfileInspector.tsx",
@@ -3483,6 +3868,7 @@
     "src/components/TaskBoard.tsx"
   ],
   "replayed": [
+    "src/components/StepTimeline.tsx",
     "src/components/TaskBoard.tsx"
   ],
   "run a profile in the cloud": [
@@ -3548,6 +3934,12 @@
   "used {n}×": [
     "src/lib/templates.ts"
   ],
+  "value for this run": [
+    "src/components/RunTaskDialog.tsx"
+  ],
+  "waits {min}–{max} s between starts": [
+    "src/components/TasksView.tsx"
+  ],
   "with login": [
     "src/components/ProxiesView.tsx"
   ],
@@ -3570,7 +3962,8 @@
     "src/lib/fields.ts"
   ],
   "{done} of {n} done": [
-    "src/components/TaskBoard.tsx"
+    "src/components/TaskBoard.tsx",
+    "src/components/TasksView.tsx"
   ],
   "{error} Reconnecting…": [
     "src/components/CloudViewer.tsx"
@@ -3580,6 +3973,9 @@
   ],
   "{label} (selected)": [
     "src/components/ProfileCard.tsx"
+  ],
+  "{name} (copy)": [
+    "src/components/TasksView.tsx"
   ],
   "{name} (group)": [
     "src/components/Sidebar.tsx"
@@ -3602,8 +3998,14 @@
   "{n} GB": [
     "src/components/ProfileEditor.tsx"
   ],
+  "{n} at a time": [
+    "src/components/TasksView.tsx"
+  ],
   "{n} builds nothing uses any more.": [
     "src/components/StorageSection.tsx"
+  ],
+  "{n} chosen by the model, the rest replayed": [
+    "src/components/StepTimeline.tsx"
   ],
   "{n} cookies added to “{name}”. They go into the browser at its next launch.": [
     "app/page.tsx"
@@ -3630,7 +4032,10 @@
     "app/page.tsx",
     "src/components/ProxiesView.tsx"
   ],
-  "{n} profiles have no value for every slot and will be skipped:": [
+  "{n} profiles need values. Type them here; they are saved to each profile:": [
+    "src/components/RunTaskDialog.tsx"
+  ],
+  "{n} profiles still have an empty value and will be skipped.": [
     "src/components/RunTaskDialog.tsx"
   ],
   "{n} profiles without one": [
@@ -3645,6 +4050,9 @@
   "{n} running profiles are left alone.": [
     "app/page.tsx"
   ],
+  "{n} runs": [
+    "src/components/TasksView.tsx"
+  ],
   "{n} selected": [
     "app/page.tsx"
   ],
@@ -3654,8 +4062,17 @@
   "{n} settings match “{query}”": [
     "src/components/ProfileEditor.tsx"
   ],
+  "{n} steps": [
+    "src/components/StepTimeline.tsx"
+  ],
+  "{n} steps, from {name}": [
+    "src/components/StepTimeline.tsx"
+  ],
   "{n} tabs": [
     "src/components/CloudViewer.tsx"
+  ],
+  "{n} tasks": [
+    "src/components/TasksView.tsx"
   ],
   "{n} things contradict the rest": [
     "src/components/ProfileInspector.tsx"
@@ -3663,11 +4080,23 @@
   "{n} waiting for you": [
     "src/components/TaskBoard.tsx"
   ],
+  "{pct}% sure": [
+    "src/components/StepTimeline.tsx"
+  ],
   "{proxy} — http and socks5 work in the cloud.": [
     "src/components/CloudFields.tsx"
   ],
   "{shown} of {total}": [
     "app/page.tsx"
+  ],
+  "{slot} for every profile": [
+    "src/components/RunTaskDialog.tsx"
+  ],
+  "{slot} for {name}": [
+    "src/components/RunTaskDialog.tsx"
+  ],
+  "{time} in all": [
+    "src/components/StepTimeline.tsx"
   ],
   "{used}/unlimited browsers in use": [
     "src/components/SettingsModal.tsx"

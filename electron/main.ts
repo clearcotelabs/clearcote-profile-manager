@@ -362,6 +362,7 @@ app.whenReady().then(() => {
   cloud.on("ended", (ev) => sendAll("cloud:ended", ev));
   registerIpc();
   getSyncManager({ cloud: () => cloud }).on("changed", (runs) => sendAll("sync:changed", runs));
+  getSyncManager({ cloud: () => cloud }).on("tasksChanged", () => sendAll("tasks:changed", null));
   // A browser that stopped without being asked to: tell the window, so its card can say why.
   launcher.browserEvents.on("exited", (ev) => {
     if (mainWin && !mainWin.isDestroyed()) mainWin.webContents.send("browser:exited", ev);

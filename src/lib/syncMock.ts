@@ -8,23 +8,30 @@ import type { Profile } from "@/types/profile";
 import type { StartRequest, SyncRun, SyncRow } from "../../electron/jetsync";
 import { normalizeTemplate, valuesFor } from "../../electron/jetslots";
 import { t } from "@/lib/i18n";
-import type { SyncApi } from "./ipc";
+import type { JetSetupApi, JetStatus, KeyState, SavedTask, SyncApi, TasksApi } from "./ipc";
 
 export function buildSyncMock(readProfiles: () => Profile[]): SyncApi {
   let runs: SyncRun[] = [];
+  /** Each run's own values (secret ones too), as the main process keeps them. */
+  const runParams = new Map<string, Record<string, string>>();
   const listeners = new Set<(r: SyncRun[]) => void>();
   const copy = () => runs.map((r) => ({ ...r, rows: r.rows.map((x) => ({ ...x, steps: [...x.steps] })) }));
   const changed = () => listeners.forEach((cb) => cb(copy()));
   const final = (s: SyncRow["status"]) => ["done", "blocked", "needs_input", "budget", "failed", "cancelled", "stopped"].includes(s);
   const later = (ms: number, fn: () => void) => setTimeout(fn, ms);
   const settle = (run: SyncRun) => {
-    if (run.rows.every((r) => final(r.status))) run.state = "finished";
+    if (run.state !== "finished" && run.rows.every((r) => final(r.status))) {
+      run.state = "finished";
+      if (run.taskId) recordMockRun(run);
+    }
     changed();
   };
 
   function play(run: SyncRun, row: SyncRow, i: number) {
     const p = readProfiles().find((x) => x.id === row.profileId);
-    const v = p ? valuesFor(run.goal, p) : { missing: ["?"], values: {}, secret: [] };
+    const extra = runParams.get(run.id) ?? {};
+    const withRun = p && Object.keys(extra).length ? { ...p, vars: [...(p.vars ?? []).filter((x) => !(x.key in extra)), ...Object.entries(extra).map(([key, value]) => ({ key, value }))] } : p;
+    const v = withRun ? valuesFor(run.goal, withRun) : { missing: ["?"], values: {}, secret: [] };
     later(150 + i * 250, () => {
       if (row.status !== "queued") return;
       if (v.missing.length) {
@@ -78,7 +85,7 @@ export function buildSyncMock(readProfiles: () => Profile[]): SyncApi {
       } catch {
         mode = null;
       }
-      if (mode !== "ok") return { ok: false, error: t("Running a task needs the desktop app (this is the browser preview).") };
+      if (mode !== "ok" && mode !== "setup") return { ok: false, error: t("Running a task needs the desktop app (this is the browser preview).") };
       const goal = normalizeTemplate(req.goal ?? "");
       if (!goal) return { ok: false, error: t("Say what the task is.") };
       if (!req.profileIds?.length) return { ok: false, error: t("Select at least one profile.") };
@@ -94,7 +101,14 @@ export function buildSyncMock(readProfiles: () => Profile[]): SyncApi {
         createdAt: Date.now(),
         state: "running",
         rows: req.profileIds.map((id) => ({ profileId: id, name: all.find((p) => p.id === id)?.name ?? id, status: "queued", steps: [] })),
+        ...(req.taskId ? { taskId: req.taskId } : {}),
       };
+      if (req.params && Object.keys(req.params).length) {
+        runParams.set(run.id, req.params);
+        const secret = new Set(req.paramSecret ?? []);
+        const shown = Object.fromEntries(Object.entries(req.params).filter(([k]) => !secret.has(k)));
+        if (Object.keys(shown).length) run.params = shown;
+      }
       runs = [run, ...runs].slice(0, 5);
       run.rows.forEach((row, i) => play(run, row, i));
       changed();
@@ -115,4 +129,105 @@ export function buildSyncMock(readProfiles: () => Profile[]): SyncApi {
       return () => listeners.delete(cb);
     },
   };
+}
+
+/** The setup checklist in the preview. localStorage["clearcote.mock.sync"] = "ok": ready. "setup": Python
+ *  found, Jet not installed and no key; Install Jet succeeds after a moment, and any key but "bad" is accepted. */
+export function buildJetSetupMock(): JetSetupApi {
+  const mode = () => (typeof localStorage === "undefined" ? null : localStorage.getItem("clearcote.mock.sync"));
+  let installed = false;
+  let keyOk = false;
+  const python = { cmd: ["py", "-3"], exe: "C:\Python313\python.exe", version: "3.13.2" };
+  const status = (): JetStatus => {
+    const m = mode();
+    if (m === "ok") return { python, jet: { ok: true, version: "0.3.1", command: "clearcote-jet" }, key: { ok: true, source: "settings" }, ready: true };
+    if (m !== "setup") return { python: null, jet: { ok: false, reason: "missing" }, key: { ok: false, reason: "missing" }, ready: false };
+    const jet: JetStatus["jet"] = installed ? { ok: true, version: "0.3.1", command: '"C:\Python313\python.exe" -m clearcote_jet.cli' } : { ok: false, reason: "missing" };
+    const key: KeyState = keyOk ? { ok: true, source: "settings" } : { ok: false, reason: "missing" };
+    return { python, jet, key, ready: jet.ok && key.ok };
+  };
+  return {
+    status: async () => {
+      await new Promise((r) => setTimeout(r, 200));
+      return status();
+    },
+    install: async () => {
+      await new Promise((r) => setTimeout(r, 1200));
+      if (mode() !== "setup" && mode() !== "ok") return { ok: false, error: "No Python 3.10 or newer was found on this PC." };
+      installed = true;
+      return { ok: true, status: status() };
+    },
+    checkKey: async (key) => {
+      await new Promise((r) => setTimeout(r, 300));
+      if (!key?.trim()) return keyOk ? { ok: true, source: "settings" } : { ok: false, reason: "missing" };
+      if (key.trim() === "bad") return { ok: false, reason: "rejected" };
+      keyOk = true;
+      return { ok: true, source: "settings" };
+    },
+  };
+}
+
+/** Saved tasks in the preview, kept in localStorage["clearcote.mock.tasks"]. */
+export function buildTasksMock(): TasksApi {
+  const KEY = TASKS_KEY;
+  const listeners = new Set<() => void>();
+  const read = (): SavedTask[] => {
+    try {
+      return JSON.parse(localStorage.getItem(KEY) || "[]");
+    } catch {
+      return [];
+    }
+  };
+  const write = (l: SavedTask[]) => localStorage.setItem(KEY, JSON.stringify(l));
+  return {
+    list: async () => read(),
+    save: async (t) => {
+      const now = Date.now();
+      const list = read();
+      const id = t.id || `task-${now.toString(36)}`;
+      const prev = list.find((x) => x.id === id);
+      const task: SavedTask = { params: [], confirm: true, history: [], createdAt: prev?.createdAt ?? now, ...prev, ...t, id, name: t.name?.trim() || prev?.name || String(t.goal ?? "Task").slice(0, 60), goal: String(t.goal ?? prev?.goal ?? ""), updatedAt: now } as SavedTask;
+      write(prev ? list.map((x) => (x.id === id ? task : x)) : [task, ...list]);
+      listeners.forEach((cb) => cb());
+      return task;
+    },
+    remove: async (id) => {
+      const list = read();
+      write(list.filter((x) => x.id !== id));
+      listeners.forEach((cb) => cb());
+      return list.some((x) => x.id === id);
+    },
+    onChanged: (cb) => {
+      listeners.add(cb);
+      window.addEventListener(TASKS_EVENT, cb);
+      return () => {
+        listeners.delete(cb);
+        window.removeEventListener(TASKS_EVENT, cb);
+      };
+    },
+  };
+}
+
+const TASKS_KEY = "clearcote.mock.tasks";
+const TASKS_EVENT = "clearcote-mock-tasks";
+
+/** As electron/handlers.ts does: a finished run of a saved task goes into its history and step timeline. */
+function recordMockRun(run: SyncRun) {
+  try {
+    const list: SavedTask[] = JSON.parse(localStorage.getItem(TASKS_KEY) || "[]");
+    const task = list.find((x) => x.id === run.taskId);
+    if (!task) return;
+    const done = run.rows.filter((r) => r.status === "done");
+    task.history = [{ at: run.createdAt, total: run.rows.length, done: done.length, ...(run.params ? { params: run.params } : {}) }, ...(task.history ?? [])].slice(0, 20);
+    const learned = done.find((r) => r.skill === "learned");
+    const best = learned ?? done[0];
+    if (best?.steps.length && (learned || !task.steps?.length)) {
+      task.steps = best.steps;
+      task.stepsFrom = best.name;
+    }
+    localStorage.setItem(TASKS_KEY, JSON.stringify(list));
+    window.dispatchEvent(new Event(TASKS_EVENT));
+  } catch {
+    /* preview only */
+  }
 }

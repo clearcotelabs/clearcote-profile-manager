@@ -15,6 +15,12 @@ A desktop app to **create, save, organize, and launch [Clearcote](https://github
 
 ![Run board with profiles waiting for approval](docs/screenshots/task-board.png)
 
+**Saved tasks** — the recipe, the values it asks for, the steps Jet took and every run; run it again later with other profiles or values
+
+![Tasks page](docs/screenshots/tasks-page.png)
+
+![The steps Jet took, as a timeline](docs/screenshots/task-steps.png)
+
 **Table view** (cards or a table, from the toolbar)
 
 ![Table view](docs/screenshots/table-view.png)
@@ -182,15 +188,28 @@ task out in the first profile and saves it; the others repeat it **without the m
 browser with its own mouse movement and timing. This copies the task, not your clicks, so profiles with
 different screens, languages or cookie banners still do the right thing.
 
-- **Values per profile.** `{{name}}`, `{{id}}`, `{{group}}` and `{{tags}}` come with every profile; add
-  your own under **Task values** in the editor. A **secret** value (a password) is typed only: the run
-  board, exports, the saved task and Jet's model see its name, never the value.
+- **Setting up Jet, no terminal.** The Run a task dialog and **Settings → Tasks** show a checklist:
+  Python found, Jet installed, model key working. **Install Jet** runs pip for you (from GitHub, no git
+  needed; when `clearcote-jet` is not on PATH the app uses `python -m clearcote_jet.cli`), **Check and
+  save** tests the key before saving it, and a missing Python links to python.org. Only learning a task
+  uses the model, about $0.001 a task.
+- **Try it on one profile first.** On by default for more than one profile: Jet learns the task there,
+  and once it worked the run board offers **Run on the other N** in one click.
+- **Values.** Write `{{email}}` for anything that differs; the chips under the task insert one. Each value
+  is either **each profile's own** (`{{name}}`, `{{group}}` and `{{tags}}` come with every profile; your
+  own are **Task values** in the editor, and a profile that lacks one gets a field right in the dialog,
+  saved to that profile) or **the same for all** for this run, like a search term, which is never written
+  to the profiles. A **secret** value (a password) is typed only: the run board, exports, the saved task
+  and Jet's model see its name, never the value.
+- **Saved tasks.** **Save as a task** in the dialog, or on the run board after a run worked. The **Tasks**
+  page lists them, each with its recipe, the values it asks for (switch a value between per profile and
+  same for all, give it a default or a hint), **the steps Jet took** as a timeline (what it clicked and
+  typed, learned or replayed, how sure the model was) and every run with its values. **Run** opens the
+  dialog prefilled; **Run again with these values** repeats a past run. Edit, duplicate, delete (with
+  undo). A saved task runs again from what Jet learned, so a repeat needs no model.
 - **Ask before a click that can't be undone.** On by default: each profile stops before sending, buying,
   booking or deleting, and the run board lets you approve them one by one or all at once.
 - **Pacing.** How many run at once, and a random wait between starts, so a batch never acts in step.
-- **Setting up Jet.** `pip install -U git+https://github.com/clearcotelabs/clearcote-jet` (0.3.0 or newer; Jet is installed from GitHub), then **Settings → Tasks**: the
-  command to start it (empty = `clearcote-jet` from PATH) and its model key. Only learning a task uses
-  the model, about $0.001 a task.
 - **How it connects.** A task's launches open a local DevTools port (`--remote-debugging-port=0`, read
   back from `DevToolsActivePort`), and a Jet worker attaches to it. **Settings → Tasks → Allow
   automation on every launch** opens it on every launch, for your own SDK or Playwright scripts; while a

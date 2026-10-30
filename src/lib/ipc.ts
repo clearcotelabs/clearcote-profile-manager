@@ -10,10 +10,15 @@ import type { CheckOptions, ProxyCheck, UdpVerdict } from "../../electron/proxyc
 export type { ProxyCheck, UdpVerdict } from "../../electron/proxycheck";
 import type { StartRequest, SyncRun } from "../../electron/jetsync";
 export type { StartRequest, SyncRun, SyncRow, RowStatus } from "../../electron/jetsync";
+import type { JetStatus, KeyState } from "../../electron/jetsetup";
+export type { JetStatus, KeyState } from "../../electron/jetsetup";
+import type { SavedTask } from "../../electron/tasks";
+export type { SavedTask, TaskParam, TaskRunRecord } from "../../electron/tasks";
+export type { StepSummary } from "../../electron/jetsync";
 import { buildHelperApi, helper } from "@/lib/helperBridge";
 import { buildPreviewApi, seedExamples, switchable } from "@/lib/webPreview";
 import { t } from "@/lib/i18n";
-import { buildSyncMock } from "@/lib/syncMock";
+import { buildJetSetupMock, buildSyncMock, buildTasksMock } from "@/lib/syncMock";
 
 export type TrashResult = { ok: true; trashId: string } | { ok: false; error: string };
 export type RestoreResult = { ok: true; profile: Profile } | { ok: false; error: string };
@@ -305,6 +310,24 @@ export interface UpdateDownloadResult {
   verified?: boolean;
 }
 
+/** Saved tasks: create, read, update, delete; a run of one is recorded into it (electron/tasks.ts). */
+export interface TasksApi {
+  list: () => Promise<SavedTask[]>;
+  save: (t: Partial<SavedTask>) => Promise<SavedTask>;
+  remove: (id: string) => Promise<boolean>;
+  /** A run of a saved task finished and was recorded. */
+  onChanged: (cb: () => void) => () => void;
+}
+
+/** Getting Jet ready without a terminal: Python, Jet, the model key (electron/jetsetup.ts). */
+export interface JetSetupApi {
+  status: () => Promise<JetStatus>;
+  /** pip install (or update) Jet into the Python that was found; resolves with the new status. */
+  install: () => Promise<{ ok: true; status: JetStatus } | { ok: false; error: string }>;
+  /** Check a key before saving it; without one, the saved key. */
+  checkKey: (key?: string) => Promise<KeyState>;
+}
+
 /** Run one task on many profiles with Jet (electron/jetsync.ts). */
 export interface SyncApi {
   list: () => Promise<SyncRun[]>;
@@ -355,6 +378,8 @@ export interface ClearcoteApi {
   running: () => Promise<string[]>;
   /** Run one task on many profiles with Jet. Desktop app only: absent in the web version. */
   sync?: SyncApi;
+  jetSetup?: JetSetupApi;
+  tasks?: TasksApi;
   /** A running profile's local DevTools endpoint (launched with automation), or null. */
   cdpEndpoint?: (id: string) => Promise<string | null>;
   /** Profiles running on Clearcote's servers, and the viewer window that shows one. */
@@ -614,6 +639,8 @@ function buildMock(): ClearcoteApi {
     stop: async (id) => (mockRunning.delete(id) ? "graceful" : "gone"),
     running: async () => [...mockRunning],
     sync: buildSyncMock(read),
+    jetSetup: buildJetSetupMock(),
+    tasks: buildTasksMock(),
     cdpEndpoint: async () => null,
     cloud: {
       list: async () => cloudRead(),

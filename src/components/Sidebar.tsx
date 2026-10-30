@@ -10,7 +10,7 @@
 import { t } from "@/lib/i18n";
 import { VIEW_LABELS, type ViewKey } from "@/lib/workspace";
 
-export type PageKey = "profiles" | "proxies";
+export type PageKey = "profiles" | "proxies" | "tasks";
 
 export interface RunningItem {
   id: string;
@@ -49,6 +49,8 @@ export default function Sidebar(props: {
   tag: string | null;
   onTag: (tag: string | null) => void;
   proxies: number;
+  /** Saved tasks (desktop only; undefined hides the entry). */
+  tasks?: number;
   running: RunningItem[];
   onStopRunning: (id: string) => void;
   onOpenRunning: (id: string) => void;
@@ -115,6 +117,17 @@ export default function Sidebar(props: {
           <span className="truncate">{t("Proxies")}</span>
           <Count n={props.proxies} />
         </button>
+        {props.tasks !== undefined && (
+          <button
+            className={`${item} ${props.page === "tasks" ? on : off}`}
+            aria-current={props.page === "tasks" ? "page" : undefined}
+            onClick={() => props.onPage("tasks")}
+            data-nav-tasks="1"
+          >
+            <span className="truncate">{t("Tasks")}</span>
+            <Count n={props.tasks} />
+          </button>
+        )}
 
         {props.groups.length > 0 && (
           <>

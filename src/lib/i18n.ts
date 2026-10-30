@@ -166,7 +166,14 @@ export function tRich(key: string, parts: Record<string, ReactNode | ((inner: st
     if (m.index > last) out.push(s.slice(last, m.index));
     const name = m[1] ?? m[3];
     const p = parts[name];
-    if (m[1] !== undefined) out.push(typeof p === "function" ? p(m[2]) : m[2]);
+    if (m[1] !== undefined) {
+      // A {value} inside a tag ("<b>Try it on {name} first</b>") is filled with a plain string or number part.
+      const inner = m[2].replace(/\{(\w+)\}/g, (all, k: string) => {
+        const v = parts[k];
+        return typeof v === "string" || typeof v === "number" ? String(v) : all;
+      });
+      out.push(typeof p === "function" ? p(inner) : inner);
+    }
     else out.push(p === undefined ? m[0] : typeof p === "function" ? p("") : p);
     last = re.lastIndex;
   }

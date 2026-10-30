@@ -42,6 +42,8 @@ export function buildPreviewApi(mock: ClearcoteApi): ClearcoteApi {
     launch: fail(tx("launch a browser")),
     // Tasks run in the desktop app only (it opens each browser's automation port), so the web version has none.
     sync: undefined,
+    jetSetup: undefined,
+    tasks: undefined,
     cdpEndpoint: undefined,
     cloud: {
       ...mock.cloud,

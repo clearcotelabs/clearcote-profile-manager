@@ -15,6 +15,8 @@ import type { ProxyCheck } from "./proxycheck";
 import type { CloudSessionState, CloudStartResult, CloudEnded } from "./cloud";
 import type { HostGpu } from "./hostgpu";
 import type { StartRequest, SyncRun } from "./jetsync";
+import type { JetStatus, KeyState } from "./jetsetup";
+import type { SavedTask } from "./tasks";
 
 /** Subscribe to a main-process event; returns the unsubscribe function. */
 function on<T>(channel: string, cb: (data: T) => void): () => void {
@@ -73,6 +75,19 @@ const api = {
     stop: (runId: string, profileId?: string): Promise<number> => ipcRenderer.invoke("sync:stop", runId, profileId),
     clear: (): Promise<void> => ipcRenderer.invoke("sync:clear"),
     onChanged: (cb: (runs: SyncRun[]) => void) => on<SyncRun[]>("sync:changed", cb),
+  },
+  /** Saved tasks (electron/tasks.ts). */
+  tasks: {
+    list: (): Promise<SavedTask[]> => ipcRenderer.invoke("tasks:list"),
+    save: (t: Partial<SavedTask>): Promise<SavedTask> => ipcRenderer.invoke("tasks:save", t),
+    remove: (id: string): Promise<boolean> => ipcRenderer.invoke("tasks:delete", id),
+    onChanged: (cb: () => void) => on<void>("tasks:changed", cb),
+  },
+  /** Getting Jet ready without a terminal (electron/jetsetup.ts). */
+  jetSetup: {
+    status: (): Promise<JetStatus> => ipcRenderer.invoke("jet:status"),
+    install: (): Promise<{ ok: true; status: JetStatus } | { ok: false; error: string }> => ipcRenderer.invoke("jet:install"),
+    checkKey: (key?: string): Promise<KeyState> => ipcRenderer.invoke("jet:checkKey", key),
   },
   /** A running profile's local DevTools endpoint (launched with automation), or null. */
   cdpEndpoint: (id: string): Promise<string | null> => ipcRenderer.invoke("cdp:endpoint", id),

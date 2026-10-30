@@ -15,6 +15,8 @@ import {
   type CloudSession,
   type LaunchResult,
   type SyncRun,
+  type StartRequest,
+  type SavedTask,
 } from "@/lib/ipc";
 import ProfileEditor from "@/components/ProfileEditor";
 import SettingsModal, { type Section as SettingsSection } from "@/components/SettingsModal";
@@ -33,6 +35,7 @@ import MigrateDialog, { type MigrateMode } from "@/components/MigrateDialog";
 import BulkCreateDialog from "@/components/BulkCreateDialog";
 import RunTaskDialog from "@/components/RunTaskDialog";
 import TaskBoard from "@/components/TaskBoard";
+import TasksView from "@/components/TasksView";
 import Menu from "@/components/Menu";
 import { launchReport, udpLine } from "@/lib/proxyReport";
 import { ManageTemplatesDialog, SaveTemplateDialog } from "@/components/TemplateDialogs";
@@ -211,6 +214,11 @@ function Manager() {
   // Run a task on the selected profiles (Jet): the dialog, and the runs the board shows.
   const [runTaskOpen, setRunTaskOpen] = useState(false);
   const [taskRuns, setTaskRuns] = useState<SyncRun[]>([]);
+  /** Trial runs on one profile (Run a task → Try it first): run id → the request for the rest. */
+  const [trials, setTrials] = useState<Record<string, StartRequest>>({});
+  /** Saved tasks (Tasks page), and the one Run a task was opened from. */
+  const [savedTasks, setSavedTasks] = useState<SavedTask[]>([]);
+  const [runTaskFor, setRunTaskFor] = useState<SavedTask | undefined>(undefined);
   // Templates: the profile being saved as one, the manage dialog, and the template the open editor
   // was started from (its use is counted when that profile is saved).
   const [saveTplFor, setSaveTplFor] = useState<Profile | null>(null);
@@ -334,6 +342,20 @@ function Manager() {
     let alive = true;
     void sync.list().then((r) => alive && setTaskRuns(r));
     const off = sync.onChanged((r) => setTaskRuns(r));
+    return () => {
+      alive = false;
+      off();
+    };
+  }, []);
+
+  // Saved tasks: the list now, and again when a run of one was recorded into it.
+  useEffect(() => {
+    const tasks = api.tasks;
+    if (!tasks) return;
+    let alive = true;
+    const load = () => void tasks.list().then((l) => alive && setSavedTasks(l));
+    load();
+    const off = tasks.onChanged(load);
     return () => {
       alive = false;
       off();
@@ -970,6 +992,47 @@ function Manager() {
       },
     });
   }
+  async function refreshTasks() {
+    if (api.tasks) setSavedTasks(await api.tasks.list());
+  }
+  async function saveTask(task: Partial<SavedTask>): Promise<SavedTask> {
+    const saved = await api.tasks!.save(task);
+    await refreshTasks();
+    return saved;
+  }
+  async function deleteTask(task: SavedTask) {
+    if (!api.tasks || !(await api.tasks.remove(task.id))) return;
+    await refreshTasks();
+    notify(t("Deleted the task “{name}”.", { name: task.name }), {
+      action: {
+        label: t("Undo"),
+        run: async () => {
+          await api.tasks!.save(task);
+          await refreshTasks();
+        },
+      },
+    });
+  }
+  /** Run board -> Save as a task: the recipe of a run that worked, its steps and the run itself. */
+  async function saveRunAsTask(run: SyncRun) {
+    const done = run.rows.filter((r) => r.status === "done");
+    const best = done.find((r) => r.skill === "learned" || r.skill === "repaired") ?? done[0];
+    const saved = await saveTask({
+      name: run.goal.slice(0, 60),
+      goal: run.goal,
+      url: run.url,
+      confirm: run.confirm,
+      concurrency: run.concurrency,
+      staggerSec: run.staggerSec,
+      closeWhenDone: run.closeWhenDone,
+      params: Object.keys(run.params ?? {}).map((name) => ({ name, source: "run" as const, default: run.params![name] })),
+      ...(best ? { steps: best.steps.map(({ template, ...s }) => (template !== undefined ? { ...s, text: template } : s)), stepsFrom: best.name } : {}),
+      history: [{ at: run.createdAt, total: run.rows.length, done: done.length, ...(run.params ? { params: run.params } : {}) }],
+    });
+    notify(t("Saved as a task. Find it under Tasks."), { action: { label: t("Open"), run: () => setPage("tasks") } });
+    return saved;
+  }
+
   async function bulkEdit(change: (p: Profile) => Profile, done: string) {
     for (const p of selectedProfiles) await api.profiles.save(change(p));
     await refresh();
@@ -1179,6 +1242,7 @@ function Manager() {
       { id: "v:attention", section: nav, label: t("Needs attention"), run: () => goProfiles("attention") },
       { id: "v:recent", section: nav, label: t("Used this week"), run: () => goProfiles("recent") },
       { id: "v:proxies", section: nav, label: t("Proxies"), run: () => setPage("proxies") },
+      ...(api.tasks && api.sync ? [{ id: "v:tasks", section: nav, label: t("Tasks"), run: () => setPage("tasks") }] : []),
       ...groupList.map((g) => ({
         id: `g:${g.key}`,
         section: nav,
@@ -1294,6 +1358,7 @@ function Manager() {
       tag={tagFilter}
       onTag={(tag) => setTagFilter(tag)}
       proxies={proxyRows.length}
+      tasks={api.tasks && api.sync ? savedTasks.length : undefined}
       running={runningItems}
       onStopRunning={stopRunning}
       onOpenRunning={openRunning}
@@ -1460,7 +1525,25 @@ function Manager() {
           />
         )}
 
-        {page === "proxies" ? (
+        {page === "tasks" ? (
+          <>
+            <h2 className="mt-6 text-lg font-semibold">{t("Tasks")}</h2>
+            <TasksView
+              tasks={savedTasks}
+              selectedCount={selected.size}
+              onRun={(task) => {
+                setRunTaskFor(task);
+                setRunTaskOpen(true);
+              }}
+              onSave={saveTask}
+              onDelete={(task) => void deleteTask(task)}
+              onNew={() => {
+                setRunTaskFor(undefined);
+                setRunTaskOpen(true);
+              }}
+            />
+          </>
+        ) : page === "proxies" ? (
           <>
             <h2 className="mt-6 text-lg font-semibold">{t("Proxies")}</h2>
             <ProxiesView
@@ -1774,13 +1857,29 @@ function Manager() {
       {runTaskOpen && api.sync && (
         <RunTaskDialog
           profiles={selectedProfiles}
+          allProfiles={profiles}
+          task={runTaskFor}
+          onSaveTask={saveTask}
           settings={settings}
           onStart={(req) => api.sync!.start(req)}
+          onSaveProfiles={async (list) => {
+            for (const p of list) await api.profiles.save(p);
+            await refresh();
+          }}
+          onSaveSettings={async (patch) => {
+            const next = { ...settings, ...patch };
+            setSettings(next);
+            setSettings(await api.settings.set(next));
+          }}
+          onTrial={(runId, rest) => setTrials((m) => ({ ...m, [runId]: rest }))}
           onOpenSettings={() => {
             setRunTaskOpen(false);
             setSettingsOpen("tasks");
           }}
-          onClose={() => setRunTaskOpen(false)}
+          onClose={() => {
+            setRunTaskOpen(false);
+            setRunTaskFor(undefined);
+          }}
         />
       )}
       {api.sync && (
@@ -1791,6 +1890,16 @@ function Manager() {
           onCancel={(runId, id) => void api.sync!.cancel(runId, id)}
           onStop={(runId, id) => void api.sync!.stop(runId, id)}
           onClear={() => void api.sync!.clear()}
+          trial={taskRuns[0] && trials[taskRuns[0].id] ? { runId: taskRuns[0].id, rest: trials[taskRuns[0].id].profileIds.length } : undefined}
+          onContinue={async (runId) => {
+            const rest = trials[runId];
+            if (!rest) return;
+            setTrials(({ [runId]: _, ...m }) => m);
+            const r = await api.sync!.start(rest);
+            if (!r.ok) notify(r.error);
+          }}
+          onDismissTrial={(runId) => setTrials(({ [runId]: _, ...m }) => m)}
+          onSaveRun={api.tasks ? (run) => void saveRunAsTask(run) : undefined}
         />
       )}
       {bulkCreateOpen && (

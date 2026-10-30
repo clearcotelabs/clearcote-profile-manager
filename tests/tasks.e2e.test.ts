@@ -94,6 +94,7 @@ describe.skipIf(!READY)("run a task — in a real browser", () => {
     await page.locator("[data-bulk-run-task]").click();
     const dialog = page.locator("[data-run-task]");
     await dialog.waitFor();
+    await page.locator('[data-jet-setup="ready"]').waitFor();
     await page.locator("[data-run-goal]").fill("Log in as {{email}} with {{ password }}");
     await page.locator("[data-run-slots]").waitFor();
     const slots = await page.locator("[data-run-slots]").innerText();
@@ -121,6 +122,7 @@ describe.skipIf(!READY)("run a task — in a real browser", () => {
   it("refuses a start page that is not a web address", async () => {
     await page.keyboard.press("Control+a");
     await page.locator("[data-bulk-run-task]").click();
+    await page.locator('[data-jet-setup="ready"]').waitFor();
     await page.locator("[data-run-goal]").fill("Search for shoes");
     await page.getByLabel("Start page").fill("file:///c:/secret.txt");
     expect(await page.locator("[data-run-start]").isDisabled()).toBe(true);

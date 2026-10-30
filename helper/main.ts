@@ -236,6 +236,7 @@ async function main() {
   cloud.on("changed", (list) => broadcast("cloud:changed", list));
   cloud.on("ended", (ev) => broadcast("cloud:ended", ev));
   getSyncManager({ cloud: () => cloud }).on("changed", (runs) => broadcast("sync:changed", runs));
+  getSyncManager({ cloud: () => cloud }).on("tasksChanged", () => broadcast("tasks:changed", null));
   void cloud.restore();
 
   // Closing the window, Ctrl+C or the tray's Quit: close the browsers properly so each licence slot

@@ -13,7 +13,7 @@ import { spawn, type ChildProcess } from "node:child_process";
 import { EventEmitter } from "node:events";
 import readline from "node:readline";
 import type { LaunchResult, Profile, Settings } from "./types";
-import { maskSecrets, normalizeTemplate, valuesFor } from "./jetslots";
+import { maskSecrets, normalizeTemplate, templateSlots, valuesFor } from "./jetslots";
 
 export type RowStatus =
   | "queued"
@@ -37,6 +37,9 @@ export interface StepSummary {
   replayed?: boolean;
   probability?: number | null;
   atMs?: number;
+  /** The text with every value of the task's {{slots}} written as its slot: what a saved task keeps, so it
+   *  shows {{email}} rather than one profile's address. */
+  template?: string | null;
 }
 
 export interface SyncRow {
@@ -67,6 +70,10 @@ export interface SyncRun {
   createdAt: number;
   state: "running" | "finished";
   rows: SyncRow[];
+  /** The saved task this run came from (electron/tasks.ts records the result into it). */
+  taskId?: string;
+  /** This run's own values that are not secret ({{slot}} → value); secret ones never leave the manager. */
+  params?: Record<string, string>;
 }
 
 export interface StartRequest {
@@ -77,6 +84,20 @@ export interface StartRequest {
   concurrency?: number;
   staggerSec?: [number, number];
   closeWhenDone?: boolean;
+  /** Values for every profile of this run ({{slot}} → value). They win over a profile's own task values. */
+  params?: Record<string, string>;
+  /** Which of params are secret: typed only, never shown, never saved. */
+  paramSecret?: string[];
+  /** The saved task this run came from. */
+  taskId?: string;
+}
+
+/** The profile as this run sees it: the run's own values in place of (or added to) its task values. */
+export function withRunParams(p: Profile, params: Record<string, string> | undefined, secret: ReadonlySet<string>): Profile {
+  if (!params || !Object.keys(params).length) return p;
+  const vars = (p.vars ?? []).filter((v) => !(v.key.trim() in params));
+  for (const [key, value] of Object.entries(params)) vars.push({ key, value, ...(secret.has(key) ? { secret: true } : {}) });
+  return { ...p, vars };
 }
 
 /** A started worker: enough of a ChildProcess to talk to and to stop. */
@@ -171,6 +192,8 @@ export class SyncManager extends EventEmitter {
   private runs: SyncRun[] = [];
   private workers = new Map<string, WorkerProc>(); // `${runId}/${profileId}`
   private stopRequested = new Set<string>();
+  /** Each run's own values, secret ones included; kept here so they never reach list(). */
+  private runValues = new Map<string, { params: Record<string, string>; secret: Set<string> }>();
 
   constructor(private deps: SyncDeps) {
     super();
@@ -225,6 +248,15 @@ export class SyncManager extends EventEmitter {
       state: "running",
       rows,
     };
+    const params: Record<string, string> = {};
+    for (const [k, v] of Object.entries(req.params ?? {})) if (/^[A-Za-z_][\w.-]{0,63}$/.test(k) && String(v).trim()) params[k] = String(v);
+    const secretParams = new Set((req.paramSecret ?? []).map(String));
+    if (Object.keys(params).length) {
+      this.runValues.set(run.id, { params, secret: secretParams });
+      const shown = Object.fromEntries(Object.entries(params).filter(([k]) => !secretParams.has(k)));
+      if (Object.keys(shown).length) run.params = shown;
+    }
+    if (typeof req.taskId === "string" && req.taskId) run.taskId = req.taskId;
     this.runs.unshift(run);
     this.trim();
     this.changed();
@@ -313,14 +345,18 @@ export class SyncManager extends EventEmitter {
     };
     await Promise.all(Array.from({ length: Math.min(run.concurrency, run.rows.length) }, lane));
     run.state = "finished";
+    this.runValues.delete(run.id);
     this.changed();
+    this.emit("finished", this.list().find((r) => r.id === run.id) ?? run);
   }
 
   private async runRow(run: SyncRun, row: SyncRow): Promise<void> {
     const key = `${run.id}/${row.profileId}`;
     row.startedAt = Date.now();
-    const p = this.deps.getProfile(row.profileId);
-    if (!p) return this.finish(run, row, "failed", "The profile no longer exists.");
+    const stored = this.deps.getProfile(row.profileId);
+    if (!stored) return this.finish(run, row, "failed", "The profile no longer exists.");
+    const rv = this.runValues.get(run.id);
+    const p = withRunParams(stored, rv?.params, rv?.secret ?? new Set());
     const { values, secret, missing } = valuesFor(run.goal, p);
     if (missing.length) {
       return this.finish(run, row, "needs_input", `This profile has no value for ${missing.map((m) => `{{${m}}}`).join(", ")}. Add it under Task values in the profile.`);
@@ -389,7 +425,7 @@ export class SyncManager extends EventEmitter {
           } catch {
             return; // not ours
           }
-          this.onEvent(run, row, ev, mask, end);
+          this.onEvent(run, row, ev, mask, end, (t) => maskSecrets(t, values, templateSlots(run.goal)));
         });
       }
       w.on("error", (e) => end("failed", notFound(cmd, e)));
@@ -419,10 +455,11 @@ export class SyncManager extends EventEmitter {
     if (run.closeWhenDone && row.launched) await this.deps.stop(p.id).catch(() => undefined);
   }
 
-  private onEvent(run: SyncRun, row: SyncRow, ev: Record<string, unknown>, mask: (t: string) => string, end: (s: RowStatus, d?: string) => void): void {
+  private onEvent(run: SyncRun, row: SyncRow, ev: Record<string, unknown>, mask: (t: string) => string, end: (s: RowStatus, d?: string) => void, toTemplate: (t: string) => string = (t) => t): void {
     switch (ev.type) {
       case "step": {
         const text = typeof ev.text === "string" ? mask(ev.text) : null;
+        const template = text === null ? null : toTemplate(text);
         row.steps.push({
           kind: String(ev.kind ?? ""),
           action: mask(String(ev.action ?? "")),
@@ -430,6 +467,7 @@ export class SyncManager extends EventEmitter {
           replayed: !!ev.replayed,
           probability: typeof ev.probability === "number" ? ev.probability : null,
           atMs: typeof ev.at_ms === "number" ? ev.at_ms : undefined,
+          ...(template !== text ? { template } : {}),
         });
         if (row.steps.length > MAX_STEPS_KEPT) row.steps.shift();
         if (typeof ev.led_to === "string") row.url = ev.led_to;

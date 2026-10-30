@@ -37,6 +37,10 @@ export default function TaskBoard({
   onCancel,
   onStop,
   onClear,
+  trial,
+  onContinue,
+  onDismissTrial,
+  onSaveRun,
   raised = false,
 }: {
   runs: SyncRun[];
@@ -44,6 +48,12 @@ export default function TaskBoard({
   onCancel: (runId: string, profileId: string) => void;
   onStop: (runId: string, profileId?: string) => void;
   onClear: () => void;
+  /** This run tried the task on one profile; `rest` more are waiting to be offered. */
+  trial?: { runId: string; rest: number };
+  onContinue?: (runId: string) => void;
+  onDismissTrial?: (runId: string) => void;
+  /** Keep a run that worked as a saved task (not offered for a run of a saved task: that one is recorded). */
+  onSaveRun?: (run: SyncRun) => void;
   /** The bulk-actions bar is showing: sit above it. */
   raised?: boolean;
 }) {
@@ -82,6 +92,11 @@ export default function TaskBoard({
             {waiting === 1 ? t("Approve") : t("Approve all {n}", { n: waiting })}
           </button>
         )}
+        {!active && done > 0 && !run.taskId && onSaveRun && (
+          <button className={btn + " border-accent/50 text-accent"} onClick={() => onSaveRun(run)} data-task-save="1">
+            {t("Save as a task")}
+          </button>
+        )}
         {active ? (
           <button className={btn} onClick={() => onStop(run.id)} data-task-stop="1">
             {t("Stop")}
@@ -95,6 +110,9 @@ export default function TaskBoard({
           {folded ? "▴" : "▾"}
         </button>
       </header>
+      {!folded && trial && trial.runId === run.id && !active && (
+        <TrialBanner run={run} rest={trial.rest} onContinue={() => onContinue?.(run.id)} onDismiss={() => onDismissTrial?.(run.id)} />
+      )}
       {!folded && (
         <ul className="max-h-[50vh] divide-y divide-line overflow-y-auto">
           {run.rows.map((row) => (
@@ -175,5 +193,34 @@ function Row({
         </ol>
       )}
     </li>
+  );
+}
+
+/** After a trial on one profile: offer the rest when it worked, say what to do when it did not. */
+function TrialBanner({ run, rest, onContinue, onDismiss }: { run: SyncRun; rest: number; onContinue: () => void; onDismiss: () => void }) {
+  const row = run.rows[0];
+  const ok = row?.status === "done";
+  return (
+    <div className={"flex flex-wrap items-center gap-2 border-b border-line px-3 py-2.5 text-xs " + (ok ? "bg-ok/5" : "bg-warn/5")} data-task-trial={ok ? "ok" : "failed"}>
+      <span className="min-w-0 flex-1 text-fog/75">
+        {ok
+          ? rest === 1
+            ? t("It worked on {name}. Jet saved the task, so the other profile repeats it without the model.", { name: row.name })
+            : t("It worked on {name}. Jet saved the task, so the other {n} repeat it without the model.", { name: row.name, n: rest })
+          : t("It did not finish on {name}. Open the row to see the last steps, then change the task and try again.", { name: row?.name ?? "" })}
+      </span>
+      {ok ? (
+        <button className="rounded-md bg-sheen px-2.5 py-1 text-[11px] font-semibold text-[#07080a]" onClick={onContinue} data-task-continue="1">
+          {rest === 1 ? t("Run on the other profile") : t("Run on the other {n}", { n: rest })}
+        </button>
+      ) : (
+        <button className={btn} onClick={onContinue} data-task-continue="1">
+          {t("Run on the others anyway")}
+        </button>
+      )}
+      <button className="px-1 text-fog/40 hover:text-fog" onClick={onDismiss} aria-label={t("Dismiss")}>
+        ✕
+      </button>
+    </div>
   );
 }
