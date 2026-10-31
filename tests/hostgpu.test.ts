@@ -233,6 +233,15 @@ describe("detectHostGpu", () => {
     expect(ran).toBe(false);
   });
 
+  it("on Windows, a query that lists no controller at all is a computer without a graphics card (w01)", async () => {
+    // Measured 10-31 on w01, a bare-metal Windows Server 2022: Win32_VideoController is empty (only RDP's display
+    // adapters exist, as PnP devices) and chrome://gpu shows ANGLE on "Microsoft Basic Render Driver" (WARP).
+    for (const out of ["", "\r\n", "\uFEFF\r\n", "null", "[]"])
+      await expect(detectHostGpu({ platform: "win32", run: async () => out })).resolves.toEqual({ ...UNKNOWN_GPU, kind: "software" });
+    // Something it can't read is still unknown, not "no graphics card".
+    await expect(detectHostGpu({ platform: "win32", run: async () => "Get-CimInstance : Access denied" })).resolves.toEqual(UNKNOWN_GPU);
+  });
+
   it("never throws — a failing command or reader is unknown", async () => {
     await expect(
       detectHostGpu({

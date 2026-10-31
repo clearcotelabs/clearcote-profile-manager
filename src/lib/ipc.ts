@@ -569,7 +569,8 @@ function buildMock(): ClearcoteApi {
     }
   };
   // The full device library: localStorage[MOCK_FULL_KEY] holds its rows once "added" (made up, GPU makers in turn;
-  // every 10th has no graphics card and 10 are VMware captures, both marked higher risk).
+  // every 10th has no graphics card — drawn with WARP every 20th, SwiftShader otherwise — and 10 are VMware captures,
+  // all marked higher risk).
   const MOCK_FULL_KEY = "clearcote.mock.fullLibrary";
   const MOCK_FULL_COUNT = 250;
   const mockFullRows = (): LibraryProfile[] =>
@@ -589,9 +590,11 @@ function buildMock(): ClearcoteApi {
           downloadUrl: `https://github.com/Vinyzu/chrome-fingerprints/blob/mock/chrome_fingerprints/fingerprints.json.xz#${id}`,
           gpuVendor: "other",
           gpuFamily: "other",
-          renderer: noGpu
-            ? "ANGLE (Google, Vulkan 1.3.0 (SwiftShader Device (Subzero) (0x0000C0DE)), SwiftShader driver)"
-            : "ANGLE (VMware, VMware SVGA 3D Direct3D11 vs_5_0 ps_5_0, D3D11)",
+          renderer: !noGpu
+            ? "ANGLE (VMware, VMware SVGA 3D Direct3D11 vs_5_0 ps_5_0, D3D11)"
+            : i % 20 === 19
+              ? "ANGLE (Microsoft, Microsoft Basic Render Driver Direct3D11 vs_5_0 ps_5_0, D3D11)"
+              : "ANGLE (Google, Vulkan 1.3.0 (SwiftShader Device (Subzero) (0x0000C0DE)), SwiftShader driver)",
           screen: "1920x1080",
           cores: 4,
           memory: 8,

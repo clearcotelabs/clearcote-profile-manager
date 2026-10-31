@@ -1667,7 +1667,6 @@
   "Higher risk: the graphics were not captured the normal way, so sites may not trust it.": "较高风险：图形不是以正常方式采集的，网站可能不信任它。",
   "No graphics card": "无显卡",
   "No graphics card (draws in software)": "无显卡（软件绘制）",
-  "No graphics card, like this computer": "无显卡，与本机相同",
   "Old graphics": "旧显卡",
   "Possibly a virtual machine": "可能是虚拟机",
   "Same virtual machine as this computer ({vm})": "与本机相同的虚拟机（{vm}）",
@@ -1682,5 +1681,7 @@
   "Suggested": "推荐",
   "Suggested examples": "推荐示例",
   "Examples matching “{q}”": "与“{q}”匹配的示例",
-  "See all {n}": "查看全部 {n} 个"
+  "See all {n}": "查看全部 {n} 个",
+  "Drawn in software with {renderer}, like this computer": "与本机相同，使用 {renderer} 软件绘制",
+  "Drawn with {theirs}, but this computer draws with {mine}: sites can tell": "使用 {theirs} 绘制，但本机使用 {mine} 绘制：网站能看出来"
 }

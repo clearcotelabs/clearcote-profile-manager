@@ -1667,7 +1667,6 @@
   "Higher risk: the graphics were not captured the normal way, so sites may not trust it.": "Rủi ro cao hơn: đồ họa không được ghi theo cách thông thường, nên trang web có thể không tin.",
   "No graphics card": "Không có card đồ họa",
   "No graphics card (draws in software)": "Không có card đồ họa (vẽ bằng phần mềm)",
-  "No graphics card, like this computer": "Không có card đồ họa, giống máy này",
   "Old graphics": "Đồ họa cũ",
   "Possibly a virtual machine": "Có thể là máy ảo",
   "Same virtual machine as this computer ({vm})": "Cùng loại máy ảo với máy này ({vm})",
@@ -1682,5 +1681,7 @@
   "Suggested": "Gợi ý",
   "Suggested examples": "Ví dụ gợi ý",
   "Examples matching “{q}”": "Ví dụ khớp với “{q}”",
-  "See all {n}": "Xem tất cả {n}"
+  "See all {n}": "Xem tất cả {n}",
+  "Drawn in software with {renderer}, like this computer": "Vẽ bằng phần mềm với {renderer}, giống máy này",
+  "Drawn with {theirs}, but this computer draws with {mine}: sites can tell": "Được vẽ bằng {theirs}, nhưng máy này vẽ bằng {mine}: trang web nhận ra được"
 }

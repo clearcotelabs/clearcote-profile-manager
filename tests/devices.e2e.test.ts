@@ -218,7 +218,7 @@ describe.skipIf(!READY)("Device profiles page — in a real browser", () => {
     expect(errors).toEqual([]);
   }, T);
 
-  it("on a computer without a graphics card, the no-GPU captures are the ones offered, marked higher risk", async () => {
+  it("on a Windows computer without a graphics card, the WARP captures are the ones offered, marked higher risk", async () => {
     const { page, errors } = await fresh({ profiles: [prof("alpha")], gpu: { vendor: "unknown", name: "", deviceId: null, kind: "software" } });
     await page.click('[data-nav-devices="1"]');
     await page.waitForSelector('[data-devices-full="off"]');
@@ -227,12 +227,13 @@ describe.skipIf(!READY)("Device profiles page — in a real browser", () => {
     await page.waitForSelector('[data-devices-best="1"] [data-device-risk="no-gpu"]', { timeout: 10000 });
     const best = await page.$$eval('[data-devices-best="1"] [data-device]', (els) => els.map((e) => e.querySelector("[data-device-risk]")?.getAttribute("data-device-risk")));
     expect(best.every((r) => r === "no-gpu")).toBe(true);
-    // Create picks them too; the real-GPU devices would be disproved by what this computer draws.
+    // Create picks them too. Chrome on Windows without a GPU draws with WARP, so only the WARP captures (every 20th)
+    // fit: the SwiftShader ones and the real-GPU devices would be disproved by what this computer draws.
     await page.fill("#devices-count", "3");
     await page.click('[data-devices-create-run="1"]');
     const made = await until(() => stored(page), (ps) => ps.length === 4, "three new profiles");
     const ids = made.filter((p) => p.id !== "alpha").map((p) => Number(p.device.slice(7, 12)) - 20000);
-    expect(ids.every((i) => i % 10 === 9)).toBe(true);
+    expect(ids.every((i) => i % 20 === 19)).toBe(true);
     expect(errors).toEqual([]);
   }, T);
 });

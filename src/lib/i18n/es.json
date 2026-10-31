@@ -1667,7 +1667,6 @@
   "Higher risk: the graphics were not captured the normal way, so sites may not trust it.": "Mayor riesgo: los gráficos no se capturaron de la forma normal, así que puede que los sitios no confíen en él.",
   "No graphics card": "Sin tarjeta gráfica",
   "No graphics card (draws in software)": "Sin tarjeta gráfica (dibuja por software)",
-  "No graphics card, like this computer": "Sin tarjeta gráfica, como este equipo",
   "Old graphics": "Gráficos antiguos",
   "Possibly a virtual machine": "Posiblemente una máquina virtual",
   "Same virtual machine as this computer ({vm})": "La misma máquina virtual que este equipo ({vm})",
@@ -1682,5 +1681,7 @@
   "Suggested": "Sugerencias",
   "Suggested examples": "Ejemplos sugeridos",
   "Examples matching “{q}”": "Ejemplos para «{q}»",
-  "See all {n}": "Ver los {n}"
+  "See all {n}": "Ver los {n}",
+  "Drawn in software with {renderer}, like this computer": "Dibujado por software con {renderer}, como este equipo",
+  "Drawn with {theirs}, but this computer draws with {mine}: sites can tell": "Dibujado con {theirs}, pero este equipo dibuja con {mine}: los sitios lo notan"
 }

@@ -202,7 +202,12 @@ export async function detectHostGpu(opts: DetectOptions = {}): Promise<HostGpu> 
   try {
     if (platform === "win32") {
       const run = opts.run ?? ((f, a) => execText(f, a, opts.timeoutMs ?? 15000));
-      return parseWindowsControllers(await run(WINDOWS_GPU_COMMAND.file, WINDOWS_GPU_COMMAND.args));
+      const out = await run(WINDOWS_GPU_COMMAND.file, WINDOWS_GPU_COMMAND.args);
+      // The query ran and found no video controller at all: a server without a graphics card (w01, a bare-metal
+      // Windows Server, lists none — only RDP's display adapters, which are not controllers). Chrome then draws
+      // with WARP, Microsoft's software renderer. A failed query throws instead, and stays unknown. (\s covers a BOM.)
+      if (/^\s*(?:null|\[\s*\])?\s*$/.test(out)) return { ...UNKNOWN_GPU, kind: "software" };
+      return parseWindowsControllers(out);
     }
     if (platform === "linux") return parseLinuxDrm((opts.readDrm ?? readDrmCards)());
   } catch {

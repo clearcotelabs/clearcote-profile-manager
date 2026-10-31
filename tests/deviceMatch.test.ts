@@ -133,12 +133,27 @@ describe("higher-risk devices (the full library's no-GPU, VM and old-graphics ca
   it("on a computer without a graphics card: the no-GPU captures fit and come first; real-GPU ones can be disproved", () => {
     const sw = scoreDevice(SWIFT, NO_GPU_HOST);
     expect(sw.fits).toBe(true);
-    expect(text(sw)).toContain("No graphics card, like this computer");
+    expect(text(sw)).toContain("Drawn in software with {renderer}, like this computer");
     const card = scoreDevice(RTX3060, NO_GPU_HOST);
     expect(card.fits).toBe(false);
     expect(text(card)).toContain("This computer has no graphics card");
     expect(scoreDevice(VMW, NO_GPU_HOST).fits).toBe(false);
     expect(pickUnused(rankDevices([RTX3060, SWIFT, VMW, OLD], NO_GPU_HOST, []), 5).map((l) => l.name)).toEqual(["v-sw.json"]);
+  });
+
+  it("without a graphics card, the software renderer must match: WARP on Windows, SwiftShader on Linux (w01, 10-31)", () => {
+    // On w01 every launch drew the same pixels (WARP) whatever the device claimed; forcing SwiftShader drew others.
+    const WARP = lib("v-warp", "ANGLE (Microsoft, Microsoft Basic Render Driver Direct3D11 vs_5_0 ps_5_0, D3D11)", { gpuVendor: "other", risk: "no-gpu", cores: 4 });
+    const winServer: HostFacts = { vendor: "unknown", kind: "software", threads: 32, os: "windows" };
+    expect(scoreDevice(WARP, winServer).fits).toBe(true);
+    const sw = scoreDevice(SWIFT, winServer);
+    expect(sw.fits).toBe(false);
+    expect(sw.reasons.find((r) => /sites can tell/.test(r.text))?.params).toEqual({ theirs: "SwiftShader", mine: "WARP (Microsoft)" });
+    expect(scoreDevice(SWIFT, NO_GPU_HOST).fits).toBe(true); // Linux: SwiftShader
+    expect(scoreDevice(WARP, NO_GPU_HOST).fits).toBe(false);
+    // OS unknown: neither is ruled out.
+    expect([WARP, SWIFT].map((d) => scoreDevice(d, { vendor: "unknown", kind: "software" }).fits)).toEqual([true, true]);
+    expect(pickUnused(rankDevices([SWIFT, WARP, RTX3060], winServer, []), 3).map((l) => l.name)).toEqual(["v-warp.json"]);
   });
 
   it("on a VMware virtual machine: only VMware captures fit; old graphics never do", () => {

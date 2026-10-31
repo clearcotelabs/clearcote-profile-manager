@@ -1667,7 +1667,6 @@
   "Higher risk: the graphics were not captured the normal way, so sites may not trust it.": "高リスク：グラフィックが通常の方法で取得されていないため、サイトに信頼されない可能性があります。",
   "No graphics card": "グラフィックカードなし",
   "No graphics card (draws in software)": "グラフィックカードなし（ソフトウェア描画）",
-  "No graphics card, like this computer": "このコンピューターと同じくグラフィックカードなし",
   "Old graphics": "古いグラフィック",
   "Possibly a virtual machine": "仮想マシンの可能性あり",
   "Same virtual machine as this computer ({vm})": "このコンピューターと同じ仮想マシン（{vm}）",
@@ -1682,5 +1681,7 @@
   "Suggested": "おすすめ",
   "Suggested examples": "おすすめの例",
   "Examples matching “{q}”": "「{q}」に一致する例",
-  "See all {n}": "すべて表示（{n}）"
+  "See all {n}": "すべて表示（{n}）",
+  "Drawn in software with {renderer}, like this computer": "このコンピューターと同じく {renderer} によるソフトウェア描画",
+  "Drawn with {theirs}, but this computer draws with {mine}: sites can tell": "{theirs} で描画されていますが、このコンピューターは {mine} で描画します：サイトに見分けられます"
 }

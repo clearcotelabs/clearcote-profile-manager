@@ -50,6 +50,20 @@ const RISK_WHY: Record<DeviceRisk, string> = {
 };
 const VM_LABEL: Record<string, string> = { vmware: "VMware", virtualbox: "VirtualBox", parallels: "Parallels", other: "VM" };
 
+/** Which software renderer drew a no-GPU capture: Microsoft's WARP (Direct3D 11) or Google's SwiftShader. They draw
+ *  different pixels, so a capture from one is disproved on a computer that draws with the other. */
+export type SoftwareRenderer = "warp" | "swiftshader" | "llvmpipe";
+const SOFTWARE_LABEL: Record<SoftwareRenderer, string> = { warp: "WARP (Microsoft)", swiftshader: "SwiftShader", llvmpipe: "llvmpipe" };
+export function softwareRendererOf(renderer: string | undefined): SoftwareRenderer | null {
+  const r = (renderer || "").toLowerCase();
+  return r.includes("microsoft basic") ? "warp" : r.includes("swiftshader") ? "swiftshader" : r.includes("llvmpipe") ? "llvmpipe" : null;
+}
+/** What Chrome draws with on a computer without a graphics card: WARP on Windows (measured on w01, a bare-metal
+ *  Windows Server), SwiftShader on Linux. Unknown elsewhere. */
+export function hostSoftwareRenderer(host: HostFacts): SoftwareRenderer | null {
+  return host.os === "windows" ? "warp" : host.os === "linux" ? "swiftshader" : null;
+}
+
 /** One reason, as a translatable sentence with its values. `good` = it raised the score. */
 export interface Reason {
   text: string;
@@ -164,9 +178,18 @@ export function scoreDevice(lib: LibraryProfile, host: HostFacts, usedBy: string
   const risk = lib.risk;
   if (risk) reasons.push({ text: RISK_WHY[risk], params: { vm: VM_LABEL[lib.vm || "other"] }, good: false });
   if (risk === "no-gpu") {
-    if (host.kind === "software") {
+    const theirs = softwareRendererOf(lib.renderer);
+    const mine = hostSoftwareRenderer(host);
+    if (host.kind === "software" && theirs && mine && theirs !== mine) {
+      fits = false;
+      reasons.push({
+        text: tx("Drawn with {theirs}, but this computer draws with {mine}: sites can tell"),
+        params: { theirs: SOFTWARE_LABEL[theirs], mine: SOFTWARE_LABEL[mine] },
+        good: false,
+      });
+    } else if (host.kind === "software") {
       score += 30;
-      reasons.push({ text: tx("No graphics card, like this computer"), good: true });
+      reasons.push({ text: tx("Drawn in software with {renderer}, like this computer"), params: { renderer: SOFTWARE_LABEL[theirs || mine || "swiftshader"] }, good: true });
     } else {
       fits = false;
       reasons.push({ text: tx("Fits only a computer without a graphics card"), good: false });

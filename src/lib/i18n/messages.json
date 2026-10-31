@@ -1265,6 +1265,12 @@
   "Drag the app to Applications. macOS blocks it on first open — then choose System Settings → Privacy & Security → Open Anyway.": [
     "src/components/UpdateBanner.tsx"
   ],
+  "Drawn in software with {renderer}, like this computer": [
+    "src/lib/deviceMatch.ts"
+  ],
+  "Drawn with {theirs}, but this computer draws with {mine}: sites can tell": [
+    "src/lib/deviceMatch.ts"
+  ],
   "Drives the whole persona. The same seed always produces the same identity, so keep it to keep the identity.": [
     "src/lib/fields.ts"
   ],
@@ -2357,9 +2363,6 @@
   ],
   "No graphics card (draws in software)": [
     "src/components/DevicesView.tsx"
-  ],
-  "No graphics card, like this computer": [
-    "src/lib/deviceMatch.ts"
   ],
   "No group": [
     "app/page.tsx",

@@ -6,6 +6,7 @@ import { useEffect, useId, useMemo, useState } from "react";
 import { api, type FingerprintMeta, type LibraryProfile } from "@/lib/ipc";
 import { MIN_PROFILE_SCREEN_HEIGHT, MIN_PROFILE_SCREEN_WIDTH } from "@/types/profile";
 import { RISK_LABEL, rankDevices, type HostFacts } from "@/lib/deviceMatch";
+import { hostOs } from "@/lib/host";
 import Dialog, { DialogHeader } from "./Dialog";
 import { t, tRich } from "@/lib/i18n";
 
@@ -28,7 +29,7 @@ export default function LibraryModal({
   useEffect(() => {
     api.fp.library().then((r) => (r.ok ? setList(r.profiles || []) : setErr(r.error || t("Failed to load library."))));
     api.hostGpu?.()
-      .then((g) => g && setHost({ vendor: g.vendor, gpuName: g.name || undefined, threads: navigator.hardwareConcurrency || undefined, kind: g.kind, vm: g.vm }))
+      .then((g) => g && setHost({ vendor: g.vendor, gpuName: g.name || undefined, threads: navigator.hardwareConcurrency || undefined, kind: g.kind, vm: g.vm, os: hostOs() }))
       .catch(() => {});
   }, []);
   async function pick(p: LibraryProfile) {
