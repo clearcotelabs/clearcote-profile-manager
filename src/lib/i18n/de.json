@@ -1629,5 +1629,13 @@
   "Words to scroll to": "Wörter, zu denen gescrollt wird",
   "Write steps": "Schritte schreiben",
   "Write the JavaScript to run.": "Schreiben Sie das auszuführende JavaScript.",
-  "Your steps are removed. The next run works the task out again with the model, and Jet learns its steps anew.": "Ihre Schritte werden entfernt. Der nächste Lauf löst die Aufgabe erneut mit dem Modell, und Jet lernt ihre Schritte neu."
+  "Your steps are removed. The next run works the task out again with the model, and Jet learns its steps anew.": "Ihre Schritte werden entfernt. Der nächste Lauf löst die Aufgabe erneut mit dem Modell, und Jet lernt ihre Schritte neu.",
+  "Add the full library": "Vollständige Bibliothek hinzufügen",
+  "Downloading the dataset from github.com/Vinyzu/chrome-fingerprints and converting it on this computer… This takes about half a minute.": "Der Datensatz wird von github.com/Vinyzu/chrome-fingerprints geladen und auf diesem Computer umgewandelt… Das dauert etwa eine halbe Minute.",
+  "From the clearcote-profiles library and the full chrome-fingerprints dataset by Vinyzu (GPL-3.0), converted on this computer.": "Aus der clearcote-profiles-Bibliothek und dem vollständigen chrome-fingerprints-Datensatz von Vinyzu (GPL-3.0), auf diesem Computer umgewandelt.",
+  "Full library on: {n} more real devices, kept on this computer ({mb} MB). Nothing is downloaded again.": "Vollständige Bibliothek aktiv: {n} weitere echte Geräte, auf diesem Computer gespeichert ({mb} MB). Es wird nichts erneut heruntergeladen.",
+  "Remove the full library": "Vollständige Bibliothek entfernen",
+  "Show {n} more": "{n} weitere anzeigen",
+  "View the source": "Quelle ansehen",
+  "Want more devices? Add the full library: every usable capture in chrome-fingerprints, about 8,500 real devices. It downloads once from the original repo (1.4 MB) and is kept on this computer (about 60 MB).": "Mehr Geräte gewünscht? Fügen Sie die vollständige Bibliothek hinzu: jede brauchbare Aufnahme aus chrome-fingerprints, etwa 8.500 echte Geräte. Sie wird einmal aus dem Original-Repository geladen (1,4 MB) und auf diesem Computer gespeichert (etwa 60 MB)."
 }

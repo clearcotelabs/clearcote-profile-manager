@@ -4,7 +4,8 @@
 //
 // What only a browser shows: the best matches for an NVIDIA computer come first with their reasons, another maker's
 // devices are hidden until asked for, "Create N" makes N profiles on N different devices, and "Assign devices…" on
-// selected profiles gives each its own while one that already has a device keeps it.
+// selected profiles gives each its own while one that already has a device keeps it. The optional full library:
+// added, it lists its devices after the samples a page at a time, and its device goes on a profile; removed, gone.
 //
 //   npm run next:dev -- -p 3100
 //   CLEARCOTE_UI_E2E=1 CLEARCOTE_UI_BROWSER=<chrome.exe> npx vitest run tests/devices.e2e.test.ts
@@ -165,6 +166,40 @@ describe.skipIf(!READY)("Device profiles page — in a real browser", () => {
     expect(by.delta).toBeUndefined(); // a Linux persona cannot take a Windows capture
     expect(new Set([by.alpha, by.bravo, by.charlie]).size).toBe(3);
     expect(await page.textContent("body")).toContain("1 is not a Windows profile, so it was left alone.");
+    expect(errors).toEqual([]);
+  }, T);
+
+  it("the full library: off until added, then its devices list a page at a time and can be used; Remove takes them away", async () => {
+    const { page, errors } = await fresh({ profiles: [prof("alpha")] });
+    await openDevices(page);
+    await page.waitForSelector('[data-devices-full="off"]');
+    expect(await page.textContent('[data-devices-full="off"]')).toContain("downloads once from the original repo");
+    const all = () => page.$$eval('[data-devices-all="1"] [data-device]', (els) => els.length);
+    expect(await all()).toBe(4);
+
+    await page.click('[data-devices-full-add="1"]');
+    await page.waitForSelector('[data-devices-full="on"]', { timeout: 10000 });
+    expect(await page.textContent('[data-devices-full="on"]')).toMatch(/Full library on: 250 more real devices.*Nothing is downloaded again/);
+    // With every maker shown there are 256 (6 samples + 250): a page of 100, then "Show 100 more".
+    await page.click('[data-devices-only-fit="1"]');
+    expect(await until(all, (n) => n === 100, "the first page")).toBe(100);
+    expect(await page.textContent('[data-devices-more="1"]')).toBe("Show 100 more");
+    await page.click('[data-devices-more="1"]');
+    expect(await until(all, (n) => n === 200, "the second page")).toBe(200);
+    await page.click('[data-devices-more="1"]');
+    expect(await until(all, (n) => n === 256, "every device")).toBe(256);
+    expect(await page.$('[data-devices-more="1"]')).toBeNull();
+
+    // A full-library device links to its source and goes on a profile like a sample.
+    const id = "vinyzu-20000.json";
+    await page.click(`[data-devices-all="1"] [data-device="${id}"] button`);
+    expect(await page.textContent(`[data-devices-all="1"] [data-device="${id}"] [data-device-detail]`)).toContain("View the source");
+    await page.click(`[data-devices-all="1"] [data-device="${id}"] [data-device-create-one="1"]`);
+    await until(() => stored(page), (ps) => ps.some((p) => p.device === id), "a profile on the full-library device");
+
+    await page.click('[data-devices-full-remove="1"]');
+    await page.waitForSelector('[data-devices-full="off"]');
+    expect(await until(all, (n) => n === 6, "samples only again")).toBe(6);
     expect(errors).toEqual([]);
   }, T);
 });

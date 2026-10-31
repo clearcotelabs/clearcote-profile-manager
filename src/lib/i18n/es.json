@@ -1629,5 +1629,13 @@
   "Words to scroll to": "Palabras hasta las que desplazarse",
   "Write steps": "Escribir pasos",
   "Write the JavaScript to run.": "Escribe el JavaScript que ejecutar.",
-  "Your steps are removed. The next run works the task out again with the model, and Jet learns its steps anew.": "Tus pasos se eliminan. La próxima ejecución resuelve la tarea de nuevo con el modelo y Jet aprende sus pasos otra vez."
+  "Your steps are removed. The next run works the task out again with the model, and Jet learns its steps anew.": "Tus pasos se eliminan. La próxima ejecución resuelve la tarea de nuevo con el modelo y Jet aprende sus pasos otra vez.",
+  "Add the full library": "Añadir la biblioteca completa",
+  "Downloading the dataset from github.com/Vinyzu/chrome-fingerprints and converting it on this computer… This takes about half a minute.": "Descargando el conjunto de datos de github.com/Vinyzu/chrome-fingerprints y convirtiéndolo en este equipo… Tarda alrededor de medio minuto.",
+  "From the clearcote-profiles library and the full chrome-fingerprints dataset by Vinyzu (GPL-3.0), converted on this computer.": "De la biblioteca clearcote-profiles y del conjunto completo chrome-fingerprints de Vinyzu (GPL-3.0), convertido en este equipo.",
+  "Full library on: {n} more real devices, kept on this computer ({mb} MB). Nothing is downloaded again.": "Biblioteca completa activada: {n} dispositivos reales más, guardados en este equipo ({mb} MB). No se vuelve a descargar nada.",
+  "Remove the full library": "Quitar la biblioteca completa",
+  "Show {n} more": "Mostrar {n} más",
+  "View the source": "Ver el origen",
+  "Want more devices? Add the full library: every usable capture in chrome-fingerprints, about 8,500 real devices. It downloads once from the original repo (1.4 MB) and is kept on this computer (about 60 MB).": "¿Quieres más dispositivos? Añade la biblioteca completa: todas las capturas útiles de chrome-fingerprints, unos 8.500 dispositivos reales. Se descarga una vez del repositorio original (1,4 MB) y se guarda en este equipo (unos 60 MB)."
 }

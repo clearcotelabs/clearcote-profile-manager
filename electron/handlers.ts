@@ -31,8 +31,9 @@ import { SyncManager, spawnJet, type StartRequest, type SyncRun } from "./jetsyn
 import { deleteTask, readTasks, recordRun, saveTask, tasksPath, type SavedTask } from "./tasks";
 import { getTaskSkill, resetTaskSkill, saveTaskSkill, type EditStep } from "./taskskill";
 import * as ext from "./extensions";
+import * as fullLibrary from "./fullLibrary";
 import { checkKey, findPython, installJet, isCustomCommand, jetStatus, type JetStatus } from "./jetsetup";
-import type { Profile, Settings, FingerprintMeta } from "./types";
+import type { Profile, Settings, FingerprintMeta, LibraryProfile } from "./types";
 
 const CLEARCOTE_PROFILES_REPO = "clearcotelabs/clearcote-profiles";
 
@@ -40,6 +41,8 @@ const CLEARCOTE_PROFILES_REPO = "clearcotelabs/clearcote-profiles";
 export const ALLOWED_EXTERNAL = [
   /^https:\/\/www\.clearcotelabs\.com\//,
   /^https:\/\/github\.com\/clearcotelabs\//,
+  // The full device library's source (electron/fullLibrary.ts): its page at the pinned commit.
+  /^https:\/\/github\.com\/Vinyzu\/chrome-fingerprints\//,
   // Jet setup (electron/jetsetup.ts): where to get Python and the model key.
   /^https:\/\/www\.python\.org\/downloads\/$/,
   /^https:\/\/console\.typesafe\.ai\/?$/,
@@ -580,55 +583,40 @@ export function createHandlers(host: HandlerHost): Record<string, Handler> {
 
     // ---- captured fingerprint profiles (clearcote-profiles) ----
     "fp:library": async () => {
-      const RAW = `https://raw.githubusercontent.com/${CLEARCOTE_PROFILES_REPO}/main/samples`;
-      // Prefer the curated index.json: it tags each profile with GPU vendor/family/renderer/screen so
-      // the user can pick one matching their host GPU (keeps the imported GPU coherent with the render).
+      // The full library (when added) comes after the curated samples; a device in both is listed once.
+      // It is kept on this computer, so it still lists when the samples can't be fetched (offline).
+      const full = fullLibrary.list();
+      const samples = await sampleLibrary();
+      if (!samples.ok) return full.length ? { ok: true, profiles: full } : samples;
+      const seen = new Set(samples.profiles.map((p) => p.name));
+      return { ok: true, profiles: [...samples.profiles, ...full.filter((p) => !seen.has(p.name))] };
+    },
+    "fp:fullLibrary": () => fullLibrary.status(),
+    "fp:fullLibrary:add": async () => {
       try {
-        const ir = await fetch(`${RAW}/index.json`, {
-          headers: { "User-Agent": "clearcote-profile-manager" },
-        });
-        if (ir.ok) {
-          const idx = (await ir.json()) as { profiles?: Array<Record<string, unknown>> };
-          if (Array.isArray(idx.profiles) && idx.profiles.length) {
-            const list = idx.profiles.map((e) => ({
-              name: `${e.id}.json`,
-              downloadUrl: `${RAW}/${e.id}.json`,
-              gpuVendor: e.gpu_vendor as string | undefined,
-              gpuFamily: e.gpu_family as string | undefined,
-              renderer: e.renderer as string | undefined,
-              screen: e.screen as string | undefined,
-              cores: typeof e.hardware_concurrency === "number" ? e.hardware_concurrency : undefined,
-              memory: typeof e.device_memory === "number" ? e.device_memory : undefined,
-              // The index's screen is "WxH" — check it so the picker can warn about a capture too
-              // small to contain a real window BEFORE the user downloads and adopts it.
-              screenWarning: screenWarningFromLabel(e.screen as string | undefined) ?? undefined,
-            }));
-            return { ok: true, profiles: list };
-          }
-        }
-      } catch {
-        /* fall through to the directory listing */
-      }
-      // Fallback: list the samples/ directory (older repo state without index.json).
-      try {
-        const res = await fetch(
-          `https://api.github.com/repos/${CLEARCOTE_PROFILES_REPO}/contents/samples`,
-          { headers: { Accept: "application/vnd.github+json", "User-Agent": "clearcote-profile-manager" } },
-        );
-        if (!res.ok) return { ok: false, error: `GitHub API ${res.status}` };
-        const items = (await res.json()) as Array<{ name: string; download_url: string }>;
-        const list = (Array.isArray(items) ? items : [])
-          .filter((it) => typeof it.name === "string" && it.name.endsWith(".json") && it.name !== "index.json")
-          .map((it) => ({ name: it.name, downloadUrl: it.download_url }));
-        return { ok: true, profiles: list };
+        return { ok: true, ...(await fullLibrary.build()) };
       } catch (e) {
-        return { ok: false, error: String(e) };
+        return { ok: false, on: fullLibrary.status().on, error: e instanceof Error ? e.message : String(e) };
+      }
+    },
+    "fp:fullLibrary:remove": () => {
+      try {
+        return { ok: true, ...fullLibrary.remove() };
+      } catch (e) {
+        return { ok: false, on: fullLibrary.status().on, error: e instanceof Error ? e.message : String(e) };
       }
     },
 
     "fp:use": async (_c, lib: { name: string; downloadUrl: string }) => {
       try {
-        // Only the clearcote-profiles samples: the helper must not fetch arbitrary URLs for a web page.
+        // A full-library device comes from this computer's cache, not from the network.
+        if (fullLibrary.isFullUrl(lib?.downloadUrl)) {
+          const json = fullLibrary.readProfile(lib.downloadUrl);
+          if (!summarizeFingerprint(JSON.parse(json)).ok) return { ok: false, error: "This device is not a clearcote-profile." };
+          const { file, meta } = storeFingerprint(lib.name, json, "library");
+          return { ok: true, file, meta };
+        }
+        // Otherwise only the clearcote-profiles samples: the helper must not fetch arbitrary URLs for a web page.
         if (!String(lib?.downloadUrl).startsWith(`https://raw.githubusercontent.com/${CLEARCOTE_PROFILES_REPO}/`))
           return { ok: false, error: "Only profiles from the clearcote-profiles library can be used this way." };
         const res = await fetch(lib.downloadUrl, { headers: { "User-Agent": "clearcote-profile-manager" } });
@@ -643,4 +631,52 @@ export function createHandlers(host: HandlerHost): Record<string, Handler> {
       }
     },
   };
+}
+
+/** The curated clearcote-profiles samples (72 devices): index.json, or the samples/ listing. */
+async function sampleLibrary(): Promise<{ ok: true; profiles: LibraryProfile[] } | { ok: false; error: string }> {
+  const RAW = `https://raw.githubusercontent.com/${CLEARCOTE_PROFILES_REPO}/main/samples`;
+  // Prefer the curated index.json: it tags each profile with GPU vendor/family/renderer/screen so
+  // the user can pick one matching their host GPU (keeps the imported GPU coherent with the render).
+  try {
+    const ir = await fetch(`${RAW}/index.json`, {
+      headers: { "User-Agent": "clearcote-profile-manager" },
+    });
+    if (ir.ok) {
+      const idx = (await ir.json()) as { profiles?: Array<Record<string, unknown>> };
+      if (Array.isArray(idx.profiles) && idx.profiles.length) {
+        const list = idx.profiles.map((e) => ({
+          name: `${e.id}.json`,
+          downloadUrl: `${RAW}/${e.id}.json`,
+          gpuVendor: e.gpu_vendor as string | undefined,
+          gpuFamily: e.gpu_family as string | undefined,
+          renderer: e.renderer as string | undefined,
+          screen: e.screen as string | undefined,
+          cores: typeof e.hardware_concurrency === "number" ? e.hardware_concurrency : undefined,
+          memory: typeof e.device_memory === "number" ? e.device_memory : undefined,
+          // The index's screen is "WxH" — check it so the picker can warn about a capture too
+          // small to contain a real window BEFORE the user downloads and adopts it.
+          screenWarning: screenWarningFromLabel(e.screen as string | undefined) ?? undefined,
+        }));
+        return { ok: true, profiles: list };
+      }
+    }
+  } catch {
+    /* fall through to the directory listing */
+  }
+  // Fallback: list the samples/ directory (older repo state without index.json).
+  try {
+    const res = await fetch(
+      `https://api.github.com/repos/${CLEARCOTE_PROFILES_REPO}/contents/samples`,
+      { headers: { Accept: "application/vnd.github+json", "User-Agent": "clearcote-profile-manager" } },
+    );
+    if (!res.ok) return { ok: false, error: `GitHub API ${res.status}` };
+    const items = (await res.json()) as Array<{ name: string; download_url: string }>;
+    const list = (Array.isArray(items) ? items : [])
+      .filter((it) => typeof it.name === "string" && it.name.endsWith(".json") && it.name !== "index.json")
+      .map((it) => ({ name: it.name, downloadUrl: it.download_url }));
+    return { ok: true, profiles: list };
+  } catch (e) {
+    return { ok: false, error: String(e) };
+  }
 }

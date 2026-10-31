@@ -190,6 +190,8 @@ export interface LibraryProfile {
   gpuFamily?: string;
   renderer?: string;
   screen?: string;
+  /** From the full device library (electron/fullLibrary.ts), kept on this computer, not the curated samples. */
+  full?: boolean;
 }
 
 export interface FpListResult {

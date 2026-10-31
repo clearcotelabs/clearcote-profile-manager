@@ -1629,5 +1629,13 @@
   "Words to scroll to": "Mots vers lesquels défiler",
   "Write steps": "Écrire les étapes",
   "Write the JavaScript to run.": "Écrivez le JavaScript à exécuter.",
-  "Your steps are removed. The next run works the task out again with the model, and Jet learns its steps anew.": "Vos étapes sont supprimées. La prochaine exécution résout à nouveau la tâche avec le modèle, et Jet réapprend ses étapes."
+  "Your steps are removed. The next run works the task out again with the model, and Jet learns its steps anew.": "Vos étapes sont supprimées. La prochaine exécution résout à nouveau la tâche avec le modèle, et Jet réapprend ses étapes.",
+  "Add the full library": "Ajouter la bibliothèque complète",
+  "Downloading the dataset from github.com/Vinyzu/chrome-fingerprints and converting it on this computer… This takes about half a minute.": "Téléchargement du jeu de données depuis github.com/Vinyzu/chrome-fingerprints et conversion sur cet ordinateur… Cela prend environ une demi-minute.",
+  "From the clearcote-profiles library and the full chrome-fingerprints dataset by Vinyzu (GPL-3.0), converted on this computer.": "Issu de la bibliothèque clearcote-profiles et du jeu complet chrome-fingerprints de Vinyzu (GPL-3.0), converti sur cet ordinateur.",
+  "Full library on: {n} more real devices, kept on this computer ({mb} MB). Nothing is downloaded again.": "Bibliothèque complète activée : {n} appareils réels de plus, conservés sur cet ordinateur ({mb} Mo). Rien n’est retéléchargé.",
+  "Remove the full library": "Retirer la bibliothèque complète",
+  "Show {n} more": "Afficher {n} de plus",
+  "View the source": "Voir la source",
+  "Want more devices? Add the full library: every usable capture in chrome-fingerprints, about 8,500 real devices. It downloads once from the original repo (1.4 MB) and is kept on this computer (about 60 MB).": "Plus d’appareils ? Ajoutez la bibliothèque complète : toutes les captures utilisables de chrome-fingerprints, environ 8 500 appareils réels. Elle est téléchargée une fois depuis le dépôt d’origine (1,4 Mo) et conservée sur cet ordinateur (environ 60 Mo)."
 }

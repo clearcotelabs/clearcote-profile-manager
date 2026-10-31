@@ -4,10 +4,13 @@
 // matches come first with their reasons in words; one click makes new profiles, each on its own unused device, or
 // gives the selected profiles one each. A device is a real Windows Chrome capture (GPU, screen, threads, fonts):
 // on a computer with another GPU maker, sites can tell, so those are hidden unless asked for.
+//
+// Optional: the full library (electron/fullLibrary.ts), every usable capture of chrome-fingerprints, downloaded
+// once from the original repo and kept on this computer. Thousands of devices, so the list shows a page at a time.
 
 import { useEffect, useMemo, useState } from "react";
 import { t } from "@/lib/i18n";
-import { api, type LibraryProfile } from "@/lib/ipc";
+import { api, type FullLibraryStatus, type LibraryProfile } from "@/lib/ipc";
 import { rankDevices, type DeviceMatch, type GpuMaker, type HostFacts, type HostOsName, type Reason } from "@/lib/deviceMatch";
 import { displayName } from "@/lib/profileList";
 import type { Profile } from "@/types/profile";
@@ -18,6 +21,7 @@ const field =
   "rounded-lg border border-line bg-ink/70 px-3 py-1.5 text-sm text-fog placeholder-fog/30 outline-none focus:border-accent/60";
 const BEST = 6;
 const MAX_CREATE = 20;
+const PAGE = 100;
 
 /** "ANGLE (NVIDIA, NVIDIA GeForce RTX 3060 (0x00002504) Direct3D11 …)" -> "NVIDIA GeForce RTX 3060". */
 export function gpuLabel(lib: LibraryProfile): string {
@@ -26,8 +30,10 @@ export function gpuLabel(lib: LibraryProfile): string {
   return (m ? m[1] : r || lib.gpuFamily || lib.name).replace(/\((?:R|TM)\)/g, "").replace(/\s+/g, " ").trim();
 }
 
-/** The file's page on GitHub (an allowed link), where it can be read or downloaded. */
+/** The file's page on GitHub (an allowed link), where it can be read or downloaded. A full-library device has
+ *  no file of its own: its link is the dataset it was converted from. */
 function fileLink(lib: LibraryProfile): string {
+  if (lib.full) return lib.downloadUrl;
   return lib.downloadUrl.replace(
     /^https:\/\/raw\.githubusercontent\.com\/clearcotelabs\/clearcote-profiles\/main\//,
     "https://github.com/clearcotelabs/clearcote-profiles/blob/main/",
@@ -89,9 +95,40 @@ export default function DevicesView({
   const [group, setGroup] = useState("");
   const [replace, setReplace] = useState(false);
   const [busy, setBusy] = useState(false);
+  const [limit, setLimit] = useState(PAGE);
+  // The full library: undefined while asking, null when this backend can't keep one (preview, older helper).
+  const [full, setFull] = useState<FullLibraryStatus | null | undefined>(undefined);
+  const [fullBusy, setFullBusy] = useState<"add" | "remove" | null>(null);
+  const [fullErr, setFullErr] = useState<string | null>(null);
+
+  const loadLibrary = () =>
+    api.fp.library().then((r) => {
+      if (r.ok) {
+        setLibrary(r.profiles || []);
+        setErr(null);
+      } else setErr(r.error || t("Failed to load library."));
+    });
+
+  async function changeFull(what: "add" | "remove") {
+    const fl = api.fp.fullLibrary;
+    if (!fl) return;
+    setFullBusy(what);
+    setFullErr(null);
+    try {
+      const r = await (what === "add" ? fl.add() : fl.remove());
+      if (!r.ok) setFullErr(r.error || t("Failed to load library."));
+      setFull({ on: r.on, count: r.count, skipped: r.skipped, builtAt: r.builtAt, bytes: r.bytes });
+      await loadLibrary();
+    } catch (e) {
+      setFullErr(String(e));
+    } finally {
+      setFullBusy(null);
+    }
+  }
 
   useEffect(() => {
-    api.fp.library().then((r) => (r.ok ? setLibrary(r.profiles || []) : setErr(r.error || t("Failed to load library."))));
+    void loadLibrary();
+    (api.fp.fullLibrary?.status() ?? Promise.resolve(null)).then(setFull, () => setFull(null));
     (api.hostGpu?.() ?? Promise.resolve(null))
       .then((g) => setGpu(g ? { vendor: g.vendor, name: g.name } : { vendor: "unknown", name: "" }))
       .catch(() => setGpu({ vendor: "unknown", name: "" }));
@@ -111,6 +148,9 @@ export default function DevicesView({
   const best = ranked.filter((m) => m.fits).slice(0, BEST);
   const unusedFitting = ranked.filter((m) => m.fits && !m.usedBy.length).length;
   const chosen = profiles.filter((p) => selected.has(p.id));
+
+  // A new filter or search starts again at the first page.
+  useEffect(() => setLimit(PAGE), [maker, onlyFit, hideUsed, q]);
 
   const shown = ranked.filter((m) => {
     if (onlyFit && !m.fits) return false;
@@ -190,7 +230,7 @@ export default function DevicesView({
                 </button>
               )}
               <button type="button" className={ghost} onClick={() => void api.openExternal(fileLink(m.lib))}>
-                {t("View the .json")}
+                {m.lib.full ? t("View the source") : t("View the .json")}
               </button>
             </div>
           </div>
@@ -208,6 +248,31 @@ export default function DevicesView({
         {t("This computer: {facts}", { facts: hostLine })}
         {gpu?.vendor === "unknown" && <span className="ml-2 text-warn">{t("The GPU maker is unknown, so every device is shown.")}</span>}
       </p>
+
+      {full && (
+        <div className="flex flex-wrap items-center gap-3 rounded-xl border border-line bg-surface/70 px-4 py-3" data-devices-full={full.on ? "on" : "off"}>
+          <span className="min-w-0 flex-1 text-[12px] text-fog/60">
+            {fullBusy === "add"
+              ? t("Downloading the dataset from github.com/Vinyzu/chrome-fingerprints and converting it on this computer… This takes about half a minute.")
+              : full.on
+                ? t("Full library on: {n} more real devices, kept on this computer ({mb} MB). Nothing is downloaded again.", {
+                    n: (full.count ?? 0).toLocaleString(),
+                    mb: Math.round((full.bytes ?? 0) / 1e6),
+                  })
+                : t("Want more devices? Add the full library: every usable capture in chrome-fingerprints, about 8,500 real devices. It downloads once from the original repo (1.4 MB) and is kept on this computer (about 60 MB).")}
+          </span>
+          {full.on ? (
+            <button type="button" className={ghost} disabled={!!fullBusy} onClick={() => void changeFull("remove")} data-devices-full-remove="1">
+              {fullBusy === "remove" ? t("Removing…") : t("Remove the full library")}
+            </button>
+          ) : (
+            <button type="button" className={primary} disabled={!!fullBusy} onClick={() => void changeFull("add")} data-devices-full-add="1">
+              {fullBusy === "add" ? t("Adding…") : t("Add the full library")}
+            </button>
+          )}
+          {fullErr && <p className="w-full text-[12px] text-warn" data-devices-full-error="1">{fullErr}</p>}
+        </div>
+      )}
 
       {err && <div className="rounded-lg border border-warn/30 bg-warn/5 px-3 py-2 text-xs text-warn">{err}</div>}
       {!library && !err && <p className="text-sm text-fog/50">{t("Loading the library…")}</p>}
@@ -293,9 +358,16 @@ export default function DevicesView({
             </label>
             <span className="text-fog/40">{t("{shown} of {total}", { shown: shown.length, total: ranked.length })}</span>
           </div>
-          <div className="space-y-2" data-devices-all="1">{shown.map((m) => card(m, true))}</div>
+          <div className="space-y-2" data-devices-all="1">{shown.slice(0, limit).map((m) => card(m, true))}</div>
+          {shown.length > limit && (
+            <button type="button" className={ghost + " mt-3"} onClick={() => setLimit((n) => n + PAGE)} data-devices-more="1">
+              {t("Show {n} more", { n: Math.min(PAGE, shown.length - limit) })}
+            </button>
+          )}
           <p className="mt-4 text-[11px] text-fog/40">
-            {t("From the clearcote-profiles library, derived from chrome-fingerprints by Vinyzu (GPL-3.0).")}
+            {full?.on
+              ? t("From the clearcote-profiles library and the full chrome-fingerprints dataset by Vinyzu (GPL-3.0), converted on this computer.")
+              : t("From the clearcote-profiles library, derived from chrome-fingerprints by Vinyzu (GPL-3.0).")}
           </p>
         </section>
       )}

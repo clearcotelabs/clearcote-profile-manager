@@ -273,6 +273,21 @@ export interface LibraryProfile {
   /** Set when the indexed screen size is below the guard floor, so the picker can warn (or filter)
    *  BEFORE downloading a capture that would produce impossible window geometry. */
   screenWarning?: string;
+  /** From the full device library kept on this computer (electron/fullLibrary.ts), not the curated samples. */
+  full?: boolean;
+}
+/** The optional full device library: every usable chrome-fingerprints capture, converted on this computer. */
+export interface FullLibraryStatus {
+  on: boolean;
+  count?: number;
+  /** Captures the quality filter left out (virtual machines, software rendering, implausible hardware). */
+  skipped?: number;
+  builtAt?: string;
+  bytes?: number;
+}
+export interface FullLibraryResult extends FullLibraryStatus {
+  ok: boolean;
+  error?: string;
 }
 export interface FpListResult {
   ok: boolean;
@@ -497,6 +512,13 @@ export interface ClearcoteApi {
     import: () => Promise<FpImportResult>;
     library: () => Promise<FpListResult>;
     use: (lib: LibraryProfile) => Promise<FpImportResult>;
+    /** Optional: an older desktop app or helper does not have it, and the web preview can't keep one. */
+    fullLibrary?: {
+      status: () => Promise<FullLibraryStatus>;
+      /** Download from the original repo (once; it stays cached), check, convert. Takes a few seconds. */
+      add: () => Promise<FullLibraryResult>;
+      remove: () => Promise<FullLibraryResult>;
+    };
   };
 }
 
@@ -535,6 +557,36 @@ function buildMock(): ClearcoteApi {
       return fallback;
     }
   };
+  // The full device library: localStorage[MOCK_FULL_KEY] holds its rows once "added" (made up, GPU makers in turn).
+  const MOCK_FULL_KEY = "clearcote.mock.fullLibrary";
+  const MOCK_FULL_COUNT = 250;
+  const mockFullRows = (): LibraryProfile[] =>
+    Array.from({ length: MOCK_FULL_COUNT }, (_, i) => {
+      const [vendor, family, gpu] = (
+        [
+          ["NVIDIA", "RTX", "NVIDIA GeForce RTX 3060"],
+          ["Intel", "UHD", "Intel(R) UHD Graphics 630"],
+          ["AMD", "Radeon", "AMD Radeon RX 6600"],
+        ] as const
+      )[i % 3];
+      const id = `vinyzu-${String(20000 + i).padStart(5, "0")}`;
+      return {
+        name: `${id}.json`,
+        downloadUrl: `https://github.com/Vinyzu/chrome-fingerprints/blob/mock/chrome_fingerprints/fingerprints.json.xz#${id}`,
+        gpuVendor: vendor,
+        gpuFamily: family,
+        renderer: `ANGLE (${vendor}, ${gpu} Direct3D11 vs_5_0 ps_5_0, D3D11)`,
+        screen: ["1920x1080", "2560x1440", "1366x768"][i % 3],
+        cores: [4, 8, 12, 16][i % 4],
+        memory: 8,
+        full: true,
+      };
+    });
+  const mockFullStatus = () => {
+    const n = readJson<LibraryProfile[]>(MOCK_FULL_KEY, []).length;
+    return n ? { on: true, count: n, skipped: 1496, builtAt: new Date().toISOString(), bytes: 57e6 } : { on: false };
+  };
+  const writeJson = (key: string, v: unknown) => localStorage.setItem(key, JSON.stringify(v));
   // Cloud. localStorage["clearcote.mock.cloud"] = "ok" lets a cloud start succeed (once an API key is
   // saved in Settings, like the desktop app), or {"error","code"} fails it that way. The sessions live
   // in localStorage so the viewer page (its own window, its own mock) sees them, and a change in one
@@ -889,7 +941,7 @@ function buildMock(): ClearcoteApi {
       library: async () => {
         // A test's stand-in for the library (localStorage ["clearcote.mock.library"]), so it needs no network.
         const seeded = readJson<LibraryProfile[] | null>("clearcote.mock.library", null);
-        if (seeded) return { ok: true, profiles: seeded };
+        if (seeded) return { ok: true, profiles: [...seeded, ...readJson<LibraryProfile[]>(MOCK_FULL_KEY, [])] };
         const RAW = "https://raw.githubusercontent.com/clearcotelabs/clearcote-profiles/main/samples";
         try {
           const ir = await fetch(`${RAW}/index.json`);
@@ -898,7 +950,7 @@ function buildMock(): ClearcoteApi {
             if (Array.isArray(idx.profiles) && idx.profiles.length) {
               return {
                 ok: true,
-                profiles: idx.profiles.map((e) => ({
+                profiles: [...idx.profiles.map((e) => ({
                   name: `${e.id}.json`,
                   downloadUrl: `${RAW}/${e.id}.json`,
                   gpuVendor: e.gpu_vendor as string | undefined,
@@ -908,7 +960,7 @@ function buildMock(): ClearcoteApi {
                   cores: typeof e.hardware_concurrency === "number" ? e.hardware_concurrency : undefined,
                   memory: typeof e.device_memory === "number" ? e.device_memory : undefined,
                   screenWarning: screenWarningFromLabel(e.screen as string | undefined) ?? undefined,
-                })),
+                })), ...readJson<LibraryProfile[]>(MOCK_FULL_KEY, [])],
               };
             }
           }
@@ -930,6 +982,19 @@ function buildMock(): ClearcoteApi {
         } catch (e) {
           return { ok: false, error: String(e) };
         }
+      },
+      // The full library for tests and design review: adding it makes MOCK_FULL_COUNT made-up devices.
+      fullLibrary: {
+        status: async () => mockFullStatus(),
+        add: async () => {
+          await new Promise((r) => setTimeout(r, 300));
+          writeJson(MOCK_FULL_KEY, mockFullRows());
+          return { ok: true, ...mockFullStatus() };
+        },
+        remove: async () => {
+          localStorage.removeItem(MOCK_FULL_KEY);
+          return { ok: true, ...mockFullStatus() };
+        },
       },
       // No file to store in a browser: the profile records the library name, as the desktop app's copy is named.
       use: async (lib) => ({

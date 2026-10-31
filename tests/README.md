@@ -50,6 +50,13 @@ Four layers:
     plain explanation and one action. Uses the real strings (the screenshot's 403 included).
   - `profileList.test.ts` — sort, grouping, relative times, version chips, the free-plan pin check,
     proxy redaction on cards, and unsaved-change detection.
+  - Full device library: `vinyzu.test.ts` — the chrome-fingerprints converter (`electron/vinyzu.ts`, a port of
+    `convert_dataset.py` + `curate.py`) on hand-made records: vars.py parsing (escapes, adjacent literals),
+    Python number rules, WebGL names, table lookups, the quality filter; and the cache refusing a download that
+    isn't the pinned file. `fulllibrary.handlers.test.ts` — the shared handlers: samples first, full-library
+    devices after (once), still listed offline, used from the cache without a fetch.
+    `vinyzu.parity.test.ts` (opt-in, needs the dataset and `generate.py`'s output) — all 10,000 records against
+    the Python generator, and a real cache build: read back, built again without a download, removed.
   - `lifecycle.test.ts` — why a browser stopped (the licence watchdog exits 0 like a normal close;
     only its stderr line tells them apart), the graceful stop and its forced fallback, and what
     closing the window does while browsers run.

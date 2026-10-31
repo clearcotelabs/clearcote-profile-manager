@@ -10,6 +10,7 @@ import type { LaunchTarget } from "./launchTarget";
 import type { TrashResult, RestoreResult, ClearManyResult, ClearMode } from "./profiles";
 import type { ExitEvent } from "./launcher";
 import type { StopOutcome } from "./procstop";
+import type { FullLibraryStatus } from "./fullLibrary";
 import type { TempCopy } from "./cache";
 import type { ProxyCheck } from "./proxycheck";
 import type { CloudSessionState, CloudStartResult, CloudEnded } from "./cloud";
@@ -189,6 +190,11 @@ const api = {
     import: (): Promise<FpImportResult> => ipcRenderer.invoke("fp:import"),
     library: (): Promise<FpListResult> => ipcRenderer.invoke("fp:library"),
     use: (lib: LibraryProfile): Promise<FpImportResult> => ipcRenderer.invoke("fp:use", lib),
+    fullLibrary: {
+      status: (): Promise<FullLibraryStatus> => ipcRenderer.invoke("fp:fullLibrary"),
+      add: (): Promise<FullLibraryStatus & { ok: boolean; error?: string }> => ipcRenderer.invoke("fp:fullLibrary:add"),
+      remove: (): Promise<FullLibraryStatus & { ok: boolean; error?: string }> => ipcRenderer.invoke("fp:fullLibrary:remove"),
+    },
   },
 };
 

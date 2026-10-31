@@ -462,6 +462,11 @@ export function buildHelperApi(): ClearcoteApi {
       },
       library: call("fp:library"),
       use: call("fp:use"),
+      fullLibrary: {
+        status: call("fp:fullLibrary"),
+        add: call("fp:fullLibrary:add"),
+        remove: call("fp:fullLibrary:remove"),
+      },
     },
   };
 }

@@ -246,6 +246,9 @@
   "Add tag…": [
     "app/page.tsx"
   ],
+  "Add the full library": [
+    "src/components/DevicesView.tsx"
+  ],
   "Add to cart in a size and colour": [
     "src/lib/taskExamples.ts"
   ],
@@ -271,6 +274,7 @@
     "src/components/ExtensionsView.tsx"
   ],
   "Adding…": [
+    "src/components/DevicesView.tsx",
     "src/components/ExtensionsView.tsx"
   ],
   "Address": [
@@ -1214,6 +1218,9 @@
   "Downloading builds runs in the desktop app.": [
     "src/lib/ipc.ts"
   ],
+  "Downloading the dataset from github.com/Vinyzu/chrome-fingerprints and converting it on this computer… This takes about half a minute.": [
+    "src/components/DevicesView.tsx"
+  ],
   "Downloading…": [
     "src/components/StorageSection.tsx",
     "src/components/UpdateBanner.tsx"
@@ -1514,6 +1521,9 @@
   "From template {name} · new seed · {detail}": [
     "src/components/ProfileEditor.tsx"
   ],
+  "From the clearcote-profiles library and the full chrome-fingerprints dataset by Vinyzu (GPL-3.0), converted on this computer.": [
+    "src/components/DevicesView.tsx"
+  ],
   "From the clearcote-profiles library, derived from chrome-fingerprints by Vinyzu (GPL-3.0).": [
     "src/components/DevicesView.tsx"
   ],
@@ -1522,6 +1532,9 @@
   ],
   "From {repo} · or use <mono>Import from file…</mono> for your own capture.": [
     "src/components/LibraryModal.tsx"
+  ],
+  "Full library on: {n} more real devices, kept on this computer ({mb} MB). Nothing is downloaded again.": [
+    "src/components/DevicesView.tsx"
   ],
   "GPU claim does not match this machine's GPU maker; driver limits follow the real GPU, so a cross-vendor claim is falsifiable.": [
     "src/lib/coherence.ts"
@@ -2767,6 +2780,9 @@
   "Remove old builds automatically": [
     "src/components/StorageSection.tsx"
   ],
+  "Remove the full library": [
+    "src/components/DevicesView.tsx"
+  ],
   "Remove the group filter {name}": [
     "app/page.tsx"
   ],
@@ -2795,6 +2811,7 @@
     "src/components/ExtensionsView.tsx"
   ],
   "Removing…": [
+    "src/components/DevicesView.tsx",
     "src/components/StorageSection.tsx"
   ],
   "Rename": [
@@ -3343,6 +3360,10 @@
   ],
   "Show profiles as cards": [
     "app/page.tsx"
+  ],
+  "Show {n} more": [
+    "src/components/DevicesView.tsx",
+    "src/components/LibraryModal.tsx"
   ],
   "Showing": [
     "app/page.tsx"
@@ -4214,6 +4235,9 @@
   "View the .json": [
     "src/components/DevicesView.tsx"
   ],
+  "View the source": [
+    "src/components/DevicesView.tsx"
+  ],
   "Wait": [
     "src/components/StepEditor.tsx"
   ],
@@ -4237,6 +4261,9 @@
   ],
   "Waiting": [
     "src/components/TaskBoard.tsx"
+  ],
+  "Want more devices? Add the full library: every usable capture in chrome-fingerprints, about 8,500 real devices. It downloads once from the original repo (1.4 MB) and is kept on this computer (about 60 MB).": [
+    "src/components/DevicesView.tsx"
   ],
   "WebRTC IP is set to {ip}, which is not this exit: pages will see HTTP from {exit} and WebRTC from {ip}. Clear the field, or click “Resolve from proxy”, to keep them together.": [
     "src/lib/proxyReport.ts"

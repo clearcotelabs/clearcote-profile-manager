@@ -9,6 +9,8 @@ import { rankDevices, type HostFacts } from "@/lib/deviceMatch";
 import Dialog, { DialogHeader } from "./Dialog";
 import { t, tRich } from "@/lib/i18n";
 
+const PAGE = 100;
+
 export default function LibraryModal({
   onApply,
   onClose,
@@ -48,7 +50,10 @@ export default function LibraryModal({
   const smallCount = byVendor.filter((p) => p.screenWarning).length;
   const visible = hideSmall ? byVendor.filter((p) => !p.screenWarning) : byVendor;
   const ranked = rankDevices(visible, host, []);
-  const shown = ranked.map((m) => m.lib);
+  // With the full library there are thousands: the best fits first, a page at a time.
+  const [limit, setLimit] = useState(PAGE);
+  useEffect(() => setLimit(PAGE), [vendor, hideSmall]);
+  const shown = ranked.slice(0, limit).map((m) => m.lib);
   const scoreOf = new Map(ranked.map((m) => [m.lib.name, m]));
 
   return (
@@ -110,6 +115,12 @@ export default function LibraryModal({
             </button>
           ))}
           {list && shown.length === 0 && <div className="p-4 text-sm text-fog/40">{t("No profiles for this vendor.")}</div>}
+          {ranked.length > limit && (
+            <button type="button" onClick={() => setLimit((n) => n + PAGE)} data-library-more="1"
+              className="w-full px-3 py-2 text-left text-[12px] text-accent hover:bg-elevate">
+              {t("Show {n} more", { n: Math.min(PAGE, ranked.length - limit) })}
+            </button>
+          )}
         </div>
         {smallCount > 0 && (
           <label className="mt-2 flex items-center gap-2 text-[11px] text-fog/45">

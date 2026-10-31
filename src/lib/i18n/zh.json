@@ -1629,5 +1629,13 @@
   "Words to scroll to": "要滚动到的文字",
   "Write steps": "编写步骤",
   "Write the JavaScript to run.": "请编写要运行的 JavaScript。",
-  "Your steps are removed. The next run works the task out again with the model, and Jet learns its steps anew.": "你的步骤会被删除。下次运行时将再次用模型摸索此任务，Jet 会重新学习其步骤。"
+  "Your steps are removed. The next run works the task out again with the model, and Jet learns its steps anew.": "你的步骤会被删除。下次运行时将再次用模型摸索此任务，Jet 会重新学习其步骤。",
+  "Add the full library": "添加完整库",
+  "Downloading the dataset from github.com/Vinyzu/chrome-fingerprints and converting it on this computer… This takes about half a minute.": "正在从 github.com/Vinyzu/chrome-fingerprints 下载数据集并在本机转换… 大约需要半分钟。",
+  "From the clearcote-profiles library and the full chrome-fingerprints dataset by Vinyzu (GPL-3.0), converted on this computer.": "来自 clearcote-profiles 库以及 Vinyzu 的完整 chrome-fingerprints 数据集（GPL-3.0），在本机转换。",
+  "Full library on: {n} more real devices, kept on this computer ({mb} MB). Nothing is downloaded again.": "完整库已开启：新增 {n} 台真实设备，保存在本机（{mb} MB）。不会再次下载。",
+  "Remove the full library": "移除完整库",
+  "Show {n} more": "再显示 {n} 个",
+  "View the source": "查看来源",
+  "Want more devices? Add the full library: every usable capture in chrome-fingerprints, about 8,500 real devices. It downloads once from the original repo (1.4 MB) and is kept on this computer (about 60 MB).": "想要更多设备？添加完整库：chrome-fingerprints 中所有可用的采集，约 8,500 台真实设备。只从原始仓库下载一次（1.4 MB），并保存在本机（约 60 MB）。"
 }

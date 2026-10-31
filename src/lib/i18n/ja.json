@@ -1629,5 +1629,13 @@
   "Words to scroll to": "スクロール先の語句",
   "Write steps": "ステップを書く",
   "Write the JavaScript to run.": "実行する JavaScript を書いてください。",
-  "Your steps are removed. The next run works the task out again with the model, and Jet learns its steps anew.": "ステップは削除されます。次回の実行ではモデルでタスクを再度解決し、Jet はステップを新たに学習します。"
+  "Your steps are removed. The next run works the task out again with the model, and Jet learns its steps anew.": "ステップは削除されます。次回の実行ではモデルでタスクを再度解決し、Jet はステップを新たに学習します。",
+  "Add the full library": "フルライブラリを追加",
+  "Downloading the dataset from github.com/Vinyzu/chrome-fingerprints and converting it on this computer… This takes about half a minute.": "github.com/Vinyzu/chrome-fingerprints からデータセットをダウンロードし、このコンピューターで変換しています… 30 秒ほどかかります。",
+  "From the clearcote-profiles library and the full chrome-fingerprints dataset by Vinyzu (GPL-3.0), converted on this computer.": "clearcote-profiles ライブラリと、Vinyzu による chrome-fingerprints の全データセット（GPL-3.0）から、このコンピューターで変換したものです。",
+  "Full library on: {n} more real devices, kept on this computer ({mb} MB). Nothing is downloaded again.": "フルライブラリ有効：実在デバイスが {n} 件追加され、このコンピューターに保存されています（{mb} MB）。再ダウンロードはしません。",
+  "Remove the full library": "フルライブラリを削除",
+  "Show {n} more": "さらに {n} 件表示",
+  "View the source": "ソースを見る",
+  "Want more devices? Add the full library: every usable capture in chrome-fingerprints, about 8,500 real devices. It downloads once from the original repo (1.4 MB) and is kept on this computer (about 60 MB).": "もっとデバイスが必要ですか？フルライブラリを追加できます：chrome-fingerprints の使用可能なキャプチャすべて、約 8,500 台の実在デバイスです。元のリポジトリから一度だけダウンロード（1.4 MB）し、このコンピューターに保存します（約 60 MB）。"
 }

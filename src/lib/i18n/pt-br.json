@@ -1629,5 +1629,13 @@
   "Words to scroll to": "Palavras até onde rolar",
   "Write steps": "Escrever passos",
   "Write the JavaScript to run.": "Escreva o JavaScript a executar.",
-  "Your steps are removed. The next run works the task out again with the model, and Jet learns its steps anew.": "Seus passos são removidos. Na próxima execução, o modelo resolve a tarefa de novo e o Jet aprende os passos do zero."
+  "Your steps are removed. The next run works the task out again with the model, and Jet learns its steps anew.": "Seus passos são removidos. Na próxima execução, o modelo resolve a tarefa de novo e o Jet aprende os passos do zero.",
+  "Add the full library": "Adicionar a biblioteca completa",
+  "Downloading the dataset from github.com/Vinyzu/chrome-fingerprints and converting it on this computer… This takes about half a minute.": "Baixando o conjunto de dados de github.com/Vinyzu/chrome-fingerprints e convertendo neste computador… Leva cerca de meio minuto.",
+  "From the clearcote-profiles library and the full chrome-fingerprints dataset by Vinyzu (GPL-3.0), converted on this computer.": "Da biblioteca clearcote-profiles e do conjunto completo chrome-fingerprints de Vinyzu (GPL-3.0), convertido neste computador.",
+  "Full library on: {n} more real devices, kept on this computer ({mb} MB). Nothing is downloaded again.": "Biblioteca completa ativada: mais {n} dispositivos reais, guardados neste computador ({mb} MB). Nada é baixado de novo.",
+  "Remove the full library": "Remover a biblioteca completa",
+  "Show {n} more": "Mostrar mais {n}",
+  "View the source": "Ver a origem",
+  "Want more devices? Add the full library: every usable capture in chrome-fingerprints, about 8,500 real devices. It downloads once from the original repo (1.4 MB) and is kept on this computer (about 60 MB).": "Quer mais dispositivos? Adicione a biblioteca completa: todas as capturas utilizáveis do chrome-fingerprints, cerca de 8.500 dispositivos reais. Ela é baixada uma vez do repositório original (1,4 MB) e guardada neste computador (cerca de 60 MB)."
 }

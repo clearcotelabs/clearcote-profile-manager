@@ -91,7 +91,8 @@ export function buildPreviewApi(mock: ClearcoteApi): ClearcoteApi {
     importProfiles: fail(tx("import profiles")),
     migrateImport: fail(tx("import profiles")),
     importCookies: fail(tx("import cookies")),
-    fp: { ...mock.fp, import: fail(tx("import a fingerprint")), use: fail(tx("use a library fingerprint")) },
+    // No full library in the preview: it is built and kept on a computer (the helper's or the desktop app's).
+    fp: { ...mock.fp, import: fail(tx("import a fingerprint")), use: fail(tx("use a library fingerprint")), fullLibrary: undefined },
   };
 }
 

@@ -111,5 +111,8 @@
         "StartupWMClass": "clearcote-profile-manager"
       }
     }
+  },
+  "dependencies": {
+    "xz-decompress": "^0.2.3"
   }
 }

@@ -1629,5 +1629,13 @@
   "Words to scroll to": "Chữ cần cuộn tới",
   "Write steps": "Viết các bước",
   "Write the JavaScript to run.": "Hãy viết JavaScript để chạy.",
-  "Your steps are removed. The next run works the task out again with the model, and Jet learns its steps anew.": "Các bước của bạn sẽ bị xóa. Lần chạy sau sẽ tìm lại cách làm tác vụ bằng mô hình, và Jet học lại các bước."
+  "Your steps are removed. The next run works the task out again with the model, and Jet learns its steps anew.": "Các bước của bạn sẽ bị xóa. Lần chạy sau sẽ tìm lại cách làm tác vụ bằng mô hình, và Jet học lại các bước.",
+  "Add the full library": "Thêm thư viện đầy đủ",
+  "Downloading the dataset from github.com/Vinyzu/chrome-fingerprints and converting it on this computer… This takes about half a minute.": "Đang tải bộ dữ liệu từ github.com/Vinyzu/chrome-fingerprints và chuyển đổi trên máy này… Mất khoảng nửa phút.",
+  "From the clearcote-profiles library and the full chrome-fingerprints dataset by Vinyzu (GPL-3.0), converted on this computer.": "Từ thư viện clearcote-profiles và toàn bộ bộ dữ liệu chrome-fingerprints của Vinyzu (GPL-3.0), được chuyển đổi trên máy này.",
+  "Full library on: {n} more real devices, kept on this computer ({mb} MB). Nothing is downloaded again.": "Thư viện đầy đủ đang bật: thêm {n} thiết bị thật, lưu trên máy này ({mb} MB). Không tải lại lần nào nữa.",
+  "Remove the full library": "Gỡ thư viện đầy đủ",
+  "Show {n} more": "Hiện thêm {n}",
+  "View the source": "Xem nguồn",
+  "Want more devices? Add the full library: every usable capture in chrome-fingerprints, about 8,500 real devices. It downloads once from the original repo (1.4 MB) and is kept on this computer (about 60 MB).": "Muốn thêm thiết bị? Thêm thư viện đầy đủ: mọi bản ghi dùng được trong chrome-fingerprints, khoảng 8.500 thiết bị thật. Chỉ tải một lần từ kho gốc (1,4 MB) và lưu trên máy này (khoảng 60 MB)."
 }
