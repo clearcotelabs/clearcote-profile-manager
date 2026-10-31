@@ -13,6 +13,7 @@ import {
   isCurated,
   parseVarsPy,
   pyNum,
+  riskOf,
   summary,
   toGlConst,
   type VinyzuTables,
@@ -153,8 +154,40 @@ describe("curation (curate.py)", () => {
       expect((p.meta as Record<string, unknown>).source).toMatch(/Vinyzu\/chrome-fingerprints, GPL-3\.0/);
       expect((p.css as Record<string, unknown>)["color-gamut:srgb"]).toBe(true);
     });
-    expect(out).toEqual({ kept: 2, skipped: 2 });
+    expect(out).toEqual({ kept: 2, skipped: 2, risky: 0 });
     expect(rows).toEqual(["vinyzu-00000", "vinyzu-00003"]);
+  });
+});
+
+describe("higher-risk captures (kept and labelled in the full library)", () => {
+  const risk = (over: Record<string, unknown>) => riskOf(convert(record(over), tables()));
+  const gl = (renderer: string) => ({ webgl: { ...record().webgl, unmasked_renderer: renderer } });
+  it("labels why, in the order the curation would reject it", () => {
+    expect(risk({})).toBeNull();
+    expect(risk(gl("ANGLE (Google, Vulkan 1.3.0 (SwiftShader Device (Subzero) (0x0000C0DE)), SwiftShader driver)"))).toBe("no-gpu");
+    expect(risk(gl("ANGLE (Unknown, Parallels Display Adapter (WDDM) Direct3D11 vs_5_0 ps_5_0, D3D11)"))).toBe("vm");
+    expect(risk(gl(""))).toBe("unusual");
+    expect(risk({ webgl: { ...record().webgl, properties: { maxTextureSize: "8192" } } })).toBe("old-gpu");
+    expect(risk({ hardware_concurrency: 7 })).toBe("likely-vm");
+    expect(risk({ device_memory: 0.5 })).toBe("likely-vm");
+  });
+  it("buildLibrary with includeRisky keeps them, tagged (the VM's product too), and counts them apart", () => {
+    const rows: Array<{ id: string; risk?: string; vm?: string }> = [];
+    const out = buildLibrary(
+      [record(), record(gl("ANGLE (VMware, VMware SVGA 3D Direct3D11 vs_5_0 ps_5_0, D3D11)")), record({ hardware_concurrency: 3 }), record({ webgl: { extensions: [9] } })],
+      tables(),
+      (p, row) => {
+        rows.push(row);
+        if (row.risk) expect((p.meta as Record<string, unknown>).risk).toBe(row.risk);
+      },
+      { includeRisky: true },
+    );
+    expect(out).toEqual({ kept: 1, risky: 2, skipped: 1 });
+    expect(rows.map((r) => [r.id, r.risk ?? null, r.vm ?? null])).toEqual([
+      ["vinyzu-00000", null, null],
+      ["vinyzu-00001", "vm", "vmware"],
+      ["vinyzu-00002", "likely-vm", null],
+    ]);
   });
 });
 

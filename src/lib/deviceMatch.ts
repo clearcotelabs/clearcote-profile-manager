@@ -6,9 +6,14 @@
 // from facts about THIS computer (its GPU from host:gpu, its thread count and OS), and every point given or taken
 // away comes with a reason the page shows in words.
 //
+// Higher-risk devices (the full library's captures without a graphics card, from virtual machines, on old graphics)
+// are labelled with what makes them riskier, and fit only where that is the truth: a no-GPU capture on a computer
+// that has no graphics card either (the engine then draws in software, as the capture did), a VM capture on the
+// same VM. On such a computer a real-GPU device is the one that can be disproved.
+//
 // PURE: no React, no Electron. The page, the bulk "Assign devices" action and the tests import it.
 
-import type { LibraryProfile } from "./ipc";
+import type { DeviceRisk, LibraryProfile } from "./ipc";
 import type { Profile } from "@/types/profile";
 import { tx } from "./i18n";
 
@@ -23,7 +28,27 @@ export interface HostFacts {
   gpuName?: string;
   threads?: number;
   os?: HostOsName;
+  /** "software" = no graphics card, "vm" = a virtual machine's 3D adapter (electron/hostgpu.ts). Unknown when absent. */
+  kind?: "gpu" | "software" | "vm";
+  vm?: "vmware" | "virtualbox" | "parallels";
 }
+
+/** A short label for a higher-risk device, and the sentence that says why. */
+export const RISK_LABEL: Record<DeviceRisk, string> = {
+  "no-gpu": tx("No graphics card"),
+  vm: tx("Virtual machine"),
+  "likely-vm": tx("Possibly a virtual machine"),
+  "old-gpu": tx("Old graphics"),
+  unusual: tx("Unusual capture"),
+};
+const RISK_WHY: Record<DeviceRisk, string> = {
+  "no-gpu": tx("Higher risk: captured without a graphics card (drawn in software). Many sites treat that as a server or a bot."),
+  vm: tx("Higher risk: captured in a virtual machine ({vm}). Some sites block virtual machines."),
+  "likely-vm": tx("Higher risk: an unusual thread count or memory size for a desktop, typical of a virtual machine."),
+  "old-gpu": tx("Higher risk: old graphics without WebGL2, but this browser has WebGL2, so sites can see the mismatch."),
+  unusual: tx("Higher risk: the graphics were not captured the normal way, so sites may not trust it."),
+};
+const VM_LABEL: Record<string, string> = { vmware: "VMware", virtualbox: "VirtualBox", parallels: "Parallels", other: "VM" };
 
 /** One reason, as a translatable sentence with its values. `good` = it raised the score. */
 export interface Reason {
@@ -135,9 +160,41 @@ export function scoreDevice(lib: LibraryProfile, host: HostFacts, usedBy: string
   let score = 0;
   let fits = true;
 
+  // Higher risk: said first, and what it takes to fit. 30 when it matches this computer the way a GPU class would.
+  const risk = lib.risk;
+  if (risk) reasons.push({ text: RISK_WHY[risk], params: { vm: VM_LABEL[lib.vm || "other"] }, good: false });
+  if (risk === "no-gpu") {
+    if (host.kind === "software") {
+      score += 30;
+      reasons.push({ text: tx("No graphics card, like this computer"), good: true });
+    } else {
+      fits = false;
+      reasons.push({ text: tx("Fits only a computer without a graphics card"), good: false });
+    }
+  } else if (risk === "vm") {
+    if (host.kind === "vm" && host.vm === lib.vm) {
+      score += 30;
+      reasons.push({ text: tx("Same virtual machine as this computer ({vm})"), params: { vm: VM_LABEL[host.vm || "other"] }, good: true });
+    } else {
+      fits = false;
+      reasons.push({ text: tx("Fits only a {vm} virtual machine"), params: { vm: VM_LABEL[lib.vm || "other"] }, good: false });
+    }
+  } else if (risk === "old-gpu" || risk === "unusual") {
+    fits = false;
+  } else if (host.kind === "software" || host.kind === "vm") {
+    // A real graphics card's device, on a computer that draws in software or on a VM's adapter.
+    fits = false;
+    reasons.push({
+      text: host.kind === "software" ? tx("This computer has no graphics card: it draws unlike this device") : tx("This computer is a virtual machine ({vm}): it draws unlike this device"),
+      params: { vm: VM_LABEL[host.vm || "other"] },
+      good: false,
+    });
+  }
+  if (risk === "likely-vm") score -= 15;
+
   // GPU maker: required. A claim from another maker is falsifiable in a few WebGL calls.
   const maker = makerOf(lib.gpuVendor) || makerOf(lib.renderer);
-  if (host.vendor !== "unknown" && maker) {
+  if (fits && host.vendor !== "unknown" && maker) {
     if (maker === host.vendor) {
       reasons.push({ text: tx("Same GPU maker as this computer ({maker})"), params: { maker: MAKER_LABEL[maker] }, good: true });
     } else {
@@ -232,14 +289,15 @@ function screenRank(lib: LibraryProfile): number {
   return i < 0 ? COMMON_SCREENS.length : i;
 }
 
-/** Every device, best first: fitting ones before the rest, then score, then the least used, then the commoner screen. */
+/** Every device, best first: fitting ones before the rest, then the lower risk, then score, then the least used,
+ *  then the commoner screen. */
 export function rankDevices(list: LibraryProfile[], host: HostFacts, profiles: Profile[]): DeviceMatch[] {
   const used = usage(profiles);
   return list
     .map((lib) => scoreDevice(lib, host, used.get(lib.name) || []))
     .sort((a, b) =>
-      Number(b.fits) - Number(a.fits) || b.score - a.score || a.usedBy.length - b.usedBy.length || screenRank(a.lib) - screenRank(b.lib) ||
-      a.lib.name.localeCompare(b.lib.name));
+      Number(b.fits) - Number(a.fits) || Number(!!a.lib.risk) - Number(!!b.lib.risk) || b.score - a.score ||
+      a.usedBy.length - b.usedBy.length || screenRank(a.lib) - screenRank(b.lib) || a.lib.name.localeCompare(b.lib.name));
 }
 
 /** Up to `n` different fitting devices that no profile uses yet, best first: one per new profile. */

@@ -103,3 +103,56 @@ describe("ranking and assigning", () => {
     expect(canTakeDevice(profile("x", { platform: "android" } as Partial<Profile>))).toBe(false);
   });
 });
+
+describe("higher-risk devices (the full library's no-GPU, VM and old-graphics captures)", () => {
+  const SWIFT = lib("v-sw", "ANGLE (Google, Vulkan 1.3.0 (SwiftShader Device (Subzero) (0x0000C0DE)), SwiftShader driver)", { gpuVendor: "other", risk: "no-gpu", cores: 4 });
+  const VMW = lib("v-vmw", "ANGLE (VMware, VMware SVGA 3D Direct3D11 vs_5_0 ps_5_0, D3D11)", { gpuVendor: "other", risk: "vm", vm: "vmware", cores: 4 });
+  const OLD = lib("v-old", "ANGLE (Intel, Intel(R) HD Graphics 3000 Direct3D9Ex vs_3_0 ps_3_0, igdumd64.dll)", { risk: "old-gpu" });
+  const ODD = lib("v-odd", "ANGLE (NVIDIA, NVIDIA GeForce RTX 3060 (0x00002504) Direct3D11 vs_5_0 ps_5_0, D3D11)", { risk: "likely-vm", cores: 7 });
+  const NO_GPU_HOST: HostFacts = { vendor: "unknown", kind: "software", threads: 8, os: "linux" };
+  const VMWARE_HOST: HostFacts = { vendor: "unknown", kind: "vm", vm: "vmware", gpuName: "VMware SVGA 3D", threads: 4, os: "windows" };
+  const text = (m: ReturnType<typeof scoreDevice>) => m.reasons.map((r) => r.text).join(" | ");
+
+  it("on a computer with a graphics card: none fit, each says why it is riskier, and they rank last", () => {
+    for (const d of [SWIFT, VMW, OLD]) {
+      const m = scoreDevice(d, HOST);
+      expect(m.fits).toBe(false);
+      expect(m.reasons[0]).toMatchObject({ good: false, text: expect.stringMatching(/^Higher risk:/) });
+    }
+    expect(text(scoreDevice(SWIFT, HOST))).toContain("Fits only a computer without a graphics card");
+    expect(scoreDevice(VMW, HOST).reasons.find((r) => /Fits only/.test(r.text))?.params).toEqual({ vm: "VMware" });
+    // Possibly a VM: still a real NVIDIA card, so it fits, but lower than the same card without the risk.
+    const odd = scoreDevice(ODD, HOST);
+    expect(odd.fits).toBe(true);
+    expect(odd.score).toBeLessThan(scoreDevice(RTX3060, HOST).score);
+    const order = rankDevices([SWIFT, ODD, VMW, RTX3060, OLD], HOST, []).map((m) => m.lib.name);
+    expect(order[0]).toBe("n-3060.json");
+    expect(order[1]).toBe("v-odd.json");
+  });
+
+  it("on a computer without a graphics card: the no-GPU captures fit and come first; real-GPU ones can be disproved", () => {
+    const sw = scoreDevice(SWIFT, NO_GPU_HOST);
+    expect(sw.fits).toBe(true);
+    expect(text(sw)).toContain("No graphics card, like this computer");
+    const card = scoreDevice(RTX3060, NO_GPU_HOST);
+    expect(card.fits).toBe(false);
+    expect(text(card)).toContain("This computer has no graphics card");
+    expect(scoreDevice(VMW, NO_GPU_HOST).fits).toBe(false);
+    expect(pickUnused(rankDevices([RTX3060, SWIFT, VMW, OLD], NO_GPU_HOST, []), 5).map((l) => l.name)).toEqual(["v-sw.json"]);
+  });
+
+  it("on a VMware virtual machine: only VMware captures fit; old graphics never do", () => {
+    expect(scoreDevice(VMW, VMWARE_HOST)).toMatchObject({ fits: true });
+    expect(text(scoreDevice(VMW, VMWARE_HOST))).toContain("Same virtual machine as this computer");
+    expect(scoreDevice({ ...VMW, vm: "parallels" }, VMWARE_HOST).fits).toBe(false);
+    expect(scoreDevice(RTX3060, VMWARE_HOST).fits).toBe(false);
+    expect(scoreDevice(SWIFT, VMWARE_HOST).fits).toBe(false);
+    expect(scoreDevice(OLD, VMWARE_HOST).fits).toBe(false);
+  });
+
+  it("when the kind of computer is unknown, a higher-risk device is never offered as a fit", () => {
+    const unknown: HostFacts = { vendor: "unknown" };
+    expect([SWIFT, VMW, OLD].map((d) => scoreDevice(d, unknown).fits)).toEqual([false, false, false]);
+    expect(scoreDevice(RTX3060, unknown).fits).toBe(true);
+  });
+});

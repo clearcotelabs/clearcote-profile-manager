@@ -348,11 +348,49 @@ export function normalize(p: Obj): Obj {
 export const ATTRIBUTION = "chrome-fingerprints (https://github.com/Vinyzu/chrome-fingerprints, GPL-3.0)";
 export const vinyzuId = (index: number) => `vinyzu-${String(index).padStart(5, "0")}`;
 
+// ---- beyond curate.py: what the curation leaves out, kept with a label instead of dropped ----
+
+/** Why a capture is a higher risk, in the order curate.py's checks would reject it:
+ *  - "no-gpu":    drawn in software (SwiftShader, llvmpipe): a server, VPS or VM without a graphics card
+ *  - "vm":        a virtual machine's graphics adapter (Parallels, VMware, VirtualBox)
+ *  - "unusual":   not a normal desktop capture (no ANGLE renderer, an empty one)
+ *  - "old-gpu":   no WebGL2, which this browser always has
+ *  - "likely-vm": an odd thread count or 0.5–1 GB of memory, typical of a virtual machine */
+export type DeviceRisk = "no-gpu" | "vm" | "unusual" | "old-gpu" | "likely-vm";
+/** The virtual machine a "vm" capture ran in. */
+export type VmProduct = "vmware" | "virtualbox" | "parallels" | "other";
+
+export function riskOf(p: Obj): DeviceRisk | null {
+  if (isCurated(p)) return null;
+  const r = renderer(p).toLowerCase();
+  if (SOFTWARE.some((m) => r.includes(m))) return "no-gpu";
+  if (isVm(p)) return "vm";
+  if (!isRealGpu(p)) return "unusual";
+  const w2 = obj(obj(obj(p.webgl || null).webgl2 || null).parameters || null);
+  if (!Object.keys(w2).length) return "old-gpu";
+  return "likely-vm";
+}
+
+export function vmProduct(rendererString: string): VmProduct {
+  const r = rendererString.toLowerCase();
+  return r.includes("vmware") || r.includes("svga") ? "vmware" : r.includes("virtualbox") ? "virtualbox" : r.includes("parallels") ? "parallels" : "other";
+}
+
+/** A library row with its risk, when it has one (the curated ones have none and match index.json). */
+export type BuiltRow = LibraryRow & { risk?: DeviceRisk; vm?: VmProduct };
+
 /** generate.py without --samples: every record converted, curated, tagged. `each` receives the kept ones in
- *  dataset order; returns how many were kept and skipped. */
-export function buildLibrary(records: Json[], tables: VinyzuTables, each: (profile: Obj, row: LibraryRow) => void) {
+ *  dataset order; returns how many were kept and skipped. With `includeRisky`, what the curation would skip is
+ *  kept too, labelled with its risk (only a record that cannot be converted is skipped). */
+export function buildLibrary(
+  records: Json[],
+  tables: VinyzuTables,
+  each: (profile: Obj, row: BuiltRow) => void,
+  opts: { includeRisky?: boolean } = {},
+) {
   let kept = 0;
   let skipped = 0;
+  let risky = 0;
   records.forEach((rec, index) => {
     let profile: Obj;
     try {
@@ -361,7 +399,8 @@ export function buildLibrary(records: Json[], tables: VinyzuTables, each: (profi
       skipped++;
       return;
     }
-    if (!isCurated(profile)) {
+    const risk = riskOf(profile);
+    if (risk && !opts.includeRisky) {
       skipped++;
       return;
     }
@@ -371,8 +410,14 @@ export function buildLibrary(records: Json[], tables: VinyzuTables, each: (profi
     meta.source = ATTRIBUTION;
     meta.gpu_vendor = gpuVendor(profile);
     meta.gpu_family = gpuFamily(profile);
-    kept++;
-    each(profile, summary(profile));
+    const row: BuiltRow = summary(profile);
+    if (risk) {
+      meta.risk = risk;
+      row.risk = risk;
+      if (risk === "vm") row.vm = vmProduct(row.renderer);
+      risky++;
+    } else kept++;
+    each(profile, row);
   });
-  return { kept, skipped };
+  return { kept, skipped, risky };
 }

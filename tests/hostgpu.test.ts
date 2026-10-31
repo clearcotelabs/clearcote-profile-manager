@@ -106,21 +106,21 @@ describe("PCI ids", () => {
 
 describe("Windows — ConvertTo-Json shapes", () => {
   it("one controller comes as a bare object (the dev PC)", () => {
-    expect(parseWindowsControllers(ONE_NVIDIA)).toEqual({ vendor: "nvidia", name: "NVIDIA GeForce RTX 3070", deviceId: 0x2484 });
+    expect(parseWindowsControllers(ONE_NVIDIA)).toEqual({ vendor: "nvidia", name: "NVIDIA GeForce RTX 3070", deviceId: 0x2484, kind: "gpu" });
   });
 
   it("several come as an array; the one with a resolution drives the display", () => {
-    expect(parseWindowsControllers(HYBRID)).toEqual({ vendor: "intel", name: "Intel(R) UHD Graphics 770", deviceId: 0xa780 });
-    expect(parseWindowsControllers(HYBRID_SWAPPED)).toEqual({ vendor: "amd", name: "AMD Radeon RX 6700 XT", deviceId: 0x73df });
+    expect(parseWindowsControllers(HYBRID)).toEqual({ vendor: "intel", name: "Intel(R) UHD Graphics 770", deviceId: 0xa780, kind: "gpu" });
+    expect(parseWindowsControllers(HYBRID_SWAPPED)).toEqual({ vendor: "amd", name: "AMD Radeon RX 6700 XT", deviceId: 0x73df, kind: "gpu" });
   });
 
   it("Microsoft's Basic Render Driver is unknown, with or without a PCI-style id", () => {
-    expect(parseWindowsControllers(BASIC_RENDER)).toEqual({ vendor: "unknown", name: "Microsoft Basic Render Driver", deviceId: null });
-    expect(parseWindowsControllers(BASIC_RENDER_PCI)).toEqual({ vendor: "unknown", name: "Microsoft Basic Render Driver", deviceId: 0x8c });
+    expect(parseWindowsControllers(BASIC_RENDER)).toEqual({ vendor: "unknown", name: "Microsoft Basic Render Driver", deviceId: null, kind: "software" });
+    expect(parseWindowsControllers(BASIC_RENDER_PCI)).toEqual({ vendor: "unknown", name: "Microsoft Basic Render Driver", deviceId: 0x8c, kind: "software" });
   });
 
   it("with no resolution anywhere, the first hardware controller is taken over the software one", () => {
-    expect(parseWindowsControllers(NO_RESOLUTION)).toEqual({ vendor: "nvidia", name: "NVIDIA GeForce RTX 3060", deviceId: 0x2504 });
+    expect(parseWindowsControllers(NO_RESOLUTION)).toEqual({ vendor: "nvidia", name: "NVIDIA GeForce RTX 3060", deviceId: 0x2504, kind: "gpu" });
   });
 
   it("a resolution of 0 does not count as a display", () => {
@@ -158,7 +158,7 @@ describe("Linux — /sys/class/drm", () => {
         { vendor: "0x8086\n", device: "0x4682\n", bootVga: "0\n" },
         { vendor: "0x10de\n", device: "0x2786\n", bootVga: "1\n" },
       ]),
-    ).toEqual({ vendor: "nvidia", name: "", deviceId: 0x2786 });
+    ).toEqual({ vendor: "nvidia", name: "", deviceId: 0x2786, kind: "gpu" });
   });
 
   it("falls back to the first card with a vendor id when no boot_vga is present", () => {
@@ -168,16 +168,29 @@ describe("Linux — /sys/class/drm", () => {
         { vendor: "0x1002\n", device: "0x747e\n", bootVga: null },
         { vendor: "0x10de\n", device: "0x2504\n", bootVga: null },
       ]),
-    ).toEqual({ vendor: "amd", name: "", deviceId: 0x747e });
+    ).toEqual({ vendor: "amd", name: "", deviceId: 0x747e, kind: "gpu" });
   });
 
-  it("is unknown with no cards, and for a maker it does not know", () => {
-    expect(parseLinuxDrm([])).toEqual(UNKNOWN_GPU);
-    expect(parseLinuxDrm([{ vendor: "0x1af4\n", device: "0x1050\n", bootVga: "1\n" }])).toEqual({ vendor: "unknown", name: "", deviceId: 0x1050 }); // virtio-gpu
+  it("no card is no graphics card (the engine draws in software); unreadable is unknown; virtio's display is software", () => {
+    expect(parseLinuxDrm([])).toEqual({ ...UNKNOWN_GPU, kind: "software" });
+    expect(parseLinuxDrm(null)).toEqual(UNKNOWN_GPU);
+    expect(parseLinuxDrm([{ vendor: "0x1af4\n", device: "0x1050\n", bootVga: "1\n" }])).toEqual({ vendor: "unknown", name: "", deviceId: 0x1050, kind: "software" }); // virtio-gpu
+  });
+
+  it("names a virtual machine's 3D adapter, by PCI id or by name", () => {
+    expect(parseLinuxDrm([{ vendor: "0x15ad", device: "0x0405", bootVga: "1" }])).toMatchObject({ kind: "vm", vm: "vmware" });
+    expect(parseWindowsControllers('{"Name":"VMware SVGA 3D","PNPDeviceID":"PCI\\\\VEN_15AD&DEV_0405","CurrentHorizontalResolution":1920}'))
+      .toMatchObject({ vendor: "unknown", kind: "vm", vm: "vmware" });
+    expect(parseWindowsControllers('{"Name":"VirtualBox Graphics Adapter (WDDM)","PNPDeviceID":"PCI\\\\VEN_80EE&DEV_BEEF","CurrentHorizontalResolution":1280}'))
+      .toMatchObject({ kind: "vm", vm: "virtualbox" });
+    expect(parseWindowsControllers('{"Name":"Parallels Display Adapter (WDDM)","CurrentHorizontalResolution":1440}')).toMatchObject({ kind: "vm", vm: "parallels" });
+    expect(parseWindowsControllers('{"Name":"Microsoft Remote Display Adapter","CurrentHorizontalResolution":1920}')).toMatchObject({ kind: "software" });
+    expect(parseWindowsControllers('{"Name":"Microsoft Hyper-V Video","PNPDeviceID":"VMBUS\\\\{02780ada}","CurrentHorizontalResolution":1024}'))
+      .toMatchObject({ kind: "software" });
   });
 
   it("reads the ids with or without the 0x prefix and surrounding whitespace", () => {
-    expect(parseLinuxDrm([{ vendor: " 8086 ", device: "a780", bootVga: "1" }])).toEqual({ vendor: "intel", name: "", deviceId: 0xa780 });
+    expect(parseLinuxDrm([{ vendor: " 8086 ", device: "a780", bootVga: "1" }])).toEqual({ vendor: "intel", name: "", deviceId: 0xa780, kind: "gpu" });
   });
 });
 
@@ -191,7 +204,7 @@ describe("detectHostGpu", () => {
         return ONE_NVIDIA;
       },
     });
-    expect(got).toEqual({ vendor: "nvidia", name: "NVIDIA GeForce RTX 3070", deviceId: 0x2484 });
+    expect(got).toEqual({ vendor: "nvidia", name: "NVIDIA GeForce RTX 3070", deviceId: 0x2484, kind: "gpu" });
     expect(calls).toEqual([{ file: "powershell", args: WINDOWS_GPU_COMMAND.args }]);
     expect(WINDOWS_GPU_COMMAND.args.join(" ")).toBe(
       "-NoProfile -NonInteractive -Command Get-CimInstance Win32_VideoController | Select-Object Name,PNPDeviceID,CurrentHorizontalResolution | ConvertTo-Json",
@@ -200,7 +213,7 @@ describe("detectHostGpu", () => {
 
   it("on Linux reads the DRM cards", async () => {
     const got = await detectHostGpu({ platform: "linux", readDrm: () => [{ vendor: "0x8086", device: "0x9a49", bootVga: "1" }] });
-    expect(got).toEqual({ vendor: "intel", name: "", deviceId: 0x9a49 });
+    expect(got).toEqual({ vendor: "intel", name: "", deviceId: 0x9a49, kind: "gpu" });
   });
 
   it("on macOS is unknown without running anything", async () => {
@@ -256,7 +269,7 @@ describe("hostGpuCached", () => {
     const b = await hostGpuCached(opts);
     const c = await hostGpuCached({ ...opts, run: async () => HYBRID }); // ignored: already cached
     expect(runs).toBe(1);
-    expect(a).toEqual({ vendor: "nvidia", name: "NVIDIA GeForce RTX 3070", deviceId: 0x2484 });
+    expect(a).toEqual({ vendor: "nvidia", name: "NVIDIA GeForce RTX 3070", deviceId: 0x2484, kind: "gpu" });
     expect(b).toBe(a);
     expect(c).toBe(a);
   });

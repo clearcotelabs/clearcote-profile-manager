@@ -5,13 +5,15 @@
 // gives the selected profiles one each. A device is a real Windows Chrome capture (GPU, screen, threads, fonts):
 // on a computer with another GPU maker, sites can tell, so those are hidden unless asked for.
 //
-// Optional: the full library (electron/fullLibrary.ts), every usable capture of chrome-fingerprints, downloaded
-// once from the original repo and kept on this computer. Thousands of devices, so the list shows a page at a time.
+// Optional: the full library (electron/fullLibrary.ts), every capture of chrome-fingerprints, downloaded once from the
+// original repo and kept on this computer. Thousands of devices, so the list shows a page at a time. Its higher-risk
+// captures (no graphics card, virtual machines, old graphics) carry a badge and are hidden unless asked for, except
+// where they fit: on a computer without a graphics card or on the same VM, where they are the honest choice.
 
 import { useEffect, useMemo, useState } from "react";
 import { t } from "@/lib/i18n";
 import { api, type FullLibraryStatus, type LibraryProfile } from "@/lib/ipc";
-import { rankDevices, type DeviceMatch, type GpuMaker, type HostFacts, type HostOsName, type Reason } from "@/lib/deviceMatch";
+import { RISK_LABEL, rankDevices, type DeviceMatch, type GpuMaker, type HostFacts, type HostOsName, type Reason } from "@/lib/deviceMatch";
 import { displayName } from "@/lib/profileList";
 import type { Profile } from "@/types/profile";
 
@@ -43,6 +45,17 @@ function fileLink(lib: LibraryProfile): string {
 const say = (r: Reason) => t(r.text, r.params);
 const OS_LABEL: Record<HostOsName, string> = { windows: "Windows", linux: "Linux", macos: "macOS" };
 const MAKER_LABEL: Record<GpuMaker, string> = { nvidia: "NVIDIA", intel: "Intel", amd: "AMD" };
+const VM_NAME: Record<string, string> = { vmware: "VMware", virtualbox: "VirtualBox", parallels: "Parallels" };
+
+/** "Higher risk · Virtual machine": on every higher-risk device, so it is never picked by mistake. */
+function RiskBadge({ lib }: { lib: LibraryProfile }) {
+  if (!lib.risk) return null;
+  return (
+    <span className="ml-2 rounded border border-warn/40 px-1.5 text-[10px] text-warn" data-device-risk={lib.risk}>
+      {t("Higher risk")} · {t(RISK_LABEL[lib.risk])}
+    </span>
+  );
+}
 
 function Score({ m }: { m: DeviceMatch }) {
   const tone = !m.fits ? "border-danger/40 text-danger" : m.score >= 80 ? "border-accent/50 text-accent" : "border-line text-fog/70";
@@ -84,7 +97,9 @@ export default function DevicesView({
 }) {
   const [library, setLibrary] = useState<LibraryProfile[] | null>(null);
   const [err, setErr] = useState<string | null>(null);
-  const [gpu, setGpu] = useState<{ vendor: GpuMaker | "unknown"; name: string } | null>(null);
+  const [gpu, setGpu] = useState<{ vendor: GpuMaker | "unknown"; name: string; kind?: HostFacts["kind"]; vm?: HostFacts["vm"] } | null>(null);
+  // Higher-risk devices that don't fit: hidden unless asked for (null = the default for this computer).
+  const [showRisky, setShowRisky] = useState<boolean | null>(null);
   const [maker, setMaker] = useState<GpuMaker | "all">("all");
   const [onlyFit, setOnlyFit] = useState(true);
   const [hideUsed, setHideUsed] = useState(false);
@@ -117,7 +132,7 @@ export default function DevicesView({
     try {
       const r = await (what === "add" ? fl.add() : fl.remove());
       if (!r.ok) setFullErr(r.error || t("Failed to load library."));
-      setFull({ on: r.on, count: r.count, skipped: r.skipped, builtAt: r.builtAt, bytes: r.bytes });
+      setFull({ on: r.on, count: r.count, risky: r.risky, skipped: r.skipped, builtAt: r.builtAt, bytes: r.bytes });
       await loadLibrary();
     } catch (e) {
       setFullErr(String(e));
@@ -130,7 +145,7 @@ export default function DevicesView({
     void loadLibrary();
     (api.fp.fullLibrary?.status() ?? Promise.resolve(null)).then(setFull, () => setFull(null));
     (api.hostGpu?.() ?? Promise.resolve(null))
-      .then((g) => setGpu(g ? { vendor: g.vendor, name: g.name } : { vendor: "unknown", name: "" }))
+      .then((g) => setGpu(g ? { vendor: g.vendor, name: g.name, kind: g.kind, vm: g.vm } : { vendor: "unknown", name: "" }))
       .catch(() => setGpu({ vendor: "unknown", name: "" }));
   }, []);
 
@@ -140,6 +155,8 @@ export default function DevicesView({
       gpuName: gpu?.name || undefined,
       threads: typeof navigator !== "undefined" ? navigator.hardwareConcurrency || undefined : undefined,
       os: hostOs,
+      kind: gpu?.kind,
+      vm: gpu?.vm,
     }),
     [gpu, hostOs],
   );
@@ -149,10 +166,13 @@ export default function DevicesView({
   const unusedFitting = ranked.filter((m) => m.fits && !m.usedBy.length).length;
   const chosen = profiles.filter((p) => selected.has(p.id));
 
+  const risky = showRisky ?? (host.kind === "software" || host.kind === "vm");
+  const riskyHidden = ranked.filter((m) => m.lib.risk && !m.fits).length;
   // A new filter or search starts again at the first page.
-  useEffect(() => setLimit(PAGE), [maker, onlyFit, hideUsed, q]);
+  useEffect(() => setLimit(PAGE), [maker, onlyFit, hideUsed, q, risky]);
 
   const shown = ranked.filter((m) => {
+    if (!risky && m.lib.risk && !m.fits) return false;
     if (onlyFit && !m.fits) return false;
     if (hideUsed && m.usedBy.length) return false;
     if (maker !== "all" && !(m.lib.gpuVendor || "").toLowerCase().includes(maker)) return false;
@@ -171,7 +191,11 @@ export default function DevicesView({
 
   const hostLine = gpu
     ? [
-        gpu.name || (gpu.vendor !== "unknown" ? MAKER_LABEL[gpu.vendor] : t("GPU unknown")),
+        gpu.kind === "software"
+          ? t("No graphics card (draws in software)")
+          : gpu.kind === "vm"
+            ? t("{vm} virtual machine", { vm: VM_NAME[gpu.vm || ""] || "VM" })
+            : gpu.name || (gpu.vendor !== "unknown" ? MAKER_LABEL[gpu.vendor] : t("GPU unknown")),
         host.threads ? t("{n} threads", { n: host.threads }) : null,
         hostOs ? OS_LABEL[hostOs] : null,
       ].filter(Boolean).join(" · ")
@@ -191,6 +215,7 @@ export default function DevicesView({
           <span className="min-w-0 flex-1">
             <span className="block truncate text-sm font-semibold">{gpuLabel(m.lib)}</span>
             <Specs lib={m.lib} />
+            <RiskBadge lib={m.lib} />
             {m.usedBy.length > 0 && (
               <span className="ml-2 rounded border border-line px-1.5 text-[10px] text-fog/50" data-device-used={m.usedBy.length}>
                 {m.usedBy.length === 1 ? t("In use by 1 profile") : t("In use by {n} profiles", { n: m.usedBy.length })}
@@ -246,7 +271,7 @@ export default function DevicesView({
       </p>
       <p className="text-[12px] text-fog/50" data-devices-host="1">
         {t("This computer: {facts}", { facts: hostLine })}
-        {gpu?.vendor === "unknown" && <span className="ml-2 text-warn">{t("The GPU maker is unknown, so every device is shown.")}</span>}
+        {gpu?.vendor === "unknown" && !gpu.kind && <span className="ml-2 text-warn">{t("The GPU maker is unknown, so every device is shown.")}</span>}
       </p>
 
       {full && (
@@ -255,11 +280,12 @@ export default function DevicesView({
             {fullBusy === "add"
               ? t("Downloading the dataset from github.com/Vinyzu/chrome-fingerprints and converting it on this computer… This takes about half a minute.")
               : full.on
-                ? t("Full library on: {n} more real devices, kept on this computer ({mb} MB). Nothing is downloaded again.", {
+                ? t("Full library on: {n} more devices, {risky} of them marked higher risk, kept on this computer ({mb} MB). Nothing is downloaded again.", {
                     n: (full.count ?? 0).toLocaleString(),
+                    risky: (full.risky ?? 0).toLocaleString(),
                     mb: Math.round((full.bytes ?? 0) / 1e6),
                   })
-                : t("Want more devices? Add the full library: every usable capture in chrome-fingerprints, about 8,500 real devices. It downloads once from the original repo (1.4 MB) and is kept on this computer (about 60 MB).")}
+                : t("Want more devices? Add the full library: every capture in chrome-fingerprints, about 8,500 real devices plus about 1,500 marked higher risk (no graphics card, virtual machines, old graphics). It downloads once from the original repo (1.4 MB) and is kept on this computer (about 70 MB).")}
           </span>
           {full.on ? (
             <button type="button" className={ghost} disabled={!!fullBusy} onClick={() => void changeFull("remove")} data-devices-full-remove="1">
@@ -356,6 +382,12 @@ export default function DevicesView({
               <input type="checkbox" checked={hideUsed} onChange={(e) => setHideUsed(e.target.checked)} />
               {t("Hide devices in use")}
             </label>
+            {riskyHidden > 0 && (
+              <label className="flex items-center gap-1.5">
+                <input type="checkbox" checked={risky} onChange={(e) => setShowRisky(e.target.checked)} data-devices-show-risky="1" />
+                {t("Show higher-risk devices (no graphics card, virtual machines, old graphics): {n}", { n: riskyHidden.toLocaleString() })}
+              </label>
+            )}
             <span className="text-fog/40">{t("{shown} of {total}", { shown: shown.length, total: ranked.length })}</span>
           </div>
           <div className="space-y-2" data-devices-all="1">{shown.slice(0, limit).map((m) => card(m, true))}</div>

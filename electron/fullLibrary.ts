@@ -1,5 +1,7 @@
-// The full device library: every usable capture in chrome-fingerprints (Vinyzu, GPL-3.0), downloaded from the
-// original repo, checked, and converted on this computer (electron/vinyzu.ts). Optional, off until added.
+// The full device library: every capture in chrome-fingerprints (Vinyzu, GPL-3.0), downloaded from the original
+// repo, checked, and converted on this computer (electron/vinyzu.ts). Optional, off until added. The ones the
+// curation would leave out (no graphics card, virtual machines, old graphics) are kept with their risk, so the
+// page can label them and offer them where they fit: a no-GPU device on a computer without a graphics card.
 //
 // Two files at a pinned commit, each checked against its SHA-256, so what gets converted is exactly what the
 // converter was tested on (tests/vinyzu.parity.test.ts). The build keeps:
@@ -15,7 +17,7 @@ import crypto from "node:crypto";
 import { XzReadableStream } from "xz-decompress";
 import { ROOT } from "./store";
 import { screenWarningFromLabel } from "./fpargs";
-import { buildLibrary, parseVarsPy, type LibraryRow } from "./vinyzu";
+import { buildLibrary, parseVarsPy, type BuiltRow } from "./vinyzu";
 import type { LibraryProfile } from "./types";
 
 export const UPSTREAM_REPO = "Vinyzu/chrome-fingerprints";
@@ -40,15 +42,17 @@ const indexPath = () => path.join(libraryDir(), "index.json");
 const binPath = () => path.join(libraryDir(), "profiles.bin");
 const upstreamPath = (f: UpstreamFile) => path.join(libraryDir(), "upstream", f);
 
-interface CachedRow extends LibraryRow {
+type CachedRow = BuiltRow & {
   /** Where its gzipped profile sits in profiles.bin. */
   at: [offset: number, length: number];
-}
+};
 interface CachedIndex {
   version: number;
   commit: string;
   builtAt: string;
   kept: number;
+  /** Labelled higher-risk captures, also in rows. */
+  risky: number;
   skipped: number;
   rows: CachedRow[];
 }
@@ -56,8 +60,11 @@ interface CachedIndex {
 export interface FullLibraryStatus {
   /** Built and ready: Device profiles lists these devices too. */
   on: boolean;
+  /** Devices it lists, the higher-risk ones included. */
   count?: number;
-  /** Captures the quality filter left out (virtual machines, software rendering, implausible hardware). */
+  /** Of those, labelled higher-risk: no graphics card, virtual machines, old graphics. */
+  risky?: number;
+  /** Captures that could not be converted at all. */
   skipped?: number;
   builtAt?: string;
   /** Bytes the cache takes on disk. */
@@ -95,7 +102,7 @@ export function status(): FullLibraryStatus {
       /* not kept */
     }
   }
-  return { on: true, count: idx.rows.length, skipped: idx.skipped, builtAt: idx.builtAt, bytes };
+  return { on: true, count: idx.rows.length, risky: idx.risky, skipped: idx.skipped, builtAt: idx.builtAt, bytes };
 }
 
 /** The rows for Device profiles, in the shape the clearcote-profiles samples come in. Empty while off. */
@@ -111,6 +118,8 @@ export function list(): LibraryProfile[] {
     memory: typeof r.device_memory === "number" ? r.device_memory : undefined,
     screenWarning: screenWarningFromLabel(r.screen) ?? undefined,
     full: true,
+    ...(r.risk ? { risk: r.risk } : {}),
+    ...(r.vm ? { vm: r.vm } : {}),
   }));
 }
 
@@ -175,14 +184,19 @@ async function doBuild(fetchImpl: typeof fetch): Promise<FullLibraryStatus> {
   const fd = fs.openSync(path.join(tmp, "profiles.bin"), "w");
   const rows: CachedRow[] = [];
   let offset = 0;
-  let result: { kept: number; skipped: number };
+  let result: { kept: number; skipped: number; risky: number };
   try {
-    result = buildLibrary(records, tables, (profile, row) => {
-      const gz = zlib.gzipSync(JSON.stringify(profile));
-      fs.writeSync(fd, gz);
-      rows.push({ ...row, at: [offset, gz.length] });
-      offset += gz.length;
-    });
+    result = buildLibrary(
+      records,
+      tables,
+      (profile, row) => {
+        const gz = zlib.gzipSync(JSON.stringify(profile));
+        fs.writeSync(fd, gz);
+        rows.push({ ...row, at: [offset, gz.length] });
+        offset += gz.length;
+      },
+      { includeRisky: true },
+    );
   } finally {
     fs.closeSync(fd);
   }
@@ -191,6 +205,7 @@ async function doBuild(fetchImpl: typeof fetch): Promise<FullLibraryStatus> {
     commit: UPSTREAM_COMMIT,
     builtAt: new Date().toISOString(),
     kept: result.kept,
+    risky: result.risky,
     skipped: result.skipped,
     rows,
   };

@@ -275,12 +275,20 @@ export interface LibraryProfile {
   screenWarning?: string;
   /** From the full device library kept on this computer (electron/fullLibrary.ts), not the curated samples. */
   full?: boolean;
+  /** A higher-risk capture (electron/vinyzu.ts riskOf): drawn without a graphics card, in a virtual machine, on old
+   *  graphics without WebGL2, not captured normally, or with VM-like threads/memory. The page labels these. */
+  risk?: DeviceRisk;
+  /** The virtual machine a "vm" capture ran in. */
+  vm?: "vmware" | "virtualbox" | "parallels" | "other";
 }
+export type DeviceRisk = "no-gpu" | "vm" | "unusual" | "old-gpu" | "likely-vm";
 /** The optional full device library: every usable chrome-fingerprints capture, converted on this computer. */
 export interface FullLibraryStatus {
   on: boolean;
   count?: number;
-  /** Captures the quality filter left out (virtual machines, software rendering, implausible hardware). */
+  /** Of count, labelled higher-risk: no graphics card, virtual machines, old graphics. */
+  risky?: number;
+  /** Captures that could not be converted at all. */
   skipped?: number;
   builtAt?: string;
   bytes?: number;
@@ -300,6 +308,9 @@ export interface HostGpu {
   vendor: "nvidia" | "intel" | "amd" | "unknown";
   name: string;
   deviceId: number | null;
+  /** "software" = no graphics card (the engine draws in software); "vm" = a virtual machine's 3D adapter. */
+  kind?: "gpu" | "software" | "vm";
+  vm?: "vmware" | "virtualbox" | "parallels";
 }
 
 /** One available browser build (from GET /api/v1/versions), for the version dropdown. */
@@ -557,7 +568,8 @@ function buildMock(): ClearcoteApi {
       return fallback;
     }
   };
-  // The full device library: localStorage[MOCK_FULL_KEY] holds its rows once "added" (made up, GPU makers in turn).
+  // The full device library: localStorage[MOCK_FULL_KEY] holds its rows once "added" (made up, GPU makers in turn;
+  // every 10th has no graphics card and 10 are VMware captures, both marked higher risk).
   const MOCK_FULL_KEY = "clearcote.mock.fullLibrary";
   const MOCK_FULL_COUNT = 250;
   const mockFullRows = (): LibraryProfile[] =>
@@ -570,6 +582,24 @@ function buildMock(): ClearcoteApi {
         ] as const
       )[i % 3];
       const id = `vinyzu-${String(20000 + i).padStart(5, "0")}`;
+      if (i % 10 === 9 || i % 25 === 12) {
+        const noGpu = i % 10 === 9;
+        return {
+          name: `${id}.json`,
+          downloadUrl: `https://github.com/Vinyzu/chrome-fingerprints/blob/mock/chrome_fingerprints/fingerprints.json.xz#${id}`,
+          gpuVendor: "other",
+          gpuFamily: "other",
+          renderer: noGpu
+            ? "ANGLE (Google, Vulkan 1.3.0 (SwiftShader Device (Subzero) (0x0000C0DE)), SwiftShader driver)"
+            : "ANGLE (VMware, VMware SVGA 3D Direct3D11 vs_5_0 ps_5_0, D3D11)",
+          screen: "1920x1080",
+          cores: 4,
+          memory: 8,
+          full: true,
+          risk: noGpu ? ("no-gpu" as const) : ("vm" as const),
+          ...(noGpu ? {} : { vm: "vmware" as const }),
+        };
+      }
       return {
         name: `${id}.json`,
         downloadUrl: `https://github.com/Vinyzu/chrome-fingerprints/blob/mock/chrome_fingerprints/fingerprints.json.xz#${id}`,
@@ -583,8 +613,10 @@ function buildMock(): ClearcoteApi {
       };
     });
   const mockFullStatus = () => {
-    const n = readJson<LibraryProfile[]>(MOCK_FULL_KEY, []).length;
-    return n ? { on: true, count: n, skipped: 1496, builtAt: new Date().toISOString(), bytes: 57e6 } : { on: false };
+    const rows = readJson<LibraryProfile[]>(MOCK_FULL_KEY, []);
+    return rows.length
+      ? { on: true, count: rows.length, risky: rows.filter((r) => r.risk).length, skipped: 0, builtAt: new Date().toISOString(), bytes: 66e6 }
+      : { on: false };
   };
   const writeJson = (key: string, v: unknown) => localStorage.setItem(key, JSON.stringify(v));
   // Cloud. localStorage["clearcote.mock.cloud"] = "ok" lets a cloud start succeed (once an API key is

@@ -1481,6 +1481,12 @@
     "src/components/DevicesView.tsx",
     "src/components/LibraryModal.tsx"
   ],
+  "Fits only a computer without a graphics card": [
+    "src/lib/deviceMatch.ts"
+  ],
+  "Fits only a {vm} virtual machine": [
+    "src/lib/deviceMatch.ts"
+  ],
   "Fix →": [
     "src/components/ProfileEditor.tsx",
     "src/components/ProfileInspector.tsx"
@@ -1533,7 +1539,7 @@
   "From {repo} · or use <mono>Import from file…</mono> for your own capture.": [
     "src/components/LibraryModal.tsx"
   ],
-  "Full library on: {n} more real devices, kept on this computer ({mb} MB). Nothing is downloaded again.": [
+  "Full library on: {n} more devices, {risky} of them marked higher risk, kept on this computer ({mb} MB). Nothing is downloaded again.": [
     "src/components/DevicesView.tsx"
   ],
   "GPU claim does not match this machine's GPU maker; driver limits follow the real GPU, so a cross-vendor claim is falsifiable.": [
@@ -1637,6 +1643,25 @@
   ],
   "Hide {n} captures with a display too small to contain a browser window (under {w}×{h}) — the window would be bigger than its own screen.": [
     "src/components/LibraryModal.tsx"
+  ],
+  "Higher risk": [
+    "src/components/DevicesView.tsx",
+    "src/components/LibraryModal.tsx"
+  ],
+  "Higher risk: an unusual thread count or memory size for a desktop, typical of a virtual machine.": [
+    "src/lib/deviceMatch.ts"
+  ],
+  "Higher risk: captured in a virtual machine ({vm}). Some sites block virtual machines.": [
+    "src/lib/deviceMatch.ts"
+  ],
+  "Higher risk: captured without a graphics card (drawn in software). Many sites treat that as a server or a bot.": [
+    "src/lib/deviceMatch.ts"
+  ],
+  "Higher risk: old graphics without WebGL2, but this browser has WebGL2, so sites can see the mismatch.": [
+    "src/lib/deviceMatch.ts"
+  ],
+  "Higher risk: the graphics were not captured the normal way, so sites may not trust it.": [
+    "src/lib/deviceMatch.ts"
   ],
   "Hint": [
     "src/components/TasksView.tsx"
@@ -2283,6 +2308,15 @@
   "No extensions yet. Add them on the Extensions page, then turn them on here.": [
     "src/components/ProfileEditor.tsx"
   ],
+  "No graphics card": [
+    "src/lib/deviceMatch.ts"
+  ],
+  "No graphics card (draws in software)": [
+    "src/components/DevicesView.tsx"
+  ],
+  "No graphics card, like this computer": [
+    "src/lib/deviceMatch.ts"
+  ],
   "No group": [
     "app/page.tsx",
     "src/components/ExtensionsView.tsx"
@@ -2416,6 +2450,9 @@
   ],
   "Off by default: third-party cookies are allowed, as in Chrome.": [
     "src/lib/fields.ts"
+  ],
+  "Old graphics": [
+    "src/lib/deviceMatch.ts"
   ],
   "On 1 profile": [
     "src/components/ExtensionsView.tsx"
@@ -2647,6 +2684,9 @@
   ],
   "Portable profile": [
     "src/lib/fields.ts"
+  ],
+  "Possibly a virtual machine": [
+    "src/lib/deviceMatch.ts"
   ],
   "Press key": [
     "src/components/StepEditor.tsx"
@@ -3051,6 +3091,9 @@
   "Same proxy": [
     "src/components/TemplateDialogs.tsx"
   ],
+  "Same virtual machine as this computer ({vm})": [
+    "src/lib/deviceMatch.ts"
+  ],
   "Save": [
     "src/components/ExtensionsView.tsx",
     "src/components/SettingsModal.tsx",
@@ -3327,6 +3370,9 @@
   ],
   "Show every profile again": [
     "app/page.tsx"
+  ],
+  "Show higher-risk devices (no graphics card, virtual machines, old graphics): {n}": [
+    "src/components/DevicesView.tsx"
   ],
   "Show in Finder": [
     "src/components/UpdateBanner.tsx"
@@ -3821,6 +3867,12 @@
   "This cloud browser opens from the Clearcote profile manager, on a computer connected to it.": [
     "src/components/HelperGate.tsx"
   ],
+  "This computer has no graphics card: it draws unlike this device": [
+    "src/lib/deviceMatch.ts"
+  ],
+  "This computer is a virtual machine ({vm}): it draws unlike this device": [
+    "src/lib/deviceMatch.ts"
+  ],
   "This computer's own connection": [
     "src/components/ProfileInspector.tsx"
   ],
@@ -4113,6 +4165,9 @@
   "Untitled": [
     "src/components/ProfileEditor.tsx"
   ],
+  "Unusual capture": [
+    "src/lib/deviceMatch.ts"
+  ],
   "Unzip it and start it": [
     "src/components/HelperGate.tsx"
   ],
@@ -4238,6 +4293,9 @@
   "View the source": [
     "src/components/DevicesView.tsx"
   ],
+  "Virtual machine": [
+    "src/lib/deviceMatch.ts"
+  ],
   "Wait": [
     "src/components/StepEditor.tsx"
   ],
@@ -4262,7 +4320,7 @@
   "Waiting": [
     "src/components/TaskBoard.tsx"
   ],
-  "Want more devices? Add the full library: every usable capture in chrome-fingerprints, about 8,500 real devices. It downloads once from the original repo (1.4 MB) and is kept on this computer (about 60 MB).": [
+  "Want more devices? Add the full library: every capture in chrome-fingerprints, about 8,500 real devices plus about 1,500 marked higher risk (no graphics card, virtual machines, old graphics). It downloads once from the original repo (1.4 MB) and is kept on this computer (about 70 MB).": [
     "src/components/DevicesView.tsx"
   ],
   "WebRTC IP is set to {ip}, which is not this exit: pages will see HTTP from {exit} and WebRTC from {ip}. Clear the field, or click “Resolve from proxy”, to keep them together.": [
@@ -5037,6 +5095,9 @@
   ],
   "{version} · pinned": [
     "src/components/ProfileEditor.tsx"
+  ],
+  "{vm} virtual machine": [
+    "src/components/DevicesView.tsx"
   ],
   "{who} · offline": [
     "src/lib/launchTarget.ts"

@@ -47,6 +47,8 @@ const prof = (id: string, over: Record<string, unknown> = {}) => ({
 
 interface Seed {
   profiles?: Record<string, unknown>[];
+  /** This computer's GPU, as host:gpu reports it (default: an RTX 3070). */
+  gpu?: Record<string, unknown>;
 }
 
 describe.skipIf(!READY)("Device profiles page — in a real browser", () => {
@@ -76,7 +78,7 @@ describe.skipIf(!READY)("Device profiles page — in a real browser", () => {
         // A machine with 16 threads, whatever runs the test.
         Object.defineProperty(navigator, "hardwareConcurrency", { get: () => 16 });
       },
-      { seed, gpu: NVIDIA_HOST, library: LIBRARY },
+      { seed, gpu: seed.gpu ?? NVIDIA_HOST, library: LIBRARY },
     );
     const page = await ctx.newPage();
     const errors: string[] = [];
@@ -179,16 +181,29 @@ describe.skipIf(!READY)("Device profiles page — in a real browser", () => {
 
     await page.click('[data-devices-full-add="1"]');
     await page.waitForSelector('[data-devices-full="on"]', { timeout: 10000 });
-    expect(await page.textContent('[data-devices-full="on"]')).toMatch(/Full library on: 250 more real devices.*Nothing is downloaded again/);
-    // With every maker shown there are 256 (6 samples + 250): a page of 100, then "Show 100 more".
+    expect(await page.textContent('[data-devices-full="on"]')).toMatch(/Full library on: 250 more devices.*Nothing is downloaded again/);
+    expect(await page.textContent('[data-devices-full="on"]')).toContain("35 of them marked higher risk");
+    // With every maker shown: 6 samples + 215 ordinary devices; the 35 higher-risk ones (no graphics card, VMware)
+    // don't fit an NVIDIA computer, so they wait behind their own checkbox. A page of 100, then "Show 100 more".
     await page.click('[data-devices-only-fit="1"]');
     expect(await until(all, (n) => n === 100, "the first page")).toBe(100);
     expect(await page.textContent('[data-devices-more="1"]')).toBe("Show 100 more");
     await page.click('[data-devices-more="1"]');
     expect(await until(all, (n) => n === 200, "the second page")).toBe(200);
     await page.click('[data-devices-more="1"]');
-    expect(await until(all, (n) => n === 256, "every device")).toBe(256);
+    expect(await until(all, (n) => n === 221, "every ordinary device")).toBe(221);
     expect(await page.$('[data-devices-more="1"]')).toBeNull();
+    expect(await page.$('[data-devices-all="1"] [data-device-risk]')).toBeNull();
+    await page.click('[data-devices-show-risky="1"]');
+    await page.click('[data-devices-more="1"]');
+    await page.click('[data-devices-more="1"]');
+    expect(await until(all, (n) => n === 256, "every device, the higher-risk ones last")).toBe(256);
+    const risky = await page.$$eval('[data-devices-all="1"] [data-device-risk]', (els) => els.map((e) => e.textContent));
+    expect(risky).toHaveLength(35);
+    expect(risky).toContain("Higher risk · No graphics card");
+    expect(risky).toContain("Higher risk · Virtual machine");
+    // The best-for-this-computer strip never offers one here.
+    expect(await page.$('[data-devices-best="1"] [data-device-risk]')).toBeNull();
 
     // A full-library device links to its source and goes on a profile like a sample.
     const id = "vinyzu-20000.json";
@@ -200,6 +215,24 @@ describe.skipIf(!READY)("Device profiles page — in a real browser", () => {
     await page.click('[data-devices-full-remove="1"]');
     await page.waitForSelector('[data-devices-full="off"]');
     expect(await until(all, (n) => n === 6, "samples only again")).toBe(6);
+    expect(errors).toEqual([]);
+  }, T);
+
+  it("on a computer without a graphics card, the no-GPU captures are the ones offered, marked higher risk", async () => {
+    const { page, errors } = await fresh({ profiles: [prof("alpha")], gpu: { vendor: "unknown", name: "", deviceId: null, kind: "software" } });
+    await page.click('[data-nav-devices="1"]');
+    await page.waitForSelector('[data-devices-full="off"]');
+    expect(await page.textContent('[data-devices-host="1"]')).toContain("No graphics card (draws in software)");
+    await page.click('[data-devices-full-add="1"]');
+    await page.waitForSelector('[data-devices-best="1"] [data-device-risk="no-gpu"]', { timeout: 10000 });
+    const best = await page.$$eval('[data-devices-best="1"] [data-device]', (els) => els.map((e) => e.querySelector("[data-device-risk]")?.getAttribute("data-device-risk")));
+    expect(best.every((r) => r === "no-gpu")).toBe(true);
+    // Create picks them too; the real-GPU devices would be disproved by what this computer draws.
+    await page.fill("#devices-count", "3");
+    await page.click('[data-devices-create-run="1"]');
+    const made = await until(() => stored(page), (ps) => ps.length === 4, "three new profiles");
+    const ids = made.filter((p) => p.id !== "alpha").map((p) => Number(p.device.slice(7, 12)) - 20000);
+    expect(ids.every((i) => i % 10 === 9)).toBe(true);
     expect(errors).toEqual([]);
   }, T);
 });

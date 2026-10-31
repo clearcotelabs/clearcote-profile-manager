@@ -192,6 +192,10 @@ export interface LibraryProfile {
   screen?: string;
   /** From the full device library (electron/fullLibrary.ts), kept on this computer, not the curated samples. */
   full?: boolean;
+  /** Set on a higher-risk capture (electron/vinyzu.ts riskOf): no graphics card, a virtual machine, old graphics. */
+  risk?: "no-gpu" | "vm" | "unusual" | "old-gpu" | "likely-vm";
+  /** The virtual machine a "vm" capture ran in. */
+  vm?: "vmware" | "virtualbox" | "parallels" | "other";
 }
 
 export interface FpListResult {

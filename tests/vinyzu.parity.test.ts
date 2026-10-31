@@ -65,10 +65,19 @@ describe.skipIf(!OUT || !DATASET)("chrome-fingerprints converter — parity with
     const st = await fl.build(fetchImpl);
     expect(fetched).toHaveLength(2);
     const index = JSON.parse(readFileSync(join(OUT!, "index.json"), "utf8")) as { count: number };
-    expect(st).toMatchObject({ on: true, count: index.count, skipped: 10000 - index.count });
+    // Every capture is listed: the curated ones as Python made them, the rest labelled with their risk.
+    expect(st).toMatchObject({ on: true, count: 10000, risky: 10000 - index.count, skipped: 0 });
     expect(st.bytes).toBeGreaterThan(40e6);
 
-    const rows = fl.list();
+    const all = fl.list();
+    const byRisk: Record<string, number> = {};
+    for (const r of all) byRisk[r.risk ?? "none"] = (byRisk[r.risk ?? "none"] ?? 0) + 1;
+    // Counted 10-31 with curate.py's own checks: 977 not real GPUs (940 drawn in software + 37 unusual), 25 VMs,
+    // 246 without WebGL2, 248 with VM-like threads or memory.
+    expect(byRisk).toEqual({ none: index.count, "no-gpu": 940, unusual: 37, vm: 25, "old-gpu": 246, "likely-vm": 248 });
+    expect(all.filter((r) => r.risk === "vm").map((r) => r.vm).sort()).toContain("vmware");
+
+    const rows = all.filter((r) => !r.risk);
     expect(rows).toHaveLength(index.count);
     for (const row of [rows[0], rows[1234], rows[rows.length - 1]]) {
       expect(row.full).toBe(true);
