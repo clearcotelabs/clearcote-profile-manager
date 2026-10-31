@@ -3,7 +3,7 @@ import net from "node:net";
 import dgram from "node:dgram";
 import { dnsQuery, parseBound, probeSocksUdp, relayProxyByIp, socksUdpPacket } from "../electron/proxycheck";
 import { parseProxy } from "../electron/proxyargs";
-import { describeCheck, launchReport, udpLine } from "../src/lib/proxyReport";
+import { describeCheck, launchReport, offersRelayUdp, udpLine } from "../src/lib/proxyReport";
 
 /** A tiny SOCKS5 server: optional login, and UDP ASSOCIATE answered with `rep`. With rep 0 it opens
  *  a UDP relay that answers every datagram itself (when `answer` is true), so no traffic leaves. */
@@ -160,6 +160,30 @@ describe("what the results say", () => {
       "Launched “B” · exits in Amsterdam, Netherlands (81.2.3.4) · time zone and language follow the proxy.",
     );
     expect(launchReport({ proxy: "http://h:1", geoip: false }, "C")).toBe("Launched “C” · through its proxy.");
+  });
+});
+
+// Sonex 10-30: Relay UDP on = HTTP/3 = 0 Google captchas in 36 rounds. Offered after a check that
+// found UDP working, never switched on by itself.
+describe("the offer to turn on Relay UDP", () => {
+  const geo = { ok: true, ip: "62.198.28.61" };
+  const socks = { proxy: "socks5://u:p@dk.example.io:1080" };
+
+  it("only after a check where UDP works, on a socks5 proxy with Relay UDP off", () => {
+    expect(offersRelayUdp({ ok: true, geo, udp: "works" }, socks)).toBe(true);
+    expect(offersRelayUdp({ ok: true, geo, udp: "works" }, { proxy: " SOCKS5H://h:1" })).toBe(true);
+  });
+
+  it("not when Relay UDP is already on, UDP did not work, it was not tested, or the check failed", () => {
+    expect(offersRelayUdp({ ok: true, geo, udp: "works" }, { ...socks, socks5Udp: true })).toBe(false);
+    for (const udp of ["refused", "no-reply", "not-socks", "error"] as const) expect(offersRelayUdp({ ok: true, geo, udp }, socks)).toBe(false);
+    expect(offersRelayUdp({ ok: true, geo, udpSkipped: true }, socks)).toBe(false);
+    expect(offersRelayUdp({ ok: false, error: "x", udp: "works" }, socks)).toBe(false);
+  });
+
+  it("not for an HTTP proxy or none", () => {
+    expect(offersRelayUdp({ ok: true, geo, udp: "works" }, { proxy: "http://h:1" })).toBe(false);
+    expect(offersRelayUdp({ ok: true, geo, udp: "works" }, {})).toBe(false);
   });
 });
 

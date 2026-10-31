@@ -103,6 +103,26 @@ describe.skipIf(!READY)("Check and Test UDP — in a real browser", () => {
     expect(t).toContain("The UDP test moved this session from 87.50.91.122 to 62.198.28.61");
     expect(t).not.toContain("UDP not tested");
     expect(await page.locator("[data-udp-test]").count()).toBe(0);
+    expect(await page.locator('[data-relay-udp-offer="1"]').count()).toBe(1);
+  }, 20000);
+
+  it("UDP works with Relay UDP off: Turn on Relay UDP turns it on in the editor, says to save, and the offer goes", async () => {
+    await page.locator('[data-relay-udp-on="1"]').click();
+    await page.locator('[data-relay-udp-done="1"]').waitFor();
+    expect(await page.locator('[data-relay-udp-done="1"]').textContent()).toContain("Save to keep it");
+    expect(await page.locator('[data-relay-udp-offer="1"]').count()).toBe(0);
+    // On now: Check tests UDP straight away, as for a profile saved with Relay UDP on.
+    await page.locator('[data-proxy-check-btn="1"]').click();
+    await page.getByText("UDP passes through this proxy").waitFor();
+    expect(await boxText()).not.toContain("UDP not tested");
+    expect(await page.locator("[data-relay-udp-offer]").count()).toBe(0);
+    await close();
+  }, 20000);
+
+  it("Cancel without saving keeps Relay UDP off", async () => {
+    await edit("Relay off");
+    await page.locator('[data-proxy-check-btn="1"]').click();
+    expect(await boxText()).toContain("UDP not tested");
     await close();
   }, 20000);
 
@@ -112,6 +132,7 @@ describe.skipIf(!READY)("Check and Test UDP — in a real browser", () => {
     const t = await boxText();
     expect(t).toContain("UDP passes through this proxy");
     expect(await page.locator("[data-udp-test]").count()).toBe(0);
+    expect(await page.locator("[data-relay-udp-offer]").count()).toBe(0);
     await close();
   }, 20000);
 

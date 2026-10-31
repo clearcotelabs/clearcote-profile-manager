@@ -1531,5 +1531,8 @@
   "{n} profiles selected": "{n} profils sélectionnés",
   "{n} threads": "{n} threads",
   "{n} threads, no more than this computer has": "{n} threads, pas plus que cet ordinateur",
-  "“{name}” now uses this device.": "« {name} » utilise maintenant cet appareil."
+  "“{name}” now uses this device.": "« {name} » utilise maintenant cet appareil.",
+  "Relay UDP is on for this profile. Save to keep it.": "Le relais UDP est activé pour ce profil. Enregistrez pour le conserver.",
+  "Turn it on to send WebRTC and HTTP/3 through this proxy too, as Chrome does without a proxy. The test already moved the session, so it should stay on this exit.": "Activez-le pour faire passer aussi WebRTC et HTTP/3 par ce proxy, comme Chrome sans proxy. Le test a déjà déplacé la session, elle devrait donc rester sur cette sortie.",
+  "Turn on Relay UDP": "Activer le relais UDP"
 }

@@ -2635,6 +2635,9 @@
   "Refused before they load, so their traffic is never billed. A few sites notice.": [
     "src/components/CloudFields.tsx"
   ],
+  "Relay UDP is on for this profile. Save to keep it.": [
+    "src/components/ProfileEditor.tsx"
+  ],
   "Relay UDP through the proxy": [
     "src/lib/fields.ts"
   ],
@@ -3792,6 +3795,9 @@
   "Turn it off for natural, unperturbed surfaces — best paired with a captured profile.": [
     "src/lib/fields.ts"
   ],
+  "Turn it on to send WebRTC and HTTP/3 through this proxy too, as Chrome does without a proxy. The test already moved the session, so it should stay on this exit.": [
+    "src/lib/proxyReport.ts"
+  ],
   "Turn off for a host that rasterises in software, where a spoofed GPU string cannot be backed by the render. navigator.gpu still follows the wide switch, so WebGPU keeps describing the persona.": [
     "src/lib/fields.ts"
   ],
@@ -3806,6 +3812,9 @@
   ],
   "Turn off the wide switch if you only wanted the strings, or leave this one on.": [
     "src/lib/coherence.ts"
+  ],
+  "Turn on Relay UDP": [
+    "src/components/ProfileEditor.tsx"
   ],
   "Turn on for all {n}": [
     "src/components/ExtensionsView.tsx"

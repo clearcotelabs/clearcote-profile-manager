@@ -1531,5 +1531,8 @@
   "{n} profiles selected": "Đã chọn {n} profile",
   "{n} threads": "{n} luồng",
   "{n} threads, no more than this computer has": "{n} luồng, không nhiều hơn máy tính này",
-  "“{name}” now uses this device.": "“{name}” giờ dùng thiết bị này."
+  "“{name}” now uses this device.": "“{name}” giờ dùng thiết bị này.",
+  "Relay UDP is on for this profile. Save to keep it.": "Chuyển tiếp UDP đã bật cho hồ sơ này. Lưu để giữ lại.",
+  "Turn it on to send WebRTC and HTTP/3 through this proxy too, as Chrome does without a proxy. The test already moved the session, so it should stay on this exit.": "Bật lên để WebRTC và HTTP/3 cũng đi qua proxy này, giống Chrome khi không có proxy. Lần kiểm tra đã chuyển phiên, nên phiên sẽ ở lại điểm ra này.",
+  "Turn on Relay UDP": "Bật chuyển tiếp UDP"
 }

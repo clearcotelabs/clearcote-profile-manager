@@ -1531,5 +1531,8 @@
   "{n} profiles selected": "已选 {n} 个配置文件",
   "{n} threads": "{n} 个线程",
   "{n} threads, no more than this computer has": "{n} 个线程，不超过这台电脑",
-  "“{name}” now uses this device.": "“{name}”现在使用此设备。"
+  "“{name}” now uses this device.": "“{name}”现在使用此设备。",
+  "Relay UDP is on for this profile. Save to keep it.": "此配置文件已开启 UDP 中继。保存后生效。",
+  "Turn it on to send WebRTC and HTTP/3 through this proxy too, as Chrome does without a proxy. The test already moved the session, so it should stay on this exit.": "开启后，WebRTC 和 HTTP/3 也会通过此代理，与不使用代理的 Chrome 一样。测试已经让会话换过一次出口，所以它应会停留在这个出口。",
+  "Turn on Relay UDP": "开启 UDP 中继"
 }

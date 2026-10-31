@@ -58,7 +58,7 @@ import {
   type Profile,
 } from "@/types/profile";
 import { api, isWeb, type ExtensionEntry, type GeoResult, type HostGpu, type ProxyCheck, type VersionOption } from "@/lib/ipc";
-import { describeCheck, UDP_TEST_WARNING } from "@/lib/proxyReport";
+import { describeCheck, offersRelayUdp, RELAY_UDP_OFFER, UDP_TEST_WARNING } from "@/lib/proxyReport";
 import { proxySummary } from "@/lib/profileList";
 import { browserCommandName, hostOs, shortcutLabel, type HostOs } from "@/lib/host";
 import { normalizeProxyLine } from "@/lib/bulkCreate";
@@ -178,6 +178,8 @@ export default function ProfileEditor({
   const [checking, setChecking] = useState(false);
   /** "Test UDP…" was clicked: its warning is showing, waiting for "Test anyway". */
   const [confirmUdp, setConfirmUdp] = useState(false);
+  // "Turn on Relay UDP" was clicked for the check on screen (the box then says it is on, unsaved).
+  const [relayTurnedOn, setRelayTurnedOn] = useState(false);
   const [resolving, setResolving] = useState(false);
   const [libOpen, setLibOpen] = useState(false);
   const [fpMsg, setFpMsg] = useState<string | null>(null);
@@ -327,6 +329,7 @@ export default function ProfileEditor({
     setChecking(true);
     setCheck(null);
     setConfirmUdp(false);
+    setRelayTurnedOn(false);
     try {
       setCheck(await api.proxyCheck(profile, udp ? { udp: true } : undefined));
     } catch (e) {
@@ -910,6 +913,26 @@ export default function ProfileEditor({
                           </button>
                         )}
                       </div>
+                    )}
+                    {offersRelayUdp(check, profile) && (
+                      <div className="mt-1.5 flex flex-wrap items-center gap-2" data-relay-udp-offer="1">
+                        <span>{t(RELAY_UDP_OFFER)}</span>
+                        <button
+                          className={btnGhost + " py-0.5 text-[11px]"}
+                          onClick={() => {
+                            set("socks5Udp", true);
+                            setRelayTurnedOn(true);
+                          }}
+                          data-relay-udp-on="1"
+                        >
+                          {t("Turn on Relay UDP")}
+                        </button>
+                      </div>
+                    )}
+                    {relayTurnedOn && profile.socks5Udp && (
+                      <p className="mt-1.5 text-ok" data-relay-udp-done="1">
+                        {t("Relay UDP is on for this profile. Save to keep it.")}
+                      </p>
                     )}
                   </div>
                 );

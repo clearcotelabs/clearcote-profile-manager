@@ -59,6 +59,17 @@ export const UDP_NOT_TESTED =
 export const UDP_TEST_WARNING =
   tx("Many residential proxies move a sticky session to another exit the first time UDP goes through it, and keep it there. Test anyway?");
 
+/** Check found that UDP passes and Relay UDP is off: the editor offers to turn it on. Never switched
+ *  on by itself — the test already moved the sticky session once, and the user decides whether
+ *  HTTP/3 and WebRTC should go through this proxy. */
+export function offersRelayUdp(c: ProxyCheck, p: Pick<Profile, "proxy" | "socks5Udp">): boolean {
+  return !!c.ok && c.udp === "works" && !p.socks5Udp && /^socks5/i.test(String(p.proxy ?? "").trim());
+}
+
+/** Next to the offer: what turning Relay UDP on changes. */
+export const RELAY_UDP_OFFER =
+  tx("Turn it on to send WebRTC and HTTP/3 through this proxy too, as Chrome does without a proxy. The test already moved the session, so it should stay on this exit.");
+
 /** The editor's "Check" result. `stored` is the profile being edited, for the WebRTC IP comparison. */
 export function describeCheck(c: ProxyCheck, stored?: Pick<Profile, "webrtcIp" | "lastGeo">): { tone: Tone; lines: string[] } {
   if (!c.ok || !c.geo?.ok) return { tone: "bad", lines: [t("Doesn't work: {reason}.", { reason: c.error || c.geo?.error || t("no answer through this proxy") }).replace(/\.\.$/, ".")] };
