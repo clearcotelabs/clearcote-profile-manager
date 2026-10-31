@@ -80,12 +80,31 @@ export function listExtensions(root: string): ExtensionEntry[] {
   }
 }
 
+/**
+ * Replace the index. On Windows a rename over a file someone has open at that instant (an antivirus scan, the
+ * search indexer, another reader) fails with EPERM/EBUSY/EACCES, so try a few times, then write it in place.
+ */
 function writeIndex(root: string, list: ExtensionEntry[]): void {
   const file = indexPath(root);
   fs.mkdirSync(path.dirname(file), { recursive: true });
+  const text = JSON.stringify(list, null, 2);
   const tmp = `${file}.${process.pid}.tmp`;
-  fs.writeFileSync(tmp, JSON.stringify(list, null, 2), "utf8");
-  fs.renameSync(tmp, file);
+  fs.writeFileSync(tmp, text, "utf8");
+  for (let attempt = 0; ; attempt++) {
+    try {
+      fs.renameSync(tmp, file);
+      break;
+    } catch (e) {
+      const code = (e as NodeJS.ErrnoException).code;
+      if (!["EPERM", "EBUSY", "EACCES"].includes(code ?? "")) throw e;
+      if (attempt >= 5) {
+        fs.writeFileSync(file, text, "utf8");
+        fs.rmSync(tmp, { force: true });
+        break;
+      }
+      Atomics.wait(new Int32Array(new SharedArrayBuffer(4)), 0, 0, 20 * (attempt + 1));
+    }
+  }
   extensionEvents.emit("changed");
 }
 

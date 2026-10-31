@@ -2,7 +2,7 @@
 // the CRX3 signature, updating, and what a launch loads. The .crx files here are real CRX3 files signed in
 // the test, so the signature check runs for real; the store is a fake fetch serving them.
 
-import { describe, it, expect, beforeEach, afterEach } from "vitest";
+import { describe, it, expect, beforeEach, afterEach, vi } from "vitest";
 import crypto from "node:crypto";
 import fs from "node:fs";
 import os from "node:os";
@@ -388,6 +388,29 @@ describe("updates", () => {
     const load = await ext.extensionsForLaunch(root, [c.id, "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"]);
     expect(load.dirs).toHaveLength(1);
     expect(load.warnings[0]).toMatch(/aaaaaaaa.*not on this computer/);
+  });
+
+  it("saving the list survives Windows refusing the rename while the file is open", async () => {
+    const { buf } = crx({ "manifest.json": manifest() });
+    const c = await ext.addFromCrx(root, buf);
+    const real = fs.renameSync;
+    const busy = () => Object.assign(new Error("EPERM: operation not permitted, rename"), { code: "EPERM" });
+    let fails = 2;
+    const spy = vi.spyOn(fs, "renameSync").mockImplementation((a, b) => {
+      if (fails-- > 0) throw busy();
+      return real(a, b);
+    });
+    try {
+      ext.setExtension(root, c.id, {});
+      spy.mockImplementation(() => {
+        throw busy();
+      });
+      expect(ext.removeExtension(root, c.id)).toBe(true);
+      expect(ext.listExtensions(root)).toEqual([]);
+      expect(fs.readdirSync(ext.extensionsDir(root)).filter((f) => f.endsWith(".tmp"))).toEqual([]);
+    } finally {
+      spy.mockRestore();
+    }
   });
 
   it("removeExtension forgets it and deletes its files", async () => {

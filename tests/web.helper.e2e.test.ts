@@ -293,6 +293,51 @@ describe.skipIf(!READY)("the web version against a real helper", () => {
     await until(readProfiles, (l) => !l[0].proxy, "proxy cleared");
   }, 40000);
 
+  it("Extensions: add one from the Web Store, turn it on for the profile, the launched browser loads it; remove takes it off", async () => {
+    const STORE_ID = "ddkjiahejlhfcafbddmgiahcphecmpfh"; // uBlock Origin Lite (Manifest V3)
+    const readExts = () => {
+      try {
+        return JSON.parse(fs.readFileSync(path.join(DATA, "extensions", "extensions.json"), "utf8")) as { id: string; name: string }[];
+      } catch {
+        return [];
+      }
+    };
+    await page.getByLabel("Workspace").getByRole("button", { name: /^Extensions/ }).click();
+    await page.locator("[data-extensions-page]").waitFor();
+    // The web version adds from the store or a .crx; a folder takes the desktop app.
+    expect(await page.getByRole("button", { name: "Add unpacked folder…" }).count()).toBe(0);
+    await page.getByRole("textbox", { name: "Chrome Web Store link or extension ID" }).fill(`https://chromewebstore.google.com/detail/x/${STORE_ID}`);
+    await page.getByRole("button", { name: "Add from store" }).click();
+    await until(readExts, (l) => l.some((e) => e.id === STORE_ID), "downloaded and kept by the helper", 90000);
+    const row = page.locator(`[data-extension-row="${STORE_ID}"]`);
+    await row.waitFor();
+
+    await row.getByRole("button", { name: /Choose the profiles that use/ }).click();
+    const dlg = page.getByRole("dialog", { name: /Profiles that use/ });
+    await dlg.getByRole("checkbox").first().check();
+    await dlg.getByRole("button", { name: "Save" }).click();
+    const [p] = await until(readProfiles, (l) => l[0]?.extensions?.[0] === STORE_ID, "turned on for the profile");
+
+    await goProfiles();
+    const card = page.locator(`[data-card="${p.id}"], [data-row="${p.id}"]`).first();
+    await card.getByRole("button", { name: "Launch" }).click();
+    await until(() => card.innerText(), (s) => /running/i.test(s), "running", 90000);
+    if (process.platform === "win32") {
+      // The browser the helper started was given the kept copy.
+      const cmd = execFileSync("powershell", ["-NoProfile", "-Command", "Get-CimInstance Win32_Process -Filter \"Name='chrome.exe'\" | ForEach-Object CommandLine"], { encoding: "utf8" });
+      expect(cmd).toContain(path.join(DATA, "extensions", STORE_ID));
+    }
+    await card.getByRole("button", { name: "Stop" }).click();
+    await until(() => card.innerText(), (s) => !/running/i.test(s), "stopped", 30000);
+
+    await page.getByLabel("Workspace").getByRole("button", { name: /^Extensions/ }).click();
+    await page.locator(`[data-extension-row="${STORE_ID}"]`).getByRole("button", { name: /^Remove/ }).click();
+    await page.getByRole("dialog", { name: /Remove/ }).getByRole("button", { name: "Remove" }).click();
+    await until(readProfiles, (l) => !l[0]?.extensions?.length, "taken off the profile");
+    await until(readExts, (l) => l.length === 0, "gone from the list");
+    await goProfiles();
+  }, 200000);
+
   it.skipIf(!JET)("Run a task with real Jet, save it as a task, and find it on the Tasks page", async () => {
     const [p] = readProfiles();
     await page.getByRole("checkbox", { name: "Select Web E2E shop" }).check();
@@ -337,7 +382,7 @@ ${helperLog.join("").slice(-4000)}`);
   }, 300000);
 
   it("no page errors, and no call repeated in a loop", () => {
-    expect(errors).toEqual([]);
+    expect(errors.join(" | ")).toBe("");
     // Each Settings / Run a task opening asks for Jet's status once or twice, not several times a second.
     expect(helperLog.join("").split("jet:status").length - 1).toBeLessThan(20);
   });
