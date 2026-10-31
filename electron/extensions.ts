@@ -16,10 +16,9 @@
 
 import crypto from "node:crypto";
 import fs from "node:fs";
-import os from "node:os";
 import path from "node:path";
 import { EventEmitter } from "node:events";
-import { extractZip } from "./widevine";
+import zlib from "node:zlib";
 
 export type ExtensionSource = "store" | "crx" | "folder";
 
@@ -343,23 +342,70 @@ function finishCopy(dir: string, key: string): Pick<ExtensionEntry, "name" | "ve
   };
 }
 
+const MAX_UNZIPPED_BYTES = 512 * 1024 * 1024;
+
+/**
+ * Write a zip's files under `dest`. Done here rather than with the system's tar: on Linux that is GNU tar,
+ * which cannot read zip at all. Stored and deflated entries (all an extension uses); an entry whose name
+ * would land outside `dest` is refused, as is a zip that would unpack to more than 512 MB.
+ */
+export function unzipTo(zip: Buffer, dest: string): void {
+  const root = path.resolve(dest);
+  let eocd = -1;
+  for (let i = zip.length - 22; i >= Math.max(0, zip.length - 22 - 0xffff); i--) {
+    if (zip.readUInt32LE(i) === 0x06054b50) {
+      eocd = i;
+      break;
+    }
+  }
+  if (eocd < 0) throw new Error("The extension's archive is damaged (no zip directory).");
+  const count = zip.readUInt16LE(eocd + 10);
+  let at = zip.readUInt32LE(eocd + 16);
+  let total = 0;
+  for (let n = 0; n < count; n++) {
+    if (at + 46 > zip.length || zip.readUInt32LE(at) !== 0x02014b50) throw new Error("The extension's archive is damaged.");
+    const method = zip.readUInt16LE(at + 10);
+    const csize = zip.readUInt32LE(at + 20);
+    const usize = zip.readUInt32LE(at + 24);
+    const nameLen = zip.readUInt16LE(at + 28);
+    const extraLen = zip.readUInt16LE(at + 30);
+    const commentLen = zip.readUInt16LE(at + 32);
+    const local = zip.readUInt32LE(at + 42);
+    const name = zip.subarray(at + 46, at + 46 + nameLen).toString("utf8").replace(/\\/g, "/");
+    at += 46 + nameLen + extraLen + commentLen;
+
+    const out = path.resolve(root, name);
+    if (out !== root && !out.startsWith(root + path.sep)) throw new Error(`The extension's archive has a file outside its folder (${name}).`);
+    if (name.endsWith("/")) {
+      fs.mkdirSync(out, { recursive: true });
+      continue;
+    }
+    if (local + 30 > zip.length || zip.readUInt32LE(local) !== 0x04034b50) throw new Error("The extension's archive is damaged.");
+    const start = local + 30 + zip.readUInt16LE(local + 26) + zip.readUInt16LE(local + 28);
+    const raw = zip.subarray(start, start + csize);
+    total += usize;
+    if (total > MAX_UNZIPPED_BYTES) throw new Error("The extension unpacks to more than 512 MB.");
+    let data: Buffer;
+    if (method === 0) data = raw;
+    else if (method === 8) data = zlib.inflateRawSync(raw, { maxOutputLength: Math.max(usize, 1) });
+    else throw new Error(`The extension's archive uses a compression this app cannot read (method ${method}).`);
+    fs.mkdirSync(path.dirname(out), { recursive: true });
+    fs.writeFileSync(out, data);
+  }
+}
+
 /** Unzip into a fresh folder next to the final one, finish it there, then move it into place. */
 async function installZip(root: string, id: string, key: string, zip: Buffer): Promise<{ dir: string; meta: ReturnType<typeof finishCopy> }> {
   const base = path.join(extensionsDir(root), id);
   fs.mkdirSync(base, { recursive: true });
-  const tmp = fs.mkdtempSync(path.join(os.tmpdir(), "cc-ext-"));
   const staging = fs.mkdtempSync(path.join(base, ".new-"));
   try {
-    const zipPath = path.join(tmp, "ext.zip");
-    fs.writeFileSync(zipPath, zip);
-    await extractZip(zipPath, staging, "the extension");
+    unzipTo(zip, staging);
     const meta = finishCopy(staging, key);
     return { dir: moveIntoPlace(staging, versionDir(root, { id, version: meta.version })), meta };
   } catch (e) {
     fs.rmSync(staging, { recursive: true, force: true });
     throw e;
-  } finally {
-    fs.rmSync(tmp, { recursive: true, force: true });
   }
 }
 

@@ -50,6 +50,20 @@ function zip(files: Record<string, string | Buffer>): Buffer {
   return Buffer.concat([...parts, cdBuf, end]);
 }
 
+/** A one-file zip whose entry is deflated (method 8): built stored, then method, CRC and sizes patched. */
+function zipDeflated(name: string, plain: string): Buffer {
+  const packed = zlib.deflateRawSync(Buffer.from(plain));
+  const z = zip({ [name]: packed });
+  const crc = zlib.crc32(Buffer.from(plain));
+  const cd = 30 + Buffer.byteLength(name) + packed.length;
+  for (const [m, c, u] of [[8, 14, 22], [cd + 10, cd + 16, cd + 24]]) {
+    z.writeUInt16LE(8, m);
+    z.writeUInt32LE(crc, c);
+    z.writeUInt32LE(plain.length, u);
+  }
+  return z;
+}
+
 const varint = (n: number) => {
   const out: number[] = [];
   while (n > 127) {
@@ -200,7 +214,7 @@ describe("addFromCrx", () => {
       "icon48.png": png,
       "bg.js": "console.log(1)",
     });
-    const e = await ext.addFromCrx(root, buf, "C:\\Downloads\\wallet.crx");
+    const e = await ext.addFromCrx(root, buf, path.join(os.tmpdir(), "Downloads", "wallet.crx"));
     expect(e).toMatchObject({ id, name: "Localized Wallet", version: "1.0.0", source: "crx", from: "wallet.crx", autoUpdate: false });
     expect(e.icon).toMatch(/^data:image\/png;base64,/);
     const dir = ext.versionDir(root, e);
@@ -215,6 +229,26 @@ describe("addFromCrx", () => {
     await expect(ext.addFromCrx(root, buf)).rejects.toThrow(/Manifest V2/);
     expect(ext.listExtensions(root)).toEqual([]);
     expect(fs.readdirSync(path.join(ext.extensionsDir(root), id))).toEqual([]);
+  });
+});
+
+describe("unzipTo", () => {
+  it("unpacks stored and deflated files into folders", () => {
+    const out = path.join(root, "out");
+    ext.unzipTo(zip({ "a/b.txt": "hello", "a/": "" }), out);
+    expect(fs.readFileSync(path.join(out, "a", "b.txt"), "utf8")).toBe("hello");
+    const plain = "x".repeat(5000);
+    ext.unzipTo(zipDeflated("big.txt", plain), path.join(root, "out2"));
+    expect(fs.readFileSync(path.join(root, "out2", "big.txt"), "utf8")).toBe(plain);
+  });
+  it("refuses an entry that would land outside the folder", () => {
+    for (const name of ["../evil.txt", "a/../../evil.txt", "..\\evil.txt"]) {
+      expect(() => ext.unzipTo(zip({ [name]: "x" }), path.join(root, "out")), name).toThrow(/outside its folder/);
+    }
+    expect(fs.existsSync(path.join(root, "evil.txt"))).toBe(false);
+  });
+  it("refuses something that is not a zip", () => {
+    expect(() => ext.unzipTo(Buffer.from("not a zip at all, just some text bytes"), path.join(root, "out"))).toThrow(/damaged/);
   });
 });
 
