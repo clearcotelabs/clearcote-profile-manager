@@ -20,6 +20,12 @@
   "(persona default)": [
     "src/lib/fields.ts"
   ],
+  "+ Add a step": [
+    "src/components/StepEditor.tsx"
+  ],
+  "+ Add a step here": [
+    "src/components/StepEditor.tsx"
+  ],
   "+ Add a value": [
     "src/components/TaskValues.tsx"
   ],
@@ -222,6 +228,9 @@
   "Add a proxy, or turn Transparent proxy off.": [
     "src/lib/coherence.ts"
   ],
+  "Add a step after step {n}": [
+    "src/components/StepEditor.tsx"
+  ],
   "Add an extension once on the Extensions page and turn it on here. Its version only changes when you update it there (or turn on its auto-update), and each profile keeps its own extension data.": [
     "src/lib/fields.ts"
   ],
@@ -266,6 +275,9 @@
   ],
   "Address": [
     "src/components/CloudViewer.tsx"
+  ],
+  "Address for step {n}": [
+    "src/components/StepEditor.tsx"
   ],
   "Admin & back-office": [
     "src/lib/taskExamples.ts"
@@ -520,6 +532,9 @@
   "CPU cores": [
     "src/lib/fields.ts"
   ],
+  "CSS selector for step {n}": [
+    "src/components/StepEditor.tsx"
+  ],
   "Cache miss": [
     "src/lib/fields.ts"
   ],
@@ -541,6 +556,7 @@
     "src/components/ProfileEditor.tsx",
     "src/components/PromptDialog.tsx",
     "src/components/RunTaskDialog.tsx",
+    "src/components/StepEditor.tsx",
     "src/components/StorageSection.tsx",
     "src/components/TasksView.tsx",
     "src/components/TemplateDialogs.tsx"
@@ -673,6 +689,7 @@
     "src/lib/launchTarget.ts"
   ],
   "Choose": [
+    "src/components/StepEditor.tsx",
     "src/components/StepTimeline.tsx"
   ],
   "Choose file…": [
@@ -686,6 +703,9 @@
   ],
   "Choose {exe}…": [
     "src/components/SettingsModal.tsx"
+  ],
+  "Choose {what}": [
+    "src/components/StepEditor.tsx"
   ],
   "Chosen by the model": [
     "src/components/StepTimeline.tsx"
@@ -764,10 +784,14 @@
     "src/components/StorageSection.tsx"
   ],
   "Click": [
+    "src/components/StepEditor.tsx",
     "src/components/StepTimeline.tsx"
   ],
   "Click the page to type into it. Paste with {keys}. Closing this window does not stop the cloud browser.": [
     "src/components/CloudViewer.tsx"
+  ],
+  "Click {what}": [
+    "src/components/StepEditor.tsx"
   ],
   "Close": [
     "src/components/Dialog.tsx",
@@ -1061,6 +1085,9 @@
   "Delete data of “{name}”?": [
     "src/components/StorageSection.tsx"
   ],
+  "Delete step {n}": [
+    "src/components/StepEditor.tsx"
+  ],
   "Delete {n} profiles?": [
     "app/page.tsx"
   ],
@@ -1197,6 +1224,12 @@
   "Drives the whole persona. The same seed always produces the same identity, so keep it to keep the identity.": [
     "src/lib/fields.ts"
   ],
+  "Dropdown and option for step {n}": [
+    "src/components/StepEditor.tsx"
+  ],
+  "Dropdown → option, e.g. Country → Germany": [
+    "src/components/StepEditor.tsx"
+  ],
   "Duplicate": [
     "src/components/ProfileCard.tsx",
     "src/components/TasksView.tsx"
@@ -1234,8 +1267,14 @@
   "Edit settings": [
     "src/components/ProfileInspector.tsx"
   ],
+  "Edit steps": [
+    "src/components/StepEditor.tsx"
+  ],
   "Edit {name}": [
     "app/page.tsx"
+  ],
+  "Edited by hand": [
+    "src/components/StepEditor.tsx"
   ],
   "Empty all four and the pixel ratio: the seed or capture brings a screen and ratio that agree": [
     "src/components/ProfileEditor.tsx"
@@ -1409,11 +1448,17 @@
   "Find opening hours": [
     "src/lib/taskExamples.ts"
   ],
+  "Find text": [
+    "src/components/StepEditor.tsx"
+  ],
   "Find the newest job listings": [
     "src/lib/taskExamples.ts"
   ],
   "Find the three cheapest": [
     "src/lib/taskExamples.ts"
+  ],
+  "Find {text} on the page": [
+    "src/components/StepEditor.tsx"
   ],
   "Fingerprint seed": [
     "src/components/ProfileInspector.tsx",
@@ -1514,11 +1559,18 @@
   "Give each its best device": [
     "src/components/DevicesView.tsx"
   ],
+  "Give this task a start page (Edit) to change its steps by hand.": [
+    "src/components/StepEditor.tsx"
+  ],
   "Gives every profile Chrome's revocation list, which the browser never downloads by itself, so it refuses the certificates Google has revoked or distrusted, as Chrome does. The list comes from {host}, directly from this PC rather than through a profile's proxy, and is refreshed every 6 hours. The first tab waits on a blank page for a few seconds until the list is active, then opens the start page.": [
     "src/components/SettingsModal.tsx"
   ],
   "Go to": [
-    "app/page.tsx"
+    "app/page.tsx",
+    "src/components/StepEditor.tsx"
+  ],
+  "Go to {url}": [
+    "src/components/StepEditor.tsx"
   ],
   "Graphics card, but this computer has built-in graphics": [
     "src/lib/deviceMatch.ts"
@@ -1579,6 +1631,9 @@
   "How much to show": [
     "src/components/ProfileEditor.tsx"
   ],
+  "How step {n} finds what it uses": [
+    "src/components/StepEditor.tsx"
+  ],
   "How sure the model was": [
     "src/components/StepTimeline.tsx"
   ],
@@ -1601,8 +1656,14 @@
   "Identity spoofs (UA, screen, GPU, persona) stay on either way; this only affects the noised surfaces.": [
     "src/lib/fields.ts"
   ],
+  "If": [
+    "src/components/StepEditor.tsx"
+  ],
   "If you set a custom browser binary in Settings, check that the file still exists.": [
     "src/lib/launchError.ts"
+  ],
+  "If {cond}": [
+    "src/components/StepEditor.tsx"
   ],
   "Import": [
     "app/page.tsx",
@@ -1740,6 +1801,9 @@
   "Its card's Cloud button starts it on Clearcote's servers and opens a window here where you watch and drive it. Its seed gives it the same device every time, the included IP stays the same for up to a day, and its cookies are kept between cloud sessions. Change where its traffic leaves, or set a traffic cap, under Cloud in the profile's editor.": [
     "src/components/SettingsModal.tsx"
   ],
+  "Its label, e.g. Load more": [
+    "src/components/StepEditor.tsx"
+  ],
   "Its last message: {said}": [
     "src/lib/launchError.ts"
   ],
@@ -1749,8 +1813,20 @@
   "Japan": [
     "src/components/CloudFields.tsx"
   ],
+  "JavaScript for step {n}": [
+    "src/components/StepEditor.tsx"
+  ],
   "Jet command": [
     "src/components/TasksSection.tsx"
+  ],
+  "Jet has not learned this task yet. Run it once, or write its steps yourself.": [
+    "src/components/StepEditor.tsx"
+  ],
+  "Jet learned 1 step.": [
+    "src/components/StepEditor.tsx"
+  ],
+  "Jet learned {n} steps.": [
+    "src/components/StepEditor.tsx"
   ],
   "Jet runs on Python. On Windows, tick \"Add python.exe to PATH\" in the installer. Then come back and press Check again.": [
     "src/components/JetSetup.tsx"
@@ -1791,6 +1867,9 @@
   "Key": [
     "src/components/StepTimeline.tsx"
   ],
+  "Key for step {n}": [
+    "src/components/StepEditor.tsx"
+  ],
   "Key set": [
     "src/components/SettingsModal.tsx"
   ],
@@ -1803,6 +1882,9 @@
   ],
   "Know when a new version of this app is out. Nothing is installed without you.": [
     "src/components/SettingsModal.tsx"
+  ],
+  "Label for step {n}": [
+    "src/components/StepEditor.tsx"
   ],
   "Language": [
     "src/components/ProfileInspector.tsx",
@@ -2044,6 +2126,12 @@
   "Move in from another browser…": [
     "app/page.tsx"
   ],
+  "Move step {n} down": [
+    "src/components/StepEditor.tsx"
+  ],
+  "Move step {n} up": [
+    "src/components/StepEditor.tsx"
+  ],
   "Move up": [
     "src/components/GroupHeader.tsx"
   ],
@@ -2231,6 +2319,9 @@
   ],
   "No steps yet: run the task once and its steps show here.": [
     "src/components/StepTimeline.tsx"
+  ],
+  "No steps.": [
+    "src/components/StepEditor.tsx"
   ],
   "No tab? <a>Open the approval page</a>. The request expires in two minutes.": [
     "src/components/HelperGate.tsx"
@@ -2431,6 +2522,9 @@
   "Other systems and checksums": [
     "src/components/HelperGate.tsx"
   ],
+  "Otherwise": [
+    "src/components/StepEditor.tsx"
+  ],
   "Override": [
     "src/components/SettingsModal.tsx"
   ],
@@ -2448,6 +2542,9 @@
   ],
   "Pairing was denied. Nothing was paired.": [
     "src/components/HelperGate.tsx"
+  ],
+  "Part of the address, e.g. /checkout": [
+    "src/components/StepEditor.tsx"
   ],
   "Paste": [
     "src/components/ProfileEditor.tsx"
@@ -2538,6 +2635,12 @@
   "Portable profile": [
     "src/lib/fields.ts"
   ],
+  "Press key": [
+    "src/components/StepEditor.tsx"
+  ],
+  "Press {key}": [
+    "src/components/StepEditor.tsx"
+  ],
   "Preview": [
     "src/components/BulkCreateDialog.tsx",
     "src/lib/launchTarget.ts"
@@ -2610,6 +2713,9 @@
   ],
   "Reading & monitoring": [
     "src/lib/taskExamples.ts"
+  ],
+  "Reading the steps…": [
+    "src/components/StepEditor.tsx"
   ],
   "Ready. Select profiles and choose Run a task.": [
     "src/components/JetSetup.tsx"
@@ -2712,6 +2818,18 @@
   "Rendering, TLS and the real Chrome version are left untouched. Screen is deliberately not spoofed.": [
     "src/lib/fields.ts"
   ],
+  "Repeat": [
+    "src/components/StepEditor.tsx"
+  ],
+  "Repeat until {cond} (at most {n} times)": [
+    "src/components/StepEditor.tsx"
+  ],
+  "Repeat while": [
+    "src/components/StepEditor.tsx"
+  ],
+  "Repeat while {cond} (at most {n} times)": [
+    "src/components/StepEditor.tsx"
+  ],
   "Repeated from the saved task, no model call": [
     "src/components/StepTimeline.tsx"
   ],
@@ -2760,6 +2878,15 @@
   "Research": [
     "src/lib/webPreview.ts"
   ],
+  "Reset": [
+    "src/components/StepEditor.tsx"
+  ],
+  "Reset to what Jet learns": [
+    "src/components/StepEditor.tsx"
+  ],
+  "Reset to what Jet learns?": [
+    "src/components/StepEditor.tsx"
+  ],
   "Resolve from proxy →": [
     "src/components/ProfileEditor.tsx"
   ],
@@ -2786,6 +2913,9 @@
   ],
   "Run ./clearcote-helper.sh. Keep its window open.": [
     "src/components/HelperGate.tsx"
+  ],
+  "Run JavaScript": [
+    "src/components/StepEditor.tsx"
   ],
   "Run a task": [
     "src/components/SettingsModal.tsx"
@@ -2880,6 +3010,9 @@
   "Runs": [
     "src/components/TasksView.tsx"
   ],
+  "Runs in the page, as its own scripts do. It can read and change anything on the page.": [
+    "src/components/StepEditor.tsx"
+  ],
   "Run…": [
     "src/components/TasksView.tsx"
   ],
@@ -2935,6 +3068,9 @@
   "Save profile": [
     "src/components/ProfileEditor.tsx"
   ],
+  "Save steps": [
+    "src/components/StepEditor.tsx"
+  ],
   "Save template": [
     "src/components/TemplateDialogs.tsx"
   ],
@@ -2970,10 +3106,23 @@
   ],
   "Saving…": [
     "src/components/ExtensionsView.tsx",
+    "src/components/StepEditor.tsx",
     "src/components/TasksView.tsx"
   ],
   "Say what the task is.": [
     "src/lib/syncMock.ts"
+  ],
+  "Say what to check.": [
+    "src/components/StepEditor.tsx"
+  ],
+  "Say what to type.": [
+    "src/components/StepEditor.tsx"
+  ],
+  "Say what to use: its label or a CSS selector.": [
+    "src/components/StepEditor.tsx"
+  ],
+  "Say which dropdown and option, e.g. Country → Germany.": [
+    "src/components/StepEditor.tsx"
   ],
   "Screen dimensions": [
     "src/lib/fields.ts"
@@ -2991,7 +3140,14 @@
     "src/lib/fields.ts"
   ],
   "Scroll": [
+    "src/components/StepEditor.tsx",
     "src/components/StepTimeline.tsx"
+  ],
+  "Scroll down": [
+    "src/components/StepEditor.tsx"
+  ],
+  "Scrolls down about one screen.": [
+    "src/components/StepEditor.tsx"
   ],
   "Search & research": [
     "src/lib/taskExamples.ts"
@@ -3085,6 +3241,9 @@
   ],
   "Set Platform to macos on a Mac, or import a fingerprint captured on {platform}.": [
     "src/lib/coherence.ts"
+  ],
+  "Set a start page for this task first: its steps belong to the page it starts on.": [
+    "src/lib/syncMock.ts"
   ],
   "Set by the app when it installs Jet. Leave it empty to use {bin} from PATH, or give the full command, for example a Python of your own.": [
     "src/components/TasksSection.tsx"
@@ -3258,6 +3417,9 @@
   "Step": [
     "src/components/StepTimeline.tsx"
   ],
+  "Step {n}: {problem}": [
+    "src/components/StepEditor.tsx"
+  ],
   "Steps Jet took": [
     "src/components/StepTimeline.tsx"
   ],
@@ -3408,6 +3570,15 @@
   "Test anyway": [
     "src/components/ProfileEditor.tsx"
   ],
+  "Text for step {n}": [
+    "src/components/StepEditor.tsx"
+  ],
+  "Text on the page, e.g. Out of stock": [
+    "src/components/StepEditor.tsx"
+  ],
+  "Text to find for step {n}": [
+    "src/components/StepEditor.tsx"
+  ],
   "That extension is no longer here.": [
     "src/components/ExtensionsView.tsx",
     "src/lib/extensionsMock.ts"
@@ -3417,6 +3588,9 @@
   ],
   "That profile no longer exists.": [
     "src/lib/ipc.ts"
+  ],
+  "That task is no longer saved.": [
+    "src/lib/syncMock.ts"
   ],
   "That version can't be pinned": [
     "src/lib/launchError.ts"
@@ -3545,6 +3719,9 @@
   "The most coherent option when no captured profile matches the host's real render.": [
     "src/lib/fields.ts"
   ],
+  "The next run does these steps exactly, with no model.": [
+    "src/components/StepEditor.tsx"
+  ],
   "The old fingerprint is not copied: each profile gets a persona from a real device with the same operating system. Cookies are added at each profile's first launch.": [
     "src/components/MigrateDialog.tsx"
   ],
@@ -3596,11 +3773,17 @@
   "The work area: the screen minus the taskbar, e.g. 1920 × 1032 on a 1920 × 1080 Windows 11 screen at 100 %. The full screen size here describes a screen with no taskbar, which is rare and stands out. Left empty under a seed, capture or Light stealth, it is not this display's own value, so matching this display means typing all four fields.": [
     "src/lib/fields.ts"
   ],
+  "Then": [
+    "src/components/StepEditor.tsx"
+  ],
   "There are no profiles yet.": [
     "src/components/ExtensionsView.tsx"
   ],
   "There's no build “{version}”": [
     "src/lib/launchError.ts"
+  ],
+  "These steps run exactly as written next time. Use {{name}} for a task value, as in the goal.": [
+    "src/components/StepEditor.tsx"
   ],
   "This Mac has no Clearcote build to launch.": [
     "src/lib/launchTarget.ts"
@@ -3843,6 +4026,12 @@
   "Type all four to match this host's real display, or leave them empty so {source} supplies the screen.": [
     "src/lib/coherence.ts"
   ],
+  "Type text": [
+    "src/components/StepEditor.tsx"
+  ],
+  "Type {text} into {what}": [
+    "src/components/StepEditor.tsx"
+  ],
   "Typed only: never saved with the task or shown to the model.": [
     "src/components/TasksView.tsx"
   ],
@@ -3890,6 +4079,9 @@
   ],
   "United States": [
     "src/components/CloudFields.tsx"
+  ],
+  "Unless {cond}": [
+    "src/components/StepEditor.tsx"
   ],
   "Unsaved changes": [
     "src/components/ProfileEditor.tsx"
@@ -3951,6 +4143,9 @@
   "Use an address that starts with http:// or https://, or leave it empty.": [
     "src/components/TasksView.tsx"
   ],
+  "Use an address that starts with https://": [
+    "src/components/StepEditor.tsx"
+  ],
   "Use another key": [
     "src/components/JetSetup.tsx"
   ],
@@ -3998,6 +4193,9 @@
   "Value": [
     "src/components/TaskValues.tsx"
   ],
+  "Value step {n} checks": [
+    "src/components/StepEditor.tsx"
+  ],
   "Values it asks for": [
     "src/components/TasksView.tsx"
   ],
@@ -4016,11 +4214,26 @@
   "View the .json": [
     "src/components/DevicesView.tsx"
   ],
+  "Wait": [
+    "src/components/StepEditor.tsx"
+  ],
   "Wait a minute, then try again.": [
     "src/lib/launchError.ts"
   ],
   "Wait between starts (seconds)": [
     "src/components/RunTaskDialog.tsx"
+  ],
+  "Wait until": [
+    "src/components/StepEditor.tsx"
+  ],
+  "Wait until {cond} (up to {n} s)": [
+    "src/components/StepEditor.tsx"
+  ],
+  "Wait while {cond} (up to {n} s)": [
+    "src/components/StepEditor.tsx"
+  ],
+  "Wait {n} s": [
+    "src/components/StepEditor.tsx"
   ],
   "Waiting": [
     "src/components/TaskBoard.tsx"
@@ -4055,6 +4268,12 @@
   "What should each profile do?": [
     "src/components/RunTaskDialog.tsx"
   ],
+  "What step {n} checks": [
+    "src/components/StepEditor.tsx"
+  ],
+  "What step {n} does": [
+    "src/components/StepEditor.tsx"
+  ],
   "What survives a restart, and what moves between machines.": [
     "src/lib/fields.ts"
   ],
@@ -4066,6 +4285,9 @@
   ],
   "What to do": [
     "src/components/TasksView.tsx"
+  ],
+  "What to type, e.g. {{email}}": [
+    "src/components/StepEditor.tsx"
   ],
   "What's new": [
     "src/components/UpdateBanner.tsx"
@@ -4089,6 +4311,9 @@
   "Where {slot} comes from": [
     "src/components/RunTaskDialog.tsx",
     "src/components/TasksView.tsx"
+  ],
+  "Whether step {n} checks for or against it": [
+    "src/components/StepEditor.tsx"
   ],
   "Which Clearcote build profiles launch with.": [
     "src/components/SettingsModal.tsx"
@@ -4132,6 +4357,9 @@
   "Without this, and without a geolocation set, the Geolocation API reports the host's real position — the proxy alone does not move it.": [
     "src/lib/fields.ts"
   ],
+  "Words to scroll to": [
+    "src/components/StepEditor.tsx"
+  ],
   "Working out which browser build launches.": [
     "src/lib/launchTarget.ts"
   ],
@@ -4146,6 +4374,12 @@
   ],
   "Write a value it should ask for in double braces, like {example}.": [
     "src/components/TasksView.tsx"
+  ],
+  "Write steps": [
+    "src/components/StepEditor.tsx"
+  ],
+  "Write the JavaScript to run.": [
+    "src/components/StepEditor.tsx"
   ],
   "Yes": [
     "src/components/TasksView.tsx"
@@ -4177,6 +4411,9 @@
   "Your profiles stay on your computer. To open them from this page, Clearcote needs a small helper running there. It is open source and you can rebuild it yourself and check it byte for byte.": [
     "src/components/HelperGate.tsx"
   ],
+  "Your steps are removed. The next run works the task out again with the model, and Jet learns its steps anew.": [
+    "src/components/StepEditor.tsx"
+  ],
   "a 2-letter country code": [
     "src/components/CloudFields.tsx"
   ],
@@ -4200,6 +4437,9 @@
   ],
   "allow list": [
     "src/lib/fields.ts"
+  ],
+  "an element matches (CSS)": [
+    "src/components/StepEditor.tsx"
   ],
   "an unknown address": [
     "src/lib/proxyReport.ts"
@@ -4230,6 +4470,12 @@
   ],
   "build {n}": [
     "src/lib/profileList.ts"
+  ],
+  "by CSS selector": [
+    "src/components/StepEditor.tsx"
+  ],
+  "by its label": [
+    "src/components/StepEditor.tsx"
   ],
   "captured fp": [
     "src/components/ProfileCard.tsx"
@@ -4286,8 +4532,20 @@
   "download the browser": [
     "src/lib/webPreview.ts"
   ],
+  "e.g. #captcha, .error": [
+    "src/components/StepEditor.tsx"
+  ],
   "e.g. Acme — US East": [
     "src/lib/fields.ts"
+  ],
+  "e.g. Email": [
+    "src/components/StepEditor.tsx"
+  ],
+  "e.g. Sign in": [
+    "src/components/StepEditor.tsx"
+  ],
+  "e.g. document.querySelectorAll('.item').length > 10": [
+    "src/components/StepEditor.tsx"
   ],
   "egress {ip} · {country} · {timezone} · {language}": [
     "src/components/ProfileEditor.tsx"
@@ -4462,14 +4720,29 @@
   "save a task": [
     "src/lib/webPreview.ts"
   ],
+  "save a task's steps": [
+    "src/lib/webPreview.ts"
+  ],
   "save settings": [
     "src/lib/webPreview.ts"
+  ],
+  "seconds": [
+    "src/components/StepEditor.tsx"
+  ],
+  "seconds at most, then the run stops": [
+    "src/components/StepEditor.tsx"
   ],
   "secret": [
     "src/components/RunTaskDialog.tsx"
   ],
+  "step {n}": [
+    "src/components/StepEditor.tsx"
+  ],
   "supply your own — nothing sensitive is written to disk": [
     "src/lib/fields.ts"
+  ],
+  "the address contains": [
+    "src/components/StepEditor.tsx"
   ],
   "the captured fingerprint": [
     "src/lib/coherence.ts"
@@ -4480,8 +4753,17 @@
   "the included residential IP, any country, the same one for up to a day.": [
     "src/components/CloudFields.tsx"
   ],
+  "the page shows": [
+    "src/components/StepEditor.tsx"
+  ],
   "the seed": [
     "src/lib/coherence.ts"
+  ],
+  "there is a button or field": [
+    "src/components/StepEditor.tsx"
+  ],
+  "this JavaScript is true": [
+    "src/components/StepEditor.tsx"
   ],
   "this computer": [
     "src/components/ProfileTable.tsx"
@@ -4495,8 +4777,14 @@
   "time zone and language follow it": [
     "src/components/TemplateDialogs.tsx"
   ],
+  "times at most": [
+    "src/components/StepEditor.tsx"
+  ],
   "turn an extension on for profiles": [
     "src/lib/webPreview.ts"
+  ],
+  "unless": [
+    "src/components/StepEditor.tsx"
   ],
   "unset": [
     "src/lib/fields.ts"
@@ -4521,6 +4809,9 @@
   ],
   "waits {min}–{max} s between starts": [
     "src/components/TasksView.tsx"
+  ],
+  "when": [
+    "src/components/StepEditor.tsx"
   ],
   "with login": [
     "src/components/ProxiesView.tsx"

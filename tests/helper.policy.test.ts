@@ -79,6 +79,19 @@ describe("refusedArgs", () => {
   });
 });
 
+describe("tasks:saveSteps", () => {
+  it("refuses steps that run JavaScript, at any depth, and passes the rest on", async () => {
+    const seen: unknown[] = [];
+    const h = m.webPolicy({ "tasks:saveSteps": async (_c: unknown, id: unknown, steps: unknown) => (seen.push([id, steps]), { ok: true }) } as never);
+    const ctx = { emit() {} };
+    const js = [{ kind: "if", condition: { type: "text", value: "x" }, then: [{ kind: "js", code: "alert(1)" }] }];
+    expect(await h["tasks:saveSteps"](ctx, "t1", js)).toMatchObject({ ok: false, error: expect.stringMatching(/JavaScript/) });
+    expect(await h["tasks:saveSteps"](ctx, "t1", [{ kind: "wait_for", condition: { type: "js", value: "true" } }])).toMatchObject({ ok: false });
+    expect(await h["tasks:saveSteps"](ctx, "t1", [{ kind: "click", label: "Go" }])).toEqual({ ok: true });
+    expect(seen).toEqual([["t1", [{ kind: "click", label: "Go" }]]]);
+  });
+});
+
 describe("cleanProfile", () => {
   it("keeps extensions as IDs only", () => {
     const ok = "nkbihfbeogaeaoehlefnkodbefgpgknn";

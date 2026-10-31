@@ -14,6 +14,7 @@ import { t } from "@/lib/i18n";
 import { relativeTime } from "@/lib/profileList";
 import { BUILTIN_SLOTS, looksSecret, templateSlots } from "../../electron/jetslots";
 import StepTimeline, { SlotText } from "./StepTimeline";
+import StepEditor from "./StepEditor";
 import { ExampleGallery } from "./TaskExamples";
 import type { TaskExample } from "@/lib/taskExamples";
 
@@ -65,6 +66,8 @@ export default function TasksView(props: {
   onNew: () => void;
   /** Open Run a task prefilled with an example. */
   onExample: (example: TaskExample) => void;
+  /** The steps a task replays can be read and edited here (a backend that has tasks.steps). */
+  canEditSteps?: boolean;
 }) {
   const { tasks, onNew, onExample } = props;
   const [q, setQ] = useState("");
@@ -199,6 +202,7 @@ function Detail({
   onSave,
   onDelete,
   onPicked,
+  canEditSteps,
 }: {
   task: SavedTask;
   selectedCount: number;
@@ -206,6 +210,7 @@ function Detail({
   onSave: (task: Partial<SavedTask>) => Promise<SavedTask>;
   onDelete: (task: SavedTask) => void;
   onPicked: (id: string) => void;
+  canEditSteps?: boolean;
 }) {
   const [editing, setEditing] = useState(false);
   const [err, setErr] = useState<string | null>(null);
@@ -291,6 +296,7 @@ function Detail({
 
       <div className="border-t border-line px-4 py-3">
         <h3 className={head + " mb-2"}>{t("What Jet did")}</h3>
+        {canEditSteps && <StepEditor key={task.id} taskId={task.id} hasUrl={!!task.url} />}
         <StepTimeline steps={task.steps ?? ([] as StepSummary[])} from={task.stepsFrom} />
       </div>
 

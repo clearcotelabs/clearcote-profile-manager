@@ -12,7 +12,8 @@
 //   - It can run tasks on profiles (Run a task, saved tasks, Jet setup), as the desktop app does, but it
 //     never gets a browser's DevTools endpoint or learns where one is: whoever holds that endpoint
 //     controls the browser, so only Jet, started by the helper, connects to it. Which program Jet is
-//     (jetCommand) and the automation-port setting stay as saved.
+//     (jetCommand) and the automation-port setting stay as saved. It can edit a task's steps, but not save ones
+//     that run JavaScript (they would control the browser too).
 //   - It can add extensions from the Chrome Web Store or a .crx file it uploads (both signature-checked) and
 //     turn them on for profiles, but not from a folder: that takes the desktop app's folder picker.
 // Everything set in the desktop app on this computer stays as it is.
@@ -22,6 +23,7 @@ import { readSettings } from "../electron/store";
 import type { Handler } from "../electron/handlers";
 import type { Profile, Settings } from "../electron/types";
 import type { StartRequest } from "../electron/jetsync";
+import { usesJavaScript, type EditStep } from "../electron/taskskill";
 import { isExtensionId } from "../electron/extensions";
 
 /** A switch whose name says it runs something or takes a file or folder. */
@@ -122,6 +124,9 @@ export function webPolicy(h: Record<string, Handler>): Record<string, Handler> {
       return h["profiles:importData"](c, JSON.stringify(list));
     },
     "cdp:endpoint": () => ({ ok: false, error: NO_ENDPOINT }),
+    // A step that runs JavaScript in a profile's browser is that browser's control, like its DevTools endpoint.
+    "tasks:saveSteps": (c, id: string, steps: EditStep[]) =>
+      Array.isArray(steps) && usesJavaScript(steps) ? { ok: false, error: NO_JS_STEPS } : h["tasks:saveSteps"](c, id, steps),
     // Runs start from profiles as saved on this computer (by id), never from what the page sends.
     "sync:start": (c, req: StartRequest) => h["sync:start"](c, cleanStart(req)),
     "jet:checkKey": (c, key?: string) => h["jet:checkKey"](c, typeof key === "string" && key.includes(MASK) ? undefined : key),
@@ -133,6 +138,7 @@ export function webPolicy(h: Record<string, Handler>): Record<string, Handler> {
   };
 }
 
+const NO_JS_STEPS = "The web version cannot save steps that run JavaScript: they would control the browser. Add them in the desktop app.";
 const NO_ENDPOINT = "The web version never hands out a browser's DevTools endpoint: whoever holds it controls the browser.";
 
 /** A run request from the page: profile ids only, the rest as plain values. */

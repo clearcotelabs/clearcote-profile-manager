@@ -51,7 +51,12 @@ export function buildPreviewApi(mock: ClearcoteApi): ClearcoteApi {
     sync: mock.sync && { ...mock.sync, start: fail(tx("run a task on profiles")) as NonNullable<ClearcoteApi["sync"]>["start"] },
     // Nothing on the computer can be checked yet, so no setup checklist (it would say Python is missing).
     jetSetup: undefined,
-    tasks: mock.tasks && { ...mock.tasks, save: fail(tx("save a task")) as never },
+    tasks: mock.tasks && {
+      ...mock.tasks,
+      save: fail(tx("save a task")) as never,
+      saveSteps: fail(tx("save a task's steps")) as never,
+      resetSteps: fail(tx("save a task's steps")) as never,
+    },
     cdpEndpoint: undefined,
     // Extensions show as in the desktop app; adding one or turning it on needs the computer.
     extensions: mock.extensions && {

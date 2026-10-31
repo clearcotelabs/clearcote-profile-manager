@@ -8,7 +8,7 @@ import type { Profile } from "@/types/profile";
 import type { StartRequest, SyncRun, SyncRow } from "../../electron/jetsync";
 import { normalizeTemplate, valuesFor } from "../../electron/jetslots";
 import { t } from "@/lib/i18n";
-import type { JetSetupApi, JetStatus, KeyState, SavedTask, SyncApi, TasksApi } from "./ipc";
+import type { EditStep, JetSetupApi, JetStatus, KeyState, SavedTask, SyncApi, TaskSkill, TasksApi } from "./ipc";
 
 export function buildSyncMock(readProfiles: () => Profile[]): SyncApi {
   let runs: SyncRun[] = [];
@@ -201,6 +201,28 @@ export function buildTasksMock(): TasksApi {
       listeners.forEach((cb) => cb());
       return list.some((x) => x.id === id);
     },
+    // Steps kept per task in localStorage (STEPS_KEY), seeded from what the task's last run did.
+    steps: async (id) => {
+      const task = read().find((x) => x.id === id);
+      if (!task) return { ok: false, error: t("That task is no longer saved.") };
+      if (!task.url) return { ok: false, code: "NO_URL", error: t("Set a start page for this task first: its steps belong to the page it starts on.") };
+      const saved = readSteps()[id];
+      if (saved) return { ok: true, skill: saved };
+      const learned = (task.steps ?? []).map((s) => ({ kind: (s.kind === "type" ? "fill" : s.kind) as EditStep["kind"], label: s.action, ...(s.template ?? s.text ? { text: String(s.template ?? s.text) } : {}) }));
+      return { ok: true, skill: learned.length ? { steps: learned, edited: false } : null };
+    },
+    saveSteps: async (id, steps) => {
+      const skill: TaskSkill = { steps, edited: true, editedAt: new Date().toISOString() };
+      writeSteps({ ...readSteps(), [id]: skill });
+      return { ok: true, skill };
+    },
+    resetSteps: async (id) => {
+      const all = readSteps();
+      const forgot = id in all;
+      delete all[id];
+      writeSteps(all);
+      return { ok: true, forgot };
+    },
     onChanged: (cb) => {
       listeners.add(cb);
       window.addEventListener(TASKS_EVENT, cb);
@@ -213,6 +235,16 @@ export function buildTasksMock(): TasksApi {
 }
 
 const TASKS_KEY = "clearcote.mock.tasks";
+const STEPS_KEY = "clearcote.mock.taskSteps";
+
+function readSteps(): Record<string, TaskSkill> {
+  try {
+    return JSON.parse(localStorage.getItem(STEPS_KEY) || "{}");
+  } catch {
+    return {};
+  }
+}
+const writeSteps = (v: Record<string, TaskSkill>) => localStorage.setItem(STEPS_KEY, JSON.stringify(v));
 const TASKS_EVENT = "clearcote-mock-tasks";
 
 /** As electron/handlers.ts does: a finished run of a saved task goes into its history and step timeline. */

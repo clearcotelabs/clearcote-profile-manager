@@ -398,6 +398,9 @@ export function buildHelperApi(): ClearcoteApi {
       list: call("tasks:list"),
       save: call("tasks:save"),
       remove: call("tasks:delete"),
+      steps: call("tasks:steps"),
+      saveSteps: call("tasks:saveSteps"),
+      resetSteps: call("tasks:resetSteps"),
       onChanged: (cb) => on("tasks:changed", () => cb()),
     },
     // From the store or an uploaded .crx; adding a folder takes the desktop app's folder picker.

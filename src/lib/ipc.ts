@@ -14,6 +14,8 @@ import type { JetStatus, KeyState } from "../../electron/jetsetup";
 export type { JetStatus, KeyState } from "../../electron/jetsetup";
 import type { SavedTask } from "../../electron/tasks";
 export type { SavedTask, TaskParam, TaskRunRecord } from "../../electron/tasks";
+import type { EditStep, TaskSkill } from "../../electron/taskskill";
+export type { EditStep, EditKind, StepCondition, ConditionType, TaskSkill } from "../../electron/taskskill";
 export type { StepSummary } from "../../electron/jetsync";
 import type { ExtensionEntry } from "../../electron/extensions";
 export type { ExtensionEntry, ExtensionSource } from "../../electron/extensions";
@@ -337,7 +339,15 @@ export interface TasksApi {
   remove: (id: string) => Promise<boolean>;
   /** A run of a saved task finished and was recorded. */
   onChanged: (cb: () => void) => () => void;
+  /** The steps the task replays (Jet's skill); skill null when Jet has not learned it yet. */
+  steps: (id: string) => Promise<StepsResult<{ skill: TaskSkill | null }>>;
+  /** Save steps written by hand: the next run does exactly these. */
+  saveSteps: (id: string, steps: EditStep[]) => Promise<StepsResult<{ skill: TaskSkill | null }>>;
+  /** Forget the steps: the next run works the task out again and Jet learns it anew. */
+  resetSteps: (id: string) => Promise<StepsResult<{ forgot: boolean }>>;
 }
+
+export type StepsResult<T> = ({ ok: true } & T) | { ok: false; error: string; code?: string };
 
 export type ExtResult = { ok: true; extension: ExtensionEntry } | { ok: false; error: string };
 

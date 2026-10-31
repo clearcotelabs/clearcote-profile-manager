@@ -1671,6 +1671,7 @@ function Manager() {
             <h2 className="mt-6 text-lg font-semibold">{t("Tasks")}</h2>
             <TasksView
               tasks={savedTasks}
+              canEditSteps={!!api.tasks?.steps}
               selectedCount={selected.size}
               onRun={(task) => openRunTask(task)}
               onSave={saveTask}

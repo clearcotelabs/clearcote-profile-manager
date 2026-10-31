@@ -29,6 +29,7 @@ import { addPending, readPending } from "./cookiejar";
 import crypto from "node:crypto";
 import { SyncManager, spawnJet, type StartRequest, type SyncRun } from "./jetsync";
 import { deleteTask, readTasks, recordRun, saveTask, tasksPath, type SavedTask } from "./tasks";
+import { getTaskSkill, resetTaskSkill, saveTaskSkill, type EditStep } from "./taskskill";
 import * as ext from "./extensions";
 import { checkKey, findPython, installJet, isCustomCommand, jetStatus, type JetStatus } from "./jetsetup";
 import type { Profile, Settings, FingerprintMeta } from "./types";
@@ -195,6 +196,12 @@ export function bootstrap(cloudFile: string): CloudManager {
 
 const TASKS_FILE = () => tasksPath(ROOT);
 
+/** A saved task by id, or the error the editor shows. */
+async function withTask<T>(id: string, fn: (t: SavedTask) => Promise<T>): Promise<T | { ok: false; error: string }> {
+  const task = readTasks(TASKS_FILE()).find((x) => x.id === String(id));
+  return task ? fn(task) : { ok: false, error: "That task is no longer saved." };
+}
+
 /** An extension call as { ok, extension } or { ok: false, error } — the UI shows the error as it is. */
 export async function wrapExt(fn: () => Promise<ext.ExtensionEntry>): Promise<{ ok: true; extension: ext.ExtensionEntry } | { ok: false; error: string }> {
   try {
@@ -348,6 +355,10 @@ export function createHandlers(host: HandlerHost): Record<string, Handler> {
     "tasks:list": () => readTasks(TASKS_FILE()),
     "tasks:save": (_c, t: Partial<SavedTask>) => saveTask(TASKS_FILE(), t),
     "tasks:delete": (_c, id: string) => deleteTask(TASKS_FILE(), String(id)),
+    // The steps a task replays (electron/taskskill.ts): read, saved by hand, or forgotten so Jet learns them again.
+    "tasks:steps": (_c, id: string) => withTask(id, (t) => getTaskSkill(readSettings(), t)),
+    "tasks:saveSteps": (_c, id: string, steps: EditStep[]) => withTask(id, (t) => saveTaskSkill(readSettings(), t, steps)),
+    "tasks:resetSteps": (_c, id: string) => withTask(id, (t) => resetTaskSkill(readSettings(), t)),
     // Extensions (electron/extensions.ts): kept once on this computer, loaded into the profiles they are on.
     // Adding from a folder is the desktop app's (main.ts, with its folder picker): a web page names no paths.
     "extensions:list": () => ext.listExtensions(ROOT),

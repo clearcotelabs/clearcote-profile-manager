@@ -17,6 +17,7 @@ import type { HostGpu } from "./hostgpu";
 import type { StartRequest, SyncRun } from "./jetsync";
 import type { JetStatus, KeyState } from "./jetsetup";
 import type { SavedTask } from "./tasks";
+import type { EditStep } from "./taskskill";
 import type { ExtensionEntry } from "./extensions";
 
 type ExtResult = { ok: true; extension: ExtensionEntry } | { ok: false; error: string };
@@ -102,6 +103,10 @@ const api = {
     save: (t: Partial<SavedTask>): Promise<SavedTask> => ipcRenderer.invoke("tasks:save", t),
     remove: (id: string): Promise<boolean> => ipcRenderer.invoke("tasks:delete", id),
     onChanged: (cb: () => void) => on<void>("tasks:changed", cb),
+    /** The steps the task replays (Jet's skill): read, saved by hand, or forgotten (electron/taskskill.ts). */
+    steps: (id: string) => ipcRenderer.invoke("tasks:steps", id),
+    saveSteps: (id: string, steps: EditStep[]) => ipcRenderer.invoke("tasks:saveSteps", id, steps),
+    resetSteps: (id: string) => ipcRenderer.invoke("tasks:resetSteps", id),
   },
   /** Getting Jet ready without a terminal (electron/jetsetup.ts). */
   jetSetup: {
