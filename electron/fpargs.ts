@@ -306,6 +306,11 @@ export interface FpArgsOptions {
   /** Best-effort Accept-Language recovered from the captured profile's navigator.languages, used
    *  when the profile itself sets none — so an imported identity keeps the donor's language order. */
   profileAcceptLanguage?: string;
+  /** The captured profile's own thread count and memory (top-level hardware_concurrency / device_memory). Sent as
+   *  switches when the launch has no seed (light stealth): the engine applies a persona's hardware values only with
+   *  a --fingerprint seed, so without these the real machine's showed next to the device's GPU (measured 2026-10-31
+   *  with r54; the SDK does the same, profileHardware in sdk/node/src/fingerprint.ts). */
+  profileHardware?: { hardwareConcurrency?: number; deviceMemory?: number };
 }
 
 /** Platforms whose stable Chrome ships Web Bluetooth (the SDK's WEB_BLUETOOTH_PLATFORMS). */
@@ -386,6 +391,11 @@ export function fingerprintArgs(input: FpInput, opts: FpArgsOptions = {}): strin
   const args: string[] = [];
   const p: FpInput = { ...input }; // never mutate the caller's profile
 
+  if (p.fingerprintProfile && opts.profileHardware && (p.lightStealth || !p.fingerprint)) {
+    // A device with no seed: its own threads and memory, before the light-stealth preset so they win over it.
+    p.hardwareConcurrency ??= opts.profileHardware.hardwareConcurrency;
+    p.deviceMemory ??= opts.profileHardware.deviceMemory;
+  }
   if (p.lightStealth) {
     // Fill in the coherent metadata bundle via native override switches. An explicit field on the
     // profile wins over the preset. CRITICAL: never emit --fingerprint, so the persona machinery /

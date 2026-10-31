@@ -382,3 +382,26 @@ describe("narrow rendering switches", () => {
     expect(wide).not.toContain("--disable-canvas-noise");
   });
 });
+
+// The engine applies a persona's hardware values only with a --fingerprint seed, so a device on a light-stealth
+// profile sends its own threads and memory (measured 2026-10-31 with r54; same rule as the SDK's profileHardware).
+describe("a device's own threads and memory without a seed", () => {
+  const hw = (args: string[]) => args.filter((a) => /^--fingerprint-(hardware-concurrency|device-memory)=/.test(a));
+  const device = { hardwareConcurrency: 24, deviceMemory: 8 };
+  const base = { fingerprint: "seed-a", platform: "windows", fingerprintProfile: "vinyzu-00002.json" };
+
+  it("light stealth: the device's values win over the seed's preset", () => {
+    expect(hw(fingerprintArgs({ ...base, lightStealth: true }, { profileHardware: device }))).toEqual([
+      "--fingerprint-hardware-concurrency=24",
+      "--fingerprint-device-memory=8",
+    ]);
+  });
+  it("with a seed (the normal launch) nothing extra goes out: the persona applies them", () => {
+    expect(hw(fingerprintArgs(base, { profileHardware: device }))).toEqual([]);
+  });
+  it("a value set on the profile still wins", () => {
+    expect(hw(fingerprintArgs({ ...base, lightStealth: true, hardwareConcurrency: 4 }, { profileHardware: device }))[0]).toBe(
+      "--fingerprint-hardware-concurrency=4",
+    );
+  });
+});

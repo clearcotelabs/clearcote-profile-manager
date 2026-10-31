@@ -217,6 +217,18 @@ function profileAcceptLanguage(ref: string): string | undefined {
   return undefined;
 }
 
+/** The captured profile's own thread count and memory, for a launch without a seed (see FpArgsOptions). */
+function profileHardware(ref: string): { hardwareConcurrency?: number; deviceMemory?: number } {
+  try {
+    const obj = JSON.parse(fs.readFileSync(fingerprintPath(ref), "utf8")) as Record<string, unknown>;
+    const pos = (v: unknown) => (typeof v === "number" && Number.isFinite(v) && v > 0 ? v : undefined);
+    const hc = pos(obj?.hardware_concurrency);
+    return { hardwareConcurrency: hc !== undefined && Number.isInteger(hc) ? hc : undefined, deviceMemory: pos(obj?.device_memory) };
+  } catch {
+    return {};
+  }
+}
+
 /**
  * Fill any UNSET timezone / acceptLanguage / location / webrtcIp from the proxy's exit-IP geo, and
  * refresh a WebRTC IP that came from an earlier lookup.
@@ -323,6 +335,7 @@ export function buildArgs(p: Profile, userDataDir: string): string[] {
   const a = fingerprintArgs(p as FpInput, {
     hostPlatform: hostPlatform(),
     profileAcceptLanguage: p.fingerprintProfile ? profileAcceptLanguage(p.fingerprintProfile) : undefined,
+    profileHardware: p.fingerprintProfile ? profileHardware(p.fingerprintProfile) : undefined,
     // gzip+base64 exactly as the SDK does — it keeps a ~40 KB capture inside Chromium's
     // command-line length limit, and the engine gunzips + parses it.
     encodeProfile: (ref) => {
