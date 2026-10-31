@@ -21,6 +21,7 @@ import { clearPending, injectCookies, readPending } from "./cookiejar";
 import { withShaderDialect, shaderDialectWarning } from "./shaderdialect";
 import { seedWidevine, widevineArgs, claimsChromeBrand } from "./widevine";
 import { extensionsForLaunch, withExtensionArgs } from "./extensions";
+import { seedAutofillPrefs } from "./autofillpref";
 import {
   crlsetArgsWarning,
   crlsetEnabled,
@@ -448,6 +449,8 @@ export async function launch(
   let probe: ProbeServer | undefined;
   try {
     fs.mkdirSync(userDataDir, { recursive: true });
+    // Autofill on where the profile has no setting yet, as Chrome has it (electron/autofillpref.ts).
+    seedAutofillPrefs(userDataDir);
     // Chrome's revocation list (electron/crlset.ts): seeded into the profile, then the first tab is held on
     // about:blank until it is live, so the start page is never fetched while revoked certificates still pass.
     // Best-effort, like Widevine: a launch without it is told why, never refused.
