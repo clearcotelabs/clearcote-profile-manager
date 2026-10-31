@@ -4,9 +4,14 @@
 // "Del" sat one click from "Dup".
 //
 // Keyboard: opening focuses the first item; ↑/↓ move, Home/End jump, Enter activates, Esc or Tab
-// closes and hands focus back to the button. It opens upward when there is no room below.
+// closes and hands focus back to the button. It opens upward when it doesn't fit below.
+//
+// The list is portalled to <body> with fixed coordinates, so a scrolling ancestor (the table's
+// overflow-x-auto wrapper) can't clip it. Scrolling or resizing closes it rather than leaving it
+// floating away from its button.
 
-import { useEffect, useId, useRef, useState } from "react";
+import { useEffect, useId, useLayoutEffect, useRef, useState } from "react";
+import { createPortal } from "react-dom";
 
 export interface MenuItem {
   label: string;
@@ -37,7 +42,7 @@ export default function Menu({
   triggerClassName?: string;
 }) {
   const [open, setOpen] = useState(false);
-  const [up, setUp] = useState(false);
+  const [pos, setPos] = useState<React.CSSProperties>({});
   const btnRef = useRef<HTMLButtonElement>(null);
   const listRef = useRef<HTMLDivElement>(null);
   const menuId = useId();
@@ -46,10 +51,20 @@ export default function Menu({
     Array.from(listRef.current?.querySelectorAll<HTMLButtonElement>('[role="menuitem"]:not([disabled])') ?? []);
 
   function openMenu() {
-    const r = btnRef.current?.getBoundingClientRect();
-    setUp(!!r && window.innerHeight - r.bottom < 220 && r.top > 220);
+    setPos({ opacity: 0 }); // placed below once its height is known (still focusable, unlike hidden)
     setOpen(true);
   }
+
+  useLayoutEffect(() => {
+    const r = btnRef.current?.getBoundingClientRect();
+    if (!open || !r || !listRef.current) return;
+    const below = window.innerHeight - r.bottom;
+    const up = below < listRef.current.offsetHeight + 8 && r.top > below;
+    setPos({
+      ...(align === "left" ? { left: r.left } : { right: document.documentElement.clientWidth - r.right }),
+      ...(up ? { bottom: window.innerHeight - r.top + 4 } : { top: r.bottom + 4 }),
+    });
+  }, [open, align]);
   function close(refocus = true) {
     setOpen(false);
     if (refocus) btnRef.current?.focus();
@@ -62,8 +77,17 @@ export default function Menu({
       const t = e.target as Node;
       if (!listRef.current?.contains(t) && !btnRef.current?.contains(t)) setOpen(false);
     };
+    const onMove = (e: Event) => {
+      if (!listRef.current?.contains(e.target as Node)) setOpen(false);
+    };
     document.addEventListener("mousedown", onDown);
-    return () => document.removeEventListener("mousedown", onDown);
+    window.addEventListener("scroll", onMove, true);
+    window.addEventListener("resize", onMove);
+    return () => {
+      document.removeEventListener("mousedown", onDown);
+      window.removeEventListener("scroll", onMove, true);
+      window.removeEventListener("resize", onMove);
+    };
   }, [open]);
 
   function onKeyDown(e: React.KeyboardEvent) {
@@ -115,18 +139,15 @@ export default function Menu({
       >
         {trigger ?? "⋯"}
       </button>
-      {open && (
+      {open && createPortal(
         <div
           ref={listRef}
           id={menuId}
           role="menu"
           aria-label={label}
           onKeyDown={onKeyDown}
-          className={
-            "absolute min-w-[190px] rounded-xl border border-line-strong bg-surface p-1 shadow-2xl " +
-            (align === "left" ? "left-0 " : "right-0 ") +
-            (up ? "bottom-full mb-1" : "top-full mt-1")
-          }
+          style={pos}
+          className="fixed z-50 min-w-[190px] rounded-xl border border-line-strong bg-surface p-1 shadow-2xl"
         >
           {items.map((it, i) =>
             it === "separator" ? (
@@ -153,7 +174,8 @@ export default function Menu({
               </button>
             ),
           )}
-        </div>
+        </div>,
+        document.body,
       )}
     </div>
   );
