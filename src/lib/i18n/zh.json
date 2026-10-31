@@ -1422,7 +1422,6 @@
   "Answer a survey": "填写调查问卷",
   "Archive closed tickets": "归档已关闭的工单",
   "Book an appointment": "预约",
-  "Browse examples": "浏览示例",
   "Catch up on notifications": "查看最新通知",
   "Change the display name": "修改显示名称",
   "Check a delivery": "查询快递",
@@ -1657,5 +1656,10 @@
   "Unusual capture": "非常规采集",
   "Virtual machine": "虚拟机",
   "Want more devices? Add the full library: every capture in chrome-fingerprints, about 8,500 real devices plus about 1,500 marked higher risk (no graphics card, virtual machines, old graphics). It downloads once from the original repo (1.4 MB) and is kept on this computer (about 70 MB).": "想要更多设备？添加完整库：chrome-fingerprints 中的所有采集，约 8,500 台真实设备，另有约 1,500 台标记为较高风险（无显卡、虚拟机、旧显卡）。只从原始仓库下载一次（1.4 MB），并保存在本机（约 70 MB）。",
-  "{vm} virtual machine": "{vm} 虚拟机"
+  "{vm} virtual machine": "{vm} 虚拟机",
+  "Browse examples ({n})": "浏览示例（{n}）",
+  "Suggested": "推荐",
+  "Suggested examples": "推荐示例",
+  "Examples matching “{q}”": "与“{q}”匹配的示例",
+  "See all {n}": "查看全部 {n} 个"
 }

@@ -226,6 +226,24 @@ describe.skipIf(!READY)("Jet setup and saved tasks — in a real browser", () =>
     await until(async () => (await tasks()).length, (n) => n === 2, "restored");
   });
 
+  it("with saved tasks, Suggested still shows examples under the list, follows the search and folds away", async () => {
+    const box = page.locator("[data-task-suggested]");
+    await box.waitFor();
+    expect(Number(await box.getAttribute("data-task-suggested"))).toBeGreaterThanOrEqual(1);
+    expect(await page.locator("[data-task-suggestion]").count()).toBeGreaterThanOrEqual(1);
+    await page.getByPlaceholder("Search tasks…").fill("wishlist");
+    await page.locator('[data-task-suggestion="wishlist"]').waitFor();
+    await page.getByPlaceholder("Search tasks…").fill("");
+    await page.locator("[data-task-suggested-toggle]").click();
+    expect(await page.locator("[data-task-suggestion]").count()).toBe(0);
+    await page.locator("[data-task-suggested-toggle]").click();
+    await page.locator('[data-task-suggestion="price-check"]').click();
+    await page.locator("[data-run-task]").waitFor();
+    expect(await page.locator("[data-run-goal]").inputValue()).toContain("{{product}}");
+    await page.getByRole("button", { name: "Cancel" }).click();
+    await page.locator("[data-run-task]").waitFor({ state: "detached" });
+  });
+
   it("Browse examples on the Tasks page opens Run a task with the example", async () => {
     await page.locator("[data-task-examples]").click();
     const gallery = page.locator("[data-example-gallery]");

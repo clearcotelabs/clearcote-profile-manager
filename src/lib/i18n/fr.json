@@ -1422,7 +1422,6 @@
   "Answer a survey": "Répondre à un sondage",
   "Archive closed tickets": "Archiver les tickets fermés",
   "Book an appointment": "Prendre un rendez-vous",
-  "Browse examples": "Parcourir les exemples",
   "Catch up on notifications": "Rattraper les notifications",
   "Change the display name": "Changer le nom affiché",
   "Check a delivery": "Suivre une livraison",
@@ -1657,5 +1656,10 @@
   "Unusual capture": "Capture inhabituelle",
   "Virtual machine": "Machine virtuelle",
   "Want more devices? Add the full library: every capture in chrome-fingerprints, about 8,500 real devices plus about 1,500 marked higher risk (no graphics card, virtual machines, old graphics). It downloads once from the original repo (1.4 MB) and is kept on this computer (about 70 MB).": "Plus d’appareils ? Ajoutez la bibliothèque complète : toutes les captures de chrome-fingerprints, environ 8 500 appareils réels plus environ 1 500 marqués à risque plus élevé (sans carte graphique, machines virtuelles, graphismes anciens). Elle est téléchargée une fois depuis le dépôt d’origine (1,4 Mo) et conservée sur cet ordinateur (environ 70 Mo).",
-  "{vm} virtual machine": "Machine virtuelle {vm}"
+  "{vm} virtual machine": "Machine virtuelle {vm}",
+  "Browse examples ({n})": "Parcourir les exemples ({n})",
+  "Suggested": "Suggestions",
+  "Suggested examples": "Exemples suggérés",
+  "Examples matching “{q}”": "Exemples pour « {q} »",
+  "See all {n}": "Voir les {n}"
 }

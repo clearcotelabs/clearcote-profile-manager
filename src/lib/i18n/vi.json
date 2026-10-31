@@ -1422,7 +1422,6 @@
   "Answer a survey": "Trả lời khảo sát",
   "Archive closed tickets": "Lưu trữ phiếu đã đóng",
   "Book an appointment": "Đặt lịch hẹn",
-  "Browse examples": "Xem ví dụ",
   "Catch up on notifications": "Xem lại thông báo",
   "Change the display name": "Đổi tên hiển thị",
   "Check a delivery": "Kiểm tra giao hàng",
@@ -1657,5 +1656,10 @@
   "Unusual capture": "Bản ghi bất thường",
   "Virtual machine": "Máy ảo",
   "Want more devices? Add the full library: every capture in chrome-fingerprints, about 8,500 real devices plus about 1,500 marked higher risk (no graphics card, virtual machines, old graphics). It downloads once from the original repo (1.4 MB) and is kept on this computer (about 70 MB).": "Muốn thêm thiết bị? Thêm thư viện đầy đủ: mọi bản ghi trong chrome-fingerprints, khoảng 8.500 thiết bị thật cùng khoảng 1.500 thiết bị được đánh dấu rủi ro cao hơn (không có card đồ họa, máy ảo, đồ họa cũ). Chỉ tải một lần từ kho gốc (1,4 MB) và lưu trên máy này (khoảng 70 MB).",
-  "{vm} virtual machine": "Máy ảo {vm}"
+  "{vm} virtual machine": "Máy ảo {vm}",
+  "Browse examples ({n})": "Xem ví dụ ({n})",
+  "Suggested": "Gợi ý",
+  "Suggested examples": "Ví dụ gợi ý",
+  "Examples matching “{q}”": "Ví dụ khớp với “{q}”",
+  "See all {n}": "Xem tất cả {n}"
 }

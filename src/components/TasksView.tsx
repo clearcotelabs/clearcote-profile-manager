@@ -4,19 +4,23 @@
 // left, the chosen task on the right: its recipe (goal with {{values}}, start page, how it runs), the values
 // it asks for (changed here, saved as you type, which is how people try a task with other values), what Jet
 // did the last time it finished, and its runs, each of which can run again with the same values.
-// With no tasks yet, and under "Examples" later, a gallery of examples (src/lib/taskExamples.ts) shows what
-// Jet can do; a card opens Run a task with it.
+// With no tasks yet, and under "Browse examples" later, a gallery of examples (src/lib/taskExamples.ts) shows
+// what Jet can do; a card opens Run a task with it. Under the saved tasks, "Suggested" keeps a few examples in
+// view (the featured ones not saved yet; with a search, the examples it matches), folded away on request.
 // Saving goes through onSave (electron/tasks.ts normalizes and stores it); the page owns undo for delete.
 
 import { useEffect, useId, useMemo, useRef, useState } from "react";
 import type { SavedTask, TaskParam, StepSummary } from "@/lib/ipc";
-import { t } from "@/lib/i18n";
+import { t, useLocale } from "@/lib/i18n";
 import { relativeTime } from "@/lib/profileList";
 import { BUILTIN_SLOTS, looksSecret, templateSlots } from "../../electron/jetslots";
 import StepTimeline, { SlotText } from "./StepTimeline";
 import StepEditor from "./StepEditor";
 import { ExampleGallery } from "./TaskExamples";
-import type { TaskExample } from "@/lib/taskExamples";
+import { TASK_EXAMPLES, suggestedExamples, type TaskExample } from "@/lib/taskExamples";
+
+/** Whether "Suggested" is folded away, remembered on this computer (best effort). */
+const SUGGEST_KEY = "clearcote.tasks.suggested";
 
 const ghost = "rounded-lg border border-line px-2.5 py-1 text-[11px] font-medium text-fog/80 hover:bg-elevate transition disabled:opacity-40";
 const primary = "rounded-lg bg-sheen px-3.5 py-1.5 text-[12px] font-semibold text-[#07080a] disabled:opacity-40";
@@ -73,12 +77,30 @@ export default function TasksView(props: {
   const [q, setQ] = useState("");
   const [picked, setPicked] = useState<string | null>(null);
   const [browsing, setBrowsing] = useState(false);
+  const locale = useLocale();
+  const [suggestOpen, setSuggestOpenState] = useState(() => {
+    try {
+      return localStorage.getItem(SUGGEST_KEY) !== "hidden";
+    } catch {
+      return true;
+    }
+  });
+  const setSuggestOpen = (open: boolean) => {
+    setSuggestOpenState(open);
+    try {
+      localStorage.setItem(SUGGEST_KEY, open ? "shown" : "hidden");
+    } catch {
+      /* not remembered: still works for this page */
+    }
+  };
 
   const shown = useMemo(() => {
     const s = q.trim().toLowerCase();
     if (!s) return tasks;
     return tasks.filter((x) => `${x.name} ${x.goal} ${x.url ?? ""}`.toLowerCase().includes(s));
   }, [tasks, q]);
+  // eslint-disable-next-line react-hooks/exhaustive-deps -- the locale changes the translated titles a search matches
+  const suggested = useMemo(() => suggestedExamples(tasks, q, t), [tasks, q, locale]);
   const task = tasks.find((x) => x.id === picked) ?? shown[0] ?? null;
 
   if (tasks.length === 0) {
@@ -117,27 +139,64 @@ export default function TasksView(props: {
           </button>
         </div>
         <button
-          className={"border-b border-line px-3 py-2 text-left text-[12px] transition " + (browsing ? "bg-accent/10 text-fog" : "text-fog/60 hover:bg-elevate hover:text-fog")}
+          className={
+            "flex items-center gap-2 border-b border-line px-3 py-2 text-left text-[12px] font-medium transition " +
+            (browsing ? "bg-accent/10 text-fog" : "text-accent hover:bg-elevate")
+          }
           onClick={() => setBrowsing((v) => !v)}
           aria-pressed={browsing}
           data-task-examples="1"
         >
-          {t("Browse examples")}
+          <span className="flex-1">{t("Browse examples ({n})", { n: TASK_EXAMPLES.length })}</span>
+          <span aria-hidden="true" className="text-fog/40">
+            {browsing ? "‹" : "›"}
+          </span>
         </button>
-        <ul className="min-h-0 flex-1 divide-y divide-line overflow-y-auto" aria-label={t("Saved tasks")}>
-          {shown.map((x) => (
-            <TaskItem
-              key={x.id}
-              task={x}
-              active={!browsing && task?.id === x.id}
-              onPick={() => {
-                setPicked(x.id);
-                setBrowsing(false);
-              }}
-            />
-          ))}
-          {shown.length === 0 && <li className="px-3 py-6 text-center text-xs text-fog/40">{t("No task matches “{q}”.", { q: q.trim() })}</li>}
-        </ul>
+        <div className="min-h-0 flex-1 overflow-y-auto">
+          <ul className="divide-y divide-line" aria-label={t("Saved tasks")}>
+            {shown.map((x) => (
+              <TaskItem
+                key={x.id}
+                task={x}
+                active={!browsing && task?.id === x.id}
+                onPick={() => {
+                  setPicked(x.id);
+                  setBrowsing(false);
+                }}
+              />
+            ))}
+            {shown.length === 0 && <li className="px-3 py-6 text-center text-xs text-fog/40">{t("No task matches “{q}”.", { q: q.trim() })}</li>}
+          </ul>
+          {suggested.length > 0 && (
+            <section className="border-t border-line" aria-label={t("Suggested examples")} data-task-suggested={suggested.length}>
+              <div className="flex items-center gap-2 px-3 pb-1 pt-2.5">
+                <button
+                  className={head + " flex-1 text-left hover:text-fog/70"}
+                  onClick={() => setSuggestOpen(!suggestOpen)}
+                  aria-expanded={suggestOpen}
+                  data-task-suggested-toggle="1"
+                >
+                  {q.trim() ? t("Examples matching “{q}”", { q: q.trim() }) : t("Suggested")} {suggestOpen ? "▾" : "▸"}
+                </button>
+                <button className="text-[11px] text-accent hover:underline" onClick={() => setBrowsing(true)} data-task-suggested-all="1">
+                  {t("See all {n}", { n: TASK_EXAMPLES.length })}
+                </button>
+              </div>
+              {suggestOpen && (
+                <ul className="pb-1.5">
+                  {suggested.map((ex) => (
+                    <li key={ex.id}>
+                      <button className="block w-full px-3 py-2 text-left transition hover:bg-elevate" onClick={() => onExample(ex)} data-task-suggestion={ex.id}>
+                        <div className="truncate text-[12px] font-medium text-fog/80">{t(ex.title)}</div>
+                        <SlotText text={ex.goal} className="mt-0.5 line-clamp-1 text-[11px] text-fog/45" />
+                      </button>
+                    </li>
+                  ))}
+                </ul>
+              )}
+            </section>
+          )}
+        </div>
         <div className="border-t border-line px-3 py-1.5 text-[11px] text-fog/40">
           {tasks.length === 1 ? t("1 task") : t("{n} tasks", { n: tasks.length })}
         </div>

@@ -2,7 +2,7 @@
 // well formed (what the dialog and Jet read), "same for all" slots that the goal really uses, start pages
 // that are http(s), the chips in Run a task, and a translation of every title and category in every locale.
 import { describe, expect, it } from "vitest";
-import { EXAMPLE_CATEGORIES, FEATURED_EXAMPLES, TASK_EXAMPLES, exampleById, exampleModes, exampleTaskName } from "../src/lib/taskExamples";
+import { EXAMPLE_CATEGORIES, FEATURED_EXAMPLES, TASK_EXAMPLES, exampleById, exampleModes, exampleTaskName, suggestedExamples } from "../src/lib/taskExamples";
 import { templateSlots } from "../electron/jetslots";
 import de from "../src/lib/i18n/de.json";
 import es from "../src/lib/i18n/es.json";
@@ -89,5 +89,37 @@ describe("picking an example in Run a task", () => {
   it("has no same-for-all presets that would send one value from many accounts", () => {
     expect(exampleById("follow-account")).toBeUndefined();
     for (const id of ["coupon", "quote-request", "survey-slider"]) expect(ex(id).same ?? [], id).toEqual([]);
+  });
+});
+
+
+// The Tasks page keeps a few examples in view under the saved tasks ("Suggested"): before this they disappeared
+// as soon as the first task was saved (only a faint "Browse examples" row was left).
+describe("suggested examples on the Tasks page", () => {
+  const login = exampleById("login-inbox")!;
+  it("shows the featured examples first, four of them, with no tasks or unrelated tasks", () => {
+    expect(suggestedExamples([], "").map((e) => e.id)).toEqual(FEATURED_EXAMPLES.slice(0, 4));
+    expect(suggestedExamples([{ name: "My own task", goal: "Open the site and do something" }], "")).toHaveLength(4);
+  });
+  it("skips an example already saved, by goal or by name, and fills up from the gallery", () => {
+    const byGoal = suggestedExamples([{ name: "Inbox", goal: login.goal }], "");
+    expect(byGoal.map((e) => e.id)).not.toContain("login-inbox");
+    expect(byGoal).toHaveLength(4);
+    const byName = suggestedExamples([{ name: "Log in", goal: "something else" }], "", (s) => s);
+    expect(byName.map((e) => e.id)).not.toContain("login-inbox");
+  });
+  it("with a search, lists the examples it matches (up to 5), translated titles included", () => {
+    const found = suggestedExamples([], "wishlist");
+    expect(found.length).toBeGreaterThan(0);
+    expect(found.length).toBeLessThanOrEqual(5);
+    for (const e of found) expect(`${e.title} ${e.goal}`.toLowerCase()).toContain("wishlist");
+    const de = suggestedExamples([], "beispielwort", (s) => (s === login.title ? "Beispielwort" : s));
+    expect(de.map((e) => e.id)).toEqual(["login-inbox"]);
+    expect(suggestedExamples([], "zzzz-no-such-thing")).toEqual([]);
+  });
+  it("never runs out while there is anything left to suggest", () => {
+    const saved = TASK_EXAMPLES.slice(0, TASK_EXAMPLES.length - 2).map((e) => ({ name: e.title, goal: e.goal }));
+    expect(suggestedExamples(saved, "")).toHaveLength(2);
+    expect(suggestedExamples(TASK_EXAMPLES.map((e) => ({ name: e.title, goal: e.goal })), "")).toEqual([]);
   });
 });

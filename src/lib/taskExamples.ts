@@ -352,3 +352,22 @@ export function exampleTaskName(current: string, prevTitle: string | undefined, 
   const c = current.trim();
   return !c || (prevTitle !== undefined && c === prevTitle.trim()) ? nextTitle : current;
 }
+
+const SUGGEST_MAX = 4;
+const SUGGEST_MAX_SEARCH = 5;
+
+/** The examples the Tasks page keeps in view under the saved tasks ("Suggested"): with a search, the ones it
+ *  matches (translated title, English title or goal; up to 5); without one, the featured examples and then the
+ *  rest in gallery order (up to 4). Never one already saved: a task with the example's goal, or named after it.
+ *  `title` translates a title (t), so a search in the UI language finds it. */
+export function suggestedExamples(tasks: { name: string; goal: string }[], q: string, title: (s: string) => string = (s) => s): TaskExample[] {
+  const goals = new Set(tasks.map((x) => x.goal.trim()));
+  const names = new Set(tasks.map((x) => x.name.trim().toLowerCase()));
+  const fresh = TASK_EXAMPLES.filter(
+    (ex) => !goals.has(ex.goal.trim()) && !names.has(title(ex.title).toLowerCase()) && !names.has(ex.title.toLowerCase()),
+  );
+  const s = q.trim().toLowerCase();
+  if (s) return fresh.filter((ex) => `${title(ex.title)} ${ex.title} ${ex.goal}`.toLowerCase().includes(s)).slice(0, SUGGEST_MAX_SEARCH);
+  const featured = FEATURED_EXAMPLES.map(exampleById).filter((ex): ex is TaskExample => !!ex && fresh.includes(ex));
+  return [...featured, ...fresh.filter((ex) => !featured.includes(ex))].slice(0, SUGGEST_MAX);
+}

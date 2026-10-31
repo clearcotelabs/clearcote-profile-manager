@@ -477,7 +477,7 @@
   "Bridge credentials": [
     "src/lib/fields.ts"
   ],
-  "Browse examples": [
+  "Browse examples ({n})": [
     "src/components/TasksView.tsx"
   ],
   "Browse library…": [
@@ -1338,6 +1338,9 @@
     "src/components/TaskExamples.tsx"
   ],
   "Examples": [
+    "src/components/TasksView.tsx"
+  ],
+  "Examples matching “{q}”": [
     "src/components/TasksView.tsx"
   ],
   "Examples:": [
@@ -3263,6 +3266,9 @@
   "Secret values are typed only: Jet's model, the run board and the saved task see the name, never the value.": [
     "src/components/RunTaskDialog.tsx"
   ],
+  "See all {n}": [
+    "src/components/TasksView.tsx"
+  ],
   "Select all profiles": [
     "src/components/StorageSection.tsx"
   ],
@@ -3570,6 +3576,12 @@
   ],
   "Stuck": [
     "src/components/TaskBoard.tsx"
+  ],
+  "Suggested": [
+    "src/components/TasksView.tsx"
+  ],
+  "Suggested examples": [
+    "src/components/TasksView.tsx"
   ],
   "Sweden": [
     "src/components/CloudFields.tsx"
