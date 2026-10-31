@@ -137,7 +137,8 @@ export interface FieldDef {
     | "canvasBridgeDeny"
     | "gpuModel"
     | "vars"
-    | "extensions";
+    | "extensions"
+    | "totp";
   /** Rendered INSIDE the named field's bespoke control rather than on its own — the GPU vendor and
    *  renderer strings, which the model picker shows only in its Custom mode. The panel skips such
    *  a field; a search hit or a coherence deep-link lands on the host instead. The field stays in
@@ -202,6 +203,17 @@ export const FIELDS: FieldDef[] = [
     keywords: "jet task run synchronizer variables email password login {{ }}",
     hint: tx("What a task's {{name}} slots are filled with on this profile."),
     why: tx("Run a task on several profiles and write {{email}} where each profile's own value goes. A secret value is typed only: the run board, exports and Jet's model never see it."),
+  },
+  {
+    key: "totp",
+    cat: "identity",
+    label: tx("2FA secret"),
+    type: "custom",
+    custom: "totp",
+    full: true,
+    keywords: "2fa two-factor otp totp authenticator google authenticator code mfa otpauth {{otp}}",
+    hint: tx("The key a site shows when you turn on 2FA (or the otpauth:// link in its QR code)."),
+    why: tx("The profile then shows its current 6-digit code with a copy button, and a task types the code of that moment wherever its goal or steps say {{otp}}. The secret is left out of exports unless you include secrets."),
   },
 
   // ── Browser ───────────────────────────────────────────────────────────────

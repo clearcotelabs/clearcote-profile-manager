@@ -10,7 +10,9 @@
 import type { Profile } from "./types";
 
 const SLOT = /\{\{\s*([A-Za-z_][\w.-]{0,63})\s*\}\}/g;
-export const BUILTIN_SLOTS = ["name", "id", "group", "tags"] as const;
+export const BUILTIN_SLOTS = ["name", "id", "group", "tags", "otp"] as const;
+/** The built-in slot that types the profile's 2FA code, worked out by Jet when it types it. */
+export const OTP_SLOT = "otp";
 
 /** The distinct slot names in a goal, in order of first use. */
 export function templateSlots(goal: string): string[] {
@@ -45,16 +47,19 @@ export function profileValues(p: Pick<Profile, "id" | "name" | "group" | "tags" 
 }
 
 /** The values one profile sends for this goal: only the slots it uses, with the empty ones listed as missing. */
-export function valuesFor(goal: string, p: Pick<Profile, "id" | "name" | "group" | "tags" | "vars">) {
+export function valuesFor(goal: string, p: Pick<Profile, "id" | "name" | "group" | "tags" | "vars" | "totp">) {
   const all = profileValues(p);
   const values: Record<string, string> = {};
   const missing: string[] = [];
+  // {{otp}}: the profile's 2FA secret goes to Jet, which types the code of the moment (a task value named otp wins).
+  const live: Record<string, string> = {};
   for (const slot of templateSlots(goal)) {
     const v = all.values[slot];
-    if (v === undefined || v === "") missing.push(slot);
+    if (slot === OTP_SLOT && (v === undefined || v === "") && p.totp?.trim()) live[slot] = p.totp.trim();
+    else if (v === undefined || v === "") missing.push(slot);
     else values[slot] = v;
   }
-  return { values, secret: all.secret.filter((k) => k in values), missing };
+  return { values, secret: all.secret.filter((k) => k in values), missing, live };
 }
 
 const SECRET_WORDS = new Set(["pass", "password", "passwd", "passphrase", "pwd", "pw", "secret", "token", "pin", "otp", "totp", "key", "apikey", "cvv", "cvc"]);

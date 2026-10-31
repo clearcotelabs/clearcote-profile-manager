@@ -378,11 +378,12 @@ export class SyncManager extends EventEmitter {
     const rv = this.runValues.get(run.id);
     const p = withRunParams(stored, rv?.params, rv?.secret ?? new Set());
     const found = valuesFor(run.goal, p);
-    const { values, missing } = found;
+    const { values, missing, live } = found;
     // A slot the task marks secret is secret on every profile, even where the profile's own value is not.
     const secret = [...new Set([...found.secret, ...[...(rv?.slots ?? [])].filter((k) => k in values)])];
     if (missing.length) {
-      return this.finish(run, row, "needs_input", `This profile has no value for ${missing.map((m) => `{{${m}}}`).join(", ")}. Add it under Task values in the profile.`);
+      const otp = missing.includes("otp") ? " For {{otp}}, add the account's 2FA secret to the profile (Identity → 2FA secret)." : "";
+      return this.finish(run, row, "needs_input", `This profile has no value for ${missing.map((m) => `{{${m}}}`).join(", ")}. Add it under Task values in the profile.${otp}`);
     }
     if (this.deps.inCloud(p.id)) return this.finish(run, row, "failed", "This profile is running in the cloud. Tasks run in a browser on this PC: stop the cloud browser first.");
 
@@ -464,6 +465,7 @@ export class SyncManager extends EventEmitter {
       goal: run.goal,
       values,
       secret,
+      ...(Object.keys(live).length ? { totp: live } : {}),
       confirm: run.confirm,
       humanize: true,
       reuse: true,

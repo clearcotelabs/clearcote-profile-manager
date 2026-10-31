@@ -120,6 +120,23 @@
   "2. Start the helper:": [
     "src/components/HelperGate.tsx"
   ],
+  "2FA": [
+    "src/components/ProfileCard.tsx"
+  ],
+  "2FA code": [
+    "src/components/ProfileInspector.tsx",
+    "src/components/TotpCode.tsx"
+  ],
+  "2FA code for {name}": [
+    "src/components/ProfileCard.tsx"
+  ],
+  "2FA secret": [
+    "src/components/TotpField.tsx",
+    "src/lib/fields.ts"
+  ],
+  "2FA secret not readable": [
+    "src/components/TotpCode.tsx"
+  ],
   "32 — desktop maximum": [
     "src/lib/fields.ts"
   ],
@@ -152,6 +169,12 @@
   ],
   "<ok>✓ Verified</ok> against the checksum published with the release.": [
     "src/components/UpdateBanner.tsx"
+  ],
+  "A 2FA code has 6 to 8 digits and changes every 10 to 300 seconds.": [
+    "src/components/TotpField.tsx"
+  ],
+  "A 2FA secret is base32: letters A–Z and digits 2–7.": [
+    "src/components/TotpField.tsx"
   ],
   "A Windows persona claims a Direct3D11 renderer, but on Linux the Vulkan backend answers with SPIR-V, and the two contradict each other. Off by default: the re-translation is a different code path from the one that drew, so a shader it cannot translate falls back to the honest answer.": [
     "src/lib/fields.ts"
@@ -875,6 +898,9 @@
   "Clyde, the Clearcote chameleon": [
     "src/components/Mascot.tsx"
   ],
+  "Code now:": [
+    "src/components/TotpField.tsx"
+  ],
   "Colour depth": [
     "src/lib/fields.ts"
   ],
@@ -930,16 +956,27 @@
     "src/lib/fields.ts"
   ],
   "Copied": [
-    "src/components/HelperGate.tsx"
+    "src/components/HelperGate.tsx",
+    "src/components/TotpCode.tsx"
+  ],
+  "Copied the 2FA code for “{name}”.": [
+    "app/page.tsx"
   ],
   "Copied to the clipboard.": [
     "app/page.tsx"
   ],
   "Copy": [
-    "src/components/HelperGate.tsx"
+    "src/components/HelperGate.tsx",
+    "src/components/TotpCode.tsx"
+  ],
+  "Copy 2FA code": [
+    "src/components/ProfileCard.tsx"
   ],
   "Copy details": [
     "src/components/ProfileCard.tsx"
+  ],
+  "Copy the 2FA code": [
+    "src/components/TotpCode.tsx"
   ],
   "Could not check Jet: {error}": [
     "src/components/JetSetup.tsx"
@@ -1627,7 +1664,8 @@
   ],
   "Hide": [
     "src/components/SettingsModal.tsx",
-    "src/components/TaskBoard.tsx"
+    "src/components/TaskBoard.tsx",
+    "src/components/TotpField.tsx"
   ],
   "Hide 1 capture with a display too small to contain a browser window (under {w}×{h}) — the window would be bigger than its own screen.": [
     "src/components/LibraryModal.tsx"
@@ -2284,6 +2322,9 @@
   "No": [
     "src/components/TasksView.tsx"
   ],
+  "No 2FA secret.": [
+    "src/components/TotpField.tsx"
+  ],
   "No HTTP/3 (QUIC)": [
     "src/lib/quickCreate.ts"
   ],
@@ -2504,6 +2545,9 @@
   ],
   "Only does something with a proxy set. Needs build 152 r22 or newer.": [
     "src/lib/fields.ts"
+  ],
+  "Only time-based codes (otpauth://totp/…) are supported.": [
+    "src/components/TotpField.tsx"
   ],
   "Only {n} unused devices fit this computer, so it makes {n}.": [
     "src/components/DevicesView.tsx"
@@ -3369,7 +3413,8 @@
   ],
   "Show": [
     "src/components/SettingsModal.tsx",
-    "src/components/TaskBoard.tsx"
+    "src/components/TaskBoard.tsx",
+    "src/components/TotpField.tsx"
   ],
   "Show API key": [
     "src/components/SettingsModal.tsx"
@@ -3665,14 +3710,23 @@
   "That file is over 20 MB — too big to be a cookie file or a profile list.": [
     "src/components/MigrateDialog.tsx"
   ],
+  "That otpauth:// link could not be read.": [
+    "src/components/TotpField.tsx"
+  ],
   "That profile no longer exists.": [
     "src/lib/ipc.ts"
+  ],
+  "That secret is too short to be a 2FA key (at least 16 characters).": [
+    "src/components/TotpField.tsx"
   ],
   "That task is no longer saved.": [
     "src/lib/syncMock.ts"
   ],
   "That version can't be pinned": [
     "src/lib/launchError.ts"
+  ],
+  "The 2FA code could not be copied.": [
+    "app/page.tsx"
   ],
   "The Clearcote helper is not answering. Is its window still open?": [
     "src/lib/helperBridge.ts"
@@ -3762,6 +3816,9 @@
   "The included residential IP": [
     "src/components/CloudFields.tsx"
   ],
+  "The key a site shows when you turn on 2FA (or the otpauth:// link in its QR code).": [
+    "src/lib/fields.ts"
+  ],
   "The key check runs in the desktop app.": [
     "src/lib/ipc.ts"
   ],
@@ -3818,6 +3875,12 @@
   ],
   "The profile list exported from AdsPower, Dolphin Anty, GoLogin, Multilogin, Octo or similar, as JSON or CSV — or one cookie file. Names, notes, tags, groups, proxies and cookies come across.": [
     "src/components/MigrateDialog.tsx"
+  ],
+  "The profile then shows its current 6-digit code with a copy button, and a task types the code of that moment wherever its goal or steps say {{otp}}. The secret is left out of exports unless you include secrets.": [
+    "src/lib/fields.ts"
+  ],
+  "The profile's 2FA code, worked out when it is typed": [
+    "src/components/TasksView.tsx"
   ],
   "The profiles could not be moved.": [
     "src/lib/helperBridge.ts"
@@ -4264,6 +4327,9 @@
   ],
   "Use this display ({width} × {height})": [
     "src/components/ProfileEditor.tsx"
+  ],
+  "Use {{otp}} in a task to type it.": [
+    "src/components/TotpField.tsx"
   ],
   "Use →": [
     "src/components/LibraryModal.tsx"
@@ -5039,6 +5105,9 @@
   ],
   "{n} runs": [
     "src/components/TasksView.tsx"
+  ],
+  "{n} s": [
+    "src/components/TotpCode.tsx"
   ],
   "{n} selected": [
     "app/page.tsx",

@@ -8,6 +8,7 @@ import { useEffect, useRef } from "react";
 import { t } from "@/lib/i18n";
 import { actionLabel } from "@/lib/launchError";
 import { displayName, geoLabel, proxySummary, relativeTime, versionInfo } from "@/lib/profileList";
+import TotpCode from "./TotpCode";
 import { personaLabel } from "@/lib/workspace";
 import { formatBytes, formatEur } from "../../electron/cloudtext";
 import Menu from "./Menu";
@@ -184,6 +185,7 @@ export default function ProfileInspector(
             {p.fingerprintProfile && <Fact k={t("Captured fingerprint")} v={p.fingerprintProfileMeta?.label || t("captured profile")} />}
             <Fact k={t("Timezone")} v={p.timezone || (p.geoip ? t("follows the proxy") : t("persona default"))} />
             <Fact k={t("Language")} v={p.acceptLanguage || (p.geoip ? t("follows the proxy") : t("persona default"))} />
+            {p.totp && <Fact k={t("2FA code")} v={<TotpCode secret={p.totp} compact />} />}
           </dl>
         </div>
 

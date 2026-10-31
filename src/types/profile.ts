@@ -244,6 +244,9 @@ export interface Profile {
    *  profile's `email`. A secret one is never shown, logged, exported or sent to Jet's model; it is
    *  typed only (electron/jetslots.ts). */
   vars?: ProfileVar[];
+  /** The account's 2FA secret (base32, or an otpauth:// link): its code shows live on the profile, and a task types
+   *  the code of the moment through {{otp}} (electron/totp.ts). Secret: left out of exports unless asked for. */
+  totp?: string;
   /** Extension IDs to load, from the copies kept under Extensions (electron/extensions.ts). */
   extensions?: string[];
 }

@@ -199,6 +199,22 @@ describe("helpers", () => {
   });
 });
 
+describe("{{otp}}: the 2FA secret goes to Jet", () => {
+  it("is sent as totp (Jet types the code of that moment), and a profile without one needs input", async () => {
+    const KEY = "GEZDGNBVGY3TQOJQGEZDGNBVGY3TQOJQ";
+    const h = harness({ profiles: [P("a", { totp: KEY }), P("b")] });
+    const r = h.mgr.start({ profileIds: ["a", "b"], goal: "Sign in, then type {{otp}}", url: "https://x.example/", confirm: false, concurrency: 2, staggerSec: [0, 0] });
+    expect(r.ok).toBe(true);
+    const done = await finished(h.mgr, (r as { runId: string }).runId);
+    expect(h.workers).toHaveLength(1);
+    expect(h.workers[0].got[0]).toMatchObject({ cmd: "run", values: {}, totp: { otp: KEY } });
+    expect(JSON.stringify(h.workers[0].got[0].values)).not.toContain(KEY);
+    const b = done.rows.find((x) => x.profileId === "b")!;
+    expect(b.status).toBe("needs_input");
+    expect(b.detail).toMatch(/2FA secret/);
+  });
+});
+
 describe("start() refuses what cannot run", () => {
   it("an empty task, a non-web start page, no profiles, an unknown profile", () => {
     const h = harness();

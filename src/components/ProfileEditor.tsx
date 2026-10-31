@@ -73,6 +73,7 @@ import {
 } from "@/lib/quickCreate";
 import CloudFields from "./CloudFields";
 import TaskValues from "./TaskValues";
+import TotpField from "./TotpField";
 import { t, tRich } from "@/lib/i18n";
 
 const input =
@@ -743,6 +744,14 @@ export default function ProfileEditor({
           </>
         );
       }
+
+      case "totp":
+        return (
+          <>
+            {labelFor(f)}
+            <TotpField value={profile.totp} onChange={(v) => set("totp", (v || undefined) as never)} />
+          </>
+        );
 
       case "vars":
         return (

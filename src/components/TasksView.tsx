@@ -480,7 +480,9 @@ function Params({
                 <div className="flex flex-wrap items-center gap-2">
                   <span className="rounded border border-iris/40 bg-iris/10 px-1.5 py-px font-mono text-[12px] text-iris">{`{{${p.name}}}`}</span>
                   {builtin ? (
-                    <span className="text-[11px] text-fog/45">{t("Comes from the profile itself")}</span>
+                    <span className="text-[11px] text-fog/45">
+                      {p.name === "otp" ? t("The profile's 2FA code, worked out when it is typed") : t("Comes from the profile itself")}
+                    </span>
                   ) : (
                     <div role="radiogroup" aria-label={t("Where {slot} comes from", { slot: `{{${p.name}}}` })} className="inline-flex overflow-hidden rounded-lg border border-line text-[11px]">
                       {(["profile", "run"] as const).map((src) => (

@@ -49,6 +49,7 @@ describe("profileValues / valuesFor", () => {
       values: { email: "a@x.io", pw: "s" },
       secret: ["pw"],
       missing: ["otp", "city"],
+      live: {},
     });
   });
 });

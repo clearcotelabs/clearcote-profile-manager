@@ -13,6 +13,7 @@ import { formatBytes, formatDuration, formatEur } from "../../electron/cloudtext
 import type { Profile } from "@/types/profile";
 import { actionLabel, type LaunchNotice, type NoticeAction } from "@/lib/launchError";
 import { displayName, geoLabel, pinRefusedOnFree, proxySummary, relativeTime, versionInfo } from "@/lib/profileList";
+import TotpCode from "./TotpCode";
 import Menu, { type MenuItem } from "./Menu";
 import { t } from "@/lib/i18n";
 
@@ -60,6 +61,8 @@ export interface CardProps {
   onClearCache: () => void;
   /** Open the side panel with this profile's details. */
   onDetails?: () => void;
+  /** Copy the profile's current 2FA code (only offered when it has a 2FA secret). */
+  onCopyTotp?: () => void;
 }
 
 /** The ⋯ menu, shared by the card, the table row and the details panel so none of them drifts. */
@@ -84,6 +87,7 @@ export function profileMenuItems(props: CardProps): (MenuItem | "separator")[] {
     { label: t("Import cookies…"), onSelect: props.onImportCookies },
     { label: t("Open data folder"), onSelect: props.onOpenData },
     ...(p.proxy ? [{ label: t("Check proxy location"), onSelect: props.onCheckGeo }] : []),
+    ...(p.totp && props.onCopyTotp ? [{ label: t("Copy 2FA code"), onSelect: props.onCopyTotp }] : []),
     {
       label: t("Clear cache (keeps logins)…"),
       onSelect: props.onClearCache,
@@ -286,6 +290,13 @@ export default function ProfileCard(props: CardProps) {
           </button>
         ))}
       </div>
+
+      {p.totp && (
+        <div className="mt-2 flex items-center gap-2 text-[11px] text-fog/45" data-card-totp>
+          <span>{t("2FA")}</span>
+          <TotpCode secret={p.totp} compact label={t("2FA code for {name}", { name: displayName(p) })} />
+        </div>
+      )}
 
       {note && (
         <p className="mt-2 truncate text-[11px] text-fog/45" title={p.notes}>

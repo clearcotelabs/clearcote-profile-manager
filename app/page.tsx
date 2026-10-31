@@ -39,6 +39,7 @@ import TaskBoard from "@/components/TaskBoard";
 import TasksView from "@/components/TasksView";
 import type { TaskExample } from "@/lib/taskExamples";
 import ExtensionsView from "@/components/ExtensionsView";
+import { copyText, totpToCopy } from "@/components/TotpCode";
 import DevicesView from "@/components/DevicesView";
 import { planAssign, type HostFacts } from "@/lib/deviceMatch";
 import type { LibraryProfile } from "@/lib/ipc";
@@ -1237,6 +1238,11 @@ function Manager() {
       onImportCookies: () => setMigrate({ kind: "cookies", id: p.id, name: p.name || p.id }),
       onOpenData: () => openData(p),
       onCheckGeo: () => checkGeo(p),
+      onCopyTotp: async () => {
+        const code = p.totp ? await totpToCopy(p.totp) : null;
+        if (code && (await copyText(code))) notify(t("Copied the 2FA code for “{name}”.", { name: displayName(p) }));
+        else notify(t("The 2FA code could not be copied."), { tone: "error" });
+      },
       onClearCache: () => clearCache(p),
       onDismissNotice: () => setNotices(({ [p.id]: _gone, ...rest }) => rest),
       onNoticeAction: (a) => noticeAction(p, a),

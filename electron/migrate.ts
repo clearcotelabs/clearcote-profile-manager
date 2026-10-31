@@ -14,6 +14,7 @@
 // what we could (a warning says what was left out).
 
 import { normalizeProxy } from "./proxyargs";
+import { parseTotp } from "./totp";
 
 /** A cookie as DevTools' Storage.setCookies takes it. A host-only cookie carries `url` instead of `domain`. */
 export interface ImportedCookie {
@@ -46,6 +47,8 @@ export interface MigratedProfile {
   /** Normalised proxy string, as the profile editor saves it. */
   proxy?: string;
   platform?: "windows" | "macos" | "linux" | "android";
+  /** The account's 2FA secret, when the export had one. */
+  totp?: string;
   cookies: ImportedCookie[];
 }
 
@@ -227,6 +230,8 @@ const ALIASES = {
   cookies: ["cookies", "cookie", "cookiejson"],
   userAgent: ["useragent", "ua"],
   os: ["os", "platform", "ostype", "system"],
+  // AdsPower exports it as fakey ("2FA key"); others as 2fa, totp, otp secret…
+  totp: ["fakey", "2fakey", "2fa", "2fasecret", "totp", "totpsecret", "totpkey", "otpsecret", "otpkey", "twofactor", "twofactorsecret", "authenticatorkey", "mfasecret"],
 };
 
 function pick(row: Record<string, unknown>, names: string[]): unknown {
@@ -329,6 +334,9 @@ function profileFromRow(o: Record<string, unknown>, i: number, now: number, warn
   const groupRaw = pick(row, ALIASES.group);
   const group = groupRaw && typeof groupRaw === "object" && !Array.isArray(groupRaw) ? str((groupRaw as { name?: unknown }).name) : str(groupRaw);
   const platform = platformOf(str(pick(row, ALIASES.os)), str(pick(row, ALIASES.userAgent)));
+  const totpRaw = str(pick(row, ALIASES.totp));
+  const totp = totpRaw && parseTotp(totpRaw).ok ? totpRaw : undefined;
+  if (totpRaw && !totp) warn(`“${name}”: its 2FA key could not be read, so it was left out.`);
   const hasData = !!(proxy || jar.cookies.length || notes || tags.length || str(pick(row, ALIASES.name)));
   if (!hasData) return null;
   return {
@@ -338,6 +346,7 @@ function profileFromRow(o: Record<string, unknown>, i: number, now: number, warn
     ...(group ? { group } : {}),
     ...(proxy ? { proxy } : {}),
     ...(platform ? { platform } : {}),
+    ...(totp ? { totp } : {}),
     cookies: jar.cookies,
   };
 }

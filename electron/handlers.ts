@@ -135,6 +135,7 @@ export function migrateImport(text: string, filename?: string) {
         ...(m.tags ? { tags: m.tags } : {}),
         ...(m.group ? { group: m.group } : {}),
         ...(m.proxy ? { proxy: m.proxy } : {}),
+        ...(m.totp ? { totp: m.totp } : {}),
         createdAt: now,
         updatedAt: now,
       });
