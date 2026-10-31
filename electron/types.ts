@@ -180,6 +180,9 @@ export interface LibraryProfile {
   downloadUrl: string;
   /** Set when the indexed screen size is below the guard floor — lets the picker warn (or filter)
    *  BEFORE downloading a capture that would produce impossible window geometry. */
+  /** hardwareConcurrency and deviceMemory (GB) the capture reports, from the index. */
+  cores?: number;
+  memory?: number;
   screenWarning?: string;
   /** From the curated clearcote-profiles index.json (when available) — pick one whose GPU vendor
    *  matches your host so the imported GPU stays coherent with the host's real render. */

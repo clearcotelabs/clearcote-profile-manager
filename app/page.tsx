@@ -39,6 +39,9 @@ import TaskBoard from "@/components/TaskBoard";
 import TasksView from "@/components/TasksView";
 import type { TaskExample } from "@/lib/taskExamples";
 import ExtensionsView from "@/components/ExtensionsView";
+import DevicesView from "@/components/DevicesView";
+import { planAssign, type HostFacts } from "@/lib/deviceMatch";
+import type { LibraryProfile } from "@/lib/ipc";
 import Menu from "@/components/Menu";
 import { launchReport, udpLine } from "@/lib/proxyReport";
 import { ManageTemplatesDialog, SaveTemplateDialog } from "@/components/TemplateDialogs";
@@ -457,6 +460,93 @@ function Manager() {
     window.addEventListener("beforeunload", h);
     return () => window.removeEventListener("beforeunload", h);
   }, [editorDirty]);
+
+  /** One new profile per library device (the Device profiles page), named "<prefix> 01", "<prefix> 02"… after any
+   *  already named that way. Each device is downloaded and stored like a pick in the editor. */
+  async function createOnDevices(libs: LibraryProfile[], opts: { prefix: string; group: string }): Promise<number> {
+    const base = opts.prefix || t("Device");
+    const taken = new Set(profiles.map((p) => p.name));
+    let n = 0;
+    let made = 0;
+    for (const lib of libs) {
+      const r = await api.fp.use(lib);
+      if (!r.ok || !r.file) {
+        notify(r.error || t("Failed to apply this profile."), { tone: "error" });
+        break;
+      }
+      let name: string;
+      do name = `${base} ${String(++n).padStart(2, "0")}`;
+      while (taken.has(name));
+      taken.add(name);
+      const p: Profile = {
+        ...freshProfile(),
+        name,
+        platform: "windows",
+        ...(opts.group ? { group: opts.group } : {}),
+        fingerprintProfile: r.file,
+        fingerprintProfileMeta: r.meta,
+      };
+      await api.profiles.save({ ...p, id: `${slugify(name) || "profile"}-${randomSeed().slice(0, 4)}` });
+      made++;
+    }
+    await refresh();
+    if (made) notify(made === 1 ? t("Made 1 profile on its own device.") : t("Made {n} profiles, each on its own device.", { n: made }));
+    return made;
+  }
+
+  /** Give each selected profile its own best unused device (deviceMatch.planAssign), and say what was left out. */
+  async function assignDevices(library: LibraryProfile[], hostFacts: HostFacts, opts: { replace: boolean }) {
+    const plan = planAssign(selectedProfiles, library, hostFacts, profiles, opts);
+    if (opts.replace && plan.pairs.some((x) => x.profile.fingerprintProfile)) {
+      const ok = await confirm({
+        title: t("Replace their devices?"),
+        body: t("Sites remember a browser by its device. Profiles that get another device can look like a new computer to them."),
+        confirmLabel: t("Replace"),
+        cancelLabel: t("Cancel"),
+      });
+      if (!ok) return;
+    }
+    let done = 0;
+    for (const { profile, lib } of plan.pairs) {
+      const r = await api.fp.use(lib);
+      if (!r.ok || !r.file) {
+        notify(r.error || t("Failed to apply this profile."), { tone: "error" });
+        break;
+      }
+      await api.profiles.save({ ...profile, fingerprintProfile: r.file, fingerprintProfileMeta: r.meta });
+      done++;
+    }
+    await refresh();
+    const notes = [
+      done === 1 ? t("1 profile got a device.") : t("{n} profiles got a device.", { n: done }),
+      plan.kept.length === 1 ? t("1 kept the device it has.") : plan.kept.length ? t("{n} kept the devices they have.", { n: plan.kept.length }) : "",
+      plan.wrongPlatform.length === 1
+        ? t("1 is not a Windows profile, so it was left alone.")
+        : plan.wrongPlatform.length ? t("{n} are not Windows profiles, so they were left alone.", { n: plan.wrongPlatform.length }) : "",
+      plan.short.length === 1
+        ? t("1 got none: no unused device fits this computer.")
+        : plan.short.length ? t("{n} got none: no unused device fits this computer.", { n: plan.short.length }) : "",
+    ].filter(Boolean);
+    notify(notes.join(" "), { tone: plan.short.length ? "error" : "info" });
+  }
+
+  /** Put one library device on one profile, asking first when it replaces another. */
+  async function useDeviceOn(lib: LibraryProfile, profile: Profile) {
+    if (profile.fingerprintProfile && profile.fingerprintProfile !== lib.name) {
+      const ok = await confirm({
+        title: t("Replace this profile's device?"),
+        body: t("Sites remember a browser by its device. With another device, “{name}” can look like a new computer to them.", { name: displayName(profile) }),
+        confirmLabel: t("Replace"),
+        cancelLabel: t("Cancel"),
+      });
+      if (!ok) return;
+    }
+    const r = await api.fp.use(lib);
+    if (!r.ok || !r.file) return notify(r.error || t("Failed to apply this profile."), { tone: "error" });
+    await api.profiles.save({ ...profile, platform: "windows", fingerprintProfile: r.file, fingerprintProfileMeta: r.meta });
+    await refresh();
+    notify(t("“{name}” now uses this device.", { name: displayName(profile) }));
+  }
 
   async function save(p: Profile): Promise<Profile> {
     const id = p.id || `${slugify(p.name) || "profile"}-${randomSeed().slice(0, 4)}`;
@@ -1281,6 +1371,7 @@ function Manager() {
       { id: "v:proxies", section: nav, label: t("Proxies"), run: () => setPage("proxies") },
       ...(api.tasks && api.sync ? [{ id: "v:tasks", section: nav, label: t("Tasks"), run: () => setPage("tasks") }] : []),
       ...(api.extensions ? [{ id: "v:extensions", section: nav, label: t("Extensions"), run: () => setPage("extensions") }] : []),
+      { id: "v:devices", section: nav, label: t("Device profiles"), run: () => setPage("devices") },
       ...groupList.map((g) => ({
         id: `g:${g.key}`,
         section: nav,
@@ -1398,6 +1489,7 @@ function Manager() {
       proxies={proxyRows.length}
       tasks={api.tasks && api.sync ? savedTasks.length : undefined}
       extensions={api.extensions ? extensions.length : undefined}
+      devices={profiles.filter((p) => p.fingerprintProfile).length}
       running={runningItems}
       onStopRunning={stopRunning}
       onOpenRunning={openRunning}
@@ -1585,6 +1677,18 @@ function Manager() {
               onDelete={(task) => void deleteTask(task)}
               onNew={() => openRunTask()}
               onExample={(ex) => openRunTask(undefined, ex)}
+            />
+          </>
+        ) : page === "devices" ? (
+          <>
+            <h2 className="mt-6 text-lg font-semibold">{t("Device profiles")}</h2>
+            <DevicesView
+              profiles={profiles}
+              selected={selected}
+              hostOs={host}
+              onCreate={createOnDevices}
+              onAssign={assignDevices}
+              onUseOn={useDeviceOn}
             />
           </>
         ) : page === "extensions" && api.extensions ? (
@@ -1837,6 +1941,9 @@ function Manager() {
             </button>
             <button className={btnGhost} onClick={() => openExport([...selected])}>
               {t("Export…")}
+            </button>
+            <button className={btnGhost} onClick={() => setPage("devices")} data-bulk-devices="1">
+              {t("Assign devices…")}
             </button>
             {api.sync && (
               <button className={btnGhost} onClick={() => openRunTask()} data-bulk-run-task="1">

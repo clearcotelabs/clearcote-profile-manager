@@ -50,6 +50,15 @@
   "1 duplicate skipped": [
     "src/components/BulkCreateDialog.tsx"
   ],
+  "1 got none: no unused device fits this computer.": [
+    "app/page.tsx"
+  ],
+  "1 is not a Windows profile, so it was left alone.": [
+    "app/page.tsx"
+  ],
+  "1 kept the device it has.": [
+    "app/page.tsx"
+  ],
   "1 line not understood": [
     "src/components/BulkCreateDialog.tsx"
   ],
@@ -57,8 +66,14 @@
     "app/page.tsx",
     "src/components/ExtensionsView.tsx"
   ],
+  "1 profile got a device.": [
+    "app/page.tsx"
+  ],
   "1 profile needs a value. Type it here; it is saved to the profile:": [
     "src/components/RunTaskDialog.tsx"
+  ],
+  "1 profile selected": [
+    "src/components/DevicesView.tsx"
   ],
   "1 profile still has an empty value and will be skipped.": [
     "src/components/RunTaskDialog.tsx"
@@ -268,7 +283,11 @@
     "src/components/TasksSection.tsx"
   ],
   "All": [
+    "src/components/DevicesView.tsx",
     "src/components/TaskExamples.tsx"
+  ],
+  "All devices": [
+    "src/components/DevicesView.tsx"
   ],
   "All profiles": [
     "app/page.tsx",
@@ -283,8 +302,17 @@
   "Allow list": [
     "src/lib/fields.ts"
   ],
+  "Already used by 1 of your profiles": [
+    "src/lib/deviceMatch.ts"
+  ],
+  "Already used by {n} of your profiles": [
+    "src/lib/deviceMatch.ts"
+  ],
   "Also accepts {f1}, {f2} and {f3}, with a scheme like socks5:// in front or without (then http). Blank lines and lines starting with # are skipped.": [
     "src/components/BulkCreateDialog.tsx"
+  ],
+  "Also replace devices they already have": [
+    "src/components/DevicesView.tsx"
   ],
   "Always on while a proxy is set": [
     "src/components/ProfileEditor.tsx"
@@ -331,9 +359,6 @@
   "Appended verbatim, after everything else — so a switch here wins where Chromium takes the last occurrence.": [
     "src/lib/fields.ts"
   ],
-  "Applying a fingerprint runs in the desktop app.": [
-    "src/lib/ipc.ts"
-  ],
   "Approve": [
     "src/components/TaskBoard.tsx"
   ],
@@ -367,6 +392,9 @@
   "Asks for: {slots}": [
     "src/components/TasksView.tsx"
   ],
+  "Assign devices…": [
+    "app/page.tsx"
+  ],
   "At launch, fill any unset timezone, language, geolocation and WebRTC IP from the proxy's exit region.": [
     "src/lib/fields.ts"
   ],
@@ -399,6 +427,9 @@
   ],
   "Before you run it": [
     "src/components/UpdateBanner.tsx"
+  ],
+  "Best for this computer": [
+    "src/components/DevicesView.tsx"
   ],
   "Best left empty: the seed or capture supplies a screen that agrees with itself. Before 154 r36, a typed size under a seed, capture or Light stealth can disagree with what CSS media queries report; from r36 on, typing this display's own four values is fine.": [
     "src/lib/fields.ts"
@@ -480,6 +511,12 @@
   "Builds you already downloaded keep working.": [
     "src/lib/launchError.ts"
   ],
+  "Built-in graphics, but this computer has a graphics card": [
+    "src/lib/deviceMatch.ts"
+  ],
+  "Built-in graphics, like this computer": [
+    "src/lib/deviceMatch.ts"
+  ],
   "CPU cores": [
     "src/lib/fields.ts"
   ],
@@ -494,6 +531,7 @@
     "src/components/CloudFields.tsx"
   ],
   "Cancel": [
+    "app/page.tsx",
     "src/components/BulkCreateDialog.tsx",
     "src/components/Confirm.tsx",
     "src/components/ExportDialog.tsx",
@@ -520,6 +558,9 @@
     "src/components/ProfileCard.tsx",
     "src/components/ProfileInspector.tsx",
     "src/lib/fields.ts"
+  ],
+  "Captured on Windows; this computer runs {os}": [
+    "src/lib/deviceMatch.ts"
   ],
   "Cards": [
     "app/page.tsx"
@@ -623,6 +664,7 @@
     "src/components/JetSetup.tsx"
   ],
   "Checking…": [
+    "src/components/DevicesView.tsx",
     "src/components/ExtensionsView.tsx",
     "src/components/JetSetup.tsx",
     "src/components/ProfileEditor.tsx",
@@ -656,6 +698,9 @@
   ],
   "Claiming Google Chrome commits the build to everything Google's ships — including the Widevine CDM. Chromium is what a de-Googled build honestly is, and is held to less.": [
     "src/lib/fields.ts"
+  ],
+  "Claims {n} threads; this computer has {host}": [
+    "src/lib/deviceMatch.ts"
   ],
   "Clean up": [
     "src/components/StorageSection.tsx"
@@ -817,6 +862,9 @@
   "Commands and search": [
     "app/page.tsx"
   ],
+  "Common screen size ({size})": [
+    "src/lib/deviceMatch.ts"
+  ],
   "Compare two plans": [
     "src/lib/taskExamples.ts"
   ],
@@ -917,6 +965,9 @@
   "Create 1 profile": [
     "src/components/BulkCreateDialog.tsx"
   ],
+  "Create a profile with it": [
+    "src/components/DevicesView.tsx"
+  ],
   "Create an API key ↗": [
     "src/components/SettingsModal.tsx"
   ],
@@ -928,6 +979,9 @@
   ],
   "Create profiles from a proxy list": [
     "src/components/BulkCreateDialog.tsx"
+  ],
+  "Create {n} on different devices": [
+    "src/components/DevicesView.tsx"
   ],
   "Create {n} profiles": [
     "src/components/BulkCreateDialog.tsx"
@@ -965,6 +1019,9 @@
   ],
   "Deactivate a user from the table": [
     "src/lib/taskExamples.ts"
+  ],
+  "Dedicated graphics card, like this computer": [
+    "src/lib/deviceMatch.ts"
   ],
   "Default value": [
     "src/components/TasksView.tsx"
@@ -1047,6 +1104,16 @@
   "Details of {name}": [
     "app/page.tsx",
     "src/components/ProfileInspector.tsx"
+  ],
+  "Device": [
+    "app/page.tsx"
+  ],
+  "Device profiles": [
+    "app/page.tsx",
+    "src/components/Sidebar.tsx"
+  ],
+  "Different GPU maker ({maker}) than this computer ({host}): sites can tell": [
+    "src/lib/deviceMatch.ts"
   ],
   "Different per profile? Insert a value:": [
     "src/components/RunTaskDialog.tsx"
@@ -1286,9 +1353,11 @@
     "src/components/TaskBoard.tsx"
   ],
   "Failed to apply this profile.": [
+    "app/page.tsx",
     "src/components/LibraryModal.tsx"
   ],
   "Failed to load library.": [
+    "src/components/DevicesView.tsx",
     "src/components/LibraryModal.tsx"
   ],
   "Fallback when offline": [
@@ -1356,6 +1425,10 @@
   "Finish setting up Jet first.": [
     "src/components/RunTaskDialog.tsx"
   ],
+  "Fit with this computer, out of 100": [
+    "src/components/DevicesView.tsx",
+    "src/components/LibraryModal.tsx"
+  ],
   "Fix →": [
     "src/components/ProfileEditor.tsx",
     "src/components/ProfileInspector.tsx"
@@ -1396,6 +1469,9 @@
   "From template {name} · new seed · {detail}": [
     "src/components/ProfileEditor.tsx"
   ],
+  "From the clearcote-profiles library, derived from chrome-fingerprints by Vinyzu (GPL-3.0).": [
+    "src/components/DevicesView.tsx"
+  ],
   "From the template": [
     "src/components/BulkCreateDialog.tsx"
   ],
@@ -1410,6 +1486,9 @@
   ],
   "GPU renderer": [
     "src/lib/fields.ts"
+  ],
+  "GPU unknown": [
+    "src/components/DevicesView.tsx"
   ],
   "GPU vendor": [
     "src/lib/fields.ts"
@@ -1432,16 +1511,29 @@
   "Get a key ↗": [
     "src/components/JetSetup.tsx"
   ],
+  "Give each its best device": [
+    "src/components/DevicesView.tsx"
+  ],
   "Gives every profile Chrome's revocation list, which the browser never downloads by itself, so it refuses the certificates Google has revoked or distrusted, as Chrome does. The list comes from {host}, directly from this PC rather than through a profile's proxy, and is refreshed every 6 hours. The first tab waits on a blank page for a few seconds until the list is active, then opens the start page.": [
     "src/components/SettingsModal.tsx"
   ],
   "Go to": [
     "app/page.tsx"
   ],
+  "Graphics card, but this computer has built-in graphics": [
+    "src/lib/deviceMatch.ts"
+  ],
+  "Graphics one generation from this computer's": [
+    "src/lib/deviceMatch.ts"
+  ],
   "Group": [
     "app/page.tsx",
     "src/components/BulkCreateDialog.tsx",
+    "src/components/DevicesView.tsx",
     "src/lib/fields.ts"
+  ],
+  "Group (optional)": [
+    "src/components/DevicesView.tsx"
   ],
   "Group {name}": [
     "app/page.tsx",
@@ -1468,6 +1560,9 @@
   ],
   "Hide API key": [
     "src/components/SettingsModal.tsx"
+  ],
+  "Hide devices in use": [
+    "src/components/DevicesView.tsx"
   ],
   "Hide key": [
     "src/components/SettingsModal.tsx"
@@ -1564,6 +1659,12 @@
   ],
   "In a dialog": [
     "src/components/ShortcutsDialog.tsx"
+  ],
+  "In use by 1 profile": [
+    "src/components/DevicesView.tsx"
+  ],
+  "In use by {n} profiles": [
+    "src/components/DevicesView.tsx"
   ],
   "Include proxy passwords and encryption keys": [
     "src/components/ExportDialog.tsx"
@@ -1813,6 +1914,9 @@
   "Less": [
     "src/components/UpdateBanner.tsx"
   ],
+  "Less common screen size ({size})": [
+    "src/lib/deviceMatch.ts"
+  ],
   "Library": [
     "src/components/Sidebar.tsx"
   ],
@@ -1847,6 +1951,9 @@
   "Loaded from the copies kept under Extensions, at the next launch.": [
     "src/lib/fields.ts"
   ],
+  "Loading the library…": [
+    "src/components/DevicesView.tsx"
+  ],
   "Loading…": [
     "src/components/LibraryModal.tsx",
     "src/components/StorageSection.tsx"
@@ -1871,6 +1978,12 @@
   ],
   "Looking for the helper…": [
     "src/components/HelperGate.tsx"
+  ],
+  "Made 1 profile on its own device.": [
+    "app/page.tsx"
+  ],
+  "Made {n} profiles, each on its own device.": [
+    "app/page.tsx"
   ],
   "Manage templates…": [
     "app/page.tsx"
@@ -1950,11 +2063,15 @@
     "app/page.tsx"
   ],
   "Name": [
+    "src/components/DevicesView.tsx",
     "src/components/ProfileTable.tsx",
     "src/components/TaskValues.tsx",
     "src/components/TasksView.tsx",
     "src/lib/fields.ts",
     "src/lib/profileList.ts"
+  ],
+  "Name, e.g. Shop": [
+    "src/components/DevicesView.tsx"
   ],
   "Names": [
     "src/components/BulkCreateDialog.tsx"
@@ -2004,6 +2121,9 @@
   "New profile from “{template}”": [
     "app/page.tsx"
   ],
+  "New profiles": [
+    "src/components/DevicesView.tsx"
+  ],
   "New profiles are named {name} 1, {name} 2, …": [
     "src/components/TemplateDialogs.tsx"
   ],
@@ -2043,6 +2163,9 @@
   ],
   "No cloud browser is free right now": [
     "src/lib/launchError.ts"
+  ],
+  "No device in the library fits this computer.": [
+    "src/components/DevicesView.tsx"
   ],
   "No download matched this installation — pick the right one on the release page.": [
     "src/components/UpdateBanner.tsx"
@@ -2159,6 +2282,9 @@
   "Not strictly better than the default: it trades a broad persona for a much narrower surface. In our own lab runs it scored worse on an audit suite. Test it against your target.": [
     "src/lib/fields.ts"
   ],
+  "Not used by any of your profiles": [
+    "src/lib/deviceMatch.ts"
+  ],
   "Notes": [
     "src/components/ProfileInspector.tsx",
     "src/lib/fields.ts"
@@ -2229,8 +2355,14 @@
   "Only builds something still uses.": [
     "src/components/StorageSection.tsx"
   ],
+  "Only devices that fit this computer": [
+    "src/components/DevicesView.tsx"
+  ],
   "Only does something with a proxy set. Needs build 152 r22 or newer.": [
     "src/lib/fields.ts"
+  ],
+  "Only {n} unused devices fit this computer, so it makes {n}.": [
+    "src/components/DevicesView.tsx"
   ],
   "Open": [
     "app/page.tsx"
@@ -2485,6 +2617,9 @@
   "Real Chrome hides local host candidates behind a .local name, and so does this by default. Switching it off re-exposes your private IP to every page.": [
     "src/lib/fields.ts"
   ],
+  "Real devices captured from Windows Chrome: GPU, screen, threads, memory and fonts. A profile on one of them reports that device's values. The best fits for this computer come first; one device per profile keeps your profiles apart.": [
+    "src/components/DevicesView.tsx"
+  ],
   "Recently used": [
     "src/lib/profileList.ts"
   ],
@@ -2577,8 +2712,17 @@
   "Repeated from the saved task, no model call": [
     "src/components/StepTimeline.tsx"
   ],
+  "Replace": [
+    "app/page.tsx"
+  ],
   "Replace template": [
     "src/components/TemplateDialogs.tsx"
+  ],
+  "Replace their devices?": [
+    "app/page.tsx"
+  ],
+  "Replace this profile's device?": [
+    "app/page.tsx"
   ],
   "Replace {proxy}": [
     "app/page.tsx"
@@ -2739,6 +2883,12 @@
   "Same GPU": [
     "src/components/TemplateDialogs.tsx"
   ],
+  "Same GPU maker as this computer ({maker})": [
+    "src/lib/deviceMatch.ts"
+  ],
+  "Same class of graphics card as this computer": [
+    "src/lib/deviceMatch.ts"
+  ],
   "Same for all": [
     "src/components/RunTaskDialog.tsx"
   ],
@@ -2831,6 +2981,9 @@
   "Screen height": [
     "src/lib/fields.ts"
   ],
+  "Screen too small to hold a browser window": [
+    "src/lib/deviceMatch.ts"
+  ],
   "Screen width": [
     "src/lib/fields.ts"
   ],
@@ -2842,6 +2995,12 @@
   ],
   "Search ({shortcut} or /)": [
     "app/page.tsx"
+  ],
+  "Search a GPU or screen…": [
+    "src/components/DevicesView.tsx"
+  ],
+  "Search devices": [
+    "src/components/DevicesView.tsx"
   ],
   "Search examples": [
     "src/components/TaskExamples.tsx"
@@ -3043,6 +3202,12 @@
   ],
   "Simple": [
     "src/components/ProfileEditor.tsx"
+  ],
+  "Sites remember a browser by its device. Profiles that get another device can look like a new computer to them.": [
+    "app/page.tsx"
+  ],
+  "Sites remember a browser by its device. With another device, “{name}” can look like a new computer to them.": [
+    "app/page.tsx"
   ],
   "Skipped {names}: the browser is running — stop it first.": [
     "src/components/StorageSection.tsx"
@@ -3259,6 +3424,9 @@
   "The Clearcote helper stopped answering, so this is the preview again. Start it, then connect.": [
     "src/components/HelperGate.tsx"
   ],
+  "The GPU maker is unknown, so every device is shown.": [
+    "src/components/DevicesView.tsx"
+  ],
   "The HLSL shader dialect has no effect on a Windows host — ANGLE's D3D11 backend already reports HLSL.": [
     "src/lib/coherence.ts"
   ],
@@ -3448,6 +3616,9 @@
   ],
   "This computer's own connection": [
     "src/components/ProfileInspector.tsx"
+  ],
+  "This computer: {facts}": [
+    "src/components/DevicesView.tsx"
   ],
   "This frees {size}. It downloads again, and is verified again, on the next launch that needs it.": [
     "src/components/StorageSection.tsx"
@@ -3790,6 +3961,9 @@
   "Use my account ↗": [
     "src/components/SettingsModal.tsx"
   ],
+  "Use on “{name}”": [
+    "src/components/DevicesView.tsx"
+  ],
   "Use one or the other: light stealth for a narrow metadata-only surface, or a captured profile for a full identity.": [
     "src/lib/coherence.ts"
   ],
@@ -3804,6 +3978,9 @@
   ],
   "Used by": [
     "src/components/ProxiesView.tsx"
+  ],
+  "Used by: {names}": [
+    "src/components/DevicesView.tsx"
   ],
   "Used this week": [
     "app/page.tsx",
@@ -3826,6 +4003,9 @@
   ],
   "Video, voice and WebRTC checks can't reach a site from your real IP. \"Relay UDP through the proxy\" still works on top of this when the proxy allows UDP.": [
     "src/lib/quickCreate.ts"
+  ],
+  "View the .json": [
+    "src/components/DevicesView.tsx"
   ],
   "Wait a minute, then try again.": [
     "src/lib/launchError.ts"
@@ -4389,7 +4569,11 @@
     "src/components/BulkCreateDialog.tsx"
   ],
   "{n} GB": [
+    "src/components/DevicesView.tsx",
     "src/components/ProfileEditor.tsx"
+  ],
+  "{n} are not Windows profiles, so they were left alone.": [
+    "app/page.tsx"
   ],
   "{n} at a time": [
     "src/components/TasksView.tsx"
@@ -4415,8 +4599,14 @@
   "{n} duplicates skipped": [
     "src/components/BulkCreateDialog.tsx"
   ],
+  "{n} got none: no unused device fits this computer.": [
+    "app/page.tsx"
+  ],
   "{n} in use right now, left for later.": [
     "src/components/StorageSection.tsx"
+  ],
+  "{n} kept the devices they have.": [
+    "app/page.tsx"
   ],
   "{n} lines not understood": [
     "src/components/BulkCreateDialog.tsx"
@@ -4426,8 +4616,14 @@
     "src/components/ExtensionsView.tsx",
     "src/components/ProxiesView.tsx"
   ],
+  "{n} profiles got a device.": [
+    "app/page.tsx"
+  ],
   "{n} profiles need values. Type them here; they are saved to each profile:": [
     "src/components/RunTaskDialog.tsx"
+  ],
+  "{n} profiles selected": [
+    "src/components/DevicesView.tsx"
   ],
   "{n} profiles still have an empty value and will be skipped.": [
     "src/components/RunTaskDialog.tsx"
@@ -4472,6 +4668,12 @@
   "{n} things contradict the rest": [
     "src/components/ProfileInspector.tsx"
   ],
+  "{n} threads": [
+    "src/components/DevicesView.tsx"
+  ],
+  "{n} threads, no more than this computer has": [
+    "src/lib/deviceMatch.ts"
+  ],
   "{n} waiting for you": [
     "src/components/TaskBoard.tsx"
   ],
@@ -4482,7 +4684,8 @@
     "src/components/CloudFields.tsx"
   ],
   "{shown} of {total}": [
-    "app/page.tsx"
+    "app/page.tsx",
+    "src/components/DevicesView.tsx"
   ],
   "{slot} for every profile": [
     "src/components/RunTaskDialog.tsx"
@@ -4525,6 +4728,9 @@
   ],
   "“{name}” is up to date ({version}).": [
     "src/components/ExtensionsView.tsx"
+  ],
+  "“{name}” now uses this device.": [
+    "app/page.tsx"
   ],
   "“{name}”: turned on for {on}, off for {off} profiles. It applies at their next launch.": [
     "src/components/ExtensionsView.tsx"

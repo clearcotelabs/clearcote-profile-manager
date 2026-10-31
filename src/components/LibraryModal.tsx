@@ -5,6 +5,7 @@
 import { useEffect, useId, useMemo, useState } from "react";
 import { api, type FingerprintMeta, type LibraryProfile } from "@/lib/ipc";
 import { MIN_PROFILE_SCREEN_HEIGHT, MIN_PROFILE_SCREEN_WIDTH } from "@/types/profile";
+import { rankDevices, type HostFacts } from "@/lib/deviceMatch";
 import Dialog, { DialogHeader } from "./Dialog";
 import { t, tRich } from "@/lib/i18n";
 
@@ -20,8 +21,13 @@ export default function LibraryModal({
   const [err, setErr] = useState<string | null>(null);
   const [busy, setBusy] = useState<string | null>(null);
   const [vendor, setVendor] = useState<string>("all");
+  // This computer, for the fit score (src/lib/deviceMatch.ts): the best matches are listed first.
+  const [host, setHost] = useState<HostFacts>({ vendor: "unknown" });
   useEffect(() => {
     api.fp.library().then((r) => (r.ok ? setList(r.profiles || []) : setErr(r.error || t("Failed to load library."))));
+    api.hostGpu?.()
+      .then((g) => g && setHost({ vendor: g.vendor, gpuName: g.name || undefined, threads: navigator.hardwareConcurrency || undefined }))
+      .catch(() => {});
   }, []);
   async function pick(p: LibraryProfile) {
     setBusy(p.name);
@@ -40,7 +46,10 @@ export default function LibraryModal({
   const [hideSmall, setHideSmall] = useState(true);
   const byVendor = (list || []).filter((p) => vendor === "all" || p.gpuVendor === vendor);
   const smallCount = byVendor.filter((p) => p.screenWarning).length;
-  const shown = hideSmall ? byVendor.filter((p) => !p.screenWarning) : byVendor;
+  const visible = hideSmall ? byVendor.filter((p) => !p.screenWarning) : byVendor;
+  const ranked = rankDevices(visible, host, []);
+  const shown = ranked.map((m) => m.lib);
+  const scoreOf = new Map(ranked.map((m) => [m.lib.name, m]));
 
   return (
     // "fit": sized to its content; on a very short window the whole frame scrolls, and the list keeps
@@ -92,6 +101,11 @@ export default function LibraryModal({
                   {[p.gpuVendor, p.screen, p.name.replace(/\.json$/, "")].filter(Boolean).join("  ·  ")}
                 </span>
               </span>
+              {host.vendor !== "unknown" && (
+                <span className="ml-auto shrink-0 text-[11px] text-fog/40" title={t("Fit with this computer, out of 100")}>
+                  {scoreOf.get(p.name)?.fits ? scoreOf.get(p.name)?.score : "–"}
+                </span>
+              )}
               <span className="ml-2 shrink-0 text-[11px] text-accent">{busy === p.name ? t("applying…") : t("Use →")}</span>
             </button>
           ))}

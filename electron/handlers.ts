@@ -586,6 +586,8 @@ export function createHandlers(host: HandlerHost): Record<string, Handler> {
               gpuFamily: e.gpu_family as string | undefined,
               renderer: e.renderer as string | undefined,
               screen: e.screen as string | undefined,
+              cores: typeof e.hardware_concurrency === "number" ? e.hardware_concurrency : undefined,
+              memory: typeof e.device_memory === "number" ? e.device_memory : undefined,
               // The index's screen is "WxH" — check it so the picker can warn about a capture too
               // small to contain a real window BEFORE the user downloads and adopts it.
               screenWarning: screenWarningFromLabel(e.screen as string | undefined) ?? undefined,

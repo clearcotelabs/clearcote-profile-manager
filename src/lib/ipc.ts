@@ -265,6 +265,9 @@ export interface LibraryProfile {
   gpuFamily?: string;
   renderer?: string;
   screen?: string;
+  /** hardwareConcurrency and deviceMemory (GB) the capture reports, from the index. */
+  cores?: number;
+  memory?: number;
   /** Set when the indexed screen size is below the guard floor, so the picker can warn (or filter)
    *  BEFORE downloading a capture that would produce impossible window geometry. */
   screenWarning?: string;
@@ -874,6 +877,9 @@ function buildMock(): ClearcoteApi {
     fp: {
       import: async () => ({ ok: false, error: t("Importing a fingerprint runs in the desktop app.") }),
       library: async () => {
+        // A test's stand-in for the library (localStorage ["clearcote.mock.library"]), so it needs no network.
+        const seeded = readJson<LibraryProfile[] | null>("clearcote.mock.library", null);
+        if (seeded) return { ok: true, profiles: seeded };
         const RAW = "https://raw.githubusercontent.com/clearcotelabs/clearcote-profiles/main/samples";
         try {
           const ir = await fetch(`${RAW}/index.json`);
@@ -889,6 +895,8 @@ function buildMock(): ClearcoteApi {
                   gpuFamily: e.gpu_family as string | undefined,
                   renderer: e.renderer as string | undefined,
                   screen: e.screen as string | undefined,
+                  cores: typeof e.hardware_concurrency === "number" ? e.hardware_concurrency : undefined,
+                  memory: typeof e.device_memory === "number" ? e.device_memory : undefined,
                   screenWarning: screenWarningFromLabel(e.screen as string | undefined) ?? undefined,
                 })),
               };
@@ -913,7 +921,19 @@ function buildMock(): ClearcoteApi {
           return { ok: false, error: String(e) };
         }
       },
-      use: async () => ({ ok: false, error: t("Applying a fingerprint runs in the desktop app.") }),
+      // No file to store in a browser: the profile records the library name, as the desktop app's copy is named.
+      use: async (lib) => ({
+        ok: true,
+        file: lib.name,
+        meta: {
+          label: lib.renderer || lib.name,
+          renderer: lib.renderer,
+          cores: lib.cores,
+          memory: lib.memory,
+          screen: lib.screen,
+          source: "library" as const,
+        },
+      }),
     },
   };
 }

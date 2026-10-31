@@ -10,7 +10,7 @@
 import { t } from "@/lib/i18n";
 import { VIEW_LABELS, type ViewKey } from "@/lib/workspace";
 
-export type PageKey = "profiles" | "proxies" | "tasks" | "extensions";
+export type PageKey = "profiles" | "proxies" | "tasks" | "extensions" | "devices";
 
 export interface RunningItem {
   id: string;
@@ -53,6 +53,8 @@ export default function Sidebar(props: {
   tasks?: number;
   /** Extensions kept on this computer (undefined hides the entry). */
   extensions?: number;
+  /** Profiles on a library device (the Device profiles page). */
+  devices: number;
   running: RunningItem[];
   onStopRunning: (id: string) => void;
   onOpenRunning: (id: string) => void;
@@ -130,6 +132,15 @@ export default function Sidebar(props: {
             <Count n={props.tasks} />
           </button>
         )}
+        <button
+          className={`${item} ${props.page === "devices" ? on : off}`}
+          aria-current={props.page === "devices" ? "page" : undefined}
+          onClick={() => props.onPage("devices")}
+          data-nav-devices="1"
+        >
+          <span className="truncate">{t("Device profiles")}</span>
+          <Count n={props.devices} />
+        </button>
         {props.extensions !== undefined && (
           <button
             className={`${item} ${props.page === "extensions" ? on : off}`}
