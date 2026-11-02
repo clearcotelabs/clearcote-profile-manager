@@ -78,6 +78,10 @@ export interface Profile {
   /** false → --disable-canvas-noise: unfarble 2D canvas readback (getImageData, toDataURL) only,
    *  leaving WebGL readPixels and every other surface noised. Inert before 150 r12. */
   canvasNoise?: boolean;
+  /** r57 noise style: true = --fingerprint-noise-flat-areas (flat areas noised too, as before r57). */
+  flatAreaNoise?: boolean;
+  /** false = --fingerprint-webgl-no-read-margin (no extra margin read for a partial WebGL readPixels). */
+  webglReadMargin?: boolean;
   /** --fingerprint-storage-quota in MB (navigator.storage.estimate().quota). */
   storageQuota?: number;
   /** --canvas-bridge-url: forward canvas/WebGL to a remote real-GPU host (ws://host:port/path). */

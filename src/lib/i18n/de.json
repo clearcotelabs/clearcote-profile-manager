@@ -1683,5 +1683,13 @@
   "Examples matching “{q}”": "Beispiele zu „{q}“",
   "See all {n}": "Alle {n} ansehen",
   "Drawn in software with {renderer}, like this computer": "In Software mit {renderer} gezeichnet, wie dieser Computer",
-  "Drawn with {theirs}, but this computer draws with {mine}: sites can tell": "Mit {theirs} gezeichnet, dieser Computer zeichnet aber mit {mine}: Websites können das erkennen"
+  "Drawn with {theirs}, but this computer draws with {mine}: sites can tell": "Mit {theirs} gezeichnet, dieser Computer zeichnet aber mit {mine}: Websites können das erkennen",
+  "Noise flat areas (r56 style)": "Flache Flächen verrauschen (Stil von r56)",
+  "Also noise solid shapes and filled areas in canvas and WebGL readback, as engines before r57 did. Off by default.": "Auch einfarbige Formen und gefüllte Flächen beim Auslesen von Canvas und WebGL verrauschen, wie es Engines vor r57 taten. Standardmäßig aus.",
+  "On, checkers that hash a solid shape (such as PixelScan) report masking. Needs r57; older engines always noise flat areas.": "Eingeschaltet melden Prüfer, die eine einfarbige Form hashen (etwa PixelScan), Masking. Benötigt r57; ältere Engines verrauschen flache Flächen immer.",
+  "From r57 the noise lands only on edges, text and gradients, so a solid shape reads back exactly as on real hardware, and profiles still get different canvas hashes. Turn this on to get the r56 readback back, for example to keep a profile's canvas hash from before r57.": "Ab r57 landet das Rauschen nur auf Kanten, Text und Verläufen, sodass eine einfarbige Form genau wie auf echter Hardware zurückgelesen wird und Profile trotzdem unterschiedliche Canvas-Hashes erhalten. Schalte dies ein, um das Auslesen von r56 zurückzubekommen, etwa um den Canvas-Hash eines Profils von vor r57 zu behalten.",
+  "WebGL partial-read margin": "Rand beim teilweisen WebGL-Auslesen",
+  "A partial WebGL read is noised exactly like a full read of the same canvas, at the cost of one extra GPU read. On by default.": "Ein teilweises WebGL-Auslesen wird genau wie ein vollständiges Auslesen derselben Canvas verrauscht, auf Kosten eines zusätzlichen GPU-Auslesens. Standardmäßig an.",
+  "Off saves that read, but 1–2 edge pixels of a partial read can then differ from a full read. Needs r57; no effect with flat-area noise on.": "Aus spart dieses Auslesen, aber 1–2 Randpixel eines teilweisen Auslesens können dann von einem vollständigen abweichen. Benötigt r57; keine Wirkung, wenn das Verrauschen flacher Flächen an ist.",
+  "Two reads of one canvas that disagree prove the pixels were changed. Keep this on unless a site times partial WebGL reads.": "Zwei Auslesungen derselben Canvas, die sich widersprechen, beweisen, dass die Pixel verändert wurden. Lass dies an, außer eine Seite misst die Zeit teilweiser WebGL-Auslesungen."
 }

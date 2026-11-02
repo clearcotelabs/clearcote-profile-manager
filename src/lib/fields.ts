@@ -559,6 +559,32 @@ export const FIELDS: FieldDef[] = [
     why:
       tx("Some sites hash a 2D canvas and reject anything perturbed, while still wanting the other surfaces noised. This unfarbles that one surface rather than the whole process."),
   },
+  // The r57 noise style: how the noise is placed, not whether there is any.
+  {
+    key: "flatAreaNoise",
+    cat: "rendering",
+    label: tx("Noise flat areas (r56 style)"),
+    type: "check",
+    desc: tx("Also noise solid shapes and filled areas in canvas and WebGL readback, as engines before r57 did. Off by default."),
+    hint: tx("On, checkers that hash a solid shape (such as PixelScan) report masking. Needs r57; older engines always noise flat areas."),
+    keywords: "--fingerprint-noise-flat-areas farble pixelscan masking flat solid r56",
+    why:
+      tx("From r57 the noise lands only on edges, text and gradients, so a solid shape reads back exactly as on real hardware, and profiles still get different canvas hashes. Turn this on to get the r56 readback back, for example to keep a profile's canvas hash from before r57."),
+  },
+  {
+    key: "webglReadMargin",
+    cat: "rendering",
+    label: tx("WebGL partial-read margin"),
+    type: "check",
+    defaultOn: true,
+    onValue: true,
+    offValue: false,
+    desc: tx("A partial WebGL read is noised exactly like a full read of the same canvas, at the cost of one extra GPU read. On by default."),
+    hint: tx("Off saves that read, but 1–2 edge pixels of a partial read can then differ from a full read. Needs r57; no effect with flat-area noise on."),
+    keywords: "--fingerprint-webgl-no-read-margin readPixels partial window farble",
+    why:
+      tx("Two reads of one canvas that disagree prove the pixels were changed. Keep this on unless a site times partial WebGL reads."),
+  },
   {
     onValue: "hlsl",
     key: "shaderDialect",

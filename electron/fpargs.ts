@@ -279,6 +279,8 @@ export interface FpInput {
   fingerprintNoise?: boolean;
   gpuStringSpoof?: boolean;
   canvasNoise?: boolean;
+  flatAreaNoise?: boolean;
+  webglReadMargin?: boolean;
   storageQuota?: number;
   canvasBridgeUrl?: string;
   canvasBridgeAuth?: string;
@@ -348,6 +350,9 @@ export function mergeFeatureFlags(args: string[]): string[] {
 
 /** PRO r54+: the engine carries HTTP/3 through the SOCKS5 UDP relay; this switch turns that off. */
 export const QUIC_RELAY_SWITCH = "disable-socks5-udp-quic";
+/** The r57 noise style switches. The launcher drops each one the engine does not carry: an engine
+ *  before r57 already noises flat areas and has no read margin, so dropping them changes nothing. */
+export const NOISE_STYLE_SWITCHES = ["fingerprint-noise-flat-areas", "fingerprint-webgl-no-read-margin"] as const;
 
 /**
  * Switches that keep traffic from leaving AROUND a proxy, as the SDK sends them whenever one is set:
@@ -486,6 +491,11 @@ export function fingerprintArgs(input: FpInput, opts: FpArgsOptions = {}): strin
   //   canvasNoise:false     unfarbles 2D canvas readback only, leaving WebGL and audio noised.
   if (p.gpuStringSpoof === false) args.push("--disable-gpu-string-spoof");
   if (p.canvasNoise === false) args.push("--disable-canvas-noise");
+  // r57 noise style, as the SDK's flatAreaNoise / webglReadMargin. flatAreaNoise:true brings back the
+  // r56 readback noise (flat areas noised too); webglReadMargin:false skips the extra one-pixel margin
+  // read of a partial WebGL readPixels. Gated on the engine in the launcher (NOISE_STYLE_SWITCHES).
+  if (p.flatAreaNoise === true) args.push("--fingerprint-noise-flat-areas");
+  if (p.webglReadMargin === false) args.push("--fingerprint-webgl-no-read-margin");
 
   // Third-party cookies are allowed, as in stock Chrome, unless the profile blocks them. The engine
   // made allowing its own default in 154 r36; 152 r22 to r35 blocked by default (the de-Googled

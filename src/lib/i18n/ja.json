@@ -1683,5 +1683,13 @@
   "Examples matching “{q}”": "「{q}」に一致する例",
   "See all {n}": "すべて表示（{n}）",
   "Drawn in software with {renderer}, like this computer": "このコンピューターと同じく {renderer} によるソフトウェア描画",
-  "Drawn with {theirs}, but this computer draws with {mine}: sites can tell": "{theirs} で描画されていますが、このコンピューターは {mine} で描画します：サイトに見分けられます"
+  "Drawn with {theirs}, but this computer draws with {mine}: sites can tell": "{theirs} で描画されていますが、このコンピューターは {mine} で描画します：サイトに見分けられます",
+  "Noise flat areas (r56 style)": "平坦な領域にもノイズ（r56 方式）",
+  "Also noise solid shapes and filled areas in canvas and WebGL readback, as engines before r57 did. Off by default.": "canvas と WebGL の読み出しで、単色の図形や塗りつぶした領域にもノイズを加えます（r57 より前のエンジンと同じ）。既定ではオフ。",
+  "On, checkers that hash a solid shape (such as PixelScan) report masking. Needs r57; older engines always noise flat areas.": "オンにすると、単色の図形をハッシュするチェッカー（PixelScan など）がマスキングを検出します。r57 が必要です。古いエンジンは常に平坦な領域にもノイズを加えます。",
+  "From r57 the noise lands only on edges, text and gradients, so a solid shape reads back exactly as on real hardware, and profiles still get different canvas hashes. Turn this on to get the r56 readback back, for example to keep a profile's canvas hash from before r57.": "r57 からノイズはエッジ・文字・グラデーションにだけ加わるため、単色の図形は実機と同じように読み出され、プロファイルごとの canvas ハッシュも異なったままです。r57 より前のプロファイルの canvas ハッシュを保ちたい場合など、r56 の読み出しに戻すにはオンにします。",
+  "WebGL partial-read margin": "WebGL 部分読み出しのマージン",
+  "A partial WebGL read is noised exactly like a full read of the same canvas, at the cost of one extra GPU read. On by default.": "WebGL の部分読み出しに、同じ canvas の全体読み出しとまったく同じノイズを加えます。そのぶん GPU の読み出しが 1 回増えます。既定ではオン。",
+  "Off saves that read, but 1–2 edge pixels of a partial read can then differ from a full read. Needs r57; no effect with flat-area noise on.": "オフにするとその読み出しを省けますが、部分読み出しの端の 1〜2 ピクセルが全体読み出しと食い違うことがあります。r57 が必要です。平坦な領域のノイズがオンのときは効果がありません。",
+  "Two reads of one canvas that disagree prove the pixels were changed. Keep this on unless a site times partial WebGL reads.": "同じ canvas の 2 回の読み出しが食い違うと、ピクセルが変更された証拠になります。サイトが WebGL の部分読み出しの時間を測っていない限り、オンのままにしてください。"
 }

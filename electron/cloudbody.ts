@@ -64,6 +64,8 @@ export interface CloudInput {
   fingerprintNoise?: boolean;
   gpuStringSpoof?: boolean;
   canvasNoise?: boolean;
+  flatAreaNoise?: boolean;
+  webglReadMargin?: boolean;
   storageQuota?: number;
   canvasBridgeUrl?: string;
   fingerprintProfile?: string;
@@ -158,6 +160,8 @@ export function localOnlySettings(p: CloudInput): string[] {
   add(p.fingerprintNoise === false, "Noise off");
   add(p.gpuStringSpoof === false, "Real GPU strings");
   add(p.canvasNoise === false, "Canvas noise off");
+  add(p.flatAreaNoise === true, "Flat-area noise");
+  add(p.webglReadMargin === false, "WebGL read margin off");
   add(p.storageQuota != null, "Storage quota");
   add(p.canvasBridgeUrl, "Canvas bridge");
   add(p.portableProfile || p.encryptionKey, "Portable profile");

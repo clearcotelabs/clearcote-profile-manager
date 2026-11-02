@@ -13,6 +13,7 @@ import {
   resolveTls,
   screenGuardWarning,
   type FpInput,
+  NOISE_STYLE_SWITCHES,
 } from "../electron/fpargs";
 
 const base: FpInput = { fingerprint: "seed-1" };
@@ -371,6 +372,15 @@ describe("narrow rendering switches", () => {
 
   it("canvasNoise:false → --disable-canvas-noise", () =>
     expect(args({ canvasNoise: false })).toContain("--disable-canvas-noise"));
+
+  it("r57 noise style: flatAreaNoise:true and webglReadMargin:false emit their switches, the defaults nothing", () => {
+    expect(args({ flatAreaNoise: true })).toContain("--fingerprint-noise-flat-areas");
+    expect(args({ webglReadMargin: false })).toContain("--fingerprint-webgl-no-read-margin");
+    const defaults = args({ flatAreaNoise: false, webglReadMargin: true });
+    expect(defaults).not.toContain("--fingerprint-noise-flat-areas");
+    expect(defaults).not.toContain("--fingerprint-webgl-no-read-margin");
+    expect(NOISE_STYLE_SWITCHES).toEqual(["fingerprint-noise-flat-areas", "fingerprint-webgl-no-read-margin"]);
+  });
 
   it("are independent of the broad switches", () => {
     // The narrow ones must not imply, or be implied by, the wide ones.

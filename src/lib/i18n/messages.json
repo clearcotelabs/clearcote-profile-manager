@@ -197,6 +197,9 @@
   "A key unlocks the licence-gated browser. It is only sent to the licence service, and only when a key is set.": [
     "src/components/SettingsModal.tsx"
   ],
+  "A partial WebGL read is noised exactly like a full read of the same canvas, at the cost of one extra GPU read. On by default.": [
+    "src/lib/fields.ts"
+  ],
   "A portable profile needs Clearcote {need} (r14+); build {major} ignores it, so cookies stay machine-bound.": [
     "src/lib/coherence.ts"
   ],
@@ -349,6 +352,9 @@
   ],
   "Also accepts {f1}, {f2} and {f3}, with a scheme like socks5:// in front or without (then http). Blank lines and lines starting with # are skipped.": [
     "src/components/BulkCreateDialog.tsx"
+  ],
+  "Also noise solid shapes and filled areas in canvas and WebGL readback, as engines before r57 did. Off by default.": [
+    "src/lib/fields.ts"
   ],
   "Also replace devices they already have": [
     "src/components/DevicesView.tsx"
@@ -1570,6 +1576,9 @@
   "From proxy list…": [
     "app/page.tsx"
   ],
+  "From r57 the noise lands only on edges, text and gradients, so a solid shape reads back exactly as on real hardware, and profiles still get different canvas hashes. Turn this on to get the r56 readback back, for example to keep a profile's canvas hash from before r57.": [
+    "src/lib/fields.ts"
+  ],
   "From template {name} · new seed · {detail}": [
     "src/components/ProfileEditor.tsx"
   ],
@@ -2429,6 +2438,9 @@
   "No templates yet. Open the <b>⋯</b> menu on any profile and choose <b>Save as template</b>.": [
     "src/components/TemplateDialogs.tsx"
   ],
+  "Noise flat areas (r56 style)": [
+    "src/lib/fields.ts"
+  ],
   "None — default settings": [
     "src/components/BulkCreateDialog.tsx"
   ],
@@ -2498,6 +2510,9 @@
   "Off by default: third-party cookies are allowed, as in Chrome.": [
     "src/lib/fields.ts"
   ],
+  "Off saves that read, but 1–2 edge pixels of a partial read can then differ from a full read. Needs r57; no effect with flat-area noise on.": [
+    "src/lib/fields.ts"
+  ],
   "Old graphics": [
     "src/lib/deviceMatch.ts"
   ],
@@ -2521,6 +2536,9 @@
   ],
   "On {n} profiles: {names} and {more} more": [
     "src/components/RunTaskDialog.tsx"
+  ],
+  "On, checkers that hash a solid shape (such as PixelScan) report masking. Needs r57; older engines always noise flat areas.": [
+    "src/lib/fields.ts"
   ],
   "On: {names}": [
     "src/components/RunTaskDialog.tsx"
@@ -4168,6 +4186,9 @@
   "Turning this off leaves WebGL and audio noised — narrower than switching farbling off entirely. Needs 150 r12 or newer.": [
     "src/lib/fields.ts"
   ],
+  "Two reads of one canvas that disagree prove the pixels were changed. Keep this on unless a site times partial WebGL reads.": [
+    "src/lib/fields.ts"
+  ],
   "Type": [
     "src/components/StepTimeline.tsx"
   ],
@@ -4403,6 +4424,9 @@
   ],
   "Want more devices? Add the full library: every capture in chrome-fingerprints, about 8,500 real devices plus about 1,500 marked higher risk (no graphics card, virtual machines, old graphics). It downloads once from the original repo (1.4 MB) and is kept on this computer (about 70 MB).": [
     "src/components/DevicesView.tsx"
+  ],
+  "WebGL partial-read margin": [
+    "src/lib/fields.ts"
   ],
   "WebRTC IP is set to {ip}, which is not this exit: pages will see HTTP from {exit} and WebRTC from {ip}. Clear the field, or click “Resolve from proxy”, to keep them together.": [
     "src/lib/proxyReport.ts"
