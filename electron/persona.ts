@@ -14,7 +14,7 @@
 //
 // Same contract as the SDKs (sdk/node/src/persona.ts, sdk/python/clearcote/_persona.py); the selector list mirrors
 // the engine's and the service's: a switch added to one must be added to the others.
-import { spawnSync } from "node:child_process";
+import { spawnSyncBrowser } from "./winlaunch"; // the probe survives the Windows SxS/AV race like the launch
 import { createHash } from "node:crypto";
 import fs from "node:fs";
 import os from "node:os";
@@ -155,9 +155,26 @@ function factsCachePath(env: Env): string | null {
   return base ? path.join(base, ".clearcote", "persona-host-facts.json") : null;
 }
 
+/**
+ * Run the probe and return its stdout, or throw saying why there is none. The engine prints a refusal (no lease,
+ * a FREE token without its file, the clock set back) on stderr only, and a binary that could not start has no
+ * output at all: reading stdout alone turned every one of those into "Unexpected end of JSON input".
+ */
+export function describeProbe(r: { stdout?: string | null; stderr?: string | null; status: number | null; signal?: string | null; error?: Error }): string {
+  const stdout = r.stdout ?? "";
+  if (!r.error && r.status === 0 && stdout.trim()) return stdout;
+  const said = (r.stderr ?? "").trim().split(/\r?\n/).filter(Boolean).pop()?.replace(/^\[clearcote\]\s*/, "");
+  let why: string;
+  if ((r.error as NodeJS.ErrnoException | undefined)?.code === "ETIMEDOUT") why = "it did not answer within 30 s";
+  else if (r.error) why = `it could not be started: ${r.error.message}`;
+  else if (r.signal) why = `it was stopped by ${r.signal}`;
+  else if (r.status !== 0) why = `it exited with code ${r.status}`;
+  else why = "it exited without output";
+  throw new Error(said ? `${why}: ${said.slice(0, 300)}` : why);
+}
+
 function defaultRunner(cmd: string[], env: Env): string {
-  const r = spawnSync(cmd[0], cmd.slice(1), { env, encoding: "utf8", timeout: 30000, windowsHide: true });
-  return r.stdout ?? "";
+  return describeProbe(spawnSyncBrowser(cmd[0], cmd.slice(1), { env, encoding: "utf8", timeout: 30000, windowsHide: true }));
 }
 
 /**

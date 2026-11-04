@@ -11,7 +11,7 @@ import { readdirSync, openSync, readSync, closeSync, mkdtempSync, mkdirSync, exi
 import { tmpdir } from "node:os";
 import { join, dirname, basename, resolve } from "node:path";
 import { createHash } from "node:crypto";
-import { spawn, type ChildProcess, type SpawnOptions } from "node:child_process";
+import { spawn, spawnSync, type ChildProcess, type SpawnOptions, type SpawnSyncOptionsWithStringEncoding, type SpawnSyncReturns } from "node:child_process";
 
 /** Sequentially read every file under `dir` so on-access AV finishes scanning the freshly-extracted
  *  binaries BEFORE the browser launches. Best-effort, safe to call anywhere. */
@@ -48,6 +48,8 @@ export function warmFiles(dir: string): void {
 }
 
 export function isWinLaunchRace(err: unknown): boolean {
+  // spawnSync words it "spawnSync <path> UNKNOWN", so the code is checked as well as the text.
+  if ((err as NodeJS.ErrnoException)?.code === "UNKNOWN") return true;
   const m = String((err as Error)?.message ?? err).toLowerCase();
   return m.includes("spawn unknown") || m.includes("side-by-side") || m.includes("side by side");
 }
@@ -150,4 +152,30 @@ export async function spawnBrowser(bin: string, args: string[], opts: SpawnOptio
   cpSync(binDir, recover, { recursive: true });
   warmFiles(recover);
   return spawnOnce(join(recover, exeName), args, opts);
+}
+
+/**
+ * spawnSync with the recovery of spawnBrowser, for a short engine run whose output is read (the persona
+ * host-facts probe). That probe runs BEFORE the launch, on the same chrome.exe: without this, a path Windows
+ * had poisoned failed it on every launch and spawnBrowser's recovery was never reached. Steps 1-3 of
+ * spawnBrowser; no one-off copy, which would leave a temp tree behind for every probe.
+ */
+export function spawnSyncBrowser(bin: string, args: string[], opts: SpawnSyncOptionsWithStringEncoding): SpawnSyncReturns<string> {
+  if (process.platform !== "win32") return spawnSync(bin, args, opts);
+  const binDir = dirname(bin);
+  const exeName = basename(bin);
+  const raced = (r: SpawnSyncReturns<string>) => !!r.error && isWinLaunchRace(r.error);
+
+  const liveExe = join(liveCopyDir(binDir), exeName);
+  if (existsSync(liveExe)) {
+    const r = spawnSync(liveExe, args, opts);
+    if (!raced(r)) return r;
+  }
+  const r = spawnSync(bin, args, opts);
+  if (!raced(r)) return r;
+  try {
+    return spawnSync(buildLiveCopy(binDir, exeName), args, opts);
+  } catch {
+    return r; // the copy failed (disk full, locked files): report the first failure
+  }
 }
