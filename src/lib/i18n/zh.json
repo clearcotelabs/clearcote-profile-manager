@@ -1689,7 +1689,7 @@
   "On, checkers that hash a solid shape (such as PixelScan) report masking. Needs r57; older engines always noise flat areas.": "开启后，对纯色形状计算哈希的检测器（如 PixelScan）会报告遮蔽。需要 r57；旧引擎总是给平坦区域加噪。",
   "From r57 the noise lands only on edges, text and gradients, so a solid shape reads back exactly as on real hardware, and profiles still get different canvas hashes. Turn this on to get the r56 readback back, for example to keep a profile's canvas hash from before r57.": "从 r57 起，噪声只落在边缘、文字和渐变上，所以纯色形状读出来与真实硬件完全相同，而各个配置文件的 canvas 哈希仍然不同。开启此项可恢复 r56 的读出方式，例如保留某个配置文件在 r57 之前的 canvas 哈希。",
   "WebGL partial-read margin": "WebGL 部分读取的边距",
-  "A partial WebGL read is noised exactly like a full read of the same canvas, at the cost of one extra GPU read. On by default.": "WebGL 部分读取获得的噪声与同一 canvas 的完整读取完全相同，代价是多一次 GPU 读取。默认开启。",
-  "Off saves that read, but 1–2 edge pixels of a partial read can then differ from a full read. Needs r57; no effect with flat-area noise on.": "关闭可省去这次读取，但部分读取边缘的 1–2 个像素可能与完整读取不同。需要 r57；开启平坦区域加噪时无效。",
-  "Two reads of one canvas that disagree prove the pixels were changed. Keep this on unless a site times partial WebGL reads.": "同一 canvas 的两次读取不一致，就证明像素被改动过。除非某个网站在计时 WebGL 部分读取，否则请保持开启。"
+  "A partial WebGL read is noised exactly like a full read of the same canvas. It is read 1 pixel larger on each side in place of the page's own read, so it stays one GPU read; only a read that crosses the canvas edge takes a second one. On by default.": "WebGL 部分读取会加上与同一 canvas 完整读取完全相同的噪声。它代替页面自己的读取，在四周各多读 1 像素，因此仍然只是一次 GPU 读取；只有跨过 canvas 边缘的读取才需要第二次。默认开启。",
+  "Off reads only the area the page asked for, but 1–2 edge pixels of a partial read can then differ from a full read. Needs r57; no effect with flat-area noise on.": "关闭后只读取页面请求的区域，但部分读取边缘的 1–2 个像素可能与完整读取不一致。需要 r57；开启平坦区域噪声时无效。",
+  "Two reads of one canvas that disagree prove the pixels were changed. Keep this on; no site is known to time partial WebGL reads.": "同一 canvas 的两次读取不一致，就证明像素被改过。请保持开启；目前没有已知网站会测量 WebGL 部分读取的耗时。"
 }
