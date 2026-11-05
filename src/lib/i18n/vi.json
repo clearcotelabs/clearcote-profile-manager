@@ -1691,5 +1691,9 @@
   "WebGL partial-read margin": "Lề khi đọc WebGL một phần",
   "A partial WebGL read is noised exactly like a full read of the same canvas, at the cost of one extra GPU read. On by default.": "Một lần đọc WebGL một phần được thêm nhiễu đúng như lần đọc toàn bộ cùng canvas, đổi lại thêm một lần đọc GPU. Mặc định bật.",
   "Off saves that read, but 1–2 edge pixels of a partial read can then differ from a full read. Needs r57; no effect with flat-area noise on.": "Tắt sẽ bỏ lần đọc đó, nhưng 1–2 điểm ảnh ở cạnh của lần đọc một phần có thể khác lần đọc toàn bộ. Cần r57; không có tác dụng khi bật nhiễu vùng phẳng.",
-  "Two reads of one canvas that disagree prove the pixels were changed. Keep this on unless a site times partial WebGL reads.": "Hai lần đọc cùng một canvas mà không khớp chứng tỏ điểm ảnh đã bị thay đổi. Hãy để bật, trừ khi một trang đo thời gian các lần đọc WebGL một phần."
+  "Two reads of one canvas that disagree prove the pixels were changed. Keep this on unless a site times partial WebGL reads.": "Hai lần đọc cùng một canvas mà không khớp chứng tỏ điểm ảnh đã bị thay đổi. Hãy để bật, trừ khi một trang đo thời gian các lần đọc WebGL một phần.",
+  "Your computer's clock is off": "Đồng hồ máy tính của bạn bị sai",
+  "It runs at least {duration} behind, so the browser refuses the licence, whichever key you use.": "Đồng hồ chậm ít nhất {duration}, nên trình duyệt từ chối giấy phép, dù bạn dùng khóa nào.",
+  "It runs ahead of the real time, so the browser refuses the licence, whichever key you use.": "Đồng hồ chạy nhanh hơn giờ thực, nên trình duyệt từ chối giấy phép, dù bạn dùng khóa nào.",
+  "Turn on “Set time automatically” in your system's date and time settings (on Windows, then click “Sync now”), and launch again.": "Bật “Đặt giờ tự động” trong cài đặt ngày giờ của hệ thống (trên Windows, sau đó bấm “Đồng bộ ngay”) rồi khởi chạy lại."
 }

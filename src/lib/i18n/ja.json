@@ -1691,5 +1691,9 @@
   "WebGL partial-read margin": "WebGL 部分読み出しのマージン",
   "A partial WebGL read is noised exactly like a full read of the same canvas, at the cost of one extra GPU read. On by default.": "WebGL の部分読み出しに、同じ canvas の全体読み出しとまったく同じノイズを加えます。そのぶん GPU の読み出しが 1 回増えます。既定ではオン。",
   "Off saves that read, but 1–2 edge pixels of a partial read can then differ from a full read. Needs r57; no effect with flat-area noise on.": "オフにするとその読み出しを省けますが、部分読み出しの端の 1〜2 ピクセルが全体読み出しと食い違うことがあります。r57 が必要です。平坦な領域のノイズがオンのときは効果がありません。",
-  "Two reads of one canvas that disagree prove the pixels were changed. Keep this on unless a site times partial WebGL reads.": "同じ canvas の 2 回の読み出しが食い違うと、ピクセルが変更された証拠になります。サイトが WebGL の部分読み出しの時間を測っていない限り、オンのままにしてください。"
+  "Two reads of one canvas that disagree prove the pixels were changed. Keep this on unless a site times partial WebGL reads.": "同じ canvas の 2 回の読み出しが食い違うと、ピクセルが変更された証拠になります。サイトが WebGL の部分読み出しの時間を測っていない限り、オンのままにしてください。",
+  "Your computer's clock is off": "パソコンの時計がずれています",
+  "It runs at least {duration} behind, so the browser refuses the licence, whichever key you use.": "時計が少なくとも {duration} 遅れているため、どのキーを使ってもブラウザーがライセンスを拒否します。",
+  "It runs ahead of the real time, so the browser refuses the licence, whichever key you use.": "時計が実際の時刻より進んでいるため、どのキーを使ってもブラウザーがライセンスを拒否します。",
+  "Turn on “Set time automatically” in your system's date and time settings (on Windows, then click “Sync now”), and launch again.": "システムの日付と時刻の設定で「時刻を自動的に設定する」をオンにし（Windows では続けて「今すぐ同期」をクリック）、もう一度起動してください。"
 }

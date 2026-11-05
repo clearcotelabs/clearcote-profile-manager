@@ -14,6 +14,7 @@
 //
 // Same contract as the SDKs (sdk/node/src/persona.ts, sdk/python/clearcote/_persona.py); the selector list mirrors
 // the engine's and the service's: a switch added to one must be added to the others.
+import { assertClockFor } from "./clockcheck"; // a clock far off: say so instead of "no valid license lease"
 import { spawnSyncBrowser } from "./winlaunch"; // the probe survives the Windows SxS/AV race like the launch
 import { createHash } from "node:crypto";
 import fs from "node:fs";
@@ -292,11 +293,14 @@ export interface PersonaLaunch {
  * launch environment. Otherwise the args come back unchanged and `env()` is the identity.
  */
 export async function preparePersonaLaunch(bin: string, args: readonly string[], lease: LeaseLike | null | undefined,
-  deps: { supports?: Probe; runner?: FactsRunner; fetch?: Fetcher; env?: Env } = {}): Promise<PersonaLaunch> {
+  deps: { supports?: Probe; runner?: FactsRunner; fetch?: Fetcher; env?: Env; now?: () => number } = {}): Promise<PersonaLaunch> {
   if (!lease?.token || !engineWantsPersonaToken(bin, deps.supports)) return { args: [...args], env: (b) => b };
+  // A clock far off makes the engine refuse the token whatever the key: say so before the probe fails on it.
+  assertClockFor(lease.token, "licence token", deps.now?.());
   const { sel, profileJson, args: out } = selectorFromArgs(args);
   const host = hostFacts(bin, out, lease.token, deps.runner, deps.env);
   const token = await personaTokenFor(lease, sel, host, profileJson, deps.fetch);
+  assertClockFor(token, "persona token", deps.now?.());
   return { args: out, env: (b) => injectPersonaToken(b ?? { ...process.env }, token) };
 }
 

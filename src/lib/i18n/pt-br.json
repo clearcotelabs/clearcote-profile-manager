@@ -1691,5 +1691,9 @@
   "WebGL partial-read margin": "Margem em leituras parciais de WebGL",
   "A partial WebGL read is noised exactly like a full read of the same canvas, at the cost of one extra GPU read. On by default.": "Uma leitura parcial de WebGL recebe exatamente o mesmo ruído que uma leitura completa do mesmo canvas, ao custo de uma leitura extra da GPU. Ativado por padrão.",
   "Off saves that read, but 1–2 edge pixels of a partial read can then differ from a full read. Needs r57; no effect with flat-area noise on.": "Desativado economiza essa leitura, mas 1–2 pixels da borda de uma leitura parcial podem diferir de uma leitura completa. Requer r57; sem efeito com o ruído em áreas planas ativado.",
-  "Two reads of one canvas that disagree prove the pixels were changed. Keep this on unless a site times partial WebGL reads.": "Duas leituras do mesmo canvas que não batem provam que os pixels foram alterados. Mantenha ativado, a menos que um site cronometre leituras parciais de WebGL."
+  "Two reads of one canvas that disagree prove the pixels were changed. Keep this on unless a site times partial WebGL reads.": "Duas leituras do mesmo canvas que não batem provam que os pixels foram alterados. Mantenha ativado, a menos que um site cronometre leituras parciais de WebGL.",
+  "Your computer's clock is off": "O relógio do seu computador está errado",
+  "It runs at least {duration} behind, so the browser refuses the licence, whichever key you use.": "Ele está pelo menos {duration} atrasado, então o navegador recusa a licença, seja qual for a chave usada.",
+  "It runs ahead of the real time, so the browser refuses the licence, whichever key you use.": "Ele está adiantado em relação à hora real, então o navegador recusa a licença, seja qual for a chave usada.",
+  "Turn on “Set time automatically” in your system's date and time settings (on Windows, then click “Sync now”), and launch again.": "Ative “Definir horário automaticamente” nas configurações de data e hora do sistema (no Windows, clique depois em “Sincronizar agora”) e inicie de novo."
 }

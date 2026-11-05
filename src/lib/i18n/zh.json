@@ -1691,5 +1691,9 @@
   "WebGL partial-read margin": "WebGL 部分读取的边距",
   "A partial WebGL read is noised exactly like a full read of the same canvas, at the cost of one extra GPU read. On by default.": "WebGL 部分读取获得的噪声与同一 canvas 的完整读取完全相同，代价是多一次 GPU 读取。默认开启。",
   "Off saves that read, but 1–2 edge pixels of a partial read can then differ from a full read. Needs r57; no effect with flat-area noise on.": "关闭可省去这次读取，但部分读取边缘的 1–2 个像素可能与完整读取不同。需要 r57；开启平坦区域加噪时无效。",
-  "Two reads of one canvas that disagree prove the pixels were changed. Keep this on unless a site times partial WebGL reads.": "同一 canvas 的两次读取不一致，就证明像素被改动过。除非某个网站在计时 WebGL 部分读取，否则请保持开启。"
+  "Two reads of one canvas that disagree prove the pixels were changed. Keep this on unless a site times partial WebGL reads.": "同一 canvas 的两次读取不一致，就证明像素被改动过。除非某个网站在计时 WebGL 部分读取，否则请保持开启。",
+  "Your computer's clock is off": "你的电脑时钟不准",
+  "It runs at least {duration} behind, so the browser refuses the licence, whichever key you use.": "时钟至少慢了 {duration}，因此无论使用哪个密钥，浏览器都会拒绝许可证。",
+  "It runs ahead of the real time, so the browser refuses the licence, whichever key you use.": "时钟比实际时间快，因此无论使用哪个密钥，浏览器都会拒绝许可证。",
+  "Turn on “Set time automatically” in your system's date and time settings (on Windows, then click “Sync now”), and launch again.": "在系统的日期和时间设置中打开“自动设置时间”（Windows 上随后点击“立即同步”），然后重新启动。"
 }

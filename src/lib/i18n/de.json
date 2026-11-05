@@ -1691,5 +1691,9 @@
   "WebGL partial-read margin": "Rand beim teilweisen WebGL-Auslesen",
   "A partial WebGL read is noised exactly like a full read of the same canvas, at the cost of one extra GPU read. On by default.": "Ein teilweises WebGL-Auslesen wird genau wie ein vollständiges Auslesen derselben Canvas verrauscht, auf Kosten eines zusätzlichen GPU-Auslesens. Standardmäßig an.",
   "Off saves that read, but 1–2 edge pixels of a partial read can then differ from a full read. Needs r57; no effect with flat-area noise on.": "Aus spart dieses Auslesen, aber 1–2 Randpixel eines teilweisen Auslesens können dann von einem vollständigen abweichen. Benötigt r57; keine Wirkung, wenn das Verrauschen flacher Flächen an ist.",
-  "Two reads of one canvas that disagree prove the pixels were changed. Keep this on unless a site times partial WebGL reads.": "Zwei Auslesungen derselben Canvas, die sich widersprechen, beweisen, dass die Pixel verändert wurden. Lass dies an, außer eine Seite misst die Zeit teilweiser WebGL-Auslesungen."
+  "Two reads of one canvas that disagree prove the pixels were changed. Keep this on unless a site times partial WebGL reads.": "Zwei Auslesungen derselben Canvas, die sich widersprechen, beweisen, dass die Pixel verändert wurden. Lass dies an, außer eine Seite misst die Zeit teilweiser WebGL-Auslesungen.",
+  "Your computer's clock is off": "Die Uhr deines Computers geht falsch",
+  "It runs at least {duration} behind, so the browser refuses the licence, whichever key you use.": "Sie geht mindestens {duration} nach, deshalb lehnt der Browser die Lizenz ab, egal welchen Schlüssel du verwendest.",
+  "It runs ahead of the real time, so the browser refuses the licence, whichever key you use.": "Sie geht vor, deshalb lehnt der Browser die Lizenz ab, egal welchen Schlüssel du verwendest.",
+  "Turn on “Set time automatically” in your system's date and time settings (on Windows, then click “Sync now”), and launch again.": "Schalte in den Datums- und Uhrzeiteinstellungen deines Systems „Uhrzeit automatisch festlegen“ ein (unter Windows danach auf „Jetzt synchronisieren“ klicken) und starte erneut."
 }

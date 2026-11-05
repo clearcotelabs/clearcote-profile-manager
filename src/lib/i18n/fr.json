@@ -1691,5 +1691,9 @@
   "WebGL partial-read margin": "Marge des lectures WebGL partielles",
   "A partial WebGL read is noised exactly like a full read of the same canvas, at the cost of one extra GPU read. On by default.": "Une lecture WebGL partielle reçoit exactement le même bruit qu'une lecture complète du même canvas, au prix d'une lecture GPU supplémentaire. Activé par défaut.",
   "Off saves that read, but 1–2 edge pixels of a partial read can then differ from a full read. Needs r57; no effect with flat-area noise on.": "Désactivé, cette lecture est évitée, mais 1 à 2 pixels du bord d'une lecture partielle peuvent alors différer d'une lecture complète. Nécessite r57 ; sans effet si le bruit sur les zones unies est activé.",
-  "Two reads of one canvas that disagree prove the pixels were changed. Keep this on unless a site times partial WebGL reads.": "Deux lectures d'un même canvas qui ne concordent pas prouvent que les pixels ont été modifiés. Laissez-le activé, sauf si un site chronomètre les lectures WebGL partielles."
+  "Two reads of one canvas that disagree prove the pixels were changed. Keep this on unless a site times partial WebGL reads.": "Deux lectures d'un même canvas qui ne concordent pas prouvent que les pixels ont été modifiés. Laissez-le activé, sauf si un site chronomètre les lectures WebGL partielles.",
+  "Your computer's clock is off": "L’horloge de votre ordinateur n’est pas à l’heure",
+  "It runs at least {duration} behind, so the browser refuses the licence, whichever key you use.": "Elle retarde d’au moins {duration}, donc le navigateur refuse la licence, quelle que soit la clé utilisée.",
+  "It runs ahead of the real time, so the browser refuses the licence, whichever key you use.": "Elle avance par rapport à l’heure réelle, donc le navigateur refuse la licence, quelle que soit la clé utilisée.",
+  "Turn on “Set time automatically” in your system's date and time settings (on Windows, then click “Sync now”), and launch again.": "Activez « Régler l’heure automatiquement » dans les paramètres de date et d’heure du système (sous Windows, cliquez ensuite sur « Synchroniser maintenant »), puis relancez."
 }

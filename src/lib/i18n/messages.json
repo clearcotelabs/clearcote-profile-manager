@@ -1876,6 +1876,12 @@
   "It may have been revoked, or copied incompletely. Check it in Settings → Cloud.": [
     "src/lib/launchError.ts"
   ],
+  "It runs ahead of the real time, so the browser refuses the licence, whichever key you use.": [
+    "src/lib/launchError.ts"
+  ],
+  "It runs at least {duration} behind, so the browser refuses the licence, whichever key you use.": [
+    "src/lib/launchError.ts"
+  ],
   "It used {bytes} and cost {cost}.": [
     "src/components/CloudViewer.tsx",
     "src/lib/launchError.ts"
@@ -4177,6 +4183,9 @@
   "Turn on geoip to fill it from the proxy's exit region at launch, or set a geolocation by hand.": [
     "src/lib/coherence.ts"
   ],
+  "Turn on “Set time automatically” in your system's date and time settings (on Windows, then click “Sync now”), and launch again.": [
+    "src/lib/launchError.ts"
+  ],
   "Turning off “Spoof GPU strings” is redundant here — “use real GPU” already reports the real vendor and renderer, along with everything else.": [
     "src/lib/coherence.ts"
   ],
@@ -4587,6 +4596,9 @@
     "src/components/SettingsModal.tsx"
   ],
   "Your cloud balance is too low": [
+    "src/lib/launchError.ts"
+  ],
+  "Your computer's clock is off": [
     "src/lib/launchError.ts"
   ],
   "Your licence isn't active": [

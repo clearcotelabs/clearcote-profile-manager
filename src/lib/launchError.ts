@@ -136,6 +136,20 @@ export function describeLaunchError(error: string | undefined, code?: string): L
       action: { kind: "retry" },
     });
   }
+  // electron/clockcheck.ts: the engine would refuse the token on this computer's clock (CR-2VFYCD).
+  const behind = /clock is at least (.+?) behind/i.exec(msg);
+  if (behind || /clock looks wrong/i.test(msg)) {
+    return n({
+      title: t("Your computer's clock is off"),
+      lines: [
+        behind
+          ? t("It runs at least {duration} behind, so the browser refuses the licence, whichever key you use.", { duration: behind[1] })
+          : t("It runs ahead of the real time, so the browser refuses the licence, whichever key you use."),
+        t("Turn on “Set time automatically” in your system's date and time settings (on Windows, then click “Sync now”), and launch again."),
+      ],
+      action: { kind: "retry" },
+    });
+  }
   if (NETWORK.test(msg)) {
     return n({
       title: t("Couldn't reach Clearcote's servers"),

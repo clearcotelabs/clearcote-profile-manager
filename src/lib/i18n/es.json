@@ -1691,5 +1691,9 @@
   "WebGL partial-read margin": "Margen en lecturas parciales de WebGL",
   "A partial WebGL read is noised exactly like a full read of the same canvas, at the cost of one extra GPU read. On by default.": "Una lectura parcial de WebGL recibe exactamente el mismo ruido que una lectura completa del mismo canvas, a cambio de una lectura extra de la GPU. Activado por defecto.",
   "Off saves that read, but 1–2 edge pixels of a partial read can then differ from a full read. Needs r57; no effect with flat-area noise on.": "Desactivado ahorra esa lectura, pero 1–2 píxeles del borde de una lectura parcial pueden diferir de una lectura completa. Requiere r57; sin efecto con el ruido en zonas planas activado.",
-  "Two reads of one canvas that disagree prove the pixels were changed. Keep this on unless a site times partial WebGL reads.": "Dos lecturas del mismo canvas que no coinciden demuestran que los píxeles se modificaron. Déjalo activado salvo que un sitio mida el tiempo de las lecturas parciales de WebGL."
+  "Two reads of one canvas that disagree prove the pixels were changed. Keep this on unless a site times partial WebGL reads.": "Dos lecturas del mismo canvas que no coinciden demuestran que los píxeles se modificaron. Déjalo activado salvo que un sitio mida el tiempo de las lecturas parciales de WebGL.",
+  "Your computer's clock is off": "El reloj de tu ordenador no está en hora",
+  "It runs at least {duration} behind, so the browser refuses the licence, whichever key you use.": "Va al menos {duration} atrasado, así que el navegador rechaza la licencia, uses la clave que uses.",
+  "It runs ahead of the real time, so the browser refuses the licence, whichever key you use.": "Va adelantado respecto a la hora real, así que el navegador rechaza la licencia, uses la clave que uses.",
+  "Turn on “Set time automatically” in your system's date and time settings (on Windows, then click “Sync now”), and launch again.": "Activa «Establecer la hora automáticamente» en los ajustes de fecha y hora del sistema (en Windows, pulsa luego «Sincronizar ahora») y vuelve a iniciar."
 }
