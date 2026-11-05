@@ -5,6 +5,7 @@ import fs from "node:fs";
 import path from "node:path";
 import zlib from "node:zlib";
 import { PROFILES_DIR, FINGERPRINTS_DIR, ROOT, readSettings, writeSettings } from "./store";
+import { captureForEngine } from "./angledeviceid";
 import { markLaunched, recordGeo } from "./profiles";
 import { webrtcIpFollowsProxy } from "./proxyargs";
 import { Tail, type ExitFacts } from "./exitreason";
@@ -340,7 +341,8 @@ export function buildArgs(p: Profile, userDataDir: string): string[] {
     // command-line length limit, and the engine gunzips + parses it.
     encodeProfile: (ref) => {
       try {
-        return zlib.gzipSync(fs.readFileSync(fingerprintPath(ref)), { level: 9 }).toString("base64");
+        // An old capture's renderer lacks the device id Chromium 156 prints: add it (angledeviceid.ts).
+        return zlib.gzipSync(captureForEngine(fs.readFileSync(fingerprintPath(ref))), { level: 9 }).toString("base64");
       } catch {
         return null; // missing/unreadable profile — launch with just the seed
       }
