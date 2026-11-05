@@ -579,11 +579,11 @@ export const FIELDS: FieldDef[] = [
     defaultOn: true,
     onValue: true,
     offValue: false,
-    desc: tx("A partial WebGL read is noised exactly like a full read of the same canvas, at the cost of one extra GPU read. On by default."),
-    hint: tx("Off saves that read, but 1–2 edge pixels of a partial read can then differ from a full read. Needs r57; no effect with flat-area noise on."),
+    desc: tx("A partial WebGL read is noised exactly like a full read of the same canvas. It is read 1 pixel larger on each side in place of the page's own read, so it stays one GPU read; only a read that crosses the canvas edge takes a second one. On by default."),
+    hint: tx("Off reads only the area the page asked for, but 1–2 edge pixels of a partial read can then differ from a full read. Needs r57; no effect with flat-area noise on."),
     keywords: "--fingerprint-webgl-no-read-margin readPixels partial window farble",
     why:
-      tx("Two reads of one canvas that disagree prove the pixels were changed. Keep this on unless a site times partial WebGL reads."),
+      tx("Two reads of one canvas that disagree prove the pixels were changed. Keep this on; no site is known to time partial WebGL reads."),
   },
   {
     onValue: "hlsl",

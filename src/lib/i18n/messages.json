@@ -197,7 +197,7 @@
   "A key unlocks the licence-gated browser. It is only sent to the licence service, and only when a key is set.": [
     "src/components/SettingsModal.tsx"
   ],
-  "A partial WebGL read is noised exactly like a full read of the same canvas, at the cost of one extra GPU read. On by default.": [
+  "A partial WebGL read is noised exactly like a full read of the same canvas. It is read 1 pixel larger on each side in place of the page's own read, so it stays one GPU read; only a read that crosses the canvas edge takes a second one. On by default.": [
     "src/lib/fields.ts"
   ],
   "A portable profile needs Clearcote {need} (r14+); build {major} ignores it, so cookies stay machine-bound.": [
@@ -2516,7 +2516,7 @@
   "Off by default: third-party cookies are allowed, as in Chrome.": [
     "src/lib/fields.ts"
   ],
-  "Off saves that read, but 1–2 edge pixels of a partial read can then differ from a full read. Needs r57; no effect with flat-area noise on.": [
+  "Off reads only the area the page asked for, but 1–2 edge pixels of a partial read can then differ from a full read. Needs r57; no effect with flat-area noise on.": [
     "src/lib/fields.ts"
   ],
   "Old graphics": [
@@ -4195,7 +4195,7 @@
   "Turning this off leaves WebGL and audio noised — narrower than switching farbling off entirely. Needs 150 r12 or newer.": [
     "src/lib/fields.ts"
   ],
-  "Two reads of one canvas that disagree prove the pixels were changed. Keep this on unless a site times partial WebGL reads.": [
+  "Two reads of one canvas that disagree prove the pixels were changed. Keep this on; no site is known to time partial WebGL reads.": [
     "src/lib/fields.ts"
   ],
   "Type": [
