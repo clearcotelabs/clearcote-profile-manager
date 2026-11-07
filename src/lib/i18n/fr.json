@@ -716,7 +716,7 @@
   "Paste your key": "Collez votre clé",
   "Path": "Chemin",
   "Per-site farble on 2D canvas readback. On by default.": "Farble par site sur les lectures du canvas 2D. Activé par défaut.",
-  "Per-site noise on canvas, WebGL, audio and client rects. On by default.": "Bruit par site sur canvas, WebGL, audio et client rects. Activé par défaut.",
+  "Per-site noise on canvas and WebGL. Audio and client rects are never noised. On by default.": "Bruit par site sur canvas et WebGL. L'audio et les client rects ne sont jamais bruités. Activé par défaut.",
   "Persona": "Persona",
   "Persona default": "Valeur de la persona",
   "Persona default (engine chooses)": "Valeur de la persona (choisie par le moteur)",

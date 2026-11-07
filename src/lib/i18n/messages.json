@@ -2694,7 +2694,7 @@
   "Per-site farble on 2D canvas readback. On by default.": [
     "src/lib/fields.ts"
   ],
-  "Per-site noise on canvas, WebGL, audio and client rects. On by default.": [
+  "Per-site noise on canvas and WebGL. Audio and client rects are never noised. On by default.": [
     "src/lib/fields.ts"
   ],
   "Persona": [

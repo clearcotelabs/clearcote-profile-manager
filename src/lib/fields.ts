@@ -515,9 +515,9 @@ export const FIELDS: FieldDef[] = [
     label: tx("Farbling noise"),
     type: "check",
     defaultOn: true,
-    desc: tx("Per-site noise on canvas, WebGL, audio and client rects. On by default."),
+    desc: tx("Per-site noise on canvas and WebGL. Audio and client rects are never noised. On by default."),
     hint: tx("Turn it off for natural, unperturbed surfaces — best paired with a captured profile."),
-    keywords: "--disable-fingerprint-noise farble canvas audio",
+    keywords: "--disable-fingerprint-noise farble canvas webgl",
     why: tx("Identity spoofs (UA, screen, GPU, persona) stay on either way; this only affects the noised surfaces."),
   },
   {

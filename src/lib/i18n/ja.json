@@ -716,7 +716,7 @@
   "Paste your key": "キーを貼り付け",
   "Path": "パス",
   "Per-site farble on 2D canvas readback. On by default.": "2D Canvas の読み出しにサイトごとの farble を加えます。デフォルトはオンです。",
-  "Per-site noise on canvas, WebGL, audio and client rects. On by default.": "Canvas、WebGL、オーディオ、client rects にサイトごとのノイズを加えます。デフォルトはオンです。",
+  "Per-site noise on canvas and WebGL. Audio and client rects are never noised. On by default.": "Canvas と WebGL にサイトごとのノイズを加えます。オーディオと client rects にはノイズを加えません。デフォルトはオンです。",
   "Persona": "ペルソナ",
   "Persona default": "ペルソナのデフォルト",
   "Persona default (engine chooses)": "ペルソナのデフォルト（エンジンが選択）",

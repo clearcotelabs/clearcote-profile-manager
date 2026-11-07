@@ -716,7 +716,7 @@
   "Paste your key": "粘贴你的密钥",
   "Path": "路径",
   "Per-site farble on 2D canvas readback. On by default.": "对 2D canvas 回读进行按站点的 farble。默认开启。",
-  "Per-site noise on canvas, WebGL, audio and client rects. On by default.": "对 canvas、WebGL、音频和 client rects 进行按站点的噪声处理。默认开启。",
+  "Per-site noise on canvas and WebGL. Audio and client rects are never noised. On by default.": "对 canvas 和 WebGL 进行按站点的噪声处理。音频和 client rects 从不加噪声。默认开启。",
   "Persona": "身份画像",
   "Persona default": "身份画像默认值",
   "Persona default (engine chooses)": "身份画像默认值（由引擎选择）",

@@ -716,7 +716,7 @@
   "Paste your key": "Dán khóa của bạn",
   "Path": "Đường dẫn",
   "Per-site farble on 2D canvas readback. On by default.": "Farble theo từng trang trên kết quả đọc lại canvas 2D. Bật theo mặc định.",
-  "Per-site noise on canvas, WebGL, audio and client rects. On by default.": "Nhiễu theo từng trang trên canvas, WebGL, audio và client rect. Bật theo mặc định.",
+  "Per-site noise on canvas and WebGL. Audio and client rects are never noised. On by default.": "Nhiễu theo từng trang trên canvas và WebGL. Audio và client rect không bao giờ bị thêm nhiễu. Bật theo mặc định.",
   "Persona": "Persona",
   "Persona default": "Mặc định của persona",
   "Persona default (engine chooses)": "Mặc định của persona (engine chọn)",

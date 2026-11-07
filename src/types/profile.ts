@@ -129,7 +129,7 @@ export interface Profile {
   /** --disable-gpu-fingerprint: report the host's REAL GPU/WebGL instead of a spoofed one. The
    *  most coherent option when the persona/profile GPU can't match the host's actual render. */
   disableGpuFingerprint?: boolean;
-  /** Per-eTLD+1 farbling noise (canvas/WebGL/audio/client-rects). Default ON. Set false to emit
+  /** Per-eTLD+1 farbling noise (canvas + WebGL; audio and client rects never get noise). Default ON. Set false to emit
    *  --disable-fingerprint-noise — natural, unperturbed surfaces that read as untampered to strict
    *  ML detectors (pair with a captured profile). Identity spoofs (UA/screen/GPU/persona) stay on. */
   fingerprintNoise?: boolean;

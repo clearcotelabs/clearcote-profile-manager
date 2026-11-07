@@ -716,7 +716,7 @@
   "Paste your key": "Schlüssel einfügen",
   "Path": "Pfad",
   "Per-site farble on 2D canvas readback. On by default.": "Farbling pro Website beim Auslesen von 2D-Canvas. Standardmäßig an.",
-  "Per-site noise on canvas, WebGL, audio and client rects. On by default.": "Rauschen pro Website auf Canvas, WebGL, Audio und Client-Rects. Standardmäßig an.",
+  "Per-site noise on canvas and WebGL. Audio and client rects are never noised. On by default.": "Rauschen pro Website auf Canvas und WebGL. Audio und Client-Rects werden nie verrauscht. Standardmäßig an.",
   "Persona": "Persona",
   "Persona default": "Persona-Standard",
   "Persona default (engine chooses)": "Persona-Standard (Engine wählt)",
