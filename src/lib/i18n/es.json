@@ -1695,5 +1695,9 @@
   "Your computer's clock is off": "El reloj de tu ordenador no está en hora",
   "It runs at least {duration} behind, so the browser refuses the licence, whichever key you use.": "Va al menos {duration} atrasado, así que el navegador rechaza la licencia, uses la clave que uses.",
   "It runs ahead of the real time, so the browser refuses the licence, whichever key you use.": "Va adelantado respecto a la hora real, así que el navegador rechaza la licencia, uses la clave que uses.",
-  "Turn on “Set time automatically” in your system's date and time settings (on Windows, then click “Sync now”), and launch again.": "Activa «Establecer la hora automáticamente» en los ajustes de fecha y hora del sistema (en Windows, pulsa luego «Sincronizar ahora») y vuelve a iniciar."
+  "Turn on “Set time automatically” in your system's date and time settings (on Windows, then click “Sync now”), and launch again.": "Activa «Establecer la hora automáticamente» en los ajustes de fecha y hora del sistema (en Windows, pulsa luego «Sincronizar ahora») y vuelve a iniciar.",
+  "Noise per profile": "Ruido por perfil",
+  "One noise result for this profile on every site, instead of a different one per site. Needs engine r60.": "Un único resultado de ruido para este perfil en todos los sitios, en lugar de uno distinto por sitio. Requiere el motor r60.",
+  "No effect with farbling noise off. An older engine ignores it and keeps per-site noise; the launch says so.": "Sin efecto con el ruido de farbling desactivado. Un motor anterior lo ignora y mantiene el ruido por sitio; el inicio lo indica.",
+  "By default every site sees its own canvas and WebGL noise, so two sites cannot match this profile by its canvas hash. On, every site sees the same canvas and WebGL result for this profile, the way one real computer gives the same result everywhere.": "Por defecto cada sitio ve su propio ruido de canvas y WebGL, así que dos sitios no pueden relacionar este perfil por su hash de canvas. Activado, todos los sitios ven el mismo resultado de canvas y WebGL para este perfil, como un ordenador real da el mismo resultado en todas partes."
 }

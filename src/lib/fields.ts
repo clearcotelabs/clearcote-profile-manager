@@ -585,6 +585,18 @@ export const FIELDS: FieldDef[] = [
     why:
       tx("Two reads of one canvas that disagree prove the pixels were changed. Keep this on; no site is known to time partial WebGL reads."),
   },
+  // r60: where the noise seed comes from — one per site (the default) or one per profile.
+  {
+    key: "noisePerProfile",
+    cat: "rendering",
+    label: tx("Noise per profile"),
+    type: "check",
+    desc: tx("One noise result for this profile on every site, instead of a different one per site. Needs engine r60."),
+    hint: tx("No effect with farbling noise off. An older engine ignores it and keeps per-site noise; the launch says so."),
+    keywords: "--fingerprint-noise-per-profile farble canvas webgl seed site etld+1 r60",
+    why:
+      tx("By default every site sees its own canvas and WebGL noise, so two sites cannot match this profile by its canvas hash. On, every site sees the same canvas and WebGL result for this profile, the way one real computer gives the same result everywhere."),
+  },
   {
     onValue: "hlsl",
     key: "shaderDialect",

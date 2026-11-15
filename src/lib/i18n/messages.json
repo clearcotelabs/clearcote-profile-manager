@@ -562,6 +562,9 @@
   "Built-in graphics, like this computer": [
     "src/lib/deviceMatch.ts"
   ],
+  "By default every site sees its own canvas and WebGL noise, so two sites cannot match this profile by its canvas hash. On, every site sees the same canvas and WebGL result for this profile, the way one real computer gives the same result everywhere.": [
+    "src/lib/fields.ts"
+  ],
   "CPU cores": [
     "src/lib/fields.ts"
   ],
@@ -2364,6 +2367,9 @@
   "No effect on a Windows host. Needs build 151.": [
     "src/lib/fields.ts"
   ],
+  "No effect with farbling noise off. An older engine ignores it and keeps per-site noise; the launch says so.": [
+    "src/lib/fields.ts"
+  ],
   "No example matches “{q}”.": [
     "src/components/TaskExamples.tsx"
   ],
@@ -2445,6 +2451,9 @@
     "src/components/TemplateDialogs.tsx"
   ],
   "Noise flat areas (r56 style)": [
+    "src/lib/fields.ts"
+  ],
+  "Noise per profile": [
     "src/lib/fields.ts"
   ],
   "None — default settings": [
@@ -2554,6 +2563,9 @@
   ],
   "One flag per line. Appended verbatim, after everything else.": [
     "src/components/ProfileEditor.tsx"
+  ],
+  "One noise result for this profile on every site, instead of a different one per site. Needs engine r60.": [
+    "src/lib/fields.ts"
   ],
   "One profile per proxy": [
     "app/page.tsx"

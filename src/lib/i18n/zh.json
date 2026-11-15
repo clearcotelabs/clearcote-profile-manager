@@ -1695,5 +1695,9 @@
   "Your computer's clock is off": "你的电脑时钟不准",
   "It runs at least {duration} behind, so the browser refuses the licence, whichever key you use.": "时钟至少慢了 {duration}，因此无论使用哪个密钥，浏览器都会拒绝许可证。",
   "It runs ahead of the real time, so the browser refuses the licence, whichever key you use.": "时钟比实际时间快，因此无论使用哪个密钥，浏览器都会拒绝许可证。",
-  "Turn on “Set time automatically” in your system's date and time settings (on Windows, then click “Sync now”), and launch again.": "在系统的日期和时间设置中打开“自动设置时间”（Windows 上随后点击“立即同步”），然后重新启动。"
+  "Turn on “Set time automatically” in your system's date and time settings (on Windows, then click “Sync now”), and launch again.": "在系统的日期和时间设置中打开“自动设置时间”（Windows 上随后点击“立即同步”），然后重新启动。",
+  "Noise per profile": "按配置文件加噪",
+  "One noise result for this profile on every site, instead of a different one per site. Needs engine r60.": "此配置文件在所有站点上使用同一个噪声结果，而不是每个站点各不相同。需要 r60 引擎。",
+  "No effect with farbling noise off. An older engine ignores it and keeps per-site noise; the launch says so.": "Farbling 噪声关闭时无效。旧引擎会忽略此项并保持按站点加噪；启动时会提示。",
+  "By default every site sees its own canvas and WebGL noise, so two sites cannot match this profile by its canvas hash. On, every site sees the same canvas and WebGL result for this profile, the way one real computer gives the same result everywhere.": "默认情况下每个站点看到各自的 canvas 和 WebGL 噪声，因此两个站点无法通过 canvas 哈希关联此配置文件。开启后，所有站点看到此配置文件相同的 canvas 和 WebGL 结果，就像一台真实电脑在任何地方都给出相同结果。"
 }

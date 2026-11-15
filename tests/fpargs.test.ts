@@ -14,6 +14,9 @@ import {
   screenGuardWarning,
   type FpInput,
   NOISE_STYLE_SWITCHES,
+  NOISE_PER_PROFILE_SWITCH,
+  NOISE_PER_PROFILE_WARNING,
+  gateNoiseSwitches,
 } from "../electron/fpargs";
 
 const base: FpInput = { fingerprint: "seed-1" };
@@ -380,6 +383,30 @@ describe("narrow rendering switches", () => {
     expect(defaults).not.toContain("--fingerprint-noise-flat-areas");
     expect(defaults).not.toContain("--fingerprint-webgl-no-read-margin");
     expect(NOISE_STYLE_SWITCHES).toEqual(["fingerprint-noise-flat-areas", "fingerprint-webgl-no-read-margin"]);
+  });
+
+  it("r60 noisePerProfile:true emits --fingerprint-noise-per-profile; unset or false emits nothing", () => {
+    expect(args({ noisePerProfile: true })).toContain("--fingerprint-noise-per-profile");
+    expect(args({})).not.toContain("--fingerprint-noise-per-profile");
+    expect(args({ noisePerProfile: false })).not.toContain("--fingerprint-noise-per-profile");
+    expect(NOISE_PER_PROFILE_SWITCH).toBe("fingerprint-noise-per-profile");
+  });
+
+  it("gateNoiseSwitches: an engine without the switches drops r57 style quietly and noise per profile with a warning", () => {
+    const argv = ["--foo", "--fingerprint-noise-flat-areas", "--fingerprint-webgl-no-read-margin", "--fingerprint-noise-per-profile"];
+    const old = gateNoiseSwitches(argv, () => false);
+    expect(old.argv).toEqual(["--foo"]);
+    expect(old.warnings).toEqual([NOISE_PER_PROFILE_WARNING]);
+    expect(NOISE_PER_PROFILE_WARNING).toBe(
+      "Noise per profile needs engine r60 or newer; this engine ignores it, so it was not applied and the noise stays per site.",
+    );
+    // r57..r59: the style switches stay, noise per profile goes with the warning.
+    const r57 = gateNoiseSwitches(argv, (n) => n !== "fingerprint-noise-per-profile");
+    expect(r57.argv).toEqual(["--foo", "--fingerprint-noise-flat-areas", "--fingerprint-webgl-no-read-margin"]);
+    expect(r57.warnings).toHaveLength(1);
+    // r60 keeps everything, without a word; a launch that does not ask for it never warns.
+    expect(gateNoiseSwitches(argv, () => true)).toEqual({ argv, warnings: [] });
+    expect(gateNoiseSwitches(["--foo", "--fingerprint-noise-flat-areas"], () => false)).toEqual({ argv: ["--foo"], warnings: [] });
   });
 
   it("are independent of the broad switches", () => {

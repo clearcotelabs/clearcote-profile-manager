@@ -17,7 +17,7 @@ import { resolveLicenseKey, acquireLease, withRunToken, planFromToken, type Leas
 import { engineSupportsSwitch, preparePersonaLaunch } from "./persona";  // r51+: server-side personas (the signed persona token)
 import { proEnsureBinary, freeEnsureBinary } from "./proBinary";
 import { fetchCatalog, resolveVersion } from "./catalog";
-import { fingerprintArgs, macosKeychainArgs, mergeFeatureFlags, NOISE_STYLE_SWITCHES, proxyEgressArgs, QUIC_RELAY_SWITCH, startUrlArg, type FpInput } from "./fpargs";
+import { fingerprintArgs, gateNoiseSwitches, macosKeychainArgs, mergeFeatureFlags, proxyEgressArgs, QUIC_RELAY_SWITCH, startUrlArg, type FpInput } from "./fpargs";
 import { clearPending, injectCookies, readPending } from "./cookiejar";
 import { withShaderDialect, shaderDialectWarning } from "./shaderdialect";
 import { seedWidevine, widevineArgs, claimsChromeBrand } from "./widevine";
@@ -527,7 +527,10 @@ export async function launch(
     // One --enable-features and one --disable-features: Chromium keeps only the last of each.
     let argv = mergeFeatureFlags(args);
     // r57 noise style: dropped on an older engine, which already behaves the way they would ask for.
-    argv = argv.filter((a) => !(NOISE_STYLE_SWITCHES as readonly string[]).includes(a.slice(2)) || engineSupportsSwitch(bin, a.slice(2)));
+    // r60 noise per profile: dropped on an older engine too, but said, since it would stay per site.
+    const noiseGate = gateNoiseSwitches(argv, (name) => engineSupportsSwitch(bin, name));
+    argv = noiseGate.argv;
+    warnings.push(...noiseGate.warnings);
     // Extensions (electron/extensions.ts): the profile's, from the copies kept on this computer, in one
     // --load-extension. One that is missing or cannot be updated is said, never a refused launch.
     if (p.extensions?.length) {

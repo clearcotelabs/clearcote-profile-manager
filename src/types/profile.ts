@@ -148,6 +148,8 @@ export interface Profile {
   flatAreaNoise?: boolean;
   /** false = --fingerprint-webgl-no-read-margin (no extra margin read for a partial WebGL readPixels). */
   webglReadMargin?: boolean;
+  /** r60: true = --fingerprint-noise-per-profile (one canvas/WebGL noise seed per profile, not per site). */
+  noisePerProfile?: boolean;
   /** --fingerprint-storage-quota in MEGABYTES (navigator.storage.estimate().quota). A tiny value
    *  reads as incognito / a test machine; set a realistic on-disk value (e.g. 250000 ≈ 244 GB). */
   storageQuota?: number;

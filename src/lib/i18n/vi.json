@@ -1695,5 +1695,9 @@
   "Your computer's clock is off": "Đồng hồ máy tính của bạn bị sai",
   "It runs at least {duration} behind, so the browser refuses the licence, whichever key you use.": "Đồng hồ chậm ít nhất {duration}, nên trình duyệt từ chối giấy phép, dù bạn dùng khóa nào.",
   "It runs ahead of the real time, so the browser refuses the licence, whichever key you use.": "Đồng hồ chạy nhanh hơn giờ thực, nên trình duyệt từ chối giấy phép, dù bạn dùng khóa nào.",
-  "Turn on “Set time automatically” in your system's date and time settings (on Windows, then click “Sync now”), and launch again.": "Bật “Đặt giờ tự động” trong cài đặt ngày giờ của hệ thống (trên Windows, sau đó bấm “Đồng bộ ngay”) rồi khởi chạy lại."
+  "Turn on “Set time automatically” in your system's date and time settings (on Windows, then click “Sync now”), and launch again.": "Bật “Đặt giờ tự động” trong cài đặt ngày giờ của hệ thống (trên Windows, sau đó bấm “Đồng bộ ngay”) rồi khởi chạy lại.",
+  "Noise per profile": "Nhiễu theo hồ sơ",
+  "One noise result for this profile on every site, instead of a different one per site. Needs engine r60.": "Một kết quả nhiễu cho hồ sơ này trên mọi trang, thay vì mỗi trang một kết quả khác. Cần engine r60.",
+  "No effect with farbling noise off. An older engine ignores it and keeps per-site noise; the launch says so.": "Không có tác dụng khi nhiễu farbling tắt. Engine cũ hơn bỏ qua tùy chọn này và giữ nhiễu theo từng trang; khi khởi chạy sẽ có thông báo.",
+  "By default every site sees its own canvas and WebGL noise, so two sites cannot match this profile by its canvas hash. On, every site sees the same canvas and WebGL result for this profile, the way one real computer gives the same result everywhere.": "Theo mặc định mỗi trang thấy nhiễu canvas và WebGL riêng, nên hai trang không thể khớp hồ sơ này qua mã băm canvas. Khi bật, mọi trang thấy cùng một kết quả canvas và WebGL cho hồ sơ này, giống như một máy tính thật cho cùng một kết quả ở mọi nơi."
 }

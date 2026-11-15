@@ -281,6 +281,7 @@ export interface FpInput {
   canvasNoise?: boolean;
   flatAreaNoise?: boolean;
   webglReadMargin?: boolean;
+  noisePerProfile?: boolean;
   storageQuota?: number;
   canvasBridgeUrl?: string;
   canvasBridgeAuth?: string;
@@ -353,6 +354,30 @@ export const QUIC_RELAY_SWITCH = "disable-socks5-udp-quic";
 /** The r57 noise style switches. The launcher drops each one the engine does not carry: an engine
  *  before r57 already noises flat areas and has no read margin, so dropping them changes nothing. */
 export const NOISE_STYLE_SWITCHES = ["fingerprint-noise-flat-areas", "fingerprint-webgl-no-read-margin"] as const;
+/** r60: one canvas/WebGL noise seed per profile instead of per site. Dropped on an older engine like
+ *  the noise style switches, but WITH a warning: that engine would quietly keep per-site noise, the
+ *  opposite of what the profile asks for. */
+export const NOISE_PER_PROFILE_SWITCH = "fingerprint-noise-per-profile";
+export const NOISE_PER_PROFILE_WARNING =
+  "Noise per profile needs engine r60 or newer; this engine ignores it, so it was not applied and the noise stays per site.";
+
+/**
+ * Drop the version-dependent noise switches the engine that will run does not carry (`supports` is
+ * the engine probe). The r57 noise style switches go quietly; noise per profile goes with
+ * {@link NOISE_PER_PROFILE_WARNING}.
+ */
+export function gateNoiseSwitches(argv: string[], supports: (name: string) => boolean): { argv: string[]; warnings: string[] } {
+  const warnings: string[] = [];
+  const out = argv.filter((a) => {
+    const name = a.slice(2);
+    if ((NOISE_STYLE_SWITCHES as readonly string[]).includes(name)) return supports(name);
+    if (name !== NOISE_PER_PROFILE_SWITCH) return true;
+    if (supports(name)) return true;
+    warnings.push(NOISE_PER_PROFILE_WARNING);
+    return false;
+  });
+  return { argv: out, warnings };
+}
 
 /**
  * Switches that keep traffic from leaving AROUND a proxy, as the SDK sends them whenever one is set:
@@ -496,6 +521,10 @@ export function fingerprintArgs(input: FpInput, opts: FpArgsOptions = {}): strin
   // read of a partial WebGL readPixels. Gated on the engine in the launcher (NOISE_STYLE_SWITCHES).
   if (p.flatAreaNoise === true) args.push("--fingerprint-noise-flat-areas");
   if (p.webglReadMargin === false) args.push("--fingerprint-webgl-no-read-margin");
+  // r60, as the SDK's noisePerProfile: one canvas/WebGL noise seed per profile instead of per site
+  // (eTLD+1), so every site sees the same result. No effect with the noise off. Gated on the engine
+  // in the launcher, with a warning (gateNoiseSwitches).
+  if (p.noisePerProfile === true) args.push(`--${NOISE_PER_PROFILE_SWITCH}`);
 
   // Third-party cookies are allowed, as in stock Chrome, unless the profile blocks them. The engine
   // made allowing its own default in 154 r36; 152 r22 to r35 blocked by default (the de-Googled

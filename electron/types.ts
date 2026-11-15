@@ -82,6 +82,8 @@ export interface Profile {
   flatAreaNoise?: boolean;
   /** false = --fingerprint-webgl-no-read-margin (no extra margin read for a partial WebGL readPixels). */
   webglReadMargin?: boolean;
+  /** r60: true = --fingerprint-noise-per-profile (one canvas/WebGL noise seed per profile, not per site). */
+  noisePerProfile?: boolean;
   /** --fingerprint-storage-quota in MB (navigator.storage.estimate().quota). */
   storageQuota?: number;
   /** --canvas-bridge-url: forward canvas/WebGL to a remote real-GPU host (ws://host:port/path). */
