@@ -14,7 +14,7 @@ import { parseProxy, proxyProblem, startRelay, needsRelay, proxyArgs, socks5Auth
 import { geoCheck } from "./geo";
 import { pinUdpSession, relayProxyByIp, type UdpVerdict } from "./proxycheck";
 import { resolveLicenseKey, acquireLease, withRunToken, planFromToken, type LeaseSession } from "./license";
-import { engineSupportsSwitch, preparePersonaLaunch } from "./persona";  // r51+: server-side personas (the signed persona token)
+import { engineSupportsSwitch, healStaleHostVendor, preparePersonaLaunch, staleHostVendor } from "./persona";  // r51+: server-side personas (the signed persona token)
 import { proEnsureBinary, freeEnsureBinary } from "./proBinary";
 import { fetchCatalog, resolveVersion } from "./catalog";
 import { fingerprintArgs, gateNoiseSwitches, macosKeychainArgs, mergeFeatureFlags, proxyEgressArgs, QUIC_RELAY_SWITCH, startUrlArg, type FpInput } from "./fpargs";
@@ -135,6 +135,45 @@ const endpoints = new Map<string, string>();
 /** Profiles whose browser THIS app is stopping, so their exit is not reported as unexpected. */
 const stopping = new Set<string>();
 let quitting = false;
+/** Profiles whose browser the engine refused for a stale host GPU vendor, being launched once more (CR-ZQJ4SX). */
+const healing = new Map<string, Promise<LaunchResult>>();
+
+/**
+ * Launch `id` once more after the engine refused its persona as "generated for another host GPU vendor"
+ * (persona.healStaleHostVendor has already taken the vendor the engine named). The refused launch's licence slot
+ * is checked in first, so a one-browser plan has it free for the retry. Only when the retry cannot start is `ev`,
+ * the refused browser's exit, reported; a retry that starts and is refused again reports its own exit.
+ */
+function retryLaunch(id: string, lease: LeaseSession | null, relaunch: () => Promise<LaunchResult>, ev: ExitEvent): Promise<LaunchResult> {
+  const retry = (async (): Promise<LaunchResult> => {
+    await lease?.stop().catch(() => {});
+    if (quitting) return { ok: false, error: "The app is quitting." };
+    return relaunch();
+  })().catch((e): LaunchResult => ({ ok: false, error: String(e) }));
+  healing.set(id, retry);
+  void retry.then((r) => {
+    if (healing.get(id) === retry) healing.delete(id);
+    if (r.ok) return;
+    console.warn(`[persona] the launch once more for the GPU this machine renders on failed: ${r.error ?? "unknown error"}`);
+    if (!quitting) browserEvents.emit("exited", ev);
+  });
+  return retry;
+}
+
+/** A readable stream that has not ended yet (false for anything that cannot say). */
+function streamOpen(s: Readable | null | undefined): boolean {
+  return !!s && typeof s.readableEnded === "boolean" && !s.readableEnded && !s.destroyed;
+}
+
+/** Resolves when `s` ends or closes, or after `ms` at the latest. */
+function streamEnded(s: Readable, ms: number): Promise<void> {
+  return new Promise((resolve) => {
+    const t = setTimeout(resolve, ms);
+    const done = () => { clearTimeout(t); resolve(); };
+    s.once("end", done);
+    s.once("close", done);
+  });
+}
 
 /**
  * Events for the main window. "exited" fires when a browser stops without the app asking —
@@ -372,6 +411,23 @@ export async function launch(
   onDownload?: (ev: DownloadProgress) => void,
   opts: LaunchOptions = {},
 ): Promise<LaunchResult> {
+  if (running.has(p.id) || healing.has(p.id)) {
+    return { ok: false, error: "This profile is already running." };
+  }
+  return launchOnce(p, onDownload, opts, false);
+}
+
+/**
+ * The launch itself. `healed`: this is the one retry after the engine refused the persona as "generated for another
+ * host GPU vendor" (CR-ZQJ4SX; see the browser's exit handler below), so a second refusal is reported as it is.
+ */
+async function launchOnce(
+  p: Profile,
+  onDownload: ((ev: DownloadProgress) => void) | undefined,
+  opts: LaunchOptions,
+  healed: boolean,
+): Promise<LaunchResult> {
+  const asGiven = p; // a retry starts from the profile as it was handed in, not the one this launch enriched
   if (running.has(p.id)) {
     return { ok: false, error: "This profile is already running." };
   }
@@ -547,6 +603,7 @@ export async function launch(
     // launch owns: a supporting engine re-reads it and stops a running FREE browser once the token
     // stops advancing (revoked / checked in / over the limit), and refuses a free launch without it.
     let releaseTokenFile: (() => void) | undefined;
+    let personaArgs: string[] | null = null;
     if (lease) {
       const bound = lease.bindLaunch();
       releaseTokenFile = bound.release;
@@ -554,6 +611,7 @@ export async function launch(
       // r51+ engines need the signed persona token (persona.ts); older engines come back unchanged. The host-facts
       // probe gets this launch's env, token FILE included: the engine refuses a FREE token without the file, so a
       // probe given only CLEARCOTE_RUN_TOKEN died and every free launch failed before its persona was fetched (0.27.0).
+      personaArgs = argv; // before the persona step moves a captured profile off them: what a heal keys on
       const personaLaunch = await preparePersonaLaunch(bin, argv, lease, { env });
       argv = personaLaunch.args;
       env = personaLaunch.env(env);
@@ -579,6 +637,8 @@ export async function launch(
     runningBins.set(p.id, bin);
     markLaunched(p.id); // lastLaunchedAt only, on the profile as saved now — see profiles.ts
     if (lease) leases.set(p.id, lease);
+    let heal: Promise<LaunchResult> | undefined; // set when this browser was refused for a stale host GPU vendor
+    let deciding: Promise<void> | undefined; // set while its exit waits for the rest of stderr
     let cleaned = false;
     const cleanup = () => {
       if (cleaned) return;
@@ -597,16 +657,27 @@ export async function launch(
       const refusal = leases.get(p.id)?.refusal;
       const asked = stopping.has(p.id) || quitting;
       cleanup();
-      if (!asked) {
-        const ev: ExitEvent = {
-          id: p.id,
-          code,
-          signal,
-          stderrTail: tail.text(),
-          leaseRefusal: refusal,
-          ranForMs: Date.now() - startedAt,
-        };
+      if (asked) return;
+      const ranForMs = Date.now() - startedAt;
+      const report = () => {
+        const ev: ExitEvent = { id: p.id, code, signal, stderrTail: tail.text(), leaseRefusal: refusal, ranForMs };
+        // CR-ZQJ4SX: the engine refused the persona as "generated for another host GPU vendor" -- the GPU this
+        // machine renders on is not the one the persona was fetched for (a driver install, a Remote Desktop
+        // session). Take the vendor the engine named, fetch a persona for it and launch once more; only if that
+        // retry cannot start is this exit reported. A refusal of the retry itself is reported as it is.
+        if (canHeal && healStaleHostVendor(bin, personaArgs!, ev.stderrTail)) {
+          heal = retryLaunch(p.id, lease, () => launchOnce(asGiven, undefined, opts, true), ev);
+          return;
+        }
         browserEvents.emit("exited", ev);
+      };
+      // "exit" can come before the last of stderr has been read: where a heal is possible and the refusal is not in
+      // the tail yet, wait (briefly) for stderr to end before deciding.
+      const canHeal = !healed && !!personaArgs;
+      if (canHeal && !staleHostVendor(tail.text()) && streamOpen(child.stderr)) {
+        deciding = streamEnded(child.stderr!, 500).then(report);
+      } else {
+        report();
       }
     });
     child.on("error", cleanup);
@@ -656,6 +727,10 @@ export async function launch(
         warnings.push("The browser did not open its local automation port, so tasks cannot run in this window. Close it and launch it again.");
       }
     }
+    // The browser was refused for a stale host GPU vendor while this launch was still waiting on it (the first-tab
+    // hold, the automation port): what the caller needs is the retry's browser, its pid and endpoint.
+    await deciding;
+    if (heal) return await heal;
     return {
       ok: true,
       pid: child.pid,
@@ -679,6 +754,8 @@ export async function launch(
  * can launch another profile straight after on a one-browser plan.
  */
 export async function stop(id: string, opts: { timeoutMs?: number } = {}): Promise<StopOutcome> {
+  // A browser being launched once more for a stale host GPU vendor: stop the retry's browser once it is there.
+  await healing.get(id);
   const c = running.get(id);
   const lease = leases.get(id);
   if (!c) {
@@ -705,6 +782,7 @@ export function cdpEndpoint(id: string): string | undefined {
   return running.has(id) ? endpoints.get(id) : undefined;
 }
 
+/** Running browsers, and those being launched once more for a stale host GPU vendor (still "running" to the app). */
 export function listRunning(): string[] {
-  return [...running.keys()];
+  return [...new Set([...running.keys(), ...healing.keys()])];
 }
