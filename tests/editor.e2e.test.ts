@@ -250,6 +250,18 @@ describe.skipIf(!READY)("editor UI — the category rail in a real browser", () 
     await page.locator('[data-field="shaderDialect"] input[type=checkbox]').uncheck();
   }, 20000);
 
+  it("noise per profile is off on a new profile, and ticking it puts its switch in the preview", async () => {
+    await rail("Rendering").click();
+    await untilHeading(/^Rendering$/);
+    const box = page.locator('[data-field="noisePerProfile"] input[type=checkbox]');
+    expect(await box.isChecked(), "off by default").toBe(false);
+    expect(await textOf("pre")).not.toContain("--fingerprint-noise-per-profile");
+    await box.check();
+    await until(() => textOf("pre"), /--fingerprint-noise-per-profile/, "the switch in the preview");
+    await box.uncheck();
+    await until(() => textOf("pre"), /^(?![\s\S]*--fingerprint-noise-per-profile)/, "the switch gone from the preview");
+  }, 20000);
+
   it("Save is reachable without scrolling, and gated on the seed", async () => {
     const save = page.getByRole("button", { name: "Save profile" });
     expect(await save.isVisible()).toBe(true);

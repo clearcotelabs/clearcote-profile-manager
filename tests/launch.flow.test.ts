@@ -240,6 +240,49 @@ describe("launch() — bookkeeping on success", () => {
   });
 });
 
+describe("launch() — noise switches the engine may not have", () => {
+  // The launcher asks the binary itself (a switch name is a NUL-terminated literal in it), so the fake
+  // binary here is a file that holds exactly the names a given engine would.
+  const bin = path.join(ROOT, "fake-chrome.exe");
+  const engine = (...names: string[]) => fs.writeFileSync(bin, Buffer.from(`engine\0${names.join("\0")}\0end${"-".repeat(names.length)}`, "latin1"));
+  const NPP = "--fingerprint-noise-per-profile";
+  afterEach(() => fs.rmSync(bin, { force: true }));
+
+  it("r60 and later: noise per profile reaches the command line, without a warning", async () => {
+    engine("fingerprint-noise-flat-areas", "fingerprint-webgl-no-read-margin", "fingerprint-noise-per-profile");
+    leaseMock.mockResolvedValue(lease("pro"));
+    const r = await launcher.launch(profile("npp-r60", { noisePerProfile: true, widevine: false, brand: "Edge" }));
+    expect(r.ok).toBe(true);
+    expect(spawnMock.mock.calls[0][1] as string[]).toContain(NPP);
+    expect(r.warnings).toBeUndefined();
+  });
+
+  it("before r60: it is not sent, and the launch says the noise stays per site", async () => {
+    engine("fingerprint-noise-flat-areas", "fingerprint-webgl-no-read-margin"); // r57 to r59
+    leaseMock.mockResolvedValue(lease("pro"));
+    const r = await launcher.launch(profile("npp-r59", { noisePerProfile: true, flatAreaNoise: true, widevine: false, brand: "Edge" }));
+    expect(r.ok).toBe(true);
+    const args = spawnMock.mock.calls[0][1] as string[];
+    expect(args).not.toContain(NPP);
+    expect(args).toContain("--fingerprint-noise-flat-areas"); // the r57 switch this engine does have stays
+    expect(r.warnings).toEqual([
+      "Noise per profile needs engine r60 or newer; this engine ignores it, so it was not applied and the noise stays per site.",
+    ]);
+  });
+
+  it("off, the default: never sent and never warned about, on any engine", async () => {
+    leaseMock.mockResolvedValue(lease("pro"));
+    engine("fingerprint-noise-per-profile");
+    const on60 = await launcher.launch(profile("plain-r60", { widevine: false, brand: "Edge" }));
+    expect(spawnMock.mock.calls[0][1] as string[]).not.toContain(NPP);
+    expect(on60.warnings).toBeUndefined();
+    fs.rmSync(bin, { force: true }); // an engine with none of the names (or one that cannot be read)
+    const old = await launcher.launch(profile("plain-old", { noisePerProfile: false, widevine: false, brand: "Edge" }));
+    expect(spawnMock.mock.calls[1][1] as string[]).not.toContain(NPP);
+    expect(old.warnings).toBeUndefined();
+  });
+});
+
 describe("launch() — the browser's life after it starts", () => {
   const WATCHDOG = "[clearcote] licence: the run-token stopped refreshing (revoked, checked in, or over the concurrency limit); stopping.";
 

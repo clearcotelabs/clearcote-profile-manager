@@ -35,7 +35,9 @@ Four layers:
     `lastLaunchedAt`, and an import that never overwrites.
   - `launch.flow.test.ts` — `launch()` with the network, download and spawn stubbed: licence error
     codes reach the UI, an edit saved during a long first download survives the launch, and the
-    plan is learned from a real lease (not from an offline cached one).
+    plan is learned from a real lease (not from an offline cached one). Also the noise switches an
+    engine may not have: against a file holding exactly an engine's switch names, noise per profile
+    reaches the command line on r60, and before r60 is left out with a warning.
   - `launchTarget.test.ts` — what the header pill says (custom binary / plan · build / offline), the
     catalog cache and timeout, the settings merge that keeps the learned plan, and the
     update-check switch.
@@ -175,6 +177,19 @@ Two things worth recording, both measured rather than assumed:
   written and then removed: it would have flagged values the browser silently corrects.
 - **`gpuStringSpoof: false` is genuinely narrow.** It swaps the WebGL vendor/renderer for the real
   ones while cores, screen and timezone stay on the persona — verified side by side.
+
+## Noise per profile on a real engine (`noiseperprofile.e2e.test.ts`)
+
+Launches through the app's own launcher, headless (no window), and hashes one 2D canvas on
+example.com and example.org. With the setting off the two hashes differ and the switch is not on the
+browser's command line; with it on they are equal. Given an engine before r60 as well, it checks that
+the switch is not sent there, that the launch warns, and that the noise stays per site.
+Run: `CLEARCOTE_E2E=1 CLEARCOTE_BINARY=<r60+ chrome.exe> CLEARCOTE_BINARY_OLD=<older chrome.exe> npx vitest run tests/noiseperprofile.e2e.test.ts`
+(the key from `CLEARCOTE_LICENSE_KEY` or `~/.clearcote/license.key`).
+
+Measured 2026-11-19 on Windows, seed 4242: r61 off 1493462469 / -2056195475, on 179762513 on both
+sites; r59 with the setting on 1493462469 / -2056195475, no switch, one warning. The same numbers the
+SDK (0.70.0, `noisePerProfile`) gives for that seed on the same machine.
 
 ## Historical: the 149-era table
 

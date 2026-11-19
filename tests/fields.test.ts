@@ -244,6 +244,29 @@ describe("the Cloud section", () => {
   });
 });
 
+describe("Noise per profile is a choice, never a default", () => {
+  // Decided 2026-11-19: per-site noise stays the default. One noise per profile makes two sites able
+  // to match a profile by its canvas, so it is only ever on because someone ticked it.
+  it("a new profile does not have it, and the checkbox is off until ticked", async () => {
+    const { newProfile } = await import("../src/lib/newProfile");
+    const fresh = newProfile("seed", "2026-11-19T00:00:00Z") as unknown as Record<string, unknown>;
+    expect(fresh.noisePerProfile).toBeUndefined();
+    const f = fieldByKey("noisePerProfile")!;
+    expect(f).toMatchObject({ cat: "rendering", type: "check" });
+    expect(f.defaultOn).toBeUndefined();
+    expect(f.onValue).toBeUndefined(); // stores true when ticked, nothing when not
+    expect(isFieldSet({}, f)).toBe(false);
+    expect(isFieldSet({ noisePerProfile: false }, f)).toBe(false);
+    expect(isFieldSet({ noisePerProfile: true }, f)).toBe(true);
+  });
+
+  it("is found by its switch name and sits with the other noise settings", () => {
+    expect(searchFields("fingerprint-noise-per-profile").map((x) => x.key)).toContain("noisePerProfile");
+    const rendering = fieldsIn("rendering").map((x) => x.key);
+    expect(rendering.indexOf("noisePerProfile")).toBe(rendering.indexOf("webglReadMargin") + 1);
+  });
+});
+
 describe("Simple view: settings set outside the essentials", () => {
   it("counts what you chose, not what every new profile starts with", async () => {
     const { setOutsideEssentials, essentialFields, ESSENTIAL_KEYS } = await import("../src/lib/fields");

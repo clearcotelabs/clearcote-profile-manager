@@ -75,6 +75,11 @@ describe("profileToArgs — every setting maps to its switch", () => {
     expect(startsWith({}, "--disable-fingerprint-noise")).toBe(false);
     expect(startsWith({ fingerprintNoise: true }, "--disable-fingerprint-noise")).toBe(false);
   });
+  it("noisePerProfile=true → --fingerprint-noise-per-profile; unset or false emits nothing", () => {
+    expect(has({ noisePerProfile: true }, "--fingerprint-noise-per-profile")).toBe(true);
+    expect(startsWith({}, "--fingerprint-noise-per-profile")).toBe(false);
+    expect(startsWith({ noisePerProfile: false }, "--fingerprint-noise-per-profile")).toBe(false);
+  });
   it("canvasBridgeUrl → --canvas-bridge-url", () =>
     expect(has({ canvasBridgeUrl: "ws://h:8443/render" }, "--canvas-bridge-url=ws://h:8443/render")).toBe(true));
   it("canvasBridgeAuth → switch present, secret redacted in the preview", () => {
