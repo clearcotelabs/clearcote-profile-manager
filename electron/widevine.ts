@@ -22,6 +22,7 @@
 import { createHash } from "node:crypto";
 import { spawn } from "node:child_process";
 import { cpSync, existsSync, mkdirSync, mkdtempSync, readdirSync, writeFileSync, rmSync } from "node:fs";
+import { extractZipFile } from "./unzip";
 import { homedir, tmpdir } from "node:os";
 import path from "node:path";
 
@@ -146,8 +147,18 @@ export function crx3ToZip(buf: Buffer): Buffer {
 }
 
 /** Extract with the same System32 bsdtar the browser download uses (a bare `tar` on PATH can be an
- *  MSYS GNU tar that mangles C:\ paths and cannot read .zip). */
-export function extractZip(archive: string, dest: string, what = "the CDM"): Promise<void> {
+ *  MSYS GNU tar that mangles C:\ paths and cannot read .zip). macOS `tar` is bsdtar too. On Linux the
+ *  PATH `tar` is usually GNU tar, which cannot read .zip at all, so Linux uses the zlib reader in
+ *  ./unzip instead (`platform` is a parameter for the tests). */
+export function extractZip(archive: string, dest: string, what = "the CDM", platform: NodeJS.Platform = process.platform): Promise<void> {
+  if (platform === "linux") {
+    try {
+      extractZipFile(archive, dest);
+      return Promise.resolve();
+    } catch (e) {
+      return Promise.reject(new Error(`could not extract ${what}: ${String((e as Error)?.message || e)}`));
+    }
+  }
   const bin =
     process.platform === "win32"
       ? path.join(process.env.SystemRoot || process.env.windir || "C:\\Windows", "System32", "tar.exe")
