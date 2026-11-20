@@ -28,18 +28,29 @@ export interface GeoResult {
   error?: string;
 }
 
-// Minimal country → Accept-Language map (the common exit countries). Mirrors the
-// SDK's geoip idea; extend as needed. Falls back to en-US,en.
+// Country → Accept-Language, for the common exit countries. Falls back to en-US,en.
+//
+// Every list is the one genuine Chrome writes for that country's interface language on a fresh
+// profile (measured on Chrome 157, Windows, `--lang=<locale>`, navigator.languages). Chrome ships a
+// fixed list per interface language, so a list it never writes (fi-FI,fi,en or de-DE,de, which this
+// table used to hold) describes no real install. Regional variants share the base language's list:
+// Chrome has no de-AT, fr-CA, nl-BE or en-AU interface, so those installs read de-DE, fr-FR, nl-NL
+// and en-GB; Latin American Spanish is es-419; Hong Kong reads the zh-TW list.
+const EN_GB = "en-GB,en-US,en";
+const DE = "de-DE,de,en-US,en";
+const FR = "fr-FR,fr,en-US,en";
+const NL = "nl-NL,nl,en-US,en";
+const ES_419 = "es-419,es";
+const ZH_TW = "zh-TW,zh,en-US,en";
 const LANG_BY_CC: Record<string, string> = {
-  US: "en-US,en", GB: "en-GB,en", IE: "en-IE,en", CA: "en-CA,en,fr-CA",
-  AU: "en-AU,en", NZ: "en-NZ,en", DE: "de-DE,de", AT: "de-AT,de",
-  CH: "de-CH,de,fr-CH", FR: "fr-FR,fr", BE: "nl-BE,fr-BE,nl", NL: "nl-NL,nl,en",
-  ES: "es-ES,es", MX: "es-MX,es", AR: "es-AR,es", IT: "it-IT,it",
-  PT: "pt-PT,pt", BR: "pt-BR,pt", RU: "ru-RU,ru", UA: "uk-UA,uk,ru",
-  PL: "pl-PL,pl", SE: "sv-SE,sv,en", NO: "nb-NO,no,en", DK: "da-DK,da,en",
-  FI: "fi-FI,fi,en", JP: "ja-JP,ja", KR: "ko-KR,ko", CN: "zh-CN,zh",
-  TW: "zh-TW,zh", HK: "zh-HK,zh,en", IN: "en-IN,en,hi", SG: "en-SG,en",
-  TR: "tr-TR,tr", ID: "id-ID,id", TH: "th-TH,th", VN: "vi-VN,vi",
+  US: "en-US,en", GB: EN_GB, IE: EN_GB, CA: EN_GB, AU: EN_GB, NZ: EN_GB, IN: EN_GB, SG: EN_GB,
+  DE: DE, AT: DE, CH: DE, FR: FR, BE: NL, NL: NL,
+  ES: "es-ES,es", MX: ES_419, AR: ES_419, IT: "it-IT,it,en-US,en",
+  PT: "pt-PT,pt,en-US,en", BR: "pt-BR,pt,en-US,en", RU: "ru-RU,ru,en-US,en", UA: "uk-UA,uk,en-US,en",
+  PL: "pl-PL,pl,en-US,en", SE: "sv-SE,sv,en-US,en", NO: "nb-NO,nb,no,nn,en-US,en", DK: "da-DK,da,en-US,en",
+  FI: "fi-FI,fi,en-US,en", HR: "hr-HR,hr,en-US,en", JP: "ja,en-US,en", KR: "ko-KR,ko,en-US,en",
+  CN: "zh-CN,zh", TW: ZH_TW, HK: ZH_TW,
+  TR: "tr-TR,tr,en-US,en", ID: "id-ID,id,en-US,en", TH: "th-TH,th", VN: "vi-VN,vi,fr-FR,fr,en-US,en",
 };
 
 /** Accept-Language for a country code, defaulting to en-US,en. Exported for the launch path. */

@@ -21,7 +21,7 @@
 
 import { createHash } from "node:crypto";
 import { spawn } from "node:child_process";
-import { cpSync, existsSync, mkdirSync, mkdtempSync, writeFileSync, rmSync } from "node:fs";
+import { cpSync, existsSync, mkdirSync, mkdtempSync, readdirSync, writeFileSync, rmSync } from "node:fs";
 import { homedir, tmpdir } from "node:os";
 import path from "node:path";
 
@@ -214,6 +214,27 @@ export async function seedWidevine(userDataDir: string): Promise<string> {
     /* the hint file is how Linux registers the CDM; harmless if it cannot be written */
   }
   return target;
+}
+
+/**
+ * Take the CDM out of a profile again: the reverse of seedWidevine, for a profile whose Widevine box
+ * is not ticked. The engine registers whatever sits under <userDataDir>/WidevineCdm at startup, with
+ * or without the fast-update switch, so a profile that was started once with Widevine on kept DRM
+ * (and kept sending its licence request) after the box was unticked (CR-LYJSFW, 2026-11-20).
+ * Returns true when a seeded CDM was removed. Never throws: a folder that cannot be removed leaves
+ * the launch as it was.
+ */
+export function unseedWidevine(userDataDir: string): boolean {
+  const wvRoot = path.join(userDataDir, "WidevineCdm");
+  try {
+    if (!existsSync(wvRoot)) return false;
+    const seeded = existsSync(path.join(wvRoot, HINT_FILE)) || readdirSync(wvRoot).length > 0;
+    if (!seeded) return false;
+    rmSync(wvRoot, { recursive: true, force: true, maxRetries: 3, retryDelay: 100 });
+    return !existsSync(wvRoot);
+  } catch {
+    return false;
+  }
 }
 
 /**

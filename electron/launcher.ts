@@ -20,7 +20,7 @@ import { fetchCatalog, resolveVersion } from "./catalog";
 import { fingerprintArgs, gateNoiseSwitches, hostTimezone, macosKeychainArgs, mergeFeatureFlags, proxyEgressArgs, QUIC_RELAY_SWITCH, startUrlArg, type FpInput } from "./fpargs";
 import { clearPending, injectCookies, readPending } from "./cookiejar";
 import { withShaderDialect, shaderDialectWarning } from "./shaderdialect";
-import { seedWidevine, widevineArgs, claimsChromeBrand } from "./widevine";
+import { seedWidevine, unseedWidevine, widevineArgs, claimsChromeBrand } from "./widevine";
 import { extensionsForLaunch, withExtensionArgs } from "./extensions";
 import { seedAutofillPrefs } from "./autofillpref";
 import {
@@ -563,6 +563,9 @@ async function launchOnce(
           `Widevine is enabled but the CDM could not be installed (${String((e as Error)?.message || e)}). Launching without it — DRM playback will fail.`,
         );
       }
+    } else {
+      // Not ticked: a CDM seeded by an earlier launch must go, or the engine loads it again.
+      unseedWidevine(userDataDir);
     }
     // Proxy: an authenticated http/https proxy is reached via a local relay that injects the
     // credentials (Chromium ignores inline user:pass@), so the browser only ever sees 127.0.0.1.
