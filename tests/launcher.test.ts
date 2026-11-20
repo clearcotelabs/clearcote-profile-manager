@@ -62,13 +62,21 @@ describe("buildArgs — launcher-only concerns", () => {
   it("does NOT emit --proxy-server (launch() adds it, possibly via the auth relay)", () =>
     expect(build({ proxy: "http://u:p@h:8080" }).some((s) => s.startsWith("--proxy-server"))).toBe(false));
 
+  it("an unset timezone is this computer's without a proxy and the language's behind one", () => {
+    const host = Intl.DateTimeFormat().resolvedOptions().timeZone;
+    expect(build({}).filter((s) => s.startsWith("--timezone="))).toEqual([`--timezone=${host}`]);
+    expect(build({ proxy: "http://u:p@h:8080" }).filter((s) => s.startsWith("--timezone="))).toEqual(["--timezone=America/New_York"]);
+    expect(build({ proxy: "http://u:p@h:8080", acceptLanguage: "de-DE,de" })).toContain("--timezone=Europe/Berlin");
+    expect(build({ timezone: "Asia/Tokyo" }).filter((s) => s.startsWith("--timezone="))).toEqual(["--timezone=Asia/Tokyo"]);
+  });
+
   it("carries the SDK parity switches the launcher previously omitted", () => {
     const a = build({ deviceMemory: 16, maxTouchPoints: 0, webrtcMdns: "off" });
     expect(a).toEqual(
       expect.arrayContaining([
         "--lang=en-US",
         "--accept-lang=en-US,en",
-        "--timezone=America/New_York",
+        `--timezone=${Intl.DateTimeFormat().resolvedOptions().timeZone}`, // no proxy: this computer's
         "--fingerprint-brand=chrome",
         "--fingerprint-device-memory=16",
         "--fingerprint-max-touch-points=0",
@@ -118,8 +126,10 @@ describe("buildArgs — captured fingerprint profile", () => {
     const a = build({ fingerprintProfile: "donor.json" });
     expect(a).toContain("--accept-lang=de-DE,de,en-US");
     expect(a).toContain("--lang=de-DE");
-    // …and the derived timezone follows that locale rather than the host's.
-    expect(a).toContain("--timezone=Europe/Berlin");
+    // …and behind a proxy the derived timezone follows that locale rather than the host's.
+    expect(build({ fingerprintProfile: "donor.json", proxy: "http://u:p@h:8080" })).toContain("--timezone=Europe/Berlin");
+    // Without a proxy the traffic leaves from this computer, so the timezone is this computer's.
+    expect(a).toContain(`--timezone=${Intl.DateTimeFormat().resolvedOptions().timeZone}`);
   });
 
   it("an explicit acceptLanguage still beats the donor's", () =>

@@ -1140,7 +1140,7 @@
   "United Kingdom": "英国",
   "United States": "美国",
   "Unsaved changes": "未保存的更改",
-  "Unset, a timezone coherent with the locale is derived, rather than leaking the host's (often UTC on a server).": "未设置时，会推导出与语言区域一致的时区，而不是泄露主机的时区（在服务器上通常是 UTC）。",
+  "Unset: with a proxy, a timezone that fits the language is used (the proxy's own with GeoIP on). Without a proxy, this computer's timezone.": "未设置时：使用代理时，采用与语言一致的时区（开启 GeoIP 时采用代理的时区）；不使用代理时，采用本机的时区。",
   "Untitled": "未命名",
   "Unzip it and start it": "解压并启动",
   "Update": "更新",

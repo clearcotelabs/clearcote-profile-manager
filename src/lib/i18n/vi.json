@@ -1140,7 +1140,7 @@
   "United Kingdom": "Anh",
   "United States": "Hoa Kỳ",
   "Unsaved changes": "Thay đổi chưa lưu",
-  "Unset, a timezone coherent with the locale is derived, rather than leaking the host's (often UTC on a server).": "Khi để trống, một múi giờ nhất quán với locale sẽ được suy ra, thay vì để lộ múi giờ của máy chủ (thường là UTC trên server).",
+  "Unset: with a proxy, a timezone that fits the language is used (the proxy's own with GeoIP on). Without a proxy, this computer's timezone.": "Khi để trống: nếu có proxy, dùng múi giờ phù hợp với ngôn ngữ (múi giờ của proxy khi bật GeoIP). Nếu không có proxy, dùng múi giờ của máy tính này.",
   "Untitled": "Chưa đặt tên",
   "Unzip it and start it": "Giải nén và khởi động",
   "Update": "Cập nhật",

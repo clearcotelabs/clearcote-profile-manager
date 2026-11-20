@@ -17,7 +17,7 @@ import { resolveLicenseKey, acquireLease, withRunToken, planFromToken, type Leas
 import { engineSupportsSwitch, healStaleHostVendor, preparePersonaLaunch, staleHostVendor } from "./persona";  // r51+: server-side personas (the signed persona token)
 import { proEnsureBinary, freeEnsureBinary } from "./proBinary";
 import { fetchCatalog, resolveVersion } from "./catalog";
-import { fingerprintArgs, gateNoiseSwitches, macosKeychainArgs, mergeFeatureFlags, proxyEgressArgs, QUIC_RELAY_SWITCH, startUrlArg, type FpInput } from "./fpargs";
+import { fingerprintArgs, gateNoiseSwitches, hostTimezone, macosKeychainArgs, mergeFeatureFlags, proxyEgressArgs, QUIC_RELAY_SWITCH, startUrlArg, type FpInput } from "./fpargs";
 import { clearPending, injectCookies, readPending } from "./cookiejar";
 import { withShaderDialect, shaderDialectWarning } from "./shaderdialect";
 import { seedWidevine, widevineArgs, claimsChromeBrand } from "./widevine";
@@ -374,6 +374,7 @@ export function relayUdpAfterPin(
 export function buildArgs(p: Profile, userDataDir: string): string[] {
   const a = fingerprintArgs(p as FpInput, {
     hostPlatform: hostPlatform(),
+    hostTimezone: p.proxy?.trim() ? undefined : hostTimezone(),
     profileAcceptLanguage: p.fingerprintProfile ? profileAcceptLanguage(p.fingerprintProfile) : undefined,
     profileHardware: p.fingerprintProfile ? profileHardware(p.fingerprintProfile) : undefined,
     // gzip+base64 exactly as the SDK does — it keeps a ~40 KB capture inside Chromium's

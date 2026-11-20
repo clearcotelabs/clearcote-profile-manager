@@ -10,6 +10,7 @@ import {
   sha256Hex,
   cleanAcceptLanguage,
   defaultTimezone,
+  hostTimezone,
   resolveTls,
   screenGuardWarning,
   type FpInput,
@@ -162,6 +163,22 @@ describe("locale coherence", () => {
   it("an unset timezone is derived from the locale, not left to leak the host's UTC", () => {
     expect(build({ acceptLanguage: "ja-JP,ja" })).toContain("--timezone=Asia/Tokyo");
     expect(build({})).toContain("--timezone=America/New_York");
+  });
+  it("without a proxy the caller passes this computer's timezone, and that is what an unset timezone becomes", () => {
+    // CR-LYJSFW 2026-11-19: a proxy-less en-US profile on a Croatian home connection claimed America/New_York.
+    const a = build({}, { hostTimezone: "Europe/Zagreb" });
+    expect(a).toContain("--timezone=Europe/Zagreb");
+    expect(a.filter((s) => s.startsWith("--timezone=")).length).toBe(1);
+    // the language still follows the profile; only the timezone is the computer's
+    expect(a).toContain("--accept-lang=en-US,en");
+  });
+  it("an explicit timezone wins over this computer's", () => {
+    const a = build({ timezone: "Asia/Tokyo" }, { hostTimezone: "Europe/Zagreb" });
+    expect(a.filter((s) => s.startsWith("--timezone="))).toEqual(["--timezone=Asia/Tokyo"]);
+  });
+  it("hostTimezone() is this process's IANA zone", () => {
+    expect(hostTimezone()).toBe(Intl.DateTimeFormat().resolvedOptions().timeZone);
+    expect(hostTimezone()).toMatch(/^[A-Za-z0-9_+-]+(\/[A-Za-z0-9_+-]+)*$/);
   });
   it("an explicit timezone wins and is emitted once", () => {
     const a = build({ timezone: "Europe/Berlin", acceptLanguage: "ja-JP,ja" });

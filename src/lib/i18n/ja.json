@@ -1140,7 +1140,7 @@
   "United Kingdom": "イギリス",
   "United States": "アメリカ",
   "Unsaved changes": "未保存の変更",
-  "Unset, a timezone coherent with the locale is derived, rather than leaking the host's (often UTC on a server).": "未設定の場合、ホストのタイムゾーン（サーバーでは UTC が多い）を漏らすのではなく、ロケールと整合するタイムゾーンを導き出します。",
+  "Unset: with a proxy, a timezone that fits the language is used (the proxy's own with GeoIP on). Without a proxy, this computer's timezone.": "未設定の場合：プロキシありでは言語に合ったタイムゾーン（GeoIP がオンならプロキシのタイムゾーン）を使用します。プロキシなしではこのコンピューターのタイムゾーンを使用します。",
   "Untitled": "無題",
   "Unzip it and start it": "解凍して起動",
   "Update": "更新",

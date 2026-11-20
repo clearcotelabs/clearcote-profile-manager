@@ -1140,7 +1140,7 @@
   "United Kingdom": "Reino Unido",
   "United States": "Estados Unidos",
   "Unsaved changes": "Alterações não salvas",
-  "Unset, a timezone coherent with the locale is derived, rather than leaking the host's (often UTC on a server).": "Sem definição, é derivado um fuso horário coerente com o locale, em vez de vazar o do host (muitas vezes UTC num servidor).",
+  "Unset: with a proxy, a timezone that fits the language is used (the proxy's own with GeoIP on). Without a proxy, this computer's timezone.": "Sem definição: com proxy, usa-se um fuso horário coerente com o idioma (o do proxy com GeoIP ativado). Sem proxy, o fuso horário deste computador.",
   "Untitled": "Sem título",
   "Unzip it and start it": "Descompacte e inicie",
   "Update": "Atualizar",

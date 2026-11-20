@@ -1,4 +1,5 @@
 import { describe, it, expect } from "vitest";
+import { hostTimezone } from "../electron/fpargs";
 import { profileToArgs, profileToEnv, proxyString, redactProxyString, resolveTlsProfile, type Profile } from "../src/types/profile";
 
 const base: Profile = { id: "t", name: "t", fingerprint: "seed-1", createdAt: "", updatedAt: "" };
@@ -112,7 +113,10 @@ describe("profileToArgs — every setting maps to its switch", () => {
     const a = profileToArgs(base);
     expect(a).toContain("--accept-lang=en-US,en");
     expect(a).toContain("--lang=en-US");
-    expect(a).toContain("--timezone=America/New_York");
+    // No proxy: this computer's timezone, as the launcher sends (CR-LYJSFW 2026-11-19).
+    expect(a).toContain(`--timezone=${hostTimezone()}`);
+    // Behind a proxy with nothing set it is still the one that fits the language.
+    expect(profileToArgs({ ...base, proxy: "http://u:p@h:8080" })).toContain("--timezone=America/New_York");
     expect(a).toContain("--fingerprint-brand=chrome");
     expect(a.some((s) => s.startsWith("--fingerprint-platform="))).toBe(true);
   });

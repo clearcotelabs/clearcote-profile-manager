@@ -2,7 +2,7 @@
 // One profile is persisted as profiles/<id>.json; its browser storage lives in
 // profiles/<id>/userdata/. See PLAN.md and profiles/example.profile.json.
 
-import { fingerprintArgs, mergeFeatureFlags, proxyEgressArgs, resolveTls, startUrlArg, type FpInput } from "../../electron/fpargs";
+import { fingerprintArgs, hostTimezone, mergeFeatureFlags, proxyEgressArgs, resolveTls, startUrlArg, type FpInput } from "../../electron/fpargs";
 // The PURE proxy module, not ./proxy — that one pulls in node:net for the relay and would break
 // the renderer bundle. Same split, and same reason, as electron/fpargs.ts.
 import { parseProxy, proxyArgs } from "../../electron/proxyargs";
@@ -107,8 +107,8 @@ export interface Profile {
    *  stay untouched. Screen dimensions are deliberately not spoofed. An explicit field wins. */
   lightStealth?: boolean;
 
-  /** --timezone (IANA, e.g. "America/New_York"). Unset derives one coherent with the locale rather
-   *  than leaking the host's (often UTC). */
+  /** --timezone (IANA, e.g. "America/New_York"). Unset: without a proxy this computer's own timezone; with a proxy
+   *  one coherent with the locale (or the proxy exit's, with geoip on). */
   timezone?: string;
   /** --accept-lang (e.g. "en-US,en"): navigator.languages + Accept-Language header. */
   acceptLanguage?: string;
@@ -325,6 +325,8 @@ export function resolveTlsProfile(p: Profile): string | null {
 export function profileToArgs(p: Profile): string[] {
   const args = fingerprintArgs(p as FpInput, {
     redactSecrets: true,
+    // Without a proxy the launcher sends this computer's timezone; the preview runs on the same computer.
+    hostTimezone: p.proxy?.trim() ? undefined : hostTimezone(),
     encodeProfile: (ref) => `<gzip+base64 of ${p.fingerprintProfileMeta?.label || ref}>`,
   });
   // Same builder the launcher uses, so the preview shows the real credential handling: an

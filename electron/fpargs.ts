@@ -179,6 +179,16 @@ export function defaultTimezone(primaryLang: string): string | undefined {
   return "America/New_York";
 }
 
+/** This computer's IANA timezone as the running process sees it, or undefined when it is not a usable name. */
+export function hostTimezone(): string | undefined {
+  try {
+    const tz = Intl.DateTimeFormat().resolvedOptions().timeZone;
+    return typeof tz === "string" && /^[A-Za-z0-9_+-]+(\/[A-Za-z0-9_+-]+)*$/.test(tz) ? tz : undefined;
+  } catch {
+    return undefined;
+  }
+}
+
 /** Resolve `tlsProfile` to the concrete `--fingerprint-tls-profile` value the ENGINE accepts, or
  *  null (no switch → native TLS). The engine ignores the "match-persona"/"auto" abstraction, so it
  *  must be turned into `chrome-<brandVersion major>` here — else the switch is a silent no-op. */
@@ -297,6 +307,11 @@ export interface FpInput {
 }
 
 export interface FpArgsOptions {
+  /** This computer's own IANA timezone ({@link hostTimezone}). The caller passes it only for a profile WITHOUT a
+   *  proxy: its traffic leaves from this computer's connection, so an unset timezone must be this computer's.
+   *  Deriving it from the language gave every proxy-less en-US profile America/New_York wherever it ran, which
+   *  detectors read as a VPN ("timezone mismatch", CR-LYJSFW 2026-11-19). An explicit timezone still wins. */
+  hostTimezone?: string;
   /** Host OS, used to default `--fingerprint-platform` so the persona is coherent with the binary
    *  actually running. The launcher passes the real one; callers that cannot know it get "windows". */
   hostPlatform?: "windows" | "linux" | "macos";
@@ -484,10 +499,11 @@ export function fingerprintArgs(input: FpInput, opts: FpArgsOptions = {}): strin
   // Chromium falls back to the build/OS locale — a locale-incoherence tell auditors flag.
   const primaryLang = cleanLang.split(",")[0];
   if (primaryLang) args.push(`--lang=${primaryLang}`);
-  // Default the timezone to one coherent with the persona locale when none is set, so a run on a
-  // UTC host doesn't leak that while navigator.language says e.g. en-US.
+  // No timezone set: a profile without a proxy gets this computer's own (opts.hostTimezone, see there); behind a
+  // proxy it is one coherent with the persona locale, so a UTC host doesn't show while navigator.language says
+  // e.g. en-US (geoip, when on, has already filled in the proxy exit's timezone before this runs).
   if (!p.timezone) {
-    const tz = defaultTimezone(primaryLang);
+    const tz = opts.hostTimezone || defaultTimezone(primaryLang);
     if (tz) args.push(`--timezone=${tz}`);
   }
 

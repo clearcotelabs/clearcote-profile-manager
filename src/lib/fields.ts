@@ -471,7 +471,7 @@ export const FIELDS: FieldDef[] = [
     why:
       tx("Without this, and without a geolocation set, the Geolocation API reports the host's real position — the proxy alone does not move it."),
   },
-  { key: "timezone", cat: "network", label: tx("Timezone"), type: "text", placeholder: "America/New_York", keywords: "--timezone iana", why: tx("Unset, a timezone coherent with the locale is derived, rather than leaking the host's (often UTC on a server).") },
+  { key: "timezone", cat: "network", label: tx("Timezone"), type: "text", placeholder: "America/New_York", keywords: "--timezone iana", why: tx("Unset: with a proxy, a timezone that fits the language is used (the proxy's own with GeoIP on). Without a proxy, this computer's timezone.") },
   { key: "acceptLanguage", cat: "network", label: "Accept-Language", type: "text", placeholder: "en-US,en", keywords: "--accept-lang navigator.languages locale" },
   {
     key: "location",

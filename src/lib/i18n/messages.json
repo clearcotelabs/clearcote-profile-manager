@@ -4279,7 +4279,7 @@
   "Unsaved changes": [
     "src/components/ProfileEditor.tsx"
   ],
-  "Unset, a timezone coherent with the locale is derived, rather than leaking the host's (often UTC on a server).": [
+  "Unset: with a proxy, a timezone that fits the language is used (the proxy's own with GeoIP on). Without a proxy, this computer's timezone.": [
     "src/lib/fields.ts"
   ],
   "Untitled": [
