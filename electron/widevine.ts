@@ -194,6 +194,27 @@ export async function fetchWidevine(): Promise<string> {
   return verDir;
 }
 
+/** Relative paths of every file under `dir` (empty when it does not exist). */
+function filesUnder(dir: string): string[] {
+  if (!existsSync(dir)) return [];
+  const out: string[] = [];
+  const walk = (d: string, rel: string) => {
+    for (const e of readdirSync(d, { withFileTypes: true })) {
+      const r = rel ? path.join(rel, e.name) : e.name;
+      if (e.isDirectory()) walk(path.join(d, e.name), r);
+      else out.push(r);
+    }
+  };
+  walk(dir, "");
+  return out;
+}
+
+/** True when every file of the cached CDM `src` is also under `target`. */
+export function sameFiles(src: string, target: string): boolean {
+  const want = filesUnder(src);
+  return want.length > 0 && want.every((f) => existsSync(path.join(target, f)));
+}
+
 /**
  * Make a profile load the CDM: copy it under <userDataDir>/WidevineCdm/<version>/ and write the
  * hint file the engine reads. Fetches first if the cache is cold. Returns the seeded directory.
@@ -203,10 +224,13 @@ export async function seedWidevine(userDataDir: string): Promise<string> {
   const version = path.basename(src);
   const wvRoot = path.join(userDataDir, "WidevineCdm");
   const target = path.join(wvRoot, version);
-  const { subdir, filename } = cdmPlatform();
-  if (!existsSync(path.join(target, "_platform_specific", subdir, filename))) {
+  // Copy when any file of the CDM is missing, not only the library: an untick while the profile's browser
+  // was still open (a browser left over from another process) removes everything but the library Windows
+  // holds open, and a copy that then skipped on "library present" left a CDM without its manifest, so DRM
+  // failed on that launch (CR-LYJSFW, measured on r61 2026-11-20).
+  if (!sameFiles(src, target)) {
     mkdirSync(wvRoot, { recursive: true });
-    cpSync(src, target, { recursive: true });
+    cpSync(src, target, { recursive: true, force: true });
   }
   try {
     writeFileSync(path.join(wvRoot, HINT_FILE), JSON.stringify({ Path: target }));

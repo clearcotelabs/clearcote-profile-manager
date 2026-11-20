@@ -44,3 +44,20 @@ describe("unseedWidevine", () => {
     expect(unseedWidevine(path.join(os.tmpdir(), "ccpm-unseed-missing-" + Date.now()))).toBe(false);
   });
 });
+
+describe("sameFiles (seeding repairs a half-removed CDM)", () => {
+  it("is false when the library is there but the manifest is gone, true once every file is back", async () => {
+    const { sameFiles } = await import("../electron/widevine");
+    const src = mk(), dst = mk();
+    for (const f of ["manifest.json", "LICENSE", path.join("_platform_specific", "win_x64", "widevinecdm.dll")]) {
+      fs.mkdirSync(path.dirname(path.join(src, f)), { recursive: true });
+      fs.writeFileSync(path.join(src, f), "x");
+    }
+    fs.mkdirSync(path.join(dst, "_platform_specific", "win_x64"), { recursive: true });
+    fs.writeFileSync(path.join(dst, "_platform_specific", "win_x64", "widevinecdm.dll"), "x");
+    expect(sameFiles(src, dst)).toBe(false);
+    fs.cpSync(src, dst, { recursive: true, force: true });
+    expect(sameFiles(src, dst)).toBe(true);
+    expect(sameFiles(path.join(src, "missing"), dst)).toBe(false);
+  });
+});
