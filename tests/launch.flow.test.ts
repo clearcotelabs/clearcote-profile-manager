@@ -75,6 +75,13 @@ vi.mock("../electron/crlset", async (orig) => {
   return { ...real, holdUntilLive: (...a: unknown[]) => holdMock(...a) };
 });
 
+// Widevine: the CDM copy is recorded, never fetched (tests/widevine*.test.ts cover the real fetch and seeding).
+const seedMock = vi.fn(async (_udd: string) => "cdm");
+vi.mock("../electron/widevine", async (orig) => {
+  const real = await orig<typeof import("../electron/widevine")>();
+  return { ...real, seedWidevine: (udd: string) => seedMock(udd) };
+});
+
 // The persona step (r51+): recorded, never run, so a fake binary is fine. What the launcher hands it is the point.
 const personaMock = vi.fn(async (_bin: string, args: readonly string[], _lease: unknown, _deps?: { env?: NodeJS.ProcessEnv }) => ({
   args: [...args],
@@ -280,6 +287,61 @@ describe("launch() — noise switches the engine may not have", () => {
     const old = await launcher.launch(profile("plain-old", { noisePerProfile: false, widevine: false, brand: "Edge" }));
     expect(spawnMock.mock.calls[1][1] as string[]).not.toContain(NPP);
     expect(old.warnings).toBeUndefined();
+  });
+});
+
+describe("launch() — Widevine Auto / On / Off", () => {
+  // Auto holds the CDM back on a Windows/macOS host when the engine lacks CDM host verification (before r63:
+  // the licence request carries a clear client id). The launcher reads the binary for VerifyCdmHost_0.
+  const bin = path.join(ROOT, "fake-chrome.exe");
+  const engine = (...names: string[]) => fs.writeFileSync(bin, Buffer.from(`engine\0${names.join("\0")}\0end`, "latin1"));
+  const winOrMac = process.platform === "win32" || process.platform === "darwin";
+  const HELD = /Widevine \(DRM\) is on Auto and stays off/;
+  beforeEach(() => seedMock.mockClear());
+  afterEach(() => fs.rmSync(bin, { force: true }));
+
+  it("Auto on an engine before r63: held back with one note on Windows/macOS, seeded on Linux", async () => {
+    engine("widevine-cdm-path");
+    leaseMock.mockResolvedValue(lease("pro"));
+    const r = await launcher.launch(profile("wv-auto-62", { widevine: "auto", brand: "Chrome" }));
+    expect(r.ok).toBe(true);
+    const notes = (r.warnings ?? []).filter((w) => HELD.test(w));
+    expect(notes).toHaveLength(winOrMac ? 1 : 0);
+    expect(seedMock).toHaveBeenCalledTimes(winOrMac ? 0 : 1);
+    // held back on purpose: the "Chrome brand without a CDM" warning stays quiet
+    expect((r.warnings ?? []).join(" ")).not.toMatch(/has no Widevine CDM/);
+  });
+
+  it("Auto on an engine with host verification (r63+): seeded, no note", async () => {
+    engine("widevine-cdm-path", "VerifyCdmHost_0");
+    leaseMock.mockResolvedValue(lease("pro"));
+    const r = await launcher.launch(profile("wv-auto-63", { widevine: "auto", brand: "Chrome" }));
+    expect(r.ok).toBe(true);
+    expect((r.warnings ?? []).some((w) => HELD.test(w))).toBe(false);
+    expect(seedMock).toHaveBeenCalledTimes(1);
+  });
+
+  it("the old checkbox's true is Auto", async () => {
+    engine("widevine-cdm-path");
+    leaseMock.mockResolvedValue(lease("pro"));
+    const r = await launcher.launch(profile("wv-legacy-true", { widevine: true, brand: "Chrome" }));
+    expect((r.warnings ?? []).filter((w) => HELD.test(w))).toHaveLength(winOrMac ? 1 : 0);
+  });
+
+  it("On seeds with any engine; Off and a missing value never do, and the brand warning names it", async () => {
+    engine("widevine-cdm-path");
+    leaseMock.mockResolvedValue(lease("pro"));
+    const on = await launcher.launch(profile("wv-on", { widevine: "on", brand: "Chrome" }));
+    expect(on.ok).toBe(true);
+    expect(seedMock).toHaveBeenCalledTimes(1);
+    expect((on.warnings ?? []).some((w) => HELD.test(w))).toBe(false);
+    for (const [id, widevine] of [["wv-off", "off"], ["wv-missing", undefined]] as const) {
+      leaseMock.mockResolvedValue(lease("pro"));
+      const r = await launcher.launch(profile(id, { ...(widevine ? { widevine } : {}), brand: "Chrome" }));
+      expect(r.ok).toBe(true);
+      expect((r.warnings ?? []).join(" ")).toMatch(/has no Widevine CDM/);
+    }
+    expect(seedMock).toHaveBeenCalledTimes(1);
   });
 });
 

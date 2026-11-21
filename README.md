@@ -160,7 +160,11 @@ Beyond the basics, each profile exposes Clearcote's full identity surface (all u
   every profile claims the **Google Chrome** brand by default, and Google's build always ships one.
   A browser that asserts that brand, implements EME, and then rejects `com.widevine.alpha` describes
   a browser Google does not make, readable in a single property lookup (the public audit flags
-  exactly this). On for new profiles: the CDM is downloaded once from Google's own component server —
+  exactly this). **Auto / On / Off** (0.42.5+; Auto for new profiles): Auto seeds the CDM, except on a
+  Windows or macOS host with a build before r63, whose CDM sends its licence request with a clear client
+  id (Chrome encrypts it, and a page can read the difference); the launch says so once, and from r63 Auto
+  turns DRM on again by itself. On always seeds; Off never does. A profile saved by an older version keeps
+  its meaning: ticked reads as Auto, unticked as Off. The CDM is downloaded once from Google's own component server —
   where real Chrome gets it — SHA-256 verified, and shared across profiles. If you would rather not run
   a proprietary blob, set the profile's brand to something other than Chrome instead: a build
   reporting **Chromium** is honestly what a de-Googled browser is, and is exempt from the check.

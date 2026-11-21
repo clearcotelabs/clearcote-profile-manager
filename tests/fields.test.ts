@@ -171,8 +171,17 @@ describe("isFieldSet — 'what did I set', not 'what differs from default'", () 
   it("empty string, null and false all read as unset", () => {
     expect(isFieldSet({ timezone: "" }, f("timezone"))).toBe(false);
     expect(isFieldSet({ timezone: null }, f("timezone"))).toBe(false);
-    expect(isFieldSet({ widevine: false }, f("widevine"))).toBe(false);
-    expect(isFieldSet({ widevine: true }, f("widevine"))).toBe(true);
+    expect(isFieldSet({ shaderDialect: false }, f("shaderDialect"))).toBe(false);
+  });
+
+  it("Widevine (a select that replaced a checkbox): Auto is unset, On and Off are choices", () => {
+    expect(isFieldSet({ widevine: "auto" }, f("widevine"))).toBe(false); // the default
+    expect(isFieldSet({ widevine: true }, f("widevine"))).toBe(false); // the old checkbox's default = Auto
+    expect(isFieldSet({ widevine: false }, f("widevine"))).toBe(true); // the old checkbox unticked = Off
+    expect(isFieldSet({ widevine: "on" }, f("widevine"))).toBe(true);
+    expect(isFieldSet({ widevine: "off" }, f("widevine"))).toBe(true);
+    expect(f("widevine").options?.map((o) => o.value)).toEqual(["auto", "on", "off"]);
+    expect(f("widevine").defaultOption).toBeUndefined(); // stores the literal, so a missing value can stay Off
   });
 
   it("a numeric 0 counts — a non-touch desktop is a real choice", () => {

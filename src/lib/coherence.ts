@@ -15,6 +15,7 @@
 import { isAuthenticatedSocks, parseProxy } from "../../electron/proxyargs";
 import { claimedVendor, VENDOR_LABEL, type HostGpuVendor } from "./gpuPicker";
 import { t, tx } from "./i18n";
+import { autoHeldBack, widevineSetting } from "./widevineSetting";
 
 export type Severity = "error" | "warn";
 
@@ -132,7 +133,11 @@ export function coherenceIssues(
   // Google's branded build ships Widevine on both desktop platforms, so a browser asserting that
   // brand, implementing EME, and then rejecting com.widevine.alpha describes a browser Google does
   // not make. One property lookup, no reference data needed.
-  if (claimsChrome(profile.brand) && !profile.widevine) {
+  // Widevine is Auto / On / Off (src/lib/widevineSetting.ts). Off is the contradiction above. Auto on a
+  // Windows/macOS host with a build before r63 is held back on purpose: that build's CDM sends its licence
+  // request with a clear client id, which a page can read too; r63 encrypts it and Auto turns DRM on again.
+  const wvSetting = widevineSetting(profile.widevine);
+  if (claimsChrome(profile.brand) && wvSetting === "off") {
     out.push({
       id: "chrome-brand-without-widevine",
       severity: "error",
@@ -140,6 +145,15 @@ export function coherenceIssues(
       message:
         t('This profile reports the "Google Chrome" brand but seeds no Widevine CDM, which Google\'s build always ships.'),
       fix: t("Enable Widevine (DRM) in Session, or set the brand to Chromium — which is what this build honestly is."),
+    });
+  }
+  if (wvSetting === "auto" && autoHeldBack(ctx) === true) {
+    out.push({
+      id: "widevine-auto-held-back",
+      severity: "warn",
+      field: "widevine",
+      message: t("Widevine (DRM) stays off with this browser build: it sends the DRM licence request with a clear client id, which pages can read on Windows and macOS."),
+      fix: t("Nothing to do: builds from r63 encrypt it, as Chrome does, and Auto turns DRM on again. Choose On if a site needs DRM now."),
     });
   }
 

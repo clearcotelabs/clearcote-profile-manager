@@ -197,8 +197,12 @@ export interface Profile {
    *  claims the "Google Chrome" brand by default, and Google's build always ships the CDM. A
    *  browser asserting that brand and then rejecting `com.widevine.alpha` contradicts itself in one
    *  property lookup. Opting in downloads the CDM once from Google's own component server (the same
-   *  place real Chrome gets it), verifies its SHA-256, and shares it across profiles. */
-  widevine?: boolean;
+   *  place real Chrome gets it), verifies its SHA-256, and shares it across profiles.
+   *  Auto / On / Off since 0.42.5 (src/lib/widevineSetting.ts): "auto" and the old `true` are Auto,
+   *  "on" always seeds; "off", a missing value and the old `false` never do (the old checkbox stored
+   *  nothing when unticked). Auto stays off on a Windows/macOS
+   *  host while the engine sends the licence request with a clear client id (builds before r63). */
+  widevine?: boolean | "auto" | "on" | "off";
 
   // ---- shader dialect (engine 151 r15+) ----
   /** CLEARCOTE_SHADER_DIALECT (an env var, not a switch — the code lives in the GPU process).

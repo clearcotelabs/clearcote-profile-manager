@@ -87,8 +87,7 @@ export function profilesFromProxyList(
       fingerprint: seed(),
       platform: opts.platform ?? "windows",
       geoip: opts.geoip,
-      // Same default as a profile made in the editor: the Chrome brand needs Google's CDM.
-      widevine: true,
+      widevine: "auto", // the same default as a profile made in the editor (src/lib/newProfile.ts)
       proxy: parsed.raw,
       createdAt: now,
       updatedAt: now,

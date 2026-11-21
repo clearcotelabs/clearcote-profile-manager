@@ -160,18 +160,20 @@ describe.skipIf(!READY)("editor UI — the category rail in a real browser", () 
     await untilHeading(/^Identity$/);
   }, 20000);
 
-  it("a brand-new profile opens coherent, with Widevine already on", async () => {
+  it("a brand-new profile opens coherent, with Widevine on Auto", async () => {
     // 0.16.0: new profiles default to Widevine, because brand unset means Chrome and Google's build
-    // always ships the CDM. Before that, every fresh profile opened with this one issue.
+    // always ships the CDM. Before that, every fresh profile opened with this one issue. Since 0.42.5 the
+    // default is Auto, which is not a choice, so the Session badge counts nothing.
     await untilChip(/coherent/);
-    await untilRail("Session", /Session\s*1$/);
+    await untilRail("Session", /Session$/);
   }, 20000);
 
   it("reports the Widevine contradiction once Widevine is switched off", async () => {
     // The audit row a real customer hit: brand unset means Chrome, and there is no CDM.
     await rail("Session").click();
     await untilHeading(/^Session & data$/);
-    await page.locator('[data-field="widevine"] input[type=checkbox]').uncheck();
+    expect(await page.locator('[data-field="widevine"] select').inputValue()).toBe("auto"); // the new-profile default
+    await page.locator('[data-field="widevine"] select').selectOption("off");
     await untilChip(/1 issue/);
     // Leave the section, so the deep-link below has to navigate back to it.
     await rail("Identity").click();
@@ -184,7 +186,7 @@ describe.skipIf(!READY)("editor UI — the category rail in a real browser", () 
   it("an issue deep-links to the field that caused it", async () => {
     await page.getByRole("button", { name: /Fix/ }).first().click();
     await untilHeading(/^Session & data$/);
-    expect(await isVisible('[data-field="widevine"] input[type=checkbox]')).toBe(true);
+    expect(await isVisible('[data-field="widevine"] select')).toBe(true);
     // The editor focuses the field from a timer after the section switch, so poll rather than read
     // once: the heading can change a frame before focus moves.
     await until(
@@ -201,9 +203,9 @@ describe.skipIf(!READY)("editor UI — the category rail in a real browser", () 
   }, 20000);
 
   it("fixing it clears the issue and updates the badge", async () => {
-    await page.locator('[data-field="widevine"] input[type=checkbox]').check();
+    await page.locator('[data-field="widevine"] select').selectOption("on");
     await untilChip(/coherent/);
-    await untilRail("Session", /Session\s*1$/);
+    await untilRail("Session", /Session\s*1$/); // On is a choice
   }, 20000);
 
   it("a new contradiction appears as soon as it is created, and goes when undone", async () => {

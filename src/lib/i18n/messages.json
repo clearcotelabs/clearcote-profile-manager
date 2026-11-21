@@ -449,6 +449,12 @@
   "Australia": [
     "src/components/CloudFields.tsx"
   ],
+  "Auto (default)": [
+    "src/lib/fields.ts"
+  ],
+  "Auto turns DRM on, except on Windows and macOS with builds before r63: their licence request carries a client id a page can read.": [
+    "src/lib/fields.ts"
+  ],
   "Auto-update": [
     "src/components/ExtensionsView.tsx"
   ],
@@ -1468,9 +1474,6 @@
     "src/lib/coherence.ts"
   ],
   "Farbling noise": [
-    "src/lib/fields.ts"
-  ],
-  "Fetch Google's Widevine CDM and seed it into this profile, so DRM video plays and the Chrome brand holds up.": [
     "src/lib/fields.ts"
   ],
   "File contents": [
@@ -2513,6 +2516,9 @@
   "Nothing needs attention": [
     "app/page.tsx"
   ],
+  "Nothing to do: builds from r63 encrypt it, as Chrome does, and Auto turns DRM on again. Choose On if a site needs DRM now.": [
+    "src/lib/coherence.ts"
+  ],
   "Nothing to install first: npx fetches the SDK. Needs Node.js 20 or newer (<a>nodejs.org</a>).": [
     "src/components/HelperGate.tsx"
   ],
@@ -2521,6 +2527,9 @@
   ],
   "OK": [
     "src/components/Confirm.tsx"
+  ],
+  "Off": [
+    "src/lib/fields.ts"
   ],
   "Off by default: third-party cookies are allowed, as in Chrome.": [
     "src/lib/fields.ts"
@@ -2543,9 +2552,6 @@
   "On by default, and switched on automatically when you add a proxy. Values you set yourself always win.": [
     "src/lib/fields.ts"
   ],
-  "On for new profiles. Downloaded once from Google's own component server, SHA-256 verified, then shared by every profile that uses it.": [
-    "src/lib/fields.ts"
-  ],
   "On {n} profiles": [
     "src/components/ExtensionsView.tsx"
   ],
@@ -2553,6 +2559,9 @@
     "src/components/RunTaskDialog.tsx"
   ],
   "On, checkers that hash a solid shape (such as PixelScan) report masking. Needs r57; older engines always noise flat areas.": [
+    "src/lib/fields.ts"
+  ],
+  "On, with every build": [
     "src/lib/fields.ts"
   ],
   "On: {names}": [
@@ -4549,6 +4558,9 @@
   ],
   "Widevine (DRM)": [
     "src/lib/fields.ts"
+  ],
+  "Widevine (DRM) stays off with this browser build: it sends the DRM licence request with a clear client id, which pages can read on Windows and macOS.": [
+    "src/lib/coherence.ts"
   ],
   "Windows on Arm": [
     "src/lib/helperRelease.ts"

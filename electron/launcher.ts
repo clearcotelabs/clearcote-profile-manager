@@ -20,7 +20,7 @@ import { fetchCatalog, resolveVersion } from "./catalog";
 import { fingerprintArgs, gateNoiseSwitches, hostTimezone, macosKeychainArgs, mergeFeatureFlags, proxyEgressArgs, QUIC_RELAY_SWITCH, startUrlArg, type FpInput } from "./fpargs";
 import { clearPending, injectCookies, readPending } from "./cookiejar";
 import { withShaderDialect, shaderDialectWarning } from "./shaderdialect";
-import { seedWidevine, unseedWidevine, widevineArgs, claimsChromeBrand } from "./widevine";
+import { seedWidevine, unseedWidevine, widevineArgs, claimsChromeBrand, widevineDecision, CDM_HOST_VERIFY_SYMBOL, WIDEVINE_HELD_BACK_NOTE } from "./widevine";
 import { extensionsForLaunch, withExtensionArgs } from "./extensions";
 import { seedAutofillPrefs } from "./autofillpref";
 import {
@@ -485,7 +485,12 @@ async function launchOnce(
   // build ships Widevine on both desktop platforms, so a browser asserting that brand, implementing
   // EME, and then rejecting com.widevine.alpha describes a browser Google does not ship. Say it
   // once here rather than leaving it to be discovered from a site that scores it.
-  if (!p.widevine && claimsChromeBrand(p.brand)) {
+  // Widevine Auto / On / Off (electron/widevine.ts): Auto holds the CDM back on a Windows/macOS host while
+  // the engine sends its licence request with a clear client id (before r63). Decided once, here, from the
+  // binary itself; the seeding below follows it.
+  const wv = widevineDecision(p.widevine, () => engineSupportsSwitch(bin, CDM_HOST_VERIFY_SYMBOL));
+  if (wv.heldBack) warnings.push(WIDEVINE_HELD_BACK_NOTE);
+  if (!wv.seed && !wv.heldBack && claimsChromeBrand(p.brand)) {
     warnings.push(
       'This profile reports the "Google Chrome" brand but has no Widevine CDM, which Google\'s build always ships — a mismatch a page can read directly. Enable Widevine (DRM) on the profile, or set its brand to something other than Chrome.',
     );
@@ -554,7 +559,7 @@ async function launchOnce(
     // Widevine: seed the CDM into this profile before the browser reads it. Downloaded once into a
     // shared cache and copied in, so only the first opt-in launch pays for it. A failure here is
     // non-fatal — DRM and the brand row stay as they were, and the user is told why.
-    if (p.widevine) {
+    if (wv.seed) {
       try {
         await seedWidevine(userDataDir);
         args.push(...widevineArgs(args));
@@ -564,7 +569,7 @@ async function launchOnce(
         );
       }
     } else {
-      // Not ticked: a CDM seeded by an earlier launch must go, or the engine loads it again.
+      // Off, or Auto held back: a CDM seeded by an earlier launch must go, or the engine loads it again.
       unseedWidevine(userDataDir);
     }
     // Proxy: an authenticated http/https proxy is reached via a local relay that injects the

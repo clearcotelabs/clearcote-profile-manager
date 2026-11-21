@@ -120,7 +120,9 @@ describe.skipIf(!READY)("e2e — a real 151 launch through an authenticated SOCK
       geoip: true,
       proxy: PROXY,
       portableProfile: true,
-      widevine: true,
+      // On, not Auto: this test measures EME with the CDM loaded, on any build (Auto holds it back on
+      // Windows/macOS before r63).
+      widevine: "on",
       userDataDir,
       extraArgs: [
         `--remote-debugging-port=${port}`,

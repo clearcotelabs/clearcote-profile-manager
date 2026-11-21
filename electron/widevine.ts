@@ -288,6 +288,44 @@ export function widevineArgs(userArgs: string[], platform: NodeJS.Platform = pro
 
 /** True when this profile claims the Google Chrome brand — the claim the CDM has to back up.
  *  The brand defaults to "chrome" when unset, which is why the default profile is included. */
+/** The profile's Widevine setting. "auto" and the old checkbox's `true` are Auto (every new profile got `true`
+ *  by default, so it says nothing about a choice); "on" always seeds; "off", and anything else, never does. The
+ *  old checkbox stored NOTHING when unticked, so a missing value stays Off, as it always was. Mirror:
+ *  src/lib/widevineSetting.ts (the renderer cannot import this node module). */
+export type WidevineSetting = "auto" | "on" | "off";
+export function widevineSetting(v: unknown): WidevineSetting {
+  if (v === "on") return "on";
+  if (v === "auto" || v === true) return "auto";
+  return "off";
+}
+
+/** Exported by a CDM host built with CDM host verification (Chrome, Edge, Brave; Clearcote from r63). */
+export const CDM_HOST_VERIFY_SYMBOL = "VerifyCdmHost_0";
+
+/**
+ * Whether this launch seeds the CDM. Without CDM host verification (every Clearcote engine up to r62, and the
+ * open build) the CDM sends its licence request with the client id in the clear, naming the host OS; Chrome
+ * encrypts it. Measured 2026-11-21 on r62 behind a proxy: a fingerprinting service flagged 10 of 10 sessions
+ * with the CDM, 1 of 12 without. A clear request from a Linux host is not flagged. So Auto seeds on Linux, or
+ * when the engine carries {@link CDM_HOST_VERIFY_SYMBOL}; On always; Off never. `heldBack` = Auto said no for
+ * this reason (the launcher tells the user once, and the brand warning stays quiet).
+ */
+export function widevineDecision(
+  setting: unknown,
+  hasHostVerification: () => boolean,
+  platform: NodeJS.Platform = process.platform,
+): { seed: boolean; heldBack: boolean } {
+  const s = widevineSetting(setting);
+  if (s === "on") return { seed: true, heldBack: false };
+  if (s === "off") return { seed: false, heldBack: false };
+  if (platform !== "win32" && platform !== "darwin") return { seed: true, heldBack: false };
+  const ok = hasHostVerification();
+  return { seed: ok, heldBack: !ok };
+}
+
+export const WIDEVINE_HELD_BACK_NOTE =
+  "Widevine (DRM) is on Auto and stays off with this browser build: it sends the DRM licence request with a clear client id, which pages can read on Windows and macOS. Builds from r63 encrypt it, as Chrome does, and Auto turns DRM on again by itself. Choose On under Session > Widevine to use DRM now.";
+
 export function claimsChromeBrand(brand?: string): boolean {
   const b = (brand ?? "chrome").trim().toLowerCase();
   return b === "chrome" || b === "google chrome";

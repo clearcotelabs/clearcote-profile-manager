@@ -72,7 +72,7 @@ export interface CloudInput {
   fingerprintProfile?: string;
   portableProfile?: boolean;
   encryptionKey?: string;
-  widevine?: boolean;
+  widevine?: boolean | "auto" | "on" | "off";
   shaderDialect?: string;
   socks5Udp?: boolean;
   transparentProxy?: boolean;

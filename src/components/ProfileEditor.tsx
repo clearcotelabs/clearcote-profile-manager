@@ -453,6 +453,7 @@ export default function ProfileEditor({
 
   function textValue(f: FieldDef): string {
     const v = (profile as unknown as Record<string, unknown>)[f.key];
+    if (f.legacyCheck && (v === true || v === false || v == null || v === "")) return v === true ? f.legacyCheck.on : f.legacyCheck.off;
     return v == null || typeof v === "boolean" ? "" : String(v);
   }
 

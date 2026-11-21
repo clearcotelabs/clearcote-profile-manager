@@ -158,6 +158,10 @@ export interface FieldDef {
    *  where `false` is the meaningful state), and the shader dialect stores a string union. */
   onValue?: unknown;
   offValue?: unknown;
+  /** A select that replaced an older checkbox (Widevine): a saved `true` shows as the `on` option (for
+   *  Widevine "auto", everyone's default, which does not count as set); a saved `false` or a missing value
+   *  (what the checkbox stored when unticked) shows as the `off` option. */
+  legacyCheck?: { on: string; off: string };
 }
 
 /** Both avail fields. The full screen size typed as avail is a screen with no taskbar: not a lie,
@@ -666,9 +670,16 @@ export const FIELDS: FieldDef[] = [
     key: "widevine",
     cat: "session",
     label: tx("Widevine (DRM)"),
-    type: "check",
-    desc: tx("Fetch Google's Widevine CDM and seed it into this profile, so DRM video plays and the Chrome brand holds up."),
-    hint: tx("On for new profiles. Downloaded once from Google's own component server, SHA-256 verified, then shared by every profile that uses it."),
+    type: "select",
+    // Auto / On / Off (src/lib/widevineSetting.ts), always stored as the literal. The old checkbox's saved
+    // `true` reads as Auto (it was everyone's default); a missing value or `false` (unticked) as Off.
+    legacyCheck: { on: "auto", off: "off" },
+    options: [
+      { value: "auto", label: tx("Auto (default)") },
+      { value: "on", label: tx("On, with every build") },
+      { value: "off", label: tx("Off") },
+    ],
+    hint: tx("Auto turns DRM on, except on Windows and macOS with builds before r63: their licence request carries a client id a page can read."),
     keywords: "eme drm cdm com.widevine.alpha media keys",
     why:
       tx("This build compiles the EME plumbing but cannot bundle Google's proprietary CDM. A browser claiming the Google Chrome brand and then rejecting com.widevine.alpha describes a browser Google does not ship."),
@@ -775,6 +786,7 @@ export function isFieldSet(profile: Record<string, unknown>, f: FieldDef): boole
   // The cloud block is an object of options: set when any of them is.
   if (f.key === "cloud") return !!v && typeof v === "object" && Object.values(v as object).some((x) => x !== undefined);
   if (f.defaultOn) return v === false;
+  if (f.legacyCheck) return v === false || (typeof v === "string" && v !== "" && v !== f.legacyCheck.on);
   if (v === undefined || v === null || v === "" || v === false) return false;
   if (Array.isArray(v)) return v.length > 0;
   return true;

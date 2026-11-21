@@ -70,7 +70,7 @@ describe("a new profile's persona", () => {
       fingerprint: "seed",
       platform: "windows",
       geoip: true,
-      widevine: true,
+      widevine: "auto",
       createdAt: "t",
       updatedAt: "t",
     });

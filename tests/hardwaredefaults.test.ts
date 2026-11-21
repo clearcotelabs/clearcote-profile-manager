@@ -17,8 +17,8 @@ const CLEAN = { brand: "Chromium", browserVersion: "154" };
 describe("a new profile", () => {
   const p = newProfile("seed123", "2026-10-09T00:00:00.000Z");
 
-  it("has Widevine on, so the default Chrome brand holds up", () => {
-    expect(p.widevine).toBe(true);
+  it("has Widevine on Auto, so the default Chrome brand holds up", () => {
+    expect(p.widevine).toBe("auto");
     expect(ids(p as unknown as Record<string, unknown>)).not.toContain("chrome-brand-without-widevine");
   });
 
@@ -34,7 +34,7 @@ describe("a new profile", () => {
     const r = profilesFromProxyList("h1.example:1\nh2.example:2", { namePattern: "P {n}", geoip: true }, [], {
       now: "2026-10-09T00:00:00.000Z",
     });
-    expect(r.profiles.every((x) => x.widevine === true)).toBe(true);
+    expect(r.profiles.every((x) => x.widevine === "auto")).toBe(true); // Auto, like the editor
   });
 });
 

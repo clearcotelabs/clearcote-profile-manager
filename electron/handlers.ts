@@ -130,7 +130,7 @@ export function migrateImport(text: string, filename?: string) {
         fingerprint: crypto.randomBytes(6).toString("hex"),
         platform: m.platform ?? fallback,
         geoip: true,
-        widevine: true,
+        widevine: "auto", // like a profile made in the editor (src/lib/newProfile.ts)
         ...(m.notes ? { notes: m.notes } : {}),
         ...(m.tags ? { tags: m.tags } : {}),
         ...(m.group ? { group: m.group } : {}),

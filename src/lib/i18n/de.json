@@ -392,7 +392,6 @@
   "Fallback when offline": "Fallback, wenn offline",
   "Farbling is already off process-wide, so switching canvas 2D noise off as well changes nothing.": "Farbling ist bereits prozessweit aus, daher ändert das Abschalten des Canvas-2D-Rauschens nichts.",
   "Farbling noise": "Farbling-Rauschen",
-  "Fetch Google's Widevine CDM and seed it into this profile, so DRM video plays and the Chrome brand holds up.": "Googles Widevine-CDM abrufen und in dieses Profil einbringen, damit DRM-Videos abspielen und die Marke Chrome stimmig bleibt.",
   "File contents": "Dateiinhalt",
   "Fill all four and the pixel ratio from this display: {width} × {height}, work area {availWidth} × {availHeight}, pixel ratio {ratio}": "Alle vier und das Pixelverhältnis von diesem Display übernehmen: {width} × {height}, Arbeitsbereich {availWidth} × {availHeight}, Pixelverhältnis {ratio}",
   "Filter by GPU vendor": "Nach GPU-Hersteller filtern",
@@ -671,7 +670,6 @@
   "On a focused profile": "Bei einem fokussierten Profil",
   "On builds before {major} r{revision}, a typed screen size can disagree with the screen CSS media queries report while {source} is active, so a page reads two different screens. Typing your own monitor's size does not avoid it.": "Bei Builds vor {major} r{revision} kann eine eingegebene Bildschirmgröße von dem Bildschirm abweichen, den CSS Media Queries melden, solange {source} aktiv ist – eine Seite liest dann zwei verschiedene Bildschirme. Die Größe Ihres eigenen Monitors einzugeben, verhindert das nicht.",
   "On by default, and switched on automatically when you add a proxy. Values you set yourself always win.": "Standardmäßig an und automatisch eingeschaltet, wenn Sie einen Proxy hinzufügen. Selbst gesetzte Werte haben immer Vorrang.",
-  "On for new profiles. Downloaded once from Google's own component server, SHA-256 verified, then shared by every profile that uses it.": "Für neue Profile an. Einmal vom Komponentenserver von Google heruntergeladen, per SHA-256 verifiziert und dann von jedem Profil geteilt, das es nutzt.",
   "On {n} profiles: {names} and {more} more": "Auf {n} Profilen: {names} und {more} weitere",
   "On: {names}": "Auf: {names}",
   "One click: the app runs pip for you in Python {v}.": "Ein Klick: Die App führt pip für Sie in Python {v} aus.",
@@ -1699,5 +1697,11 @@
   "Noise per profile": "Rauschen pro Profil",
   "One noise result for this profile on every site, instead of a different one per site. Needs engine r60.": "Ein Rauschergebnis für dieses Profil auf jeder Website statt eines anderen pro Website. Benötigt Engine r60.",
   "No effect with farbling noise off. An older engine ignores it and keeps per-site noise; the launch says so.": "Keine Wirkung, wenn das Farbling-Rauschen aus ist. Eine ältere Engine ignoriert es und behält das Rauschen pro Website; der Start meldet das.",
-  "By default every site sees its own canvas and WebGL noise, so two sites cannot match this profile by its canvas hash. On, every site sees the same canvas and WebGL result for this profile, the way one real computer gives the same result everywhere.": "Standardmäßig sieht jede Website ihr eigenes Canvas- und WebGL-Rauschen, sodass zwei Websites dieses Profil nicht über seinen Canvas-Hash zuordnen können. Eingeschaltet sieht jede Website für dieses Profil dasselbe Canvas- und WebGL-Ergebnis, so wie ein echter Computer überall dasselbe Ergebnis liefert."
+  "By default every site sees its own canvas and WebGL noise, so two sites cannot match this profile by its canvas hash. On, every site sees the same canvas and WebGL result for this profile, the way one real computer gives the same result everywhere.": "Standardmäßig sieht jede Website ihr eigenes Canvas- und WebGL-Rauschen, sodass zwei Websites dieses Profil nicht über seinen Canvas-Hash zuordnen können. Eingeschaltet sieht jede Website für dieses Profil dasselbe Canvas- und WebGL-Ergebnis, so wie ein echter Computer überall dasselbe Ergebnis liefert.",
+  "Auto (default)": "Auto (Standard)",
+  "On, with every build": "An, mit jedem Build",
+  "Off": "Aus",
+  "Auto turns DRM on, except on Windows and macOS with builds before r63: their licence request carries a client id a page can read.": "Auto schaltet DRM ein, außer unter Windows und macOS mit Builds vor r63: deren Lizenzanfrage enthält eine Client-ID, die eine Seite lesen kann.",
+  "Widevine (DRM) stays off with this browser build: it sends the DRM licence request with a clear client id, which pages can read on Windows and macOS.": "Widevine (DRM) bleibt mit diesem Browser-Build aus: Er sendet die DRM-Lizenzanfrage mit einer unverschlüsselten Client-ID, die Seiten unter Windows und macOS lesen können.",
+  "Nothing to do: builds from r63 encrypt it, as Chrome does, and Auto turns DRM on again. Choose On if a site needs DRM now.": "Nichts zu tun: Builds ab r63 verschlüsseln sie wie Chrome, und Auto schaltet DRM wieder ein. Wählen Sie An, wenn eine Seite jetzt DRM braucht."
 }

@@ -16,10 +16,10 @@ export function newProfile(seed: string, now: string, platform: Platform = "wind
     // off-by-default version shipped a profile that looked configured while the Geolocation API
     // quietly kept reporting the real position, which is exactly how a customer found it.
     geoip: true,
-    // Widevine ON. Every profile claims the Google Chrome brand unless changed, and Google's build
-    // always ships the CDM, so without it a fresh profile opened with a coherence error
-    // (CR-KUDD3V). The CDM is fetched once and shared; a failed fetch only warns at launch.
-    widevine: true,
+    // Widevine Auto (src/lib/widevineSetting.ts): on, as the Chrome brand needs (CR-KUDD3V), except on a
+    // Windows/macOS host while the engine sends the licence request with a clear client id (builds before
+    // r63), where the launcher holds it back and says so. Stored as "auto": a missing value means Off.
+    widevine: "auto",
     createdAt: now,
     updatedAt: now,
   };

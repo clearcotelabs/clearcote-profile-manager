@@ -392,7 +392,6 @@
   "Fallback when offline": "オフライン時のフォールバック",
   "Farbling is already off process-wide, so switching canvas 2D noise off as well changes nothing.": "Farbling はプロセス全体で既にオフのため、Canvas 2D ノイズもオフにしても何も変わりません。",
   "Farbling noise": "Farbling ノイズ",
-  "Fetch Google's Widevine CDM and seed it into this profile, so DRM video plays and the Chrome brand holds up.": "Google の Widevine CDM を取得してこのプロファイルに組み込みます。DRM 動画が再生でき、Chrome ブランドとの整合性も保たれます。",
   "File contents": "ファイルの内容",
   "Fill all four and the pixel ratio from this display: {width} × {height}, work area {availWidth} × {availHeight}, pixel ratio {ratio}": "4つとピクセル比をこのディスプレイから入力：{width} × {height}、作業領域 {availWidth} × {availHeight}、ピクセル比 {ratio}",
   "Filter by GPU vendor": "GPU ベンダーで絞り込み",
@@ -671,7 +670,6 @@
   "On a focused profile": "フォーカス中のプロファイルで",
   "On builds before {major} r{revision}, a typed screen size can disagree with the screen CSS media queries report while {source} is active, so a page reads two different screens. Typing your own monitor's size does not avoid it.": "{major} r{revision} より前のビルドでは、{source} が有効な間、入力した画面サイズが CSS メディアクエリの報告する画面と食い違うことがあり、ページから 2 つの異なる画面が見えます。自分のモニターのサイズを入力しても避けられません。",
   "On by default, and switched on automatically when you add a proxy. Values you set yourself always win.": "デフォルトはオンで、プロキシを追加すると自動的にオンになります。自分で設定した値が常に優先されます。",
-  "On for new profiles. Downloaded once from Google's own component server, SHA-256 verified, then shared by every profile that uses it.": "新しいプロファイルではオンです。Google 自身のコンポーネントサーバーから一度だけダウンロードし、SHA-256 を検証して、使用するすべてのプロファイルで共有します。",
   "On {n} profiles: {names} and {more} more": "{n} 個のプロファイル：{names} ほか {more} 個",
   "On: {names}": "対象：{names}",
   "One click: the app runs pip for you in Python {v}.": "ワンクリック：アプリが Python {v} で pip を実行します。",
@@ -1699,5 +1697,11 @@
   "Noise per profile": "プロファイルごとのノイズ",
   "One noise result for this profile on every site, instead of a different one per site. Needs engine r60.": "サイトごとに異なるノイズではなく、このプロファイルではすべてのサイトで同じノイズ結果になります。エンジン r60 が必要です。",
   "No effect with farbling noise off. An older engine ignores it and keeps per-site noise; the launch says so.": "Farbling ノイズがオフのときは効果がありません。古いエンジンはこれを無視してサイトごとのノイズのままにします。その場合は起動時に通知されます。",
-  "By default every site sees its own canvas and WebGL noise, so two sites cannot match this profile by its canvas hash. On, every site sees the same canvas and WebGL result for this profile, the way one real computer gives the same result everywhere.": "デフォルトでは各サイトが独自の Canvas と WebGL のノイズを見るため、2 つのサイトが Canvas ハッシュでこのプロファイルを照合することはできません。オンにすると、すべてのサイトがこのプロファイルについて同じ Canvas と WebGL の結果を見ます。実際のコンピューターがどこでも同じ結果を返すのと同じです。"
+  "By default every site sees its own canvas and WebGL noise, so two sites cannot match this profile by its canvas hash. On, every site sees the same canvas and WebGL result for this profile, the way one real computer gives the same result everywhere.": "デフォルトでは各サイトが独自の Canvas と WebGL のノイズを見るため、2 つのサイトが Canvas ハッシュでこのプロファイルを照合することはできません。オンにすると、すべてのサイトがこのプロファイルについて同じ Canvas と WebGL の結果を見ます。実際のコンピューターがどこでも同じ結果を返すのと同じです。",
+  "Auto (default)": "自動（既定）",
+  "On, with every build": "オン（すべてのビルド）",
+  "Off": "オフ",
+  "Auto turns DRM on, except on Windows and macOS with builds before r63: their licence request carries a client id a page can read.": "自動では DRM がオンになります。ただし Windows と macOS で r63 より前のビルドを使う場合は除きます。そのライセンス要求にはページが読み取れるクライアント ID が含まれるためです。",
+  "Widevine (DRM) stays off with this browser build: it sends the DRM licence request with a clear client id, which pages can read on Windows and macOS.": "このブラウザビルドでは Widevine (DRM) はオフのままです。DRM ライセンス要求を暗号化されていないクライアント ID 付きで送信し、Windows と macOS ではページがそれを読み取れます。",
+  "Nothing to do: builds from r63 encrypt it, as Chrome does, and Auto turns DRM on again. Choose On if a site needs DRM now.": "操作は不要です。r63 以降のビルドは Chrome と同様にこれを暗号化し、自動で DRM が再びオンになります。今すぐ DRM が必要なサイトがある場合は「オン」を選んでください。"
 }

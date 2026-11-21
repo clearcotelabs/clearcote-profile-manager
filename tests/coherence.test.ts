@@ -57,19 +57,48 @@ describe("every issue can be navigated to", () => {
 });
 
 describe("the Chrome brand commits you to Widevine", () => {
-  it("fires on the default profile — brand is unset, which means Chrome", () => {
-    // This is the audit row a real customer hit, and it fires for EVERY untouched profile.
-    expect(ids({})).toContain("chrome-brand-without-widevine");
+  // Widevine is Auto / On / Off since 0.42.5: "auto" (and the old `true`) seeds the CDM, so the error is for
+  // Off: "off", and the old checkbox unticked (it stored nothing, or `false`).
+  it("fires when Widevine is Off on the default brand — brand is unset, which means Chrome", () => {
+    // This is the audit row a real customer hit.
+    expect(ids({})).toContain("chrome-brand-without-widevine"); // old checkbox unticked = nothing stored
+    expect(ids({ widevine: "off" })).toContain("chrome-brand-without-widevine");
+    expect(ids({ widevine: false })).toContain("chrome-brand-without-widevine");
   });
-  it("fires on an explicit Chrome brand", () => {
-    expect(ids({ brand: "Chrome" })).toContain("chrome-brand-without-widevine");
+  it("fires when Widevine is Off on an explicit Chrome brand", () => {
+    expect(ids({ brand: "Chrome", widevine: "off" })).toContain("chrome-brand-without-widevine");
   });
-  it("is silent once the CDM is seeded", () => {
-    expect(ids({ brand: "Chrome", widevine: true })).not.toContain("chrome-brand-without-widevine");
+  it("is silent on Auto (the default) and On", () => {
+    expect(ids({ widevine: "auto" })).not.toContain("chrome-brand-without-widevine");
+    expect(ids({ brand: "Chrome", widevine: true })).not.toContain("chrome-brand-without-widevine"); // old checkbox = Auto
+    expect(ids({ brand: "Chrome", widevine: "on" })).not.toContain("chrome-brand-without-widevine");
   });
   it("is silent for a build that does not claim the brand", () => {
-    expect(ids({ brand: "Chromium" })).not.toContain("chrome-brand-without-widevine");
-    expect(ids({ brand: "Edge" })).not.toContain("chrome-brand-without-widevine");
+    expect(ids({ brand: "Chromium", widevine: "off" })).not.toContain("chrome-brand-without-widevine");
+    expect(ids({ brand: "Edge", widevine: "off" })).not.toContain("chrome-brand-without-widevine");
+  });
+});
+
+describe("Widevine Auto held back by a build before r63", () => {
+  const win62 = { hostPlatform: "windows" as const, revision: 62, tier: "pro" as const };
+  it("warns on Auto with a Windows or macOS host and a PRO build before r63", () => {
+    expect(ids({ widevine: "auto" }, win62)).toContain("widevine-auto-held-back");
+    expect(ids({ widevine: true }, { ...win62, hostPlatform: "macos" })).toContain("widevine-auto-held-back");
+    expect(coherenceIssues({ widevine: "auto" }, win62).find((i) => i.id === "widevine-auto-held-back")?.severity).toBe("warn");
+  });
+  it("warns for the open build on Windows (it has no host verification)", () => {
+    expect(ids({ widevine: "auto" }, { hostPlatform: "windows", tier: "free" })).toContain("widevine-auto-held-back");
+  });
+  it("is silent from r63, on Linux, when the build is unknown, and for On or Off", () => {
+    expect(ids({ widevine: "auto" }, { ...win62, revision: 63 })).not.toContain("widevine-auto-held-back");
+    expect(ids({ widevine: "auto" }, { ...win62, hostPlatform: "linux" })).not.toContain("widevine-auto-held-back");
+    expect(ids({ widevine: "auto" }, { hostPlatform: "windows" })).not.toContain("widevine-auto-held-back");
+    expect(ids({}, win62)).not.toContain("widevine-auto-held-back"); // nothing stored = Off
+    expect(ids({ widevine: "on" }, win62)).not.toContain("widevine-auto-held-back");
+    expect(ids({ widevine: "off" }, win62)).not.toContain("widevine-auto-held-back");
+  });
+  it("never raises the brand error while Auto is held back", () => {
+    expect(ids({ widevine: "auto" }, win62)).not.toContain("chrome-brand-without-widevine");
   });
 });
 
@@ -369,7 +398,7 @@ describe("silence on a coherent profile", () => {
 
 describe("coherenceSummary", () => {
   it("counts errors and warnings apart", () => {
-    const s = coherenceSummary(coherenceIssues({ brand: "Chrome", proxy: "http://h:1" }, {}));
+    const s = coherenceSummary(coherenceIssues({ brand: "Chrome", widevine: "off", proxy: "http://h:1" }, {}));
     expect(s.errors).toBe(1);
     expect(s.warnings).toBe(1);
     expect(s.ok).toBe(false);
@@ -505,7 +534,7 @@ describe("a GPU claim from another maker than the real card", () => {
   });
 
   it("is a warning, so it sorts after errors", () => {
-    const list = coherenceIssues({ brand: "Chrome", ...AMD_LINUX }, { hostGpuVendor: "nvidia" });
+    const list = coherenceIssues({ brand: "Chrome", widevine: "off", ...AMD_LINUX }, { hostGpuVendor: "nvidia" });
     expect(list[0].id).toBe("chrome-brand-without-widevine");
     expect(list.map((i) => i.id)).toContain("gpu-claim-cross-vendor");
   });

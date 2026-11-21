@@ -392,7 +392,6 @@
   "Fallback when offline": "Dự phòng khi offline",
   "Farbling is already off process-wide, so switching canvas 2D noise off as well changes nothing.": "Farbling đã tắt cho toàn bộ tiến trình, nên tắt thêm nhiễu canvas 2D cũng không thay đổi gì.",
   "Farbling noise": "Nhiễu farbling",
-  "Fetch Google's Widevine CDM and seed it into this profile, so DRM video plays and the Chrome brand holds up.": "Tải Widevine CDM của Google và đưa vào profile này, để video DRM phát được và thương hiệu Chrome đứng vững.",
   "File contents": "Nội dung tệp",
   "Fill all four and the pixel ratio from this display: {width} × {height}, work area {availWidth} × {availHeight}, pixel ratio {ratio}": "Điền cả bốn và tỷ lệ điểm ảnh từ màn hình này: {width} × {height}, vùng làm việc {availWidth} × {availHeight}, tỷ lệ {ratio}",
   "Filter by GPU vendor": "Lọc theo hãng GPU",
@@ -671,7 +670,6 @@
   "On a focused profile": "Trên profile đang chọn",
   "On builds before {major} r{revision}, a typed screen size can disagree with the screen CSS media queries report while {source} is active, so a page reads two different screens. Typing your own monitor's size does not avoid it.": "Trên các bản build trước {major} r{revision}, kích thước màn hình nhập tay có thể không khớp với màn hình mà CSS media query báo khi {source} đang bật, nên trang đọc thấy hai màn hình khác nhau. Nhập đúng kích thước màn hình của bạn cũng không tránh được điều này.",
   "On by default, and switched on automatically when you add a proxy. Values you set yourself always win.": "Bật theo mặc định, và tự động bật khi bạn thêm proxy. Giá trị bạn tự đặt luôn được ưu tiên.",
-  "On for new profiles. Downloaded once from Google's own component server, SHA-256 verified, then shared by every profile that uses it.": "Bật cho profile mới. Tải về một lần từ máy chủ component của chính Google, xác minh SHA-256, rồi dùng chung cho mọi profile sử dụng nó.",
   "On {n} profiles: {names} and {more} more": "Trên {n} profile: {names} và {more} profile nữa",
   "On: {names}": "Trên: {names}",
   "One click: the app runs pip for you in Python {v}.": "Một cú nhấp: ứng dụng chạy pip giúp bạn trong Python {v}.",
@@ -1699,5 +1697,11 @@
   "Noise per profile": "Nhiễu theo hồ sơ",
   "One noise result for this profile on every site, instead of a different one per site. Needs engine r60.": "Một kết quả nhiễu cho hồ sơ này trên mọi trang, thay vì mỗi trang một kết quả khác. Cần engine r60.",
   "No effect with farbling noise off. An older engine ignores it and keeps per-site noise; the launch says so.": "Không có tác dụng khi nhiễu farbling tắt. Engine cũ hơn bỏ qua tùy chọn này và giữ nhiễu theo từng trang; khi khởi chạy sẽ có thông báo.",
-  "By default every site sees its own canvas and WebGL noise, so two sites cannot match this profile by its canvas hash. On, every site sees the same canvas and WebGL result for this profile, the way one real computer gives the same result everywhere.": "Theo mặc định mỗi trang thấy nhiễu canvas và WebGL riêng, nên hai trang không thể khớp hồ sơ này qua mã băm canvas. Khi bật, mọi trang thấy cùng một kết quả canvas và WebGL cho hồ sơ này, giống như một máy tính thật cho cùng một kết quả ở mọi nơi."
+  "By default every site sees its own canvas and WebGL noise, so two sites cannot match this profile by its canvas hash. On, every site sees the same canvas and WebGL result for this profile, the way one real computer gives the same result everywhere.": "Theo mặc định mỗi trang thấy nhiễu canvas và WebGL riêng, nên hai trang không thể khớp hồ sơ này qua mã băm canvas. Khi bật, mọi trang thấy cùng một kết quả canvas và WebGL cho hồ sơ này, giống như một máy tính thật cho cùng một kết quả ở mọi nơi.",
+  "Auto (default)": "Tự động (mặc định)",
+  "On, with every build": "Bật, với mọi bản build",
+  "Off": "Tắt",
+  "Auto turns DRM on, except on Windows and macOS with builds before r63: their licence request carries a client id a page can read.": "Tự động bật DRM, trừ trên Windows và macOS với các bản build trước r63: yêu cầu giấy phép của chúng mang một client ID mà trang có thể đọc.",
+  "Widevine (DRM) stays off with this browser build: it sends the DRM licence request with a clear client id, which pages can read on Windows and macOS.": "Widevine (DRM) vẫn tắt với bản build trình duyệt này: nó gửi yêu cầu giấy phép DRM với client ID không mã hóa, mà các trang có thể đọc trên Windows và macOS.",
+  "Nothing to do: builds from r63 encrypt it, as Chrome does, and Auto turns DRM on again. Choose On if a site needs DRM now.": "Không cần làm gì: các bản build từ r63 mã hóa nó như Chrome, và Tự động sẽ bật lại DRM. Chọn Bật nếu một trang cần DRM ngay bây giờ."
 }

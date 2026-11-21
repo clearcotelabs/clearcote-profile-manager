@@ -117,8 +117,11 @@ export interface Profile {
   /** Fetch Google's Widevine CDM and seed it into this profile, so EME/DRM works and the browser
    *  stops contradicting its own "Google Chrome" brand (Google's build ships the CDM; this
    *  open-source one cannot bundle it). Downloaded once from Google's component server, SHA-256
-   *  verified, then shared by every profile that opts in. */
-  widevine?: boolean;
+   *  verified, then shared by every profile that opts in.
+   *  Auto / On / Off since 0.42.5: "auto" and the old `true` are Auto (on unless the engine sends
+   *  the licence request with a clear client id on a Windows/macOS host, i.e. before r63), "on" always
+   *  seeds, "off", a missing value and the old `false` never do (the old checkbox stored nothing when unticked). See electron/widevine.ts widevineSetting/widevineDecision. */
+  widevine?: boolean | "auto" | "on" | "off";
   /** CLEARCOTE_SHADER_DIALECT: re-translate shaders to HLSL for getTranslatedShaderSource() so a
    *  Windows persona on a LINUX host does not answer with the Vulkan backend's SPIR-V while
    *  claiming a Direct3D11 renderer. Off unless asked for; needs engine 151 r15+. */
