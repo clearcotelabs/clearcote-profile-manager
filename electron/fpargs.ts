@@ -441,6 +441,19 @@ export function chromeSeedArgs(extraArgs: string[] = []): string[] {
   return off.length ? [`--disable-features=${off.join(",")}`] : [];
 }
 
+export const NO_DEFAULT_BROWSER_CHECK_SWITCH = "--no-default-browser-check";
+
+/**
+ * `--no-default-browser-check` on every profile launch. From Chromium 158 a profile's second start opens a
+ * window-sized "make this your default browser" dialog (the default-browser prompt surfaces went on by default;
+ * 157 had none). A profile is never meant to become the computer's default browser, and the SDK's launches already
+ * carry this switch. Measured on r62: the dialog (chrome://default-browser-modal) opens without the switch and
+ * never with it; r61 never shows it. Nothing when extraArgs already has it.
+ */
+export function defaultBrowserArgs(extraArgs: string[] = []): string[] {
+  return extraArgs.includes(NO_DEFAULT_BROWSER_CHECK_SWITCH) ? [] : [NO_DEFAULT_BROWSER_CHECK_SWITCH];
+}
+
 export const MOCK_KEYCHAIN_SWITCH = "--use-mock-keychain";
 
 /**

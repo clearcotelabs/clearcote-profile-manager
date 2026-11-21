@@ -17,7 +17,7 @@ import { resolveLicenseKey, acquireLease, withRunToken, planFromToken, type Leas
 import { engineSupportsSwitch, healStaleHostVendor, preparePersonaLaunch, staleHostVendor } from "./persona";  // r51+: server-side personas (the signed persona token)
 import { proEnsureBinary, freeEnsureBinary } from "./proBinary";
 import { fetchCatalog, resolveVersion } from "./catalog";
-import { fingerprintArgs, gateNoiseSwitches, hostTimezone, macosKeychainArgs, mergeFeatureFlags, proxyEgressArgs, QUIC_RELAY_SWITCH, startUrlArg, type FpInput } from "./fpargs";
+import { defaultBrowserArgs, fingerprintArgs, gateNoiseSwitches, hostTimezone, macosKeychainArgs, mergeFeatureFlags, proxyEgressArgs, QUIC_RELAY_SWITCH, startUrlArg, type FpInput } from "./fpargs";
 import { clearPending, injectCookies, readPending } from "./cookiejar";
 import { withShaderDialect, shaderDialectWarning } from "./shaderdialect";
 import { seedWidevine, unseedWidevine, widevineArgs, claimsChromeBrand, widevineDecision, CDM_HOST_VERIFY_SYMBOL, WIDEVINE_HELD_BACK_NOTE } from "./widevine";
@@ -388,6 +388,8 @@ export function buildArgs(p: Profile, userDataDir: string): string[] {
       }
     },
   });
+  // No "make this your default browser" dialog on a profile's second start (Chromium 158+).
+  a.push(...defaultBrowserArgs(p.extraArgs));
   a.push(`--user-data-dir=${userDataDir}`);
   // macOS: no "Chromium Safe Storage" keychain prompt on every launch of the unsigned build.
   a.push(...macosKeychainArgs(process.platform, p.extraArgs));
