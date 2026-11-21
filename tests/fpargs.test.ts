@@ -219,8 +219,8 @@ describe("webrtcMdns", () => {
   it("'off' disables Chromium's own concealment feature flag", () =>
     expect(has({ webrtcMdns: "off" }, "--disable-features=WebRtcHideLocalIpsWithMdns")).toBe(true));
   it("'on' and unset emit nothing — concealment is already the default", () => {
-    expect(startsWith({ webrtcMdns: "on" }, "--disable-features")).toBe(false);
-    expect(startsWith({}, "--disable-features")).toBe(false);
+    expect(startsWith({ webrtcMdns: "on" }, "--disable-features=WebRtcHideLocalIpsWithMdns")).toBe(false);
+    expect(startsWith({}, "--disable-features=WebRtcHideLocalIpsWithMdns")).toBe(false);
   });
 });
 

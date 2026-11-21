@@ -71,7 +71,7 @@ describe("the command-line preview", () => {
       startUrl: "https://example.com/",
     } as Profile);
     expect(a.filter((x) => x.startsWith("--disable-features="))).toEqual([
-      "--disable-features=WebRtcHideLocalIpsWithMdns,WebBluetooth,Translate",
+      "--disable-features=WebRtcHideLocalIpsWithMdns,WebBluetooth,BrowsingTopics,ConversionMeasurement,FencedFrames,FencedFramesAPIChanges,FencedFramesAutomaticBeaconCredentials,FencedFramesCrossOriginAutomaticBeaconData,FencedFramesCrossOriginEventReporting,FencedFramesLocalUnpartitionedDataAccess,FencedFramesReportEventHeaderChanges,FencedFramesSrcPermissionsPolicy,Translate",
     ]);
     expect(a).toContain("--disable-quic");
     expect(a).toContain("--webrtc-ip-handling-policy=disable_non_proxied_udp");

@@ -415,6 +415,32 @@ export function proxyEgressArgs(hasProxy: boolean, extraArgs: string[] = [], qui
   return out.filter((a) => !extraArgs.includes(a));
 }
 
+/**
+ * Features Google turns OFF in Chrome from its servers (the variations seed), which a build that never
+ * fetches a seed keeps ON. Genuine Chrome has them only in the first session of a new profile. Measured
+ * 2026-11-21 on genuine Chrome 157.0.8103.79: after the seed (studies TopicsDeprecation,
+ * AttributionReportingDeprecation, FencedFramesDeprecation) Chrome enumerates 26 fewer web names
+ * (document.browsingTopics, attributionSrc, window.fence, HTMLFencedFrameElement, ...); with this list off,
+ * r61 equals that Chrome name for name. The SDK's CHROME_SEED_DISABLED_FEATURES.
+ */
+export const CHROME_SEED_DISABLED_FEATURES = [
+  "BrowsingTopics", "ConversionMeasurement", "FencedFrames", "FencedFramesAPIChanges",
+  "FencedFramesAutomaticBeaconCredentials", "FencedFramesCrossOriginAutomaticBeaconData",
+  "FencedFramesCrossOriginEventReporting", "FencedFramesLocalUnpartitionedDataAccess",
+  "FencedFramesReportEventHeaderChanges", "FencedFramesSrcPermissionsPolicy",
+];
+
+/** `--disable-features` for {@link CHROME_SEED_DISABLED_FEATURES}. A feature the profile's own extra flags
+ *  turn on (`--enable-features=BrowsingTopics`) is left out, so that flag decides. */
+export function chromeSeedArgs(extraArgs: string[] = []): string[] {
+  const wanted = new Set<string>();
+  for (const a of extraArgs) {
+    if (a.startsWith("--enable-features=")) for (const f of a.slice(18).split(",")) wanted.add(f.split(/[:<]/)[0]);
+  }
+  const off = CHROME_SEED_DISABLED_FEATURES.filter((f) => !wanted.has(f));
+  return off.length ? [`--disable-features=${off.join(",")}`] : [];
+}
+
 export const MOCK_KEYCHAIN_SWITCH = "--use-mock-keychain";
 
 /**
@@ -522,6 +548,8 @@ export function fingerprintArgs(input: FpInput, opts: FpArgsOptions = {}): strin
   args.push(
     WEB_BLUETOOTH_PLATFORMS.includes(claimed) ? "--enable-features=WebBluetooth" : "--disable-features=WebBluetooth",
   );
+  // What Google's servers switch off in every Chrome after its first session.
+  args.push(...chromeSeedArgs(p.extraArgs));
 
   if (p.disableGpuFingerprint) args.push("--disable-gpu-fingerprint");
   if (p.fingerprintNoise === false) args.push("--disable-fingerprint-noise");
