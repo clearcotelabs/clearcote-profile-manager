@@ -155,6 +155,11 @@ Beyond the basics, each profile exposes Clearcote's full identity surface (all u
   encryption key** (`--profile-encryption-key`) is the stronger form: you hold the key, so nothing
   sensitive is written to disk. It wins when both are set, and is redacted in the preview and on
   export.
+- **This computer** (Hardware) — for one identity per real desktop: show this computer's own screen, or its screen,
+  touch points and display language (in the list genuine Chrome writes for it), instead of the persona's generated
+  values. Read from the operating system at launch; graphics card, processor and memory stay the persona's. Values
+  you type still win, and with a proxy and GeoIP on the proxy's country decides the languages. Off by default:
+  every profile on one computer then shows the same values, which makes them easier to link.
 - **Widevine (DRM)** — fetch Google's Widevine CDM and seed it into the profile. Clearcote is fully
   open source, so it builds the EME plumbing but cannot bundle Google's proprietary CDM — while
   every profile claims the **Google Chrome** brand by default, and Google's build always ships one.

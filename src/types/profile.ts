@@ -101,6 +101,11 @@ export interface Profile {
   devicePixelRatio?: number;
   /** --fingerprint-max-touch-points (0 on a mouse-only desktop — 0 is a real value, not "unset"). */
   maxTouchPoints?: number;
+  /** "This computer": show this computer's screen ("screen"), or its screen, touch points and display language
+   *  ("all"), instead of the persona's generated values. For one identity per real desktop; unset = generated.
+   *  Read from the operating system at launch (electron/realcomputer.ts); values the profile sets itself win, and the
+   *  languages follow the proxy's exit when the profile has a proxy with geoip on. */
+  realComputer?: "screen" | "all";
   /** Light-stealth preset: a coherent, seed-derived bundle of the metadata axes that SURVIVE strict
    *  anti-bot checks, applied via the native override switches only — and emitting NO --fingerprint,
    *  so the persona machinery / farbling never engages. Rendering, TLS and the real Chrome version

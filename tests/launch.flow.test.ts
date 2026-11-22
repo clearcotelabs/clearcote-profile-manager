@@ -82,6 +82,15 @@ vi.mock("../electron/widevine", async (orig) => {
   return { ...real, seedWidevine: (udd: string) => seedMock(udd) };
 });
 
+// "This computer": the operating system is not asked; a fixed answer stands in (tests/realcomputer.test.ts covers the rules).
+const hostFactsMock = vi.fn(async () => ({
+  display: { width: 3440, height: 1440, availWidth: 3440, availHeight: 1392, devicePixelRatio: 1 }, touch: 2, language: "en-GB",
+}));
+vi.mock("../electron/realcomputer", async (orig) => {
+  const real = await orig<typeof import("../electron/realcomputer")>();
+  return { ...real, applyRealComputer: (p: never) => real.applyRealComputer(p, hostFactsMock) };
+});
+
 // The persona step (r51+): recorded, never run, so a fake binary is fine. What the launcher hands it is the point.
 const personaMock = vi.fn(async (_bin: string, args: readonly string[], _lease: unknown, _deps?: { env?: NodeJS.ProcessEnv }) => ({
   args: [...args],
@@ -342,6 +351,38 @@ describe("launch() — Widevine Auto / On / Off", () => {
       expect((r.warnings ?? []).join(" ")).toMatch(/has no Widevine CDM/);
     }
     expect(seedMock).toHaveBeenCalledTimes(1);
+  });
+});
+
+describe("launch() — \"This computer\"", () => {
+  beforeEach(() => hostFactsMock.mockClear());
+
+  it("'all' sends this computer's screen, touch points and language; the saved profile keeps only the setting", async () => {
+    leaseMock.mockResolvedValue(lease("pro"));
+    const r = await launcher.launch(profile("rc-all", { realComputer: "all", brand: "Edge", widevine: "off" }));
+    expect(r.ok).toBe(true);
+    const args = spawnMock.mock.calls[0][1] as string[];
+    for (const a of ["--fingerprint-screen-width=3440", "--fingerprint-screen-height=1440", "--fingerprint-avail-width=3440",
+      "--fingerprint-avail-height=1392", "--fingerprint-max-touch-points=2"]) expect(args).toContain(a);
+    expect(args.some((a) => a.startsWith("--accept-lang=en-GB"))).toBe(true);
+    const saved = profiles.getProfile("rc-all") as unknown as Record<string, unknown>;
+    expect(saved.realComputer).toBe("all");
+    expect(saved.screenWidth).toBeUndefined();
+  });
+
+  it("'screen' sends only the screen", async () => {
+    leaseMock.mockResolvedValue(lease("pro"));
+    await launcher.launch(profile("rc-screen", { realComputer: "screen", brand: "Edge", widevine: "off" }));
+    const args = spawnMock.mock.calls[0][1] as string[];
+    expect(args).toContain("--fingerprint-screen-width=3440");
+    expect(args.some((a) => a.startsWith("--fingerprint-max-touch-points="))).toBe(false);
+  });
+
+  it("unset: the computer is not asked", async () => {
+    leaseMock.mockResolvedValue(lease("pro"));
+    await launcher.launch(profile("rc-none", { brand: "Edge", widevine: "off" }));
+    expect(hostFactsMock).not.toHaveBeenCalled();
+    expect((spawnMock.mock.calls[0][1] as string[]).some((a) => a.startsWith("--fingerprint-screen-width="))).toBe(false);
   });
 });
 

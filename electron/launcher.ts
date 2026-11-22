@@ -21,6 +21,7 @@ import { defaultBrowserArgs, fingerprintArgs, gateNoiseSwitches, hostTimezone, m
 import { clearPending, injectCookies, readPending } from "./cookiejar";
 import { withShaderDialect, shaderDialectWarning } from "./shaderdialect";
 import { seedWidevine, unseedWidevine, widevineArgs, claimsChromeBrand, widevineDecision, CDM_HOST_VERIFY_SYMBOL, WIDEVINE_HELD_BACK_NOTE } from "./widevine";
+import { applyRealComputer } from "./realcomputer";
 import { extensionsForLaunch, withExtensionArgs } from "./extensions";
 import { seedAutofillPrefs } from "./autofillpref";
 import {
@@ -501,6 +502,12 @@ async function launchOnce(
   // With Relay UDP on, the session's first UDP association, then geoip (unset timezone / language /
   // location / WebRTC IP from the proxy's exit region, and a resolved WebRTC IP refreshed). Done
   // BEFORE buildArgs so the enriched values reach the switches.
+  // "This computer" (opt-in): this computer's screen / touch / display language, before geoip so geoip only fills what
+  // is still empty (electron/realcomputer.ts). With a proxy and geoip on, the exit keeps deciding the languages.
+  const real = await applyRealComputer(p);
+  if (real.warning) warnings.push(real.warning);
+  p = real.profile;
+
   const session = await prepareProxySession(p);
   warnings.push(...session.warnings);
   const udpRelay = relayUdpAfterPin(session.profile, session.udp);
