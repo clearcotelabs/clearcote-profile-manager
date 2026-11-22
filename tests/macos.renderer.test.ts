@@ -71,6 +71,7 @@ describe("a new profile's persona", () => {
       platform: "windows",
       geoip: true,
       widevine: "auto",
+      noisePerProfile: true,
       createdAt: "t",
       updatedAt: "t",
     });

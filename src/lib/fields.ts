@@ -610,11 +610,11 @@ export const FIELDS: FieldDef[] = [
     cat: "rendering",
     label: tx("Noise per profile"),
     type: "check",
-    desc: tx("One noise result for this profile on every site, instead of a different one per site. Needs engine r60."),
-    hint: tx("No effect with farbling noise off. An older engine ignores it and keeps per-site noise; the launch says so."),
+    desc: tx("One noise result for this profile on every site, instead of a different one per site. On for new profiles. Needs engine r60."),
+    hint: tx("Changing it on a profile you already use changes what every site sees of its canvas. No effect with farbling noise off. An older engine ignores it and keeps per-site noise; the launch says so."),
     keywords: "--fingerprint-noise-per-profile farble canvas webgl seed site etld+1 r60",
     why:
-      tx("By default every site sees its own canvas and WebGL noise, so two sites cannot match this profile by its canvas hash. On, every site sees the same canvas and WebGL result for this profile, the way one real computer gives the same result everywhere."),
+      tx("Off, every site sees its own canvas and WebGL noise, so a widget embedded on many sites sees this profile draw differently on each, which no real computer does. On, every site sees the same canvas and WebGL result for this profile, as one real computer gives; profiles still differ from each other. New profiles start with it on; older profiles keep per-site noise so their canvas does not change."),
   },
   {
     onValue: "hlsl",
@@ -861,7 +861,7 @@ export function essentialFields(): FieldDef[] {
 
 /** Settings you chose that the Simple view does not show (the seed is always there, so it is not one).
  *  A control over other keys (the GPU model over its two strings) counts once; the keys it hosts do
- *  not. A value every new profile starts with (geoip and Widevine on) is not a choice, so it does not
+ *  not. A value every new profile starts with (geoip, Widevine and noise per profile on) is not a choice, so it does not
  *  count either. */
 export function setOutsideEssentials(profile: Record<string, unknown>): number {
   const start = newProfile("", "") as unknown as Record<string, unknown>;

@@ -20,6 +20,10 @@ export function newProfile(seed: string, now: string, platform: Platform = "wind
     // Windows/macOS host while the engine sends the licence request with a clear client id (builds before
     // r63), where the launcher holds it back and says so. Stored as "auto": a missing value means Off.
     widevine: "auto",
+    // Noise per profile ON for a new profile (0.42.8): one canvas/WebGL result on every site, as one real
+    // computer gives, instead of a different one per site, which a widget embedded on many sites can compare.
+    // A saved profile keeps what it has (missing = per site), so its canvas never changes under it.
+    noisePerProfile: true,
     createdAt: now,
     updatedAt: now,
   };

@@ -160,6 +160,7 @@ describe("migrateImport + importCookies (handlers)", () => {
     const p = JSON.parse(fs.readFileSync(path.join(ROOT, "profiles", files[0]), "utf8"));
     expect(p).toMatchObject({ name: "Alpha", tags: ["a", "b"], proxy: "http://1.1.1.1:80", geoip: true });
     expect(p.widevine).toBe("auto"); // Auto, like a profile made in the editor
+    expect(p.noisePerProfile).toBe(true); // noise per profile, like a profile made in the editor
     expect(p.fingerprint).toMatch(/^[0-9a-f]{12}$/);
     expect(jar.readPending(p.id)).toHaveLength(1);
 

@@ -568,9 +568,6 @@
   "Built-in graphics, like this computer": [
     "src/lib/deviceMatch.ts"
   ],
-  "By default every site sees its own canvas and WebGL noise, so two sites cannot match this profile by its canvas hash. On, every site sees the same canvas and WebGL result for this profile, the way one real computer gives the same result everywhere.": [
-    "src/lib/fields.ts"
-  ],
   "CPU cores": [
     "src/lib/fields.ts"
   ],
@@ -643,6 +640,9 @@
   ],
   "Changes save as you make them — the licence key saves with Save.": [
     "src/components/SettingsModal.tsx"
+  ],
+  "Changing it on a profile you already use changes what every site sees of its canvas. No effect with farbling noise off. An older engine ignores it and keeps per-site noise; the launch says so.": [
+    "src/lib/fields.ts"
   ],
   "Check": [
     "src/components/ProfileEditor.tsx",
@@ -2376,9 +2376,6 @@
   "No effect on a Windows host. Needs build 151.": [
     "src/lib/fields.ts"
   ],
-  "No effect with farbling noise off. An older engine ignores it and keeps per-site noise; the launch says so.": [
-    "src/lib/fields.ts"
-  ],
   "No example matches “{q}”.": [
     "src/components/TaskExamples.tsx"
   ],
@@ -2543,6 +2540,9 @@
   "Off reads only the area the page asked for, but 1–2 edge pixels of a partial read can then differ from a full read. Needs r57; no effect with flat-area noise on.": [
     "src/lib/fields.ts"
   ],
+  "Off, every site sees its own canvas and WebGL noise, so a widget embedded on many sites sees this profile draw differently on each, which no real computer does. On, every site sees the same canvas and WebGL result for this profile, as one real computer gives; profiles still differ from each other. New profiles start with it on; older profiles keep per-site noise so their canvas does not change.": [
+    "src/lib/fields.ts"
+  ],
   "Old graphics": [
     "src/lib/deviceMatch.ts"
   ],
@@ -2579,7 +2579,7 @@
   "One flag per line. Appended verbatim, after everything else.": [
     "src/components/ProfileEditor.tsx"
   ],
-  "One noise result for this profile on every site, instead of a different one per site. Needs engine r60.": [
+  "One noise result for this profile on every site, instead of a different one per site. On for new profiles. Needs engine r60.": [
     "src/lib/fields.ts"
   ],
   "One profile per proxy": [

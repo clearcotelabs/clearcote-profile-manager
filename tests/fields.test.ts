@@ -253,17 +253,20 @@ describe("the Cloud section", () => {
   });
 });
 
-describe("Noise per profile is a choice, never a default", () => {
-  // Decided 2026-11-19: per-site noise stays the default. One noise per profile makes two sites able
-  // to match a profile by its canvas, so it is only ever on because someone ticked it.
-  it("a new profile does not have it, and the checkbox is off until ticked", async () => {
+describe("Noise per profile: on for new profiles, left alone on saved ones", () => {
+  // Decided 2026-11-22 (SESSION-CONTEXT 317): one noise per profile for NEW profiles, as one real computer gives
+  // one canvas everywhere; per-site noise lets a widget embedded on many sites see a different drawing on each.
+  // A saved profile without the key keeps per-site noise, so its canvas never changes under it.
+  it("a new profile (editor, bulk create) has it on; a saved profile without the key stays off", async () => {
     const { newProfile } = await import("../src/lib/newProfile");
-    const fresh = newProfile("seed", "2026-11-19T00:00:00Z") as unknown as Record<string, unknown>;
-    expect(fresh.noisePerProfile).toBeUndefined();
+    const fresh = newProfile("seed", "2026-11-22T00:00:00Z") as unknown as Record<string, unknown>;
+    expect(fresh.noisePerProfile).toBe(true);
+    const { profilesFromProxyList } = await import("../src/lib/bulkCreate");
+    const bulk = profilesFromProxyList("h1.example:1", { namePattern: "P {n}", geoip: true }).profiles;
+    expect(bulk.map((p) => p.noisePerProfile)).toEqual([true]);
     const f = fieldByKey("noisePerProfile")!;
     expect(f).toMatchObject({ cat: "rendering", type: "check" });
-    expect(f.defaultOn).toBeUndefined();
-    expect(f.onValue).toBeUndefined(); // stores true when ticked, nothing when not
+    expect(f.onValue).toBeUndefined(); // stores true when ticked
     expect(isFieldSet({}, f)).toBe(false);
     expect(isFieldSet({ noisePerProfile: false }, f)).toBe(false);
     expect(isFieldSet({ noisePerProfile: true }, f)).toBe(true);

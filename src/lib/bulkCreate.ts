@@ -88,6 +88,7 @@ export function profilesFromProxyList(
       platform: opts.platform ?? "windows",
       geoip: opts.geoip,
       widevine: "auto", // the same default as a profile made in the editor (src/lib/newProfile.ts)
+      noisePerProfile: true, // likewise
       proxy: parsed.raw,
       createdAt: now,
       updatedAt: now,
