@@ -508,7 +508,7 @@ export const FIELDS: FieldDef[] = [
     type: "text",
     placeholder: tx("proxy egress IP"),
     keywords: "--webrtc-ip srflx stun leak",
-    why: tx("What WebRTC reports as the public address. “Resolve from proxy” fills it with the proxy's exit, and every launch looks that exit up again while the field still holds it, so a proxy that moves to another address does not leave WebRTC behind. Type an address to pin it."),
+    why: tx("What WebRTC reports as the public address. Behind a proxy leave it empty: no UDP leaves from the proxy's exit unless Relay UDP carries it, so an address there is one that sites running their own STUN servers can prove fake, and with it empty WebRTC gathers no candidates, as Chrome does behind a proxy. With Relay UDP on, “Resolve from proxy” fills it with the exit, and every launch looks that exit up again while the field still holds it."),
   },
   {
     defaultOption: "on",

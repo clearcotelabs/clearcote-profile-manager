@@ -1180,7 +1180,7 @@
   "WebRTC IP is set to {ip}, which is not this exit: pages will see HTTP from {exit} and WebRTC from {ip}. Clear the field, or click “Resolve from proxy”, to keep them together.": "WebRTC IP 设为 {ip}，与此出口不同：页面会看到来自 {exit} 的 HTTP 和来自 {ip} 的 WebRTC。清空该字段，或点击“从代理解析”，使两者保持一致。",
   "WebRTC only through the proxy": "WebRTC 只经过代理",
   "What Jet did": "Jet 做了什么",
-  "What WebRTC reports as the public address. “Resolve from proxy” fills it with the proxy's exit, and every launch looks that exit up again while the field still holds it, so a proxy that moves to another address does not leave WebRTC behind. Type an address to pin it.": "WebRTC 报告的公网地址。“从代理解析”会填入代理的出口，只要字段中仍是该值，每次启动都会重新查询出口，因此代理换了地址时 WebRTC 也会跟上。输入一个地址即可固定它。",
+  "What WebRTC reports as the public address. Behind a proxy leave it empty: no UDP leaves from the proxy's exit unless Relay UDP carries it, so an address there is one that sites running their own STUN servers can prove fake, and with it empty WebRTC gathers no candidates, as Chrome does behind a proxy. With Relay UDP on, “Resolve from proxy” fills it with the exit, and every launch looks that exit up again while the field still holds it.": "WebRTC 报告的公网地址。使用代理时请留空：没有 UDP 中继时，不会有 UDP 从代理出口发出，因此运行自有 STUN 服务器的网站可以证明该地址是伪造的；留空时 WebRTC 不收集任何候选地址，与 Chrome 在代理后的表现一致。开启 UDP 中继后，“从代理解析”会填入出口地址，只要该字段仍保留此值，每次启动都会重新查询出口。",
   "What a task's {{name}} slots are filled with on this profile.": "任务中的 {{name}} 占位符在此配置文件上填入的内容。",
   "What canvas, WebGL and audio report.": "canvas、WebGL 和音频报告的内容。",
   "What most profiles need. Everything else keeps its default — <b>1 more setting you set is in All settings</b>": "大多数配置文件需要的设置。其余保持默认 — <b>你设置的另外 1 项在“全部设置”中</b>",

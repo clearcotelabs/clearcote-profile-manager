@@ -39,9 +39,13 @@ export function udpLine(v: UdpVerdict | undefined, detail?: string): { tone: Ton
  *  stored WebRTC IP. One line, or null when they agree (or nothing is stored). Residential sticky
  *  sessions move every few minutes; an address the app resolved is refreshed at launch, one the user
  *  typed is kept — and will disagree with HTTP. */
-export function webrtcIpLine(stored: Pick<Profile, "webrtcIp" | "lastGeo"> | undefined, exit: string | undefined): { tone: Tone; text: string } | null {
+export function webrtcIpLine(stored: (Pick<Profile, "webrtcIp" | "lastGeo"> & Partial<Pick<Profile, "proxy" | "socks5Udp">>) | undefined, exit: string | undefined): { tone: Tone; text: string } | null {
   const ip = stored?.webrtcIp;
   if (!ip || !exit || ip === exit) return null;
+  // Behind a proxy without Relay UDP a launch leaves a looked-up WebRTC IP out (electron/launcher.ts applyGeoip):
+  // there is no address to keep in step with the exit.
+  const relayed = !!stored?.socks5Udp && /^socks5h?:\/\//i.test(String(stored?.proxy ?? "").trim());
+  if (webrtcIpFollowsProxy(stored) && stored?.proxy && !relayed) return null;
   if (webrtcIpFollowsProxy(stored)) {
     return { tone: "ok", text: t("The exit has moved since “Resolve from proxy” stored {ip} as the WebRTC IP. Each launch looks it up again, so the browser will report {exit}.", { ip, exit }) };
   }
@@ -71,7 +75,7 @@ export const RELAY_UDP_OFFER =
   tx("Turn it on to send WebRTC and HTTP/3 through this proxy too, as Chrome does without a proxy. The test already moved the session, so it should stay on this exit.");
 
 /** The editor's "Check" result. `stored` is the profile being edited, for the WebRTC IP comparison. */
-export function describeCheck(c: ProxyCheck, stored?: Pick<Profile, "webrtcIp" | "lastGeo">): { tone: Tone; lines: string[] } {
+export function describeCheck(c: ProxyCheck, stored?: Pick<Profile, "webrtcIp" | "lastGeo"> & Partial<Pick<Profile, "proxy" | "socks5Udp">>): { tone: Tone; lines: string[] } {
   if (!c.ok || !c.geo?.ok) return { tone: "bad", lines: [t("Doesn't work: {reason}.", { reason: c.error || c.geo?.error || t("no answer through this proxy") }).replace(/\.\.$/, ".")] };
   const g = c.geo;
   const exit = exitsAt(g);
@@ -91,7 +95,7 @@ export function describeCheck(c: ProxyCheck, stored?: Pick<Profile, "webrtcIp" |
 
 /** The message after a launch: where the profile exits, whether its region follows the proxy, and
  *  a typed WebRTC IP that does not match the exit. */
-export function launchReport(p: Pick<Profile, "proxy" | "geoip" | "timezone" | "acceptLanguage" | "webrtcIp" | "lastGeo">, name: string, last?: LastGeo): string {
+export function launchReport(p: Pick<Profile, "proxy" | "geoip" | "timezone" | "acceptLanguage" | "webrtcIp" | "lastGeo"> & Partial<Pick<Profile, "socks5Udp">>, name: string, last?: LastGeo): string {
   if (!p.proxy) return t("Launched “{name}” · no proxy: it uses this computer's own connection.", { name });
   const exit = last?.ip ? exitsAt(last) : t("through its proxy");
   const region =

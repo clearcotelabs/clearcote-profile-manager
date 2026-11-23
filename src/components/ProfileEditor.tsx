@@ -384,12 +384,15 @@ export default function ProfileEditor({
         // Every field falls back to what is already there, so a blank response never clobbers a
         // value the user chose. lastGeo records that the WebRTC IP came from this lookup: while the
         // field still holds it, a launch looks the exit up again instead of keeping the snapshot.
+        // The WebRTC IP only with Relay UDP on a socks5 proxy: otherwise no UDP leaves from the exit, and an
+        // address there is one sites that run their own STUN servers can prove fake (electron/launcher.ts).
+        const relayed = !!profile.socks5Udp && /^socks5h?:\/\//i.test(String(profile.proxy ?? "").trim());
         onChange({
           ...profile,
           timezone: r.timezone || profile.timezone,
           acceptLanguage: r.acceptLanguage || profile.acceptLanguage,
           location: r.lat != null && r.lon != null ? `${r.lat},${r.lon}` : profile.location,
-          webrtcIp: r.ip || profile.webrtcIp,
+          webrtcIp: relayed ? r.ip || profile.webrtcIp : profile.webrtcIp,
           ...(r.ip
             ? { lastGeo: { ip: r.ip, country: r.country, countryCode: r.countryCode, city: r.city, at: new Date().toISOString(), proxy: proxySummary(profile.proxy) ?? "" } }
             : {}),

@@ -271,8 +271,32 @@ function profileHardware(ref: string): { hardwareConcurrency?: number; deviceMem
 }
 
 /**
+ * Whether this launch's UDP really leaves from the proxy's exit: Relay UDP on, a socks5:// proxy, and the session's
+ * first UDP association not refused (relayUdpAfterPin turns the relay off for this launch then).
+ */
+export function udpRelayed(p: Pick<Profile, "proxy" | "socks5Udp">, udp?: { udp: UdpVerdict }): boolean {
+  return !!p.socks5Udp && /^socks5h?:\/\//i.test(String(p.proxy ?? "").trim()) && udp?.udp !== "refused";
+}
+
+/** The launch warning for a WebRTC IP the user typed, behind a proxy that carries no UDP. */
+export function webrtcIpBehindProxyWarning(ip: string): string {
+  return `WebRTC reports ${ip} (the WebRTC IP field), but this proxy carries no UDP (Relay UDP is off or refused), so no ` +
+    "packet ever leaves from that address and sites that run their own STUN servers can prove it fake. Clear the field " +
+    "behind a proxy (WebRTC then gathers no candidates, as Chrome does behind a proxy), or turn Relay UDP on with a " +
+    "socks5 proxy that carries UDP.";
+}
+
+/**
  * Fill any UNSET timezone / acceptLanguage / location / webrtcIp from the proxy's exit-IP geo, and
  * refresh a WebRTC IP that came from an earlier lookup.
+ *
+ * The WebRTC IP only while UDP really leaves from the exit (`relayed`, see udpRelayed). Without the relay no UDP
+ * leaves from the proxy's exit, so --webrtc-ip there makes the engine report a server-reflexive candidate at an
+ * address no packet came from, and sites that run their own STUN servers prove it made up (measured 2026-11-23: a
+ * spoof verdict with the exit filled in, none with the field empty, where the browser gathers no candidates behind
+ * the proxy exactly as Chrome does under disable_non_proxied_udp). So without the relay a WebRTC IP the app looked up
+ * is left out of this launch (the saved profile keeps it), none is filled, and one the user typed is kept with a
+ * warning.
  *
  * This is what the `geoip` toggle promises, and until now nothing performed it: the flag was saved
  * on the profile and shown as a chip, but no code path ever read it, so a profile with geoip on and
@@ -293,11 +317,21 @@ function profileHardware(ref: string): { hardwareConcurrency?: number; deviceMem
  * Best-effort: a proxy that cannot be reached returns the profile unchanged plus a warning, because
  * failing to enrich is not a reason to refuse a launch the user asked for.
  */
-export async function applyGeoip(p: Profile): Promise<{ profile: Profile; warning?: string; refreshedWebrtcIp?: string }> {
+export async function applyGeoip(p: Profile, relayed: boolean = udpRelayed(p)): Promise<{ profile: Profile; warning?: string; refreshedWebrtcIp?: string }> {
   if (!p.proxy) return { profile: p };
   const unset = (v: unknown) => v === undefined || v === null || v === "";
-  const follows = webrtcIpFollowsProxy(p);
-  const gaps = !!p.geoip && (unset(p.timezone) || unset(p.acceptLanguage) || unset(p.location) || unset(p.webrtcIp));
+  if (relayed || unset(p.webrtcIp)) return fillFromExit(p, relayed);
+  // No relay: an address the app looked up is left out of this launch; one the user typed is kept, with a warning.
+  if (webrtcIpFollowsProxy(p)) return fillFromExit({ ...p, webrtcIp: undefined }, false);
+  const out = await fillFromExit(p, false);
+  const typed = webrtcIpBehindProxyWarning(String(p.webrtcIp).trim());
+  return { ...out, warning: out.warning ? `${out.warning} ${typed}` : typed };
+}
+
+async function fillFromExit(p: Profile, relayed: boolean): Promise<{ profile: Profile; warning?: string; refreshedWebrtcIp?: string }> {
+  const unset = (v: unknown) => v === undefined || v === null || v === "";
+  const follows = relayed && webrtcIpFollowsProxy(p);
+  const gaps = !!p.geoip && (unset(p.timezone) || unset(p.acceptLanguage) || unset(p.location) || (relayed && unset(p.webrtcIp)));
   // Nothing to fill and nothing to refresh — skip the network round-trip entirely.
   if (!gaps && !follows) return { profile: p };
   const geo = await geoCheck(p);
@@ -314,8 +348,8 @@ export async function applyGeoip(p: Profile): Promise<{ profile: Profile; warnin
     if (unset(enriched.timezone) && geo.timezone) enriched.timezone = geo.timezone;
     if (unset(enriched.acceptLanguage) && geo.acceptLanguage) enriched.acceptLanguage = geo.acceptLanguage;
     if (unset(enriched.location) && geo.lat != null && geo.lon != null) enriched.location = `${geo.lat},${geo.lon}`;
-    // Coherent WebRTC: report the proxy's egress IP rather than letting WebRTC contradict HTTP.
-    if (unset(enriched.webrtcIp) && geo.ip) enriched.webrtcIp = geo.ip;
+    // Coherent WebRTC, with the relay: report the proxy's egress IP rather than letting WebRTC contradict HTTP.
+    if (relayed && unset(enriched.webrtcIp) && geo.ip) enriched.webrtcIp = geo.ip;
   }
   let refreshedWebrtcIp: string | undefined;
   if (follows && geo.ip && geo.ip !== p.webrtcIp) {
@@ -342,7 +376,7 @@ export async function prepareProxySession(
 ): Promise<{ profile: Profile; warnings: string[]; udp?: { udp: UdpVerdict; detail?: string } }> {
   const warnings: string[] = [];
   const pinned = proxyProblem(p.proxy) ? null : await pinUdpSession(p);
-  const geo = await applyGeoip(p);
+  const geo = await applyGeoip(p, udpRelayed(p, pinned ?? undefined));
   if (geo.warning) warnings.push(geo.warning);
   return { profile: geo.profile, warnings, ...(pinned ? { udp: pinned } : {}) };
 }
@@ -631,6 +665,7 @@ async function launchOnce(
       // probe given only CLEARCOTE_RUN_TOKEN died and every free launch failed before its persona was fetched (0.27.0).
       personaArgs = argv; // before the persona step moves a captured profile off them: what a heal keys on
       const personaLaunch = await preparePersonaLaunch(bin, argv, lease, { env });
+      if (personaLaunch.gpuWarning) warnings.push(personaLaunch.gpuWarning);
       argv = personaLaunch.args;
       env = personaLaunch.env(env);
     }

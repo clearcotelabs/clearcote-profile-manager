@@ -297,11 +297,100 @@ export function injectPersonaToken(env: Env, token: string): Env {
   return out;
 }
 
+// ── GPU vendor guard (the SDK's persona.ts warnGpuHostMismatch) ─────────────────────────────────────────────────
+//
+// Sites can send a seed, run seeded arithmetic on the GPU and compare what the computing GPU's class (its vendor and
+// graphics backend, e.g. NVIDIA on Direct3D 11) returns with the WebGL renderer the page declares. A persona that names
+// another vendor than the GPU that really computes, or a graphics card's name over a software renderer (SwiftShader /
+// WARP on Remote Desktop, a VM or a VPS), is caught by that check whatever the strings say. After the persona token is
+// fetched, the GPU it declares (the token's payload is the generator's own output) is compared with the vendor the
+// engine reports for this machine at this launch; a mismatch becomes a launch warning. CLEARCOTE_NO_GPU_HOST_CHECK=1
+// in the app's environment silences it.
+
+export const GPU_CHECK_ENV = "CLEARCOTE_NO_GPU_HOST_CHECK";
+const GPU_CHECK_SKIP_SWITCHES: ReadonlySet<string> = new Set([
+  "canvas-bridge-url", "use-adapter-luid", "disable-gpu-string-spoof", "disable-gpu-fingerprint", "fingerprint-passthrough",
+]);
+const MAKER_NAMES: Record<string, string> = { nvidia: "NVIDIA", intel: "Intel", amd: "AMD", apple: "Apple", qualcomm: "Qualcomm", arm: "ARM" };
+const HOST_VENDOR_NAMES: Record<string, string> = { nvidia: "NVIDIA", intel: "Intel", amd: "AMD" };
+
+/** The GPU maker a WebGL vendor or renderer string names (the SDK's fingerprint.ts gpuMaker), or null. */
+export function gpuMaker(s: string): string | null {
+  const m = /^ANGLE \(([^,]+),/.exec(s) ?? /^Google Inc\. \((.+)\)$/.exec(s.trim());
+  const t = (m ? m[1] : s).trim().toLowerCase();
+  if (t === "google inc." || t === "webkit") return null;
+  if (t.includes("nvidia")) return "nvidia";
+  if (/\bamd\b|advanced micro|\bati\b|radeon/.test(t)) return "amd";
+  if (t.includes("intel")) return "intel";
+  if (t.includes("apple")) return "apple";
+  if (/qualcomm|adreno/.test(t)) return "qualcomm";
+  if (/\barm\b|mali/.test(t)) return "arm";
+  if (t.includes("microsoft")) return "microsoft";
+  if (/google|swiftshader/.test(t)) return "google";
+  return null;
+}
+
+/** The WebGL vendor and renderer a persona token declares (its payload `p` is the generator's codec JSON), or null. */
+export function personaGpuFromToken(token: string): { vendor: string; renderer: string } | null {
+  try {
+    const payload = JSON.parse(Buffer.from(token.split(".")[0], "base64url").toString("utf8")) as
+      { p?: { persona?: { webgl_vendor?: unknown; webgl_renderer?: unknown } } };
+    const p = payload?.p?.persona;
+    if (!p || typeof p.webgl_renderer !== "string" || !p.webgl_renderer) return null;
+    return { vendor: typeof p.webgl_vendor === "string" ? p.webgl_vendor : "", renderer: p.webgl_renderer };
+  } catch {
+    return null;
+  }
+}
+
+/** Where the persona's GPU comes from: the profile's GPU fields, an imported device, or the engine's own pick. */
+export function gpuSource(sel: Selector, profileJson: string | null): "options" | "profile" | "engine" {
+  if (sel["fingerprint-gpu-vendor"] !== undefined || sel["fingerprint-gpu-renderer"] !== undefined) return "options";
+  if (sel["fingerprint-profile-id"] !== undefined) return "profile";
+  if (profileJson !== null) {
+    try {
+      const dbg = (JSON.parse(profileJson) as { webgl?: { webgl1?: { debug?: Record<string, unknown> } } })?.webgl?.webgl1?.debug;
+      if (dbg && (typeof dbg.UNMASKED_VENDOR_WEBGL === "string" || typeof dbg.UNMASKED_RENDERER_WEBGL === "string")) return "profile";
+    } catch { /* not JSON: the engine refuses it anyway */ }
+  }
+  return "engine";
+}
+
+/**
+ * The launch warning when the GPU a persona declares is not the one this machine renders on, or null. `host.gpu_vendor`
+ * is the engine's answer for this launch ("nvidia", "intel", "amd", or "none" = no hardware adapter WebGL renders on).
+ */
+export function gpuHostMismatch(persona: { vendor: string; renderer: string } | null, host: HostFacts, args: readonly string[],
+  source: "options" | "profile" | "engine"): string | null {
+  if (!persona) return null;
+  if (args.some((a) => { const s = parseSwitch(a); return !!s && GPU_CHECK_SKIP_SWITCHES.has(s[0]); })) return null;
+  const maker = gpuMaker(persona.renderer) ?? gpuMaker(persona.vendor);
+  if (!maker || !MAKER_NAMES[maker]) return null;  // a software or unknown renderer claims no card
+  const hv = String(host.gpu_vendor ?? "").toLowerCase();
+  const claim = `${MAKER_NAMES[maker]} GPU (${persona.renderer})`;
+  const from = source === "options" ? "The GPU vendor / renderer fields declare" : source === "profile" ? "The device profile declares" : "The persona declares";
+  if (hv === "none") {
+    return `${from} a ${claim}, but this computer renders WebGL in software (no NVIDIA, Intel or AMD graphics card: ` +
+      "Remote Desktop, a VM or a VPS). Sites that run GPU arithmetic see a software renderer under a graphics card's name. " +
+      "Run this profile on a computer with a graphics card, or turn GPU string spoofing off to show the real renderer.";
+  }
+  if (!HOST_VENDOR_NAMES[hv] || hv === maker) return null;
+  const fix = source === "options"
+    ? "Clear the GPU vendor and renderer fields, or pick a GPU model of this computer's maker."
+    : source === "profile"
+      ? "Use a device profile captured on a computer with the same GPU maker as this one."
+      : "Pick a GPU model of this computer's maker in the profile.";
+  return `${from} a ${claim}, but this computer renders on ${HOST_VENDOR_NAMES[hv]}. Sites that send a seed and run GPU ` +
+    `arithmetic compare the card that computes with the declared graphics card, and report the graphics as spoofed. ${fix}`;
+}
+
 export interface PersonaLaunch {
   /** The launch args, with a captured profile replaced by its hash. */
   args: string[];
   /** `base` with the persona token added (or `base` itself when this engine needs none). */
   env(base: Env | undefined): Env | undefined;
+  /** The persona's GPU is not this computer's (gpuHostMismatch): a launch warning. */
+  gpuWarning?: string;
 }
 
 /**
@@ -317,7 +406,9 @@ export async function preparePersonaLaunch(bin: string, args: readonly string[],
   const host = hostFacts(bin, out, lease.token, deps.runner, deps.env);
   const token = await personaTokenFor(lease, sel, host, profileJson, deps.fetch);
   assertClockFor(token, "persona token", deps.now?.());
-  return { args: out, env: (b) => injectPersonaToken(b ?? { ...process.env }, token) };
+  const off = /^(1|true|yes|on)$/i.test(String((deps.env ?? process.env)[GPU_CHECK_ENV] ?? process.env[GPU_CHECK_ENV] ?? "").trim());
+  const gpuWarning = off ? null : gpuHostMismatch(personaGpuFromToken(token), host, out, gpuSource(sel, profileJson));
+  return { args: out, env: (b) => injectPersonaToken(b ?? { ...process.env }, token), ...(gpuWarning ? { gpuWarning } : {}) };
 }
 
 export function clearPersonaCaches(): void {

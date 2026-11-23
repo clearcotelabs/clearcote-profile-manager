@@ -213,6 +213,13 @@ describe("Check against the stored WebRTC IP", () => {
     expect(d.lines[1]).toContain("Resolve from proxy");
   });
 
+  it("a resolved WebRTC IP behind a proxy without Relay UDP: no line, a launch leaves it out", () => {
+    const off = { ...resolvedEarlier, proxy: "socks5://u:p@h:1", socks5Udp: false };
+    expect(describeCheck({ ok: true, ms: 500, geo }, off).lines).toHaveLength(1);
+    // with Relay UDP on a socks5 proxy it still follows the exit
+    expect(describeCheck({ ok: true, ms: 500, geo }, { ...off, socks5Udp: true }).lines[1]).toContain("will report 62.198.28.61");
+  });
+
   it("no stored IP, or one that matches: nothing extra", () => {
     expect(describeCheck({ ok: true, ms: 500, geo }, {}).lines).toHaveLength(1);
     expect(describeCheck({ ok: true, ms: 500, geo }, { webrtcIp: "62.198.28.61" }).lines).toHaveLength(1);

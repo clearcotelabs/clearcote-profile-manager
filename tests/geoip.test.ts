@@ -66,7 +66,7 @@ describe("applyGeoip — when it runs at all", () => {
   it("skips the network round-trip when every field is already set", async () => {
     const p = profile({
       timezone: "Europe/Berlin", acceptLanguage: "de-DE,de",
-      location: "52.5,13.4", webrtcIp: "1.2.3.4",
+      location: "52.5,13.4", webrtcIp: "1.2.3.4", socks5Udp: true,
     });
     const r = await applyGeoip(p);
     expect(r.profile).toBe(p);
@@ -75,8 +75,8 @@ describe("applyGeoip — when it runs at all", () => {
 });
 
 describe("applyGeoip — filling the gaps", () => {
-  it("fills all four fields from the proxy's exit region", async () => {
-    const { profile: out, warning } = await applyGeoip(profile());
+  it("fills all four fields from the proxy's exit region, with Relay UDP on", async () => {
+    const { profile: out, warning } = await applyGeoip(profile({ socks5Udp: true }));
     expect(warning).toBeUndefined();
     expect(out.timezone).toBe("America/Chicago");
     expect(out.acceptLanguage).toBe("en-US,en");
@@ -91,7 +91,7 @@ describe("applyGeoip — filling the gaps", () => {
 
   it("an explicit value always wins over the resolved one", async () => {
     const { profile: out } = await applyGeoip(
-      profile({ timezone: "Asia/Tokyo", location: "35.6,139.6" }),
+      profile({ timezone: "Asia/Tokyo", location: "35.6,139.6", socks5Udp: true }),
     );
     expect(out.timezone).toBe("Asia/Tokyo");
     expect(out.location).toBe("35.6,139.6");
@@ -158,7 +158,7 @@ describe("geoip default", () => {
     // proxied profile, so if it overrode explicit values it would quietly rewrite people's personas.
     geoCheck.mockResolvedValue(SUCCESS);
     const { profile: out } = await applyGeoip(
-      profile({ geoip: true, timezone: "Europe/Berlin", location: "52.5,13.4" }),
+      profile({ geoip: true, timezone: "Europe/Berlin", location: "52.5,13.4", socks5Udp: true }),
     );
     expect(out.timezone).toBe("Europe/Berlin");
     expect(out.location).toBe("52.5,13.4");
@@ -181,11 +181,11 @@ describe("geoip default", () => {
 // launch; a typed one is still the user's choice.
 const { saveProfile, getProfile } = await import("../electron/profiles");
 
-describe("applyGeoip — a resolved WebRTC IP follows the proxy", () => {
+describe("applyGeoip — a resolved WebRTC IP follows the proxy (Relay UDP on)", () => {
   const resolved = (over: Partial<Profile> = {}) =>
     profile({
       timezone: "Europe/Copenhagen", acceptLanguage: "da-DK,da,en", location: "55.6,12.5",
-      webrtcIp: "87.50.91.122",
+      webrtcIp: "87.50.91.122", socks5Udp: true,
       lastGeo: { ip: "87.50.91.122", country: "Denmark", countryCode: "DK", at: "2026-10-24T10:00:00.000Z", proxy: "socks5 gw.example.com:10000" },
       ...over,
     });
@@ -248,5 +248,58 @@ describe("applyGeoip — a resolved WebRTC IP follows the proxy", () => {
     expect(r.profile.webrtcIp).toBe("87.50.91.122");
     expect(r.warning).toContain("87.50.91.122");
     expect(r.warning).toContain("timed out");
+  });
+});
+
+// 2026-11-23: without the SOCKS5 UDP relay no UDP leaves from the proxy's exit, so a WebRTC IP there makes the engine
+// report a server-reflexive candidate no packet came from, and sites that run their own STUN servers prove it made up
+// (a spoof verdict with the exit filled in, none with the field empty). Behind such a proxy the WebRTC IP is not
+// filled, a looked-up one is left out of the launch, and a typed one is kept with a warning.
+describe("applyGeoip — no WebRTC IP behind a proxy that carries no UDP", () => {
+  const LOOKED_UP = { ip: "87.50.91.122", country: "Denmark", countryCode: "DK", at: "2026-11-23T10:00:00.000Z", proxy: "socks5 gw.example.com:10000" };
+
+  it("fills the region but not the WebRTC IP (Relay UDP off)", async () => {
+    const { profile: out, warning } = await applyGeoip(profile());
+    expect(warning).toBeUndefined();
+    expect(out.timezone).toBe("America/Chicago");
+    expect(out.acceptLanguage).toBe("en-US,en");
+    expect(out.location).toBe("39.1484,-94.5686");
+    expect(out.webrtcIp).toBeUndefined();
+  });
+
+  it("an HTTP proxy never carries UDP, even with the toggle on", async () => {
+    const { profile: out } = await applyGeoip(profile({ proxy: "http://u:p@gw.example.com:8080", socks5Udp: true }));
+    expect(out.webrtcIp).toBeUndefined();
+  });
+
+  it("a refused relay (the explicit verdict) counts as no relay", async () => {
+    const { profile: out } = await applyGeoip(profile({ socks5Udp: true }), false);
+    expect(out.webrtcIp).toBeUndefined();
+  });
+
+  it("leaves a looked-up WebRTC IP out of the launch without a lookup, and the saved profile alone", async () => {
+    const p = profile({ timezone: "Europe/Copenhagen", acceptLanguage: "da-DK,da,en", location: "55.6,12.5", webrtcIp: "87.50.91.122", lastGeo: LOOKED_UP });
+    const r = await applyGeoip(p);
+    expect(r.profile.webrtcIp).toBeUndefined();
+    expect(r.refreshedWebrtcIp).toBeUndefined();
+    expect(r.warning).toBeUndefined();
+    expect(geoCheck).not.toHaveBeenCalled();
+    expect(p.webrtcIp).toBe("87.50.91.122");
+  });
+
+  it("keeps a typed WebRTC IP, with a warning that it can be proven fake", async () => {
+    const p = profile({ timezone: "Europe/Berlin", acceptLanguage: "de-DE,de", location: "52.5,13.4", webrtcIp: "203.0.113.9" });
+    const r = await applyGeoip(p);
+    expect(r.profile).toBe(p);
+    expect(geoCheck).not.toHaveBeenCalled();
+    expect(r.warning).toContain("203.0.113.9");
+    expect(r.warning).toContain("sites that run their own STUN servers can prove it fake");
+  });
+
+  it("a typed WebRTC IP with gaps: the region is filled, and both warnings are kept", async () => {
+    geoCheck.mockResolvedValue({ ok: false, error: "timed out" });
+    const r = await applyGeoip(profile({ webrtcIp: "203.0.113.9" }));
+    expect(r.warning).toContain("timed out");
+    expect(r.warning).toContain("203.0.113.9");
   });
 });
