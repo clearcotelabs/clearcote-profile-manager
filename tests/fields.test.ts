@@ -253,6 +253,19 @@ describe("the Cloud section", () => {
   });
 });
 
+describe("Persona schema 8 for new profiles, left alone on saved ones", () => {
+  // 2026-11-23: the persona service's schema 8 (gen-156-s8b) is the machine model re-weighted on real Windows traffic.
+  // A saved profile without the key gets the service default (7), so its screen, memory and touch never change.
+  it("a new profile (editor, bulk create) has 8; a saved profile without the key adds no switch", async () => {
+    const { newProfile } = await import("../src/lib/newProfile");
+    const fresh = newProfile("seed", "2026-11-23T00:00:00Z") as unknown as Record<string, unknown>;
+    expect(fresh.personaSchema).toBe(8);
+    const { profilesFromProxyList } = await import("../src/lib/bulkCreate");
+    const bulk = profilesFromProxyList("h1.example:1", { namePattern: "P {n}", geoip: true }).profiles;
+    expect(bulk.map((p) => p.personaSchema)).toEqual([8]);
+  });
+});
+
 describe("Noise per profile: on for new profiles, left alone on saved ones", () => {
   // Decided 2026-11-22 (SESSION-CONTEXT 317): one noise per profile for NEW profiles, as one real computer gives
   // one canvas everywhere; per-site noise lets a widget embedded on many sites see a different drawing on each.

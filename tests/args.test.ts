@@ -81,6 +81,16 @@ describe("profileToArgs — every setting maps to its switch", () => {
     expect(startsWith({}, "--fingerprint-noise-per-profile")).toBe(false);
     expect(startsWith({ noisePerProfile: false }, "--fingerprint-noise-per-profile")).toBe(false);
   });
+  it("personaSchema → --fingerprint-schema; unset emits nothing; Extra flags win; a bad value emits nothing", () => {
+    expect(has({ personaSchema: 8 }, "--fingerprint-schema=8")).toBe(true);
+    expect(has({ personaSchema: 7 }, "--fingerprint-schema=7")).toBe(true);
+    expect(startsWith({}, "--fingerprint-schema")).toBe(false);
+    // the user's own value is the only one (the preview lists Extra flags too)
+    const both = profileToArgs({ ...base, personaSchema: 8, extraArgs: ["--fingerprint-schema=5"] } as Profile);
+    expect(both.filter((a) => a.startsWith("--fingerprint-schema="))).toEqual(["--fingerprint-schema=5"]);
+    expect(startsWith({ personaSchema: 0 }, "--fingerprint-schema")).toBe(false);
+    expect(startsWith({ personaSchema: 1.5 }, "--fingerprint-schema")).toBe(false);
+  });
   it("canvasBridgeUrl → --canvas-bridge-url", () =>
     expect(has({ canvasBridgeUrl: "ws://h:8443/render" }, "--canvas-bridge-url=ws://h:8443/render")).toBe(true));
   it("canvasBridgeAuth → switch present, secret redacted in the preview", () => {

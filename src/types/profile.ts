@@ -155,6 +155,10 @@ export interface Profile {
   webglReadMargin?: boolean;
   /** r60: true = --fingerprint-noise-per-profile (one canvas/WebGL noise seed per profile, not per site). */
   noisePerProfile?: boolean;
+  /** Persona schema (--fingerprint-schema, as the SDK's personaSchema): 8 for a profile made by 0.42.9+ (the machine
+   * model re-weighted on real Windows traffic, persona service gen-156-s8b+); missing = the service default (7), so a
+   * saved profile's screen, memory and touch never change. A --fingerprint-schema in Extra flags wins. */
+  personaSchema?: number;
   /** --fingerprint-storage-quota in MEGABYTES (navigator.storage.estimate().quota). A tiny value
    *  reads as incognito / a test machine; set a realistic on-disk value (e.g. 250000 ≈ 244 GB). */
   storageQuota?: number;

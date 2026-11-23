@@ -292,6 +292,7 @@ export interface FpInput {
   flatAreaNoise?: boolean;
   webglReadMargin?: boolean;
   noisePerProfile?: boolean;
+  personaSchema?: number;
   storageQuota?: number;
   canvasBridgeUrl?: string;
   canvasBridgeAuth?: string;
@@ -582,6 +583,13 @@ export function fingerprintArgs(input: FpInput, opts: FpArgsOptions = {}): strin
   // (eTLD+1), so every site sees the same result. No effect with the noise off. Gated on the engine
   // in the launcher, with a warning (gateNoiseSwitches).
   if (p.noisePerProfile === true) args.push(`--${NOISE_PER_PROFILE_SWITCH}`);
+  // Persona schema, as the SDK's personaSchema: 8 for a profile made by 0.42.9+, nothing for a saved profile without
+  // the key (the persona service's default, 7, so its machine never changes). A --fingerprint-schema the user put in
+  // Extra flags wins and is not doubled. Only engines that take their persona from the service (156 r51+) draw it;
+  // an older one derives its own identity, as before.
+  if (Number.isInteger(p.personaSchema) && (p.personaSchema as number) >= 1 && (p.personaSchema as number) <= 9 &&
+      !p.extraArgs?.some((a) => a.startsWith("--fingerprint-schema=")))
+    args.push(`--fingerprint-schema=${p.personaSchema}`);
 
   // Third-party cookies are allowed, as in stock Chrome, unless the profile blocks them. The engine
   // made allowing its own default in 154 r36; 152 r22 to r35 blocked by default (the de-Googled

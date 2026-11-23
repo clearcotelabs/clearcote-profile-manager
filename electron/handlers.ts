@@ -132,6 +132,7 @@ export function migrateImport(text: string, filename?: string) {
         geoip: true,
         widevine: "auto", // like a profile made in the editor (src/lib/newProfile.ts)
         noisePerProfile: true, // likewise
+        personaSchema: 8, // likewise
         ...(m.notes ? { notes: m.notes } : {}),
         ...(m.tags ? { tags: m.tags } : {}),
         ...(m.group ? { group: m.group } : {}),

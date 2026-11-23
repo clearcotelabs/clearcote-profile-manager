@@ -24,6 +24,9 @@ export function newProfile(seed: string, now: string, platform: Platform = "wind
     // computer gives, instead of a different one per site, which a widget embedded on many sites can compare.
     // A saved profile keeps what it has (missing = per site), so its canvas never changes under it.
     noisePerProfile: true,
+    // Persona schema 8 for a new profile (0.42.9): the machine model re-weighted on real Windows traffic (screens and
+    // scaling, memory, CPU/memory pairs, touchscreens). A saved profile keeps what it has (missing = 7).
+    personaSchema: 8,
     createdAt: now,
     updatedAt: now,
   };
