@@ -1709,5 +1709,17 @@
   "This computer's screen": "Màn hình của máy tính này",
   "This computer's screen, touch and languages": "Màn hình, cảm ứng và ngôn ngữ của máy tính này",
   "For one identity per real desktop. Every profile on this computer then shows the same values.": "Dành cho một danh tính trên mỗi máy tính thật. Mọi profile trên máy tính này khi đó đều hiển thị cùng giá trị.",
-  "Shows this computer's own screen (and, if chosen, its touch points and display language) instead of the persona's generated ones, read at launch. Graphics card, processor and memory stay the persona's. Values you type yourself still win, and with a proxy and GeoIP on the proxy's country decides the languages. In tests on a detection service, a profile's tampering score went down with the real monitor in 16 of 16 runs and with the real touch value in 25 of 27.": "Hiển thị màn hình của chính máy tính này (và, nếu chọn, số điểm cảm ứng và ngôn ngữ hiển thị) thay cho giá trị do persona tạo, đọc khi khởi chạy. Card đồ họa, bộ xử lý và bộ nhớ vẫn là của persona. Giá trị bạn tự nhập vẫn được ưu tiên, và khi có proxy và bật GeoIP thì quốc gia của proxy quyết định ngôn ngữ. Trong thử nghiệm trên một dịch vụ phát hiện, điểm can thiệp của profile giảm với màn hình thật trong 16/16 lần chạy và với giá trị cảm ứng thật trong 25/27 lần."
+  "Shows this computer's own screen (and, if chosen, its touch points and display language) instead of the persona's generated ones, read at launch. Graphics card, processor and memory stay the persona's. Values you type yourself still win, and with a proxy and GeoIP on the proxy's country decides the languages. In tests on a detection service, a profile's tampering score went down with the real monitor in 16 of 16 runs and with the real touch value in 25 of 27.": "Hiển thị màn hình của chính máy tính này (và, nếu chọn, số điểm cảm ứng và ngôn ngữ hiển thị) thay cho giá trị do persona tạo, đọc khi khởi chạy. Card đồ họa, bộ xử lý và bộ nhớ vẫn là của persona. Giá trị bạn tự nhập vẫn được ưu tiên, và khi có proxy và bật GeoIP thì quốc gia của proxy quyết định ngôn ngữ. Trong thử nghiệm trên một dịch vụ phát hiện, điểm can thiệp của profile giảm với màn hình thật trong 16/16 lần chạy và với giá trị cảm ứng thật trong 25/27 lần.",
+  "1 set": "Đã đặt 1",
+  "A real computer's graphics card, screen, fonts and voices. Anything it does not carry comes from the seed.": "Card đồ họa, màn hình, font và giọng đọc của một máy tính thật. Những gì nó không có sẽ lấy từ seed.",
+  "Choose another…": "Chọn máy khác…",
+  "Guide": "Hướng dẫn",
+  "Help": "Trợ giúp",
+  "More options": "Tùy chọn khác",
+  "Nothing to choose: this profile gets its own consistent computer, made from its seed.": "Không cần chọn gì: hồ sơ này có một máy tính riêng, nhất quán, tạo từ seed của nó.",
+  "Platform, screen, start page, group, tags and notes": "Nền tảng, màn hình, trang khởi động, nhóm, tag và ghi chú",
+  "Use a generated computer": "Dùng máy tính được tạo",
+  "Use a real computer instead…": "Dùng một máy tính thật thay thế…",
+  "With a proxy, its time zone and language follow the proxy's country.": "Khi có proxy, múi giờ và ngôn ngữ theo quốc gia của proxy.",
+  "{n} set": "Đã đặt {n}"
 }

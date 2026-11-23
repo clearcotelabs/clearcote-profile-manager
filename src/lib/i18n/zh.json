@@ -1709,5 +1709,17 @@
   "This computer's screen": "这台电脑的屏幕",
   "This computer's screen, touch and languages": "这台电脑的屏幕、触控和语言",
   "For one identity per real desktop. Every profile on this computer then shows the same values.": "适用于每台真实桌面电脑一个身份。这台电脑上的所有配置文件都会显示相同的值。",
-  "Shows this computer's own screen (and, if chosen, its touch points and display language) instead of the persona's generated ones, read at launch. Graphics card, processor and memory stay the persona's. Values you type yourself still win, and with a proxy and GeoIP on the proxy's country decides the languages. In tests on a detection service, a profile's tampering score went down with the real monitor in 16 of 16 runs and with the real touch value in 25 of 27.": "在启动时读取并显示这台电脑自己的屏幕（如选择，还包括其触控点数和显示语言），代替角色生成的值。显卡、处理器和内存仍使用角色的。你自己输入的值仍然优先；使用代理且开启 GeoIP 时，由代理所在国家决定语言。在一个检测服务上的测试中，使用真实显示器时 16 次中 16 次、使用真实触控值时 27 次中 25 次，配置文件的篡改分数都下降了。"
+  "Shows this computer's own screen (and, if chosen, its touch points and display language) instead of the persona's generated ones, read at launch. Graphics card, processor and memory stay the persona's. Values you type yourself still win, and with a proxy and GeoIP on the proxy's country decides the languages. In tests on a detection service, a profile's tampering score went down with the real monitor in 16 of 16 runs and with the real touch value in 25 of 27.": "在启动时读取并显示这台电脑自己的屏幕（如选择，还包括其触控点数和显示语言），代替角色生成的值。显卡、处理器和内存仍使用角色的。你自己输入的值仍然优先；使用代理且开启 GeoIP 时，由代理所在国家决定语言。在一个检测服务上的测试中，使用真实显示器时 16 次中 16 次、使用真实触控值时 27 次中 25 次，配置文件的篡改分数都下降了。",
+  "1 set": "已设置 1 项",
+  "A real computer's graphics card, screen, fonts and voices. Anything it does not carry comes from the seed.": "一台真实电脑的显卡、屏幕、字体和语音。它未包含的部分来自种子。",
+  "Choose another…": "另选一个…",
+  "Guide": "指南",
+  "Help": "帮助",
+  "More options": "更多选项",
+  "Nothing to choose: this profile gets its own consistent computer, made from its seed.": "无需选择：此配置文件会由其种子生成一台自身一致的电脑。",
+  "Platform, screen, start page, group, tags and notes": "平台、屏幕、起始页、分组、标签和备注",
+  "Use a generated computer": "使用生成的电脑",
+  "Use a real computer instead…": "改用一台真实电脑…",
+  "With a proxy, its time zone and language follow the proxy's country.": "使用代理时，时区和语言会跟随代理所在的国家。",
+  "{n} set": "已设置 {n} 项"
 }

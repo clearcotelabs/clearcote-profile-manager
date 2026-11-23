@@ -135,6 +135,9 @@ describe.skipIf(!READY)("profile templates keep the pixel ratio — in a real br
     await page.evaluate(() => localStorage.setItem("clearcote.editor.mode", "simple"));
     await page.getByRole("button", { name: "+ New profile" }).first().click();
     await field("name").fill("Dpr simple 1");
+    // Since 0.43 the screen fields sit under More options, folded on a new profile.
+    expect(await page.locator("[data-more-options]").getAttribute("data-more-options")).toBe("closed");
+    await page.locator("[data-more-options] > button").click();
     await page.getByRole("button", { name: /Use this display/ }).click();
     await page.getByRole("button", { name: "Save profile" }).click();
     await page.waitForSelector('[data-field="name"]', { state: "detached" });
@@ -142,6 +145,8 @@ describe.skipIf(!READY)("profile templates keep the pixel ratio — in a real br
 
     await saveTemplateFrom("Dpr simple 1", "Dpr simple");
     await newFromTemplate("Dpr simple");
+    // The template brings this display's screen, so More options opens by itself.
+    expect(await page.locator("[data-more-options]").getAttribute("data-more-options")).toBe("open");
     await page.getByRole("button", { name: "All settings", exact: true }).click();
     await rail("Hardware").click();
     expect(await field("devicePixelRatio").inputValue()).toBe("1");

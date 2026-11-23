@@ -90,7 +90,13 @@ describe.skipIf(!READY)("Simple editor, Check proxy and the launch message — i
     expect(await mode()).toBe("simple");
     expect(await page.locator("h3").first().textContent()).toBe("Essentials");
     expect(await page.locator("nav").count()).toBe(0);
-    for (const k of ["name", "proxy", "platform", "group", "notes", "startUrl", "screenWidth", "availHeight"]) {
+    // A name and a proxy up front; since 0.43 the other essentials wait under More options
+    // (tests/simplelayout.e2e.test.ts has the fold itself).
+    for (const k of ["name", "proxy", "fingerprintProfile"]) {
+      expect(await page.locator(`[data-field="${k}"]`).count(), k).toBe(1);
+    }
+    await page.locator("[data-more-options] > button").click();
+    for (const k of ["platform", "group", "notes", "startUrl", "screenWidth", "availHeight"]) {
       expect(await page.locator(`[data-field="${k}"]`).count(), k).toBe(1);
     }
     expect(await page.locator('[data-field="gpuModel"]').count()).toBe(0);

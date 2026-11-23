@@ -1709,5 +1709,17 @@
   "This computer's screen": "Bildschirm dieses Computers",
   "This computer's screen, touch and languages": "Bildschirm, Touch und Sprachen dieses Computers",
   "For one identity per real desktop. Every profile on this computer then shows the same values.": "Für eine Identität pro echtem Desktop. Alle Profile auf diesem Computer zeigen dann dieselben Werte.",
-  "Shows this computer's own screen (and, if chosen, its touch points and display language) instead of the persona's generated ones, read at launch. Graphics card, processor and memory stay the persona's. Values you type yourself still win, and with a proxy and GeoIP on the proxy's country decides the languages. In tests on a detection service, a profile's tampering score went down with the real monitor in 16 of 16 runs and with the real touch value in 25 of 27.": "Zeigt den eigenen Bildschirm dieses Computers (und, falls gewählt, seine Touch-Punkte und Anzeigesprache) statt der von der Persona erzeugten Werte, gelesen beim Start. Grafikkarte, Prozessor und Arbeitsspeicher bleiben die der Persona. Selbst eingegebene Werte haben weiterhin Vorrang, und mit Proxy und eingeschaltetem GeoIP bestimmt das Land des Proxys die Sprachen. In Tests bei einem Erkennungsdienst sank der Manipulationswert eines Profils mit dem echten Monitor in 16 von 16 Läufen und mit dem echten Touch-Wert in 25 von 27."
+  "Shows this computer's own screen (and, if chosen, its touch points and display language) instead of the persona's generated ones, read at launch. Graphics card, processor and memory stay the persona's. Values you type yourself still win, and with a proxy and GeoIP on the proxy's country decides the languages. In tests on a detection service, a profile's tampering score went down with the real monitor in 16 of 16 runs and with the real touch value in 25 of 27.": "Zeigt den eigenen Bildschirm dieses Computers (und, falls gewählt, seine Touch-Punkte und Anzeigesprache) statt der von der Persona erzeugten Werte, gelesen beim Start. Grafikkarte, Prozessor und Arbeitsspeicher bleiben die der Persona. Selbst eingegebene Werte haben weiterhin Vorrang, und mit Proxy und eingeschaltetem GeoIP bestimmt das Land des Proxys die Sprachen. In Tests bei einem Erkennungsdienst sank der Manipulationswert eines Profils mit dem echten Monitor in 16 von 16 Läufen und mit dem echten Touch-Wert in 25 von 27.",
+  "1 set": "1 festgelegt",
+  "A real computer's graphics card, screen, fonts and voices. Anything it does not carry comes from the seed.": "Grafikkarte, Bildschirm, Schriften und Stimmen eines echten Rechners. Was er nicht mitbringt, kommt aus dem Seed.",
+  "Choose another…": "Anderen wählen…",
+  "Guide": "Anleitung",
+  "Help": "Hilfe",
+  "More options": "Weitere Optionen",
+  "Nothing to choose: this profile gets its own consistent computer, made from its seed.": "Nichts zu wählen: Dieses Profil bekommt aus seinem Seed einen eigenen, stimmigen Rechner.",
+  "Platform, screen, start page, group, tags and notes": "Plattform, Bildschirm, Startseite, Gruppe, Tags und Notizen",
+  "Use a generated computer": "Generierten Rechner verwenden",
+  "Use a real computer instead…": "Stattdessen einen echten Rechner verwenden…",
+  "With a proxy, its time zone and language follow the proxy's country.": "Mit einem Proxy folgen Zeitzone und Sprache dem Land des Proxys.",
+  "{n} set": "{n} festgelegt"
 }

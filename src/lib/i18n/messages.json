@@ -96,6 +96,9 @@
   "1 running profile is left alone.": [
     "app/page.tsx"
   ],
+  "1 set": [
+    "src/components/ProfileEditor.tsx"
+  ],
   "1 setting matches “{query}”": [
     "src/components/ProfileEditor.tsx"
   ],
@@ -213,6 +216,9 @@
     "src/lib/coherence.ts"
   ],
   "A random model of this machine's GPU maker, never the one already chosen": [
+    "src/components/ProfileEditor.tsx"
+  ],
+  "A real computer's graphics card, screen, fonts and voices. Anything it does not carry comes from the seed.": [
     "src/components/ProfileEditor.tsx"
   ],
   "A saved key is checked straight away. The check briefly takes one browser slot, so while every slot is in use it can only confirm the key is valid.": [
@@ -733,6 +739,9 @@
   "Choose": [
     "src/components/StepEditor.tsx",
     "src/components/StepTimeline.tsx"
+  ],
+  "Choose another…": [
+    "src/components/ProfileEditor.tsx"
   ],
   "Choose file…": [
     "src/components/MigrateDialog.tsx"
@@ -1680,6 +1689,9 @@
   "Groups": [
     "src/components/Sidebar.tsx"
   ],
+  "Guide": [
+    "src/components/ProfileEditor.tsx"
+  ],
   "HLSL shader dialect": [
     "src/lib/fields.ts"
   ],
@@ -1687,6 +1699,9 @@
     "src/lib/fields.ts"
   ],
   "Has a coherence issue": [
+    "src/components/ProfileEditor.tsx"
+  ],
+  "Help": [
     "src/components/ProfileEditor.tsx"
   ],
   "Hide": [
@@ -1756,6 +1771,7 @@
     "src/lib/ipc.ts"
   ],
   "Identity": [
+    "src/components/ProfileEditor.tsx",
     "src/components/ProfileInspector.tsx",
     "src/lib/fields.ts"
   ],
@@ -2220,6 +2236,9 @@
   "More examples…": [
     "src/components/RunTaskDialog.tsx"
   ],
+  "More options": [
+    "src/components/ProfileEditor.tsx"
+  ],
   "Most residential proxies refuse UDP; when they do, the browser quietly falls back.": [
     "src/lib/fields.ts"
   ],
@@ -2519,6 +2538,9 @@
   "Nothing needs attention": [
     "app/page.tsx"
   ],
+  "Nothing to choose: this profile gets its own consistent computer, made from its seed.": [
+    "src/components/ProfileEditor.tsx"
+  ],
   "Nothing to do: builds from r63 encrypt it, as Chrome does, and Auto turns DRM on again. Choose On if a site needs DRM now.": [
     "src/lib/coherence.ts"
   ],
@@ -2776,6 +2798,9 @@
   ],
   "Platform version": [
     "src/lib/fields.ts"
+  ],
+  "Platform, screen, start page, group, tags and notes": [
+    "src/components/ProfileEditor.tsx"
   ],
   "Point at a local {exe} to test your own build. The {env} environment variable does the same.": [
     "src/components/SettingsModal.tsx"
@@ -4360,6 +4385,12 @@
   "Updating…": [
     "src/components/ExtensionsView.tsx"
   ],
+  "Use a generated computer": [
+    "src/components/ProfileEditor.tsx"
+  ],
+  "Use a real computer instead…": [
+    "src/components/ProfileEditor.tsx"
+  ],
   "Use a socks5:// proxy, or turn UDP relaying off so the profile does not claim something it is not doing.": [
     "src/lib/coherence.ts"
   ],
@@ -4588,6 +4619,9 @@
   ],
   "With a key": [
     "src/components/SettingsModal.tsx"
+  ],
+  "With a proxy, its time zone and language follow the proxy's country.": [
+    "src/components/ProfileEditor.tsx"
   ],
   "With this off, profiles accept certificates Chrome has revoked, such as those of a certificate authority whose keys were compromised.": [
     "src/components/SettingsModal.tsx"
@@ -5193,6 +5227,9 @@
   "{n} selected": [
     "app/page.tsx",
     "src/components/StorageSection.tsx"
+  ],
+  "{n} set": [
+    "src/components/ProfileEditor.tsx"
   ],
   "{n} set here": [
     "src/components/ProfileEditor.tsx"

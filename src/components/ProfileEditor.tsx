@@ -22,6 +22,9 @@ import {
   FIELDS,
   essentialFields,
   isEssential,
+  isPrimary,
+  IDENTITY_KEY,
+  moreOptionsSet,
   setOutsideEssentials,
   countSet,
   fieldByKey,
@@ -60,7 +63,7 @@ import {
 import { api, isWeb, type ExtensionEntry, type GeoResult, type HostGpu, type ProxyCheck, type VersionOption } from "@/lib/ipc";
 import { describeCheck, offersRelayUdp, RELAY_UDP_OFFER, UDP_TEST_WARNING } from "@/lib/proxyReport";
 import { proxySummary } from "@/lib/profileList";
-import { browserCommandName, hostOs, shortcutLabel, type HostOs } from "@/lib/host";
+import { browserCommandName, defaultPersonaPlatform, hostOs, shortcutLabel, type HostOs } from "@/lib/host";
 import { normalizeProxyLine } from "@/lib/bulkCreate";
 import { proxyProblem } from "../../electron/proxyargs";
 import {
@@ -71,6 +74,7 @@ import {
   withHostScreen,
   withoutScreen,
 } from "@/lib/quickCreate";
+import { guideUrl } from "@/lib/docsLinks";
 import CloudFields from "./CloudFields";
 import TaskValues from "./TaskValues";
 import TotpField from "./TotpField";
@@ -168,6 +172,11 @@ export default function ProfileEditor({
       /* private window: the choice lasts this session */
     }
   };
+  // Simple's "More options" fold: closed for a new profile, open when one of its settings differs
+  // from what a new profile starts with, so nothing you set is folded out of sight.
+  const [moreOpen, setMoreOpen] = useState<boolean>(
+    () => moreOptionsSet(profile as unknown as Record<string, unknown>, defaultPersonaPlatform(hostPlatform())) > 0,
+  );
   const [query, setQuery] = useState("");
   const [cohOpen, setCohOpen] = useState(false);
   const [prevOpen, setPrevOpen] = useState(false);
@@ -274,6 +283,7 @@ export default function ProfileEditor({
     setQuery("");
     setCat(f.cat);
     if (!isEssential(f.key)) setSimple(false);
+    else if (!isPrimary(f.key) && f.key !== IDENTITY_KEY) setMoreOpen(true);
     setFlash(f.key);
     window.setTimeout(() => {
       const el = panelRef.current?.querySelector<HTMLElement>(`[data-field="${f.key}"]`);
@@ -1113,6 +1123,90 @@ export default function ProfileEditor({
     return out;
   }
 
+  /** Simple's identity line. The seed already makes a consistent computer, so there is nothing to
+   *  choose; a real computer from the library is offered as the one optional step. All settings keeps
+   *  the full control (import from a file, the capture's details). */
+  function renderSimpleIdentity() {
+    const meta = profile.fingerprintProfileMeta;
+    const real = !!profile.fingerprintProfile;
+    return (
+      <div
+        key={IDENTITY_KEY}
+        data-field={IDENTITY_KEY}
+        data-simple-identity={real ? "real" : "generated"}
+        className={
+          "sm:col-span-2 rounded-lg border border-line/70 bg-ink/30 p-3 transition-shadow " +
+          (flash === IDENTITY_KEY ? "shadow-[0_0_0_4px_rgba(245,158,11,.25)]" : "")
+        }
+      >
+        <p className="text-[10px] font-medium uppercase tracking-wider text-fog/40">{t("Identity")}</p>
+        {real ? (
+          <>
+            <p className="mt-1 text-sm">
+              <span className="font-medium">{meta?.label || profile.fingerprintProfile}</span>
+              {meta?.renderer && <span className="ml-1.5 font-mono text-[11px] text-fog/50">{meta.renderer}</span>}
+            </p>
+            <p className="mt-0.5 text-[11px] text-fog/45">
+              {t("A real computer's graphics card, screen, fonts and voices. Anything it does not carry comes from the seed.")}
+            </p>
+            {meta?.screenWarning && (
+              <p className="mt-2 rounded border border-warn/30 bg-warn/10 px-2 py-1.5 text-[11px] text-warn">⚠ {meta.screenWarning}</p>
+            )}
+            <div className="mt-2 flex flex-wrap gap-2">
+              {renderLibrary && (
+                <button type="button" className={btnGhost + " py-1 text-xs"} onClick={() => setLibOpen(true)} data-simple-library="1">
+                  {t("Choose another…")}
+                </button>
+              )}
+              <button
+                type="button"
+                className={btnGhost + " py-1 text-xs"}
+                onClick={() => onChange({ ...profile, fingerprintProfile: undefined, fingerprintProfileMeta: undefined })}
+                data-simple-generated="1"
+              >
+                {t("Use a generated computer")}
+              </button>
+            </div>
+          </>
+        ) : (
+          <>
+            <p className="mt-1 text-xs text-fog/70">
+              {t("Nothing to choose: this profile gets its own consistent computer, made from its seed.")}
+              {profile.geoip !== false ? " " + t("With a proxy, its time zone and language follow the proxy's country.") : ""}
+            </p>
+            {renderLibrary && (
+              <button type="button" className={btnGhost + " mt-2 py-1 text-xs"} onClick={() => setLibOpen(true)} data-simple-library="1">
+                {t("Use a real computer instead…")}
+              </button>
+            )}
+          </>
+        )}
+      </div>
+    );
+  }
+
+  /** A link to this part of the Profile Manager guide on clearcotelabs.com (opened outside the app). */
+  function helpLink(part: Parameters<typeof guideUrl>[0], text: string) {
+    const url = guideUrl(part);
+    return (
+      <a
+        href={url}
+        target="_blank"
+        rel="noreferrer"
+        onClick={(e) => {
+          e.preventDefault();
+          void api.openExternal(url);
+        }}
+        className="shrink-0 text-xs text-accent hover:underline"
+        data-help-link={part}
+      >
+        {text} ↗
+      </a>
+    );
+  }
+
+  const moreSet = moreOptionsSet(profile as unknown as Record<string, unknown>, defaultPersonaPlatform(hostPlatform()));
+
   const category = CATEGORIES.find((c) => c.id === cat)!;
 
   return (
@@ -1307,7 +1401,10 @@ export default function ProfileEditor({
                 </>
               ) : simple ? (
                 <>
-                  <h3 className="text-[15px] font-semibold">{t("Essentials")}</h3>
+                  <div className="flex items-baseline justify-between gap-3">
+                    <h3 className="text-[15px] font-semibold">{t("Essentials")}</h3>
+                    {helpLink("simple", t("Guide"))}
+                  </div>
                   <p className="mb-4 mt-0.5 max-w-[62ch] text-xs text-fog/40">
                     {hiddenSet
                       ? (() => {
@@ -1327,11 +1424,46 @@ export default function ProfileEditor({
                 </>
               ) : (
                 <>
-                  <h3 className="text-[15px] font-semibold">{t(category.title)}</h3>
+                  <div className="flex items-baseline justify-between gap-3">
+                    <h3 className="text-[15px] font-semibold">{t(category.title)}</h3>
+                    {helpLink(category.id, t("Help"))}
+                  </div>
                   <p className="mb-4 mt-0.5 max-w-[62ch] text-xs text-fog/40">{t(category.blurb)}</p>
                 </>
               )}
-              <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">{renderFields(shown)}</div>
+              {simple && !results ? (
+                <>
+                  <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+                    {renderFields(shown.filter((f) => isPrimary(f.key)))}
+                    {renderSimpleIdentity()}
+                  </div>
+                  <div className="mt-4 border-t border-line/60 pt-3" data-more-options={moreOpen ? "open" : "closed"}>
+                    <button
+                      type="button"
+                      aria-expanded={moreOpen}
+                      onClick={() => setMoreOpen((v) => !v)}
+                      className="flex w-full items-center gap-2 text-left text-xs text-fog/60 hover:text-fog"
+                    >
+                      <span className={"transition-transform " + (moreOpen ? "rotate-90" : "")}>›</span>
+                      <span className="font-medium text-fog/80">{t("More options")}</span>
+                      <span className="truncate text-fog/40">
+                        {moreSet === 1
+                          ? t("1 set")
+                          : moreSet > 1
+                            ? t("{n} set", { n: moreSet })
+                            : t("Platform, screen, start page, group, tags and notes")}
+                      </span>
+                    </button>
+                    {moreOpen && (
+                      <div className="mt-3 grid grid-cols-1 gap-4 sm:grid-cols-2">
+                        {renderFields(shown.filter((f) => !isPrimary(f.key) && f.key !== IDENTITY_KEY))}
+                      </div>
+                    )}
+                  </div>
+                </>
+              ) : (
+                <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">{renderFields(shown)}</div>
+              )}
               {results && results.length === 0 && (
                 <p className="text-xs text-fog/40">{t("No setting matches that. Try a switch name, like “socks5”.")}</p>
               )}

@@ -836,10 +836,15 @@ export function searchFields(query: string): FieldDef[] {
  * The editor's Simple view: the settings most hand-made profiles need, on one page. Everything else
  * keeps its default (or a template's value) and stays one click away under "All settings". The four
  * screen fields stay together so they render as their group, with "Use this display".
+ *
+ * Simple lays them out in three parts: the primary pair (PRIMARY_KEYS), the identity line (a real
+ * computer from the library, optional: the seed already makes a consistent one), and the rest under
+ * "More options", folded until one of them differs from a new profile (moreOptionsSet).
  */
 export const ESSENTIAL_KEYS = [
   "name",
   "proxy",
+  "fingerprintProfile",
   "platform",
   "group",
   "tags",
@@ -857,6 +862,32 @@ export function isEssential(key: string): boolean {
 
 export function essentialFields(): FieldDef[] {
   return ESSENTIAL_KEYS.map((k) => fieldByKey(k)).filter((f): f is FieldDef => !!f);
+}
+
+/** What Simple asks for first: a profile needs a name and a proxy, and nothing else. */
+export const PRIMARY_KEYS = ["name", "proxy"] as const;
+
+/** Simple's identity line: shown on its own, between the primary pair and More options. */
+export const IDENTITY_KEY = "fingerprintProfile";
+
+export function isPrimary(key: string): boolean {
+  return (PRIMARY_KEYS as readonly string[]).includes(key);
+}
+
+/** The essentials under Simple's "More options" fold, in ESSENTIAL_KEYS order. */
+export function moreOptionFields(): FieldDef[] {
+  return essentialFields().filter((f) => !isPrimary(f.key) && f.key !== IDENTITY_KEY);
+}
+
+/** How many of the More options differ from what a new profile on this computer starts with. Above
+ *  zero the fold opens by itself, so a value you set is never folded out of sight. The platform a new
+ *  profile gets (this computer's: macOS on a Mac, else Windows) is not a choice; another one is. */
+export function moreOptionsSet(profile: Record<string, unknown>, defaultPlatform: string): number {
+  return moreOptionFields().reduce((n, f) => {
+    if (!isFieldSet(profile, f)) return n;
+    if (f.key === "platform" && profile.platform === defaultPlatform) return n;
+    return n + 1;
+  }, 0);
 }
 
 /** Settings you chose that the Simple view does not show (the seed is always there, so it is not one).
