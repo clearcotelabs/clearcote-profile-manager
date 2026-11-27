@@ -280,7 +280,11 @@ no contact with the license backend).
 With a key set, each launch:
 
 - **downloads the license-gated PRO browser** on demand (via the site's authenticated download route,
-  SHA-256-verified like the free build, cached per build), and
+  cached per build). Every PRO build comes with a release document signed by Clearcote's release key; the
+  app checks the signature with a public key built into it before it downloads a build, checks the
+  download's SHA-256 and the SHA-256 of the browser's main files against that document, and hashes those
+  files again on every launch. A build without a valid document is refused, and an installed build whose
+  files were changed is downloaded again instead of started. No setting skips the check; and
 - **checks out one floating-concurrency slot** — a background heartbeat keeps it alive and the slot is
   released when you stop the profile or close the browser.
 

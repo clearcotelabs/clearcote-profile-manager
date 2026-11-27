@@ -6,6 +6,8 @@
 //   - the catalog resolves the macOS entry, and a Mac with no licence is told why there is nothing
 //     to launch (the free builds have no macOS version), here and in the header pill
 //   - Windows and Linux resolve exactly as before
+// The route's answers are signed with the test release key (helpers/prosign.ts), pinned for this file only:
+// since the signed release manifest, an unsigned answer is refused on every platform.
 
 import { describe, it, expect, beforeAll, afterAll, afterEach, vi } from "vitest";
 import { createHash } from "node:crypto";
@@ -19,6 +21,7 @@ vi.mock("electron", () => ({ app: { getPath: () => ROOT } }));
 import { macExtractHooks } from "../electron/macos";
 import { MAC_NEEDS_LICENSE, listVersions, resolveVersion, platformTag, type Catalog } from "../electron/catalog";
 import { describeTarget } from "../src/lib/launchTarget";
+import { pinTestReleaseKey, restoreReleaseKeys, signedAnswer } from "./helpers/prosign";
 
 /** Run `fn` as if on `platform`/`arch`, restoring the real values afterwards. */
 async function asHost<T>(platform: NodeJS.Platform, arch: string, fn: () => Promise<T> | T): Promise<T> {
@@ -82,6 +85,7 @@ const OLD = {
   USERPROFILE: process.env.USERPROFILE,
 };
 beforeAll(() => {
+  pinTestReleaseKey();
   process.env.CLEARCOTE_CACHE = path.join(ROOT, "cache");
   delete process.env.CLEARCOTE_LICENSE_KEY;
   delete process.env.CLEARCOTE_BINARY;
@@ -94,6 +98,7 @@ afterEach(() => {
   macExtractHooks.run = realRun;
 });
 afterAll(() => {
+  restoreReleaseKeys();
   for (const [k, v] of Object.entries(OLD)) {
     if (v === undefined) delete process.env[k];
     else process.env[k] = v;
@@ -111,17 +116,23 @@ describe("the PRO download on a Mac", () => {
       if (String(u).includes("/api/v1/download/pro")) {
         // The route's real macOS answer (site route-macos.test.ts): a zip of Chromium.app.
         return new Response(
-          JSON.stringify({
-            version: "155.0.8059.39",
-            tag: "pro-155.0.8059.39-r43",
-            platform: "macos",
-            asset: "clearcote-pro-155.0.8059.39-macos-arm64.zip",
-            archive: "zip",
-            binary: "Chromium",
-            url: "https://example.test/file?t=1",
-            sha256: sha,
-            size: zip.length,
-          }),
+          JSON.stringify(
+            signedAnswer(
+              {
+                version: "155.0.8059.39",
+                tag: "pro-155.0.8059.39-r43",
+                asset: "clearcote-pro-155.0.8059.39-macos-arm64.zip",
+                archive: "zip",
+                binary: "Chromium",
+                url: "https://example.test/file?t=1",
+                sha256: sha,
+                // the bundle's launcher (Contents/MacOS/Chromium), not the framework of the same name
+                exe_sha256: createHash("sha256").update("the browser").digest("hex"),
+                size: zip.length,
+              },
+              "macos",
+            ),
+          ),
         );
       }
       return new Response(zip, { headers: { "content-length": String(zip.length) } });
@@ -170,7 +181,14 @@ describe("the PRO download on a Mac", () => {
     const sha = createHash("sha256").update(zip).digest("hex");
     globalThis.fetch = vi.fn(async (u: string | URL) =>
       String(u).includes("/download/pro")
-        ? new Response(JSON.stringify({ version: "155.0.8059.39", tag: "pro-mac-nobin", asset: "m.zip", url: "https://e/f", sha256: sha, size: zip.length }))
+        ? new Response(
+            JSON.stringify(
+              signedAnswer(
+                { version: "155.0.8059.39", revision: "r1", tag: "pro-mac-nobin", asset: "m.zip", url: "https://e/f", sha256: sha, exe_sha256: createHash("sha256").update("b").digest("hex"), size: zip.length },
+                "macos",
+              ),
+            ),
+          )
         : new Response(zip),
     ) as unknown as typeof fetch;
     macExtractHooks.run = async (file, args) => {

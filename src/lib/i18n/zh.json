@@ -1721,5 +1721,8 @@
   "Use a generated computer": "使用生成的电脑",
   "Use a real computer instead…": "改用一台真实电脑…",
   "With a proxy, its time zone and language follow the proxy's country.": "使用代理时，时区和语言会跟随代理所在的国家。",
-  "{n} set": "已设置 {n} 项"
+  "{n} set": "已设置 {n} 项",
+  "This browser build could not be verified": "无法验证此浏览器版本",
+  "It was not used. Update the Profile Manager: a newer version knows the key this build is signed with.": "它没有被使用。请更新 Profile Manager：较新的版本认识为此版本签名的密钥。",
+  "It was not used. Try again; if this keeps happening, report it to Clearcote support.": "它没有被使用。请重试；如果一直出现，请向 Clearcote 支持团队报告。"
 }

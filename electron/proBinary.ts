@@ -2,22 +2,27 @@
 //
 // The PRO build is not on a public releases page: we ask the site for it via the
 // authenticated GET /api/v1/download/pro route (Bearer license key), which returns
-// a short-lived signed blob URL + the archive's SHA-256. We stream it, verify the
-// hash (the trust anchor, exactly like the free pin), extract it, and cache per
-// PRO tag so later launches are instant. Dependency-free: extraction shells out to
+// a short-lived signed blob URL, the archive's SHA-256 and a signed release manifest.
+// The manifest is the trust anchor (proManifest.ts): it is checked against the release
+// key pinned in this app before anything is downloaded, and it names the hashes the
+// archive and the binaries inside it must have. We stream the archive, verify its hash,
+// extract it, check the binaries, and cache per PRO tag. An installed build's binaries
+// are hashed against the manifest again on every launch, so a build that was changed on
+// disk is never started. Dependency-free: extraction shells out to
 // the system `tar` (bsdtar on Win10+/Linux auto-detects both .zip and .tar.xz), and on macOS to
 // `ditto`, which keeps the app bundle's symlinks (see macos.ts).
 
 import { createWriteStream, existsSync, mkdirSync, readdirSync, rmSync, statSync, writeFileSync } from "node:fs";
 import { createHash } from "node:crypto";
 import { homedir } from "node:os";
-import { join } from "node:path";
+import { dirname, join } from "node:path";
 import { spawn } from "node:child_process";
 import { Readable, Transform } from "node:stream";
 import { pipeline } from "node:stream/promises";
 import { apiBase, licenseUserAgent, resolveLicenseKey } from "./license";
 import { warmFiles } from "./winlaunch";
 import { appBinary, buildPlatformFor, defaultBinaryName, extractMacBundle } from "./macos";
+import { ProManifestError, proBinaryHashes, proPins, verifyProManifest } from "./proManifest";
 import type { ResolvedBuild } from "./catalog";
 
 export function cacheRoot(): string {
@@ -88,12 +93,49 @@ export interface ProProgress {
 
 interface ProMeta {
   version?: string;
+  revision?: string;
   tag?: string;
   asset?: string;
   binary?: string;
   url?: string;
   sha256?: string;
+  exe_sha256?: string;
+  chrome_dll_sha256?: string;
   size?: number;
+  /** The signed release manifest (proManifest.ts). Untrusted, like every field here, until it has verified. */
+  manifest?: unknown;
+}
+
+/** What a build is downloaded, verified and cached from. */
+interface BuildMeta {
+  tag: string;
+  asset: string;
+  binary: string;
+  url: string;
+  sha256: string;
+  size?: number;
+  /** Files inside the build and the SHA-256 each must have: a PRO build's signed manifest names them.
+   *  Checked after extraction and again every time the installed build is about to be used. */
+  inner?: Record<string, string>;
+}
+
+/** A folder or file name the cache may be asked to create: one path segment, nothing that climbs out. */
+const SAFE_NAME = /^[A-Za-z0-9][A-Za-z0-9._+-]{0,199}$/;
+
+/**
+ * The first file of `inner` that is missing or does not hash to its value, in words; null when all of them
+ * match. `exe` is the launcher that would be started, `binaryName` its name in `inner`; every other file is
+ * looked for beside the launcher, where the launcher loads it from (a copy elsewhere in the build proves
+ * nothing). The hashes are computed afresh on every call, never remembered: a file edited in place keeps
+ * its size, and can keep its date.
+ */
+async function innerMismatch(exe: string, binaryName: string, inner: Record<string, string>): Promise<string | null> {
+  for (const [name, want] of Object.entries(inner)) {
+    const file = name === binaryName ? exe : join(dirname(exe), name);
+    if (!existsSync(file)) return `${name} is missing`;
+    if ((await sha256File(file)).toLowerCase() !== want.toLowerCase()) return `${name} is not the file the release manifest names`;
+  }
+  return null;
 }
 
 /** Transfers in flight, by build tag. A second request for the same build — a launch while
@@ -104,10 +146,7 @@ const inFlight = new Map<string, { promise: Promise<string>; listeners: Set<ProP
 /** Download + verify + extract a build from its resolved metadata; return the chrome(.exe) path.
  *  Cached per tag (works for both FREE and PRO — only the URL source differs). SHA-256 is the
  *  trust anchor. Throws on any mismatch or failure. */
-function ensureFromMeta(
-  meta: { tag: string; asset: string; binary: string; url: string; sha256: string; size?: number },
-  onProgress?: ProProgress,
-): Promise<string> {
+function ensureFromMeta(meta: BuildMeta, onProgress?: ProProgress): Promise<string> {
   const running = inFlight.get(meta.tag);
   if (running) {
     if (onProgress) running.listeners.add(onProgress);
@@ -120,18 +159,32 @@ function ensureFromMeta(
   return promise;
 }
 
-async function ensureFromMetaOnce(
-  meta: { tag: string; asset: string; binary: string; url: string; sha256: string; size?: number },
-  onProgress?: ProProgress,
-): Promise<string> {
+async function ensureFromMetaOnce(meta: BuildMeta, onProgress?: ProProgress): Promise<string> {
   const tag = meta.tag;
   const binaryName = meta.binary;
+  // Both become a path under the cache folder, and both come from a server answer.
+  if (!SAFE_NAME.test(tag) || !SAFE_NAME.test(meta.asset)) {
+    throw new Error("The download answer names a build or an archive with an unusable name. Refusing to use it.");
+  }
   const destBase = join(cacheRoot(), tag);
   const browserDir = join(destBase, "browser");
   const verified = join(destBase, ".verified");
+  /** Why the installed copy is being replaced, when it is. */
+  let replacing: string | null = null;
   if (existsSync(verified)) {
     const cached = findFile(browserDir, binaryName);
-    if (cached) return cached;
+    if (cached) {
+      replacing = meta.inner ? await innerMismatch(cached, binaryName, meta.inner) : null;
+      if (!replacing) return cached;
+      // Never launched: the copy on disk is not what the release key signed. A fresh download replaces it,
+      // and is checked the same way before it is used.
+      console.warn(`[clearcote] the installed build ${tag} does not match its signed release manifest (${replacing}); downloading it again.`);
+      try {
+        rmSync(verified, { force: true });
+      } catch {
+        /* the files are checked again on the next launch either way */
+      }
+    }
   }
   mkdirSync(destBase, { recursive: true });
 
@@ -198,10 +251,34 @@ async function ensureFromMetaOnce(
     /* ignore */
   }
   await extractArchive(archivePath, incoming);
+  if (replacing && existsSync(browserDir)) {
+    // The old copy could not be removed (a browser is running on it). It is not what was signed, so it is not used.
+    try {
+      rmSync(incoming, { recursive: true, force: true });
+    } catch {
+      /* ignore */
+    }
+    throw new ProManifestError(
+      "binary",
+      `in the installed build ${tag}, ${replacing}, and it could not be replaced while a browser is running on it. Close the browsers on this build and launch again`,
+    );
+  }
   require("node:fs").renameSync(incoming, browserDir);
 
   const exe = findFile(browserDir, binaryName);
   if (!exe) throw new Error(`PRO archive verified but ${binaryName} was not found inside it.`);
+
+  // The binaries inside must be the ones the manifest names, not just the archive around them.
+  const wrong = meta.inner ? await innerMismatch(exe, binaryName, meta.inner) : null;
+  if (wrong) {
+    try {
+      rmSync(browserDir, { recursive: true, force: true });
+      rmSync(archivePath, { force: true });
+    } catch {
+      /* without .verified the folder is never used */
+    }
+    throw new ProManifestError("binary", `in the downloaded build ${tag}, ${wrong}`);
+  }
 
   if (process.platform !== "win32") {
     try {
@@ -233,6 +310,11 @@ async function ensureFromMetaOnce(
  * `version` ("150" / "150.0.7871.114") pins a specific PRO build via /download/pro?version=;
  * omit it for the latest PRO pin. Cached per tag. Throws on any failure — a licensed launch must
  * get the PRO build, never a silent free fall-back.
+ *
+ * The answer is used only when its release manifest verifies under a release key pinned in this app
+ * (proManifest.ts): for this platform, for the version or revision that was pinned, and with exactly the
+ * hashes in the answer. That holds for a build that is already installed too: its binaries are hashed
+ * against the manifest before its path is returned.
  */
 export async function proEnsureBinary(
   licenseKey?: string,
@@ -267,14 +349,19 @@ export async function proEnsureBinary(
   if (!meta.url || !meta.sha256 || !meta.asset) {
     throw new Error(`No PRO build is currently published for ${plat}.`);
   }
+  // Before anything is downloaded or launched. Throws ProManifestError with the check that failed.
+  const pin = proPins(version);
+  const signed = verifyProManifest(meta, plat, pin.revision, pin.version);
+  const binary = meta.binary || defaultBinaryName(plat);
   return ensureFromMeta(
     {
       tag: meta.tag || `pro-${meta.version || "unknown"}`,
       asset: meta.asset,
-      binary: meta.binary || defaultBinaryName(plat),
+      binary,
       url: meta.url,
       sha256: meta.sha256,
       size: meta.size,
+      inner: proBinaryHashes(signed, binary),
     },
     onProgress,
   );

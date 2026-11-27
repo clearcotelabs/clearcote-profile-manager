@@ -129,6 +129,21 @@ export function describeLaunchError(error: string | undefined, code?: string): L
   if (/Revision pins like/i.test(msg)) {
     return n({ title: t("That version can't be pinned"), lines: [msg], action: { kind: "edit", field: "browserVersion" } });
   }
+  // electron/proManifest.ts: the build's signed release manifest did not verify, so nothing was started.
+  const unverified = /release manifest check failed \(([a-z-]+)\): ([\s\S]*?)\. Refusing to use this build\./i.exec(msg);
+  if (unverified) {
+    const why = unverified[2].trim();
+    return n({
+      title: t("This browser build could not be verified"),
+      lines: [
+        why.charAt(0).toUpperCase() + why.slice(1) + ".",
+        unverified[1] === "unknown-key"
+          ? t("It was not used. Update the Profile Manager: a newer version knows the key this build is signed with.")
+          : t("It was not used. Try again; if this keeps happening, report it to Clearcote support."),
+      ],
+      action: { kind: "retry" },
+    });
+  }
   if (/SHA-256 mismatch|size mismatch|archive verified but/i.test(msg)) {
     return n({
       title: t("The browser download was damaged"),

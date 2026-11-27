@@ -76,6 +76,16 @@ Four layers:
       `Chromium.app` (never the framework's files), a picked `.app` resolving to its executable, the
       ditto / unzip / quarantine extraction (and, on a real Mac only, a ditto round-trip that keeps the
       bundle's symlinks), the Mac's Widevine CDM, `--use-mock-keychain`, the tray icon and the picker.
+    - `promanifest.test.ts` — the signed PRO release manifest check (`electron/proManifest.ts`): the app
+      pins exactly the production release key, the test vectors the SDKs share
+      (`fixtures/pro_manifest_vectors.json`, every reason code), Ed25519 against RFC 8032, the order of
+      the checks, strict base64url, and what a version selector pins. `promanifest.download.test.ts` —
+      the same check through the real download, extract and cache code on a small real archive: an
+      unsigned answer, a key the app does not pin, the wrong revision, version or platform and an altered
+      archive or binary hash are refused before anything is downloaded; an archive whose bytes or
+      binaries are not the signed ones is discarded; an installed build edited on disk (launcher, or
+      `chrome.dll` beside it on Windows) is downloaded again and never returned as it is. The test key
+      is pinned by the tests only (`helpers/prosign.ts`).
     - `macos.download.test.ts` — the real PRO download and catalog on a faked Mac: `platform=macos`,
       ditto, the bundle's executable back; an Intel Mac refused before any fetch; no licence → the
       reason, in the catalog and in the header pill; Windows and Linux unchanged.

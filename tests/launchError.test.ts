@@ -125,6 +125,29 @@ describe("describeLaunchError — the known shapes", () => {
     }
   });
 
+  it("a build whose signed release manifest did not verify → say what was wrong, and that it was not used", () => {
+    const n = describeLaunchError(
+      "Could not obtain the browser: Clearcote Pro release manifest check failed (revision): the manifest is for revision 'r67', not the pinned 'r68'. Refusing to use this build.",
+    );
+    expect(n.title).toBe("This browser build could not be verified");
+    expect(n.lines).toEqual([
+      "The manifest is for revision 'r67', not the pinned 'r68'.",
+      "It was not used. Try again; if this keeps happening, report it to Clearcote support.",
+    ]);
+    expect(n.action).toEqual({ kind: "retry" });
+    // A key this app version does not know is fixed by updating the app, not by trying again.
+    const k = describeLaunchError(
+      "Clearcote Pro release manifest check failed (unknown-key): it is signed with key 'pro-2027a', which is not a release key this version of the Profile Manager knows. Refusing to use this build.",
+    );
+    expect(k.title).toBe("This browser build could not be verified");
+    expect(k.lines[1]).toBe("It was not used. Update the Profile Manager: a newer version knows the key this build is signed with.");
+    // A binary inside a correctly signed archive that is not the signed one is not "a damaged download".
+    const b = describeLaunchError(
+      "Clearcote Pro release manifest check failed (binary): in the downloaded build pro-158.0.8127.36-r68, chrome.dll is not the file the release manifest names. Refusing to use this build.",
+    );
+    expect(b.title).toBe("This browser build could not be verified");
+  });
+
   it("no network → try again", () => {
     for (const msg of [
       "Could not obtain the browser: fetch failed",

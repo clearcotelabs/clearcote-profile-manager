@@ -1721,5 +1721,8 @@
   "Use a generated computer": "生成されたコンピューターを使う",
   "Use a real computer instead…": "代わりに実在のコンピューターを使う…",
   "With a proxy, its time zone and language follow the proxy's country.": "プロキシを使うと、タイムゾーンと言語はプロキシの国に合わせられます。",
-  "{n} set": "{n} 件設定済み"
+  "{n} set": "{n} 件設定済み",
+  "This browser build could not be verified": "このブラウザビルドを検証できませんでした",
+  "It was not used. Update the Profile Manager: a newer version knows the key this build is signed with.": "使用されませんでした。Profile Manager を更新してください。新しいバージョンは、このビルドの署名に使われた鍵を認識します。",
+  "It was not used. Try again; if this keeps happening, report it to Clearcote support.": "使用されませんでした。もう一度お試しください。繰り返し発生する場合は、Clearcote サポートにご報告ください。"
 }

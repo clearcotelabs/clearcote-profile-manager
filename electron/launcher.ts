@@ -16,6 +16,7 @@ import { pinUdpSession, relayProxyByIp, type UdpVerdict } from "./proxycheck";
 import { resolveLicenseKey, acquireLease, withRunToken, planFromToken, type LeaseSession } from "./license";
 import { engineSupportsSwitch, healStaleHostVendor, preparePersonaLaunch, staleHostVendor } from "./persona";  // r51+: server-side personas (the signed persona token)
 import { proEnsureBinary, freeEnsureBinary } from "./proBinary";
+import { ProManifestError } from "./proManifest";
 import { fetchCatalog, resolveVersion } from "./catalog";
 import { defaultBrowserArgs, fingerprintArgs, gateNoiseSwitches, hostTimezone, macosKeychainArgs, mergeFeatureFlags, proxyEgressArgs, QUIC_RELAY_SWITCH, startUrlArg, type FpInput } from "./fpargs";
 import { clearPending, injectCookies, readPending } from "./cookiejar";
@@ -64,6 +65,8 @@ async function resolveBrowserBinary(
   try {
     return await ensureBuild(p.browserVersion, s, onProgress);
   } catch (e) {
+    // A build whose signed release manifest did not verify is refused, not replaced by another binary.
+    if (e instanceof ProManifestError) throw e;
     // Offline / catalog-unreachable: fall back to a sibling dev-build ONLY when no specific
     // version was requested — a pinned version must resolve against the catalog or fail loudly.
     const w = (p.browserVersion ?? "").trim().toLowerCase();

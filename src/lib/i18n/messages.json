@@ -1917,6 +1917,12 @@
   "It was discarded without being used. Launching again downloads it afresh.": [
     "src/lib/launchError.ts"
   ],
+  "It was not used. Try again; if this keeps happening, report it to Clearcote support.": [
+    "src/lib/launchError.ts"
+  ],
+  "It was not used. Update the Profile Manager: a newer version knows the key this build is signed with.": [
+    "src/lib/launchError.ts"
+  ],
   "It worked on {name}. Jet saved the task, so the other profile repeats it without the model.": [
     "src/components/TaskBoard.tsx"
   ],
@@ -4011,6 +4017,9 @@
   ],
   "This Mac has no Clearcote build to launch.": [
     "src/lib/launchTarget.ts"
+  ],
+  "This browser build could not be verified": [
+    "src/lib/launchError.ts"
   ],
   "This browser is blocking the page from reaching apps on this computer. Allow “Local network access” for this site (the icon left of the address), then reload.": [
     "src/components/HelperGate.tsx"

@@ -1721,5 +1721,8 @@
   "Use a generated computer": "Dùng máy tính được tạo",
   "Use a real computer instead…": "Dùng một máy tính thật thay thế…",
   "With a proxy, its time zone and language follow the proxy's country.": "Khi có proxy, múi giờ và ngôn ngữ theo quốc gia của proxy.",
-  "{n} set": "Đã đặt {n}"
+  "{n} set": "Đã đặt {n}",
+  "This browser build could not be verified": "Không thể xác minh bản dựng trình duyệt này",
+  "It was not used. Update the Profile Manager: a newer version knows the key this build is signed with.": "Nó đã không được dùng. Hãy cập nhật Profile Manager: phiên bản mới hơn biết khóa đã ký bản dựng này.",
+  "It was not used. Try again; if this keeps happening, report it to Clearcote support.": "Nó đã không được dùng. Hãy thử lại; nếu vẫn tiếp diễn, hãy báo cho bộ phận hỗ trợ Clearcote."
 }

@@ -1721,5 +1721,8 @@
   "Use a generated computer": "Usar un ordenador generado",
   "Use a real computer instead…": "Usar un ordenador real en su lugar…",
   "With a proxy, its time zone and language follow the proxy's country.": "Con un proxy, la zona horaria y el idioma siguen al país del proxy.",
-  "{n} set": "{n} configurados"
+  "{n} set": "{n} configurados",
+  "This browser build could not be verified": "No se pudo verificar esta versión del navegador",
+  "It was not used. Update the Profile Manager: a newer version knows the key this build is signed with.": "No se usó. Actualiza el Profile Manager: una versión más reciente conoce la clave con la que está firmada esta versión.",
+  "It was not used. Try again; if this keeps happening, report it to Clearcote support.": "No se usó. Inténtalo de nuevo; si sigue ocurriendo, avisa al soporte de Clearcote."
 }
