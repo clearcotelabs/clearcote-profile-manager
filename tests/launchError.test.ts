@@ -86,6 +86,14 @@ describe("describeLaunchError — the known shapes", () => {
     expect(describeLaunchError("revoked", "LICENSE_REVOKED").title).toBe("Your licence isn't active");
   });
 
+  it("a data folder another browser has open → close it and retry (not a cloud save in progress)", () => {
+    const n = describeLaunchError("This profile's data folder is already open in another browser window. Close that window, then launch again.", "DATA_FOLDER_IN_USE");
+    expect(n.title).toBe("This profile's data is already open");
+    expect(n.lines).toEqual(["Another browser window is using the same data folder. Close it, then launch again."]);
+    expect(n.tone).toBe("warning");
+    expect(n.action).toEqual({ kind: "retry" });
+  });
+
   it("the daily download cap", () => {
     const n = describeLaunchError(
       'Could not obtain the browser: PRO download not authorized (HTTP 429): {"error":"Download limit reached: 10 different builds per 24 hours on this plan.","code":"DOWNLOAD_LIMIT_EXCEEDED"}',

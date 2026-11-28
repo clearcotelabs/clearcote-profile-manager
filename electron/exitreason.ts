@@ -57,8 +57,13 @@ const NTSTATUS: Record<number, string> = {
 
 const FATAL_SIGNALS = new Set(["SIGSEGV", "SIGABRT", "SIGILL", "SIGBUS", "SIGFPE", "SIGTRAP"]);
 
-/** Chromium's result code when the profile's data folder is already open in another browser. */
+/** Chromium's result code when the profile's data folder is already open in another browser and the hand-over
+ *  failed. A hand-over that works exits with 0 on Windows (measured 2026-11-28), which is why launch() checks
+ *  the folder first and refuses with DATA_FOLDER_IN_USE (electron/profilelock.ts). */
 export const RESULT_CODE_PROFILE_IN_USE = 21;
+
+/** launch()'s refusal code for a data folder another browser has open. */
+export const DATA_FOLDER_IN_USE = "DATA_FOLDER_IN_USE";
 
 const hex = (n: number) => "0x" + n.toString(16).toUpperCase().padStart(8, "0");
 

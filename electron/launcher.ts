@@ -8,7 +8,8 @@ import { PROFILES_DIR, FINGERPRINTS_DIR, ROOT, readSettings, writeSettings } fro
 import { captureForEngine } from "./angledeviceid";
 import { markLaunched, recordGeo } from "./profiles";
 import { webrtcIpFollowsProxy } from "./proxyargs";
-import { Tail, type ExitFacts } from "./exitreason";
+import { Tail, DATA_FOLDER_IN_USE, type ExitFacts } from "./exitreason";
+import { dataFolderInUse } from "./profilelock";
 import { stopGracefully, type StopOutcome } from "./procstop";
 import { parseProxy, proxyProblem, startRelay, needsRelay, proxyArgs, socks5AuthSupportWarning, socks5UdpSupportWarning, type Relay } from "./proxy";
 import { geoCheck } from "./geo";
@@ -447,6 +448,24 @@ export interface LaunchOptions {
   portWaitMs?: number;
 }
 
+/** How long a failed pipe wait waits for the process exit that follows a closed pipe (measured: 2-190 ms). */
+export const EXIT_AFTER_PIPE_MS = 1000;
+
+/** True once the browser process has exited, waiting up to `ms` for it. */
+export function exitedWithin(child: ChildProcess, ms: number): Promise<boolean> {
+  if (child.exitCode != null || child.signalCode != null) return Promise.resolve(true);
+  return new Promise((resolve) => {
+    const done = (v: boolean) => {
+      clearTimeout(timer);
+      child.off("exit", onExit);
+      resolve(v);
+    };
+    const onExit = () => done(true);
+    const timer = setTimeout(() => done(false), ms);
+    child.once("exit", onExit);
+  });
+}
+
 export async function launch(
   p: Profile,
   onDownload?: (ev: DownloadProgress) => void,
@@ -471,6 +490,15 @@ async function launchOnce(
   const asGiven = p; // a retry starts from the profile as it was handed in, not the one this launch enriched
   if (running.has(p.id)) {
     return { ok: false, error: "This profile is already running." };
+  }
+  // Open in a browser this app did not start (the SDK, Jet, an earlier copy of the app): a second browser would
+  // hand over to that one and exit at once (electron/profilelock.ts).
+  if (dataFolderInUse(p.userDataDir || path.join(PROFILES_DIR, p.id, "userdata"))) {
+    return {
+      ok: false,
+      error: "This profile's data folder is already open in another browser window. Close that window, then launch again.",
+      code: DATA_FOLDER_IN_USE,
+    };
   }
   // A proxy that is filled in but unreadable must never mean "launch without one": that would
   // open the browser on this PC's own IP while the profile says it uses a proxy.
@@ -765,8 +793,12 @@ async function launchOnce(
           );
         }
       } catch (e) {
-        // The browser closed during the wait, or it never opened the tab to hold.
-        if (running.has(p.id)) {
+        // The browser closed during the wait, or it never opened the tab to hold. A browser that exited is not
+        // a revocation-list problem: its exit card says why it stopped. Node reports the pipe closing BEFORE the
+        // process exit (2-190 ms later, measured 2026-11-28), so `running` alone still said "running" here and
+        // every early exit (a crash, a closed window, a hand-over to a window that had the folder) was reported
+        // as this wait failing.
+        if (!(await exitedWithin(child, EXIT_AFTER_PIPE_MS)) && running.get(p.id) === child) {
           warnings.push(`The wait for Chrome's certificate revocation list failed (${String((e as Error)?.message || e)}).`);
         }
       } finally {

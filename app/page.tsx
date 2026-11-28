@@ -700,8 +700,10 @@ function Manager() {
         await refresh();
         refreshTarget(); // a first lease teaches us the plan; a download changes "downloaded"
         // Warnings mean the browser DID start but an option silently won't take effect. They go on
-        // the card, where they stay readable, rather than into a toast that vanishes.
-        if (r.warnings?.length) setNotices((n) => ({ ...n, [p.id]: describeLaunchWarnings(r.warnings!) }));
+        // the card, where they stay readable, rather than into a toast that vanishes. The card was cleared when
+        // the launch began, so a notice there now is the exit card of a browser that already stopped (it can
+        // arrive during the refresh above): why it stopped matters more than an option that did not apply.
+        if (r.warnings?.length) setNotices((n) => (n[p.id] ? n : { ...n, [p.id]: describeLaunchWarnings(r.warnings!) }));
         void reportLaunch(p, r);
       } else if (needsHelper(r)) {
         // The web preview: the connect window is already open.

@@ -91,6 +91,10 @@ vi.mock("../electron/realcomputer", async (orig) => {
   return { ...real, applyRealComputer: (p: never) => real.applyRealComputer(p, hostFactsMock) };
 });
 
+// The data-folder check (electron/profilelock.ts) reads a real lockfile; tests/profilelock.test.ts covers it.
+const inUseMock = vi.fn((_dir: string) => false);
+vi.mock("../electron/profilelock", () => ({ dataFolderInUse: (d: string) => inUseMock(d) }));
+
 // The persona step (r51+): recorded, never run, so a fake binary is fine. What the launcher hands it is the point.
 const personaMock = vi.fn(async (_bin: string, args: readonly string[], _lease: unknown, _deps?: { env?: NodeJS.ProcessEnv }) => ({
   args: [...args],
@@ -168,6 +172,28 @@ describe("launch() — licence refusals", () => {
     const r = await launcher.launch(profile("plain"));
     expect(r).toMatchObject({ ok: false, error: "boom" });
     expect(r.code).toBeUndefined();
+  });
+});
+
+describe("launch() — a data folder another browser has open", () => {
+  afterEach(() => inUseMock.mockReset().mockReturnValue(false));
+
+  it("refuses with its code before the licence or the browser (no slot taken, no hand-over)", async () => {
+    inUseMock.mockReturnValue(true);
+    const r = await launcher.launch(profile("open-elsewhere"));
+    expect(r).toMatchObject({ ok: false, code: "DATA_FOLDER_IN_USE" });
+    expect(r.error).toMatch(/already open in another browser window/);
+    expect(inUseMock).toHaveBeenCalledWith(path.join(ROOT, "profiles", "open-elsewhere", "userdata"));
+    expect(leaseMock).not.toHaveBeenCalled();
+    expect(spawnMock).not.toHaveBeenCalled();
+    expect(profiles.getProfile("open-elsewhere")?.lastLaunchedAt).toBeUndefined();
+  });
+
+  it("checks the profile's own data folder when it has one", async () => {
+    inUseMock.mockReturnValue(true);
+    const own = path.join(ROOT, "elsewhere", "udd");
+    await launcher.launch(profile("own-dir", { userDataDir: own }));
+    expect(inUseMock).toHaveBeenCalledWith(own);
   });
 });
 
@@ -502,6 +528,32 @@ describe("launch() — Chrome's revocation list", () => {
     const r = await launcher.launch(profile("crl-left", { startUrl: "example.com" }));
     expect(r.ok).toBe(true);
     expect((r.warnings ?? []).join(" ")).not.toMatch(/revocation/);
+  });
+
+  // Reported 2026-11-27: "The wait for Chrome's certificate revocation list failed (the browser closed the DevTools
+  // pipe)". The pipe closes before the process exit is reported, so a browser that crashed, was closed, or handed
+  // over to a window that had its folder read as the wait failing.
+  it("a browser that exits during the wait is not a revocation-list warning (its exit card says why)", async () => {
+    let child!: ReturnType<typeof fakeChild>;
+    spawnMock.mockImplementation(async () => (child = fakeChild()));
+    holdMock.mockImplementation(async () => {
+      setTimeout(() => {
+        child.exitCode = 0;
+        child.emit("exit", 0, null);
+      }, 150); // the exit event trails the closed pipe
+      throw new Error("the browser closed the DevTools pipe");
+    });
+    const r = await launcher.launch(profile("crl-exit", { startUrl: "example.com" }));
+    expect(r.ok).toBe(true);
+    expect((r.warnings ?? []).join(" ")).not.toMatch(/revocation/);
+    expect(launcher.listRunning()).not.toContain("crl-exit");
+  });
+
+  it("a wait that fails while the browser keeps running is still a warning", async () => {
+    holdMock.mockRejectedValue(new Error("the browser opened no about:blank tab to hold"));
+    const r = await launcher.launch(profile("crl-fail", { startUrl: "example.com" }));
+    expect(r.ok).toBe(true);
+    expect(r.warnings?.join(" ")).toMatch(/The wait for Chrome's certificate revocation list failed \(the browser opened no about:blank tab to hold\)/);
   });
 
   it("turned off: no seed, no pipe, the start page on the command line", async () => {

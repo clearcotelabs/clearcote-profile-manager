@@ -81,6 +81,15 @@ export function describeLaunchError(error: string | undefined, code?: string): L
       action: { kind: "edit", field: "browserVersion" },
     });
   }
+  // electron/profilelock.ts: another browser has this profile's folder, so a launch would only hand over to it.
+  if (c === "DATA_FOLDER_IN_USE") {
+    return n({
+      tone: "warning",
+      title: t("This profile's data is already open"),
+      lines: [t("Another browser window is using the same data folder. Close it, then launch again.")],
+      action: { kind: "retry" },
+    });
+  }
   if (c === "CONCURRENCY_LIMIT_EXCEEDED") {
     return n({
       title: t("Your plan's browser limit is reached"),
